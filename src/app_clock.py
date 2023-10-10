@@ -11,9 +11,16 @@ python app_clock.py
 import datetime
 import os
 import time
+import io
+import base64
+from io import BytesIO
+from typing import Any
+from tornado import httputil
+import PIL.Image
 
 import tornado.ioloop
 import tornado.web
+from tornado.web import Application
 
 from disp_binary import BinaryDisplay
 from disp_large7seg import Large7SegDisplay
@@ -21,28 +28,19 @@ from disp_place_holder import PlaceHolder
 from disp_sat import SATDisplay
 from disp_word import WordDisplay
 from oled.oled_window import OLEDWindow
+from oled.oled_stub import StubOLED
 
 
-ON_HARDWARE = True
+ON_HARDWARE = False
 
 if ON_HARDWARE:
+    from luma.oled.device import ssd1322,device
     import RPi.GPIO as GPIO
     from oled.oled_pi import OLED
 
 
 # Singleton clock controller
 CLOCK = None
-
-
-class StubOLED:
-    def set_data_window(self, x, y, width, height):
-        pass
-
-    def Write_Instruction(self, data):
-        pass
-
-    def writeDataBytes(self, data):
-        pass
 
 
 class Clock:
@@ -106,6 +104,21 @@ class Clock:
         self._display.make_time(self._xofs, self._yofs, hours, mins, secs, self._config)
         self._window.draw_screen_buffer()
 
+
+class DisplayHandler(tornado.web.RequestHandler):
+    oledStub:StubOLED
+
+    def initialize(self, oledStub: StubOLED) -> None:
+        self.oledStub = oledStub
+
+    def get(self):
+        buffered = io.BytesIO()
+        img= self.oledStub.getImage()
+        img.save(buffered, format="png")
+        img.seek(0)
+        img_str = base64.b64encode(buffered.getvalue())
+        my_html = '<img width="800" src="data:image/png;base64, {}">'.format(img_str.decode('utf-8'))
+        self.write(my_html)
 
 class ClockHandler(tornado.web.RequestHandler):
 
@@ -198,7 +211,8 @@ if __name__ == '__main__':
 
     root = os.path.join(os.path.dirname(__file__), "webroot")
     handlers = [
-        (r"/clock", ClockHandler),
+        (r"/clock", ClockHandler ),
+        (r"/display", DisplayHandler, {"oledStub": oled} ),
         (r"/(.*)", tornado.web.StaticFileHandler, {"path": root, "default_filename": "index.html"}),
     ]
 

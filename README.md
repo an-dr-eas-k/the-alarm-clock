@@ -18,6 +18,12 @@ https://learn.parallax.com/tutorials/language/blocklyprop/oled-display-blocklypr
 
 ![](art/parts.jpg)
 
+# Getting started
+```
+pip install -r requirements.txt
+python src/app_clock.py
+```
+
 # Screen saver
 
 TODO

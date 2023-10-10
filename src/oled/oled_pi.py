@@ -1,12 +1,13 @@
 import spidev
 import time
 import RPi.GPIO as GPIO
+import oled_stub
 
 GPIO.setwarnings(False)
 
-class OLED:
+class OLED (oled_stub):
     
-    # Display is 256x64 pixels, 2 pixels per byte. The most-significant nibble
+    # Display is 256x64 pixels, 2 piextendxels per byte. The most-significant nibble
     # is the left pixel.
     
     # Screen buffer is thus 256 * 64 / 2 = 8192 (8K)
