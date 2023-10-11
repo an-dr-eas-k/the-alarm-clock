@@ -9,6 +9,9 @@
       "type": "python",
       "request": "launch",
       "program": "app_clock.py",
+      "args": [
+        "--software"
+      ],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/src",
       "justMyCode": false
