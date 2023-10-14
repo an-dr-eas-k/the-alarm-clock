@@ -113,7 +113,7 @@ class DisplayHandler(tornado.web.RequestHandler):
 				img.save(buffered, format="png")
 				img.seek(0)
 				img_str = base64.b64encode(buffered.getvalue())
-				my_html = '<img width="800" src="data:image/png;base64, {}">'.format(img_str.decode('utf-8'))
+				my_html = '<img src="data:image/png;base64, {}">'.format(img_str.decode('utf-8'))
 				self.write(my_html)
 
 class ClockHandler(tornado.web.RequestHandler):
@@ -184,7 +184,7 @@ class ClockApp:
 						from oled.oled_pi import OLED
 						device = ssd1322()
 				else:
-						device = dummy(height=64, width=256)
+						device = dummy(height=64, width=256, mode="1")
 				
 				displays = [
 						('7 Segment', Large7SegDisplay(device)),                 

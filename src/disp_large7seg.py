@@ -1,12 +1,12 @@
 from disp_base import DisplayBase
 from luma.core.device import device
 from luma.core.render import canvas
-from PIL import ImageFont
+from PIL import ImageFont,Image, ImageOps
 
 
 class Large7SegDisplay(DisplayBase):
 
-	fontFile = "resources/7segment.ttf"
+	fontFile = "resources/DSEG7ClassicMini-Bold.ttf"
 	SEG_LENGTH = 18
 	SEG_WIDTH = 3
 	
@@ -65,12 +65,20 @@ class Large7SegDisplay(DisplayBase):
 		mins_a = int(minutes / 10)
 		mins_b = int(minutes % 10)
 
-		font=ImageFont.truetype(self.fontFile, 50)
+		font=ImageFont.truetype(self.fontFile, 40)
 		text=f"{hours_a}{hours_b}:{mins_a}{mins_b}"
 		with canvas(self.device) as draw:
-			x = (font.getsize(text)[0]+draw.im.size[0])/4
+			x = (draw.im.size[0]-font.getsize(text)[0])/2
+			y = (draw.im.size[1]-font.getsize(text)[1])/2
+ 
+			wifi = ImageOps.invert( Image.open("resources/no-wifi.mono.png" ))
+			draw.bitmap([10,10], wifi
+							 .resize([int(0.1 * s) for s in wifi.size]), fill=1 )
 			draw.text(
+				stroke_width=0, 
+				fill=1,
 				align='left',
 				text=text,
-				xy=[x, yofs],
+				xy=[x, y],
 				font=font)
+
