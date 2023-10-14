@@ -25,6 +25,7 @@ from luma.core.device import dummy
 import tornado.ioloop
 import tornado.web
 from tornado.web import Application
+from audio import LivestreamPlayer
 
 from disp_binary import BinaryDisplay
 from disp_large7seg import Large7SegDisplay
@@ -207,6 +208,8 @@ class ClockApp:
 				CLOCK = Clock(device, displays, config)
 
 				loop = tornado.ioloop.IOLoop.current()
+
+				# LivestreamPlayer().play()
 
 				# Make sure the button handler runs in the tornando I/O loop
 				def _button_handler(_channel):
