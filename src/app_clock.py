@@ -27,14 +27,14 @@ import tornado.web
 from tornado.web import Application
 from audio import LivestreamPlayer
 
-from disp_binary import BinaryDisplay
 from disp_large7seg import Large7SegDisplay
-from disp_place_holder import PlaceHolder
-from disp_sat import SATDisplay
-from disp_word import WordDisplay
+from domain import AlarmClockState, Config
 from oled.oled_window import OLEDWindow
 from oled.oled_stub import StubOLED
 
+import pynput
+from pynput import keyboard
+from pynput.keyboard import Key, Listener, KeyCode
 
 
 
@@ -44,33 +44,22 @@ CLOCK = None
 
 class Clock:
 
-		def __init__(self, device: device, displays, config):
+		def __init__(self, device: device, config):
 				self.device = device
-				self._displays = displays
 				self._xofs = -1
 				self._yofs = -1
 				self._dirx = 1
 				self._diry = 1
 				self._config = config
-				self.set_display(config['display_num'])
 
 		def button_pressed_cb(self):
 				self.set_display()
 
-		def get_displays(self):
-				return self._displays
-
 		def get_config(self):
 				return self._config
 
-		def set_display(self, num=-1):
-				if num >= 0:
-						self._config['display_num'] = num
-				else:
-						self._config['display_num'] += 1
-						if self._config['display_num'] >= len(self._displays):
-								self._config['display_num'] = 0
-				self._display = self._displays[self._config['display_num']][1]
+		def set_display(self):
+				self._display = Large7SegDisplay(self.device)
 				self.update_time()
 
 		def update_time(self):
@@ -170,79 +159,70 @@ class ClockHandler(tornado.web.RequestHandler):
 
 class ClockApp:
 
-		def __init__(self) -> None:
-				parser = argparse.ArgumentParser("ClockApp")
-				parser.add_argument("-s", '--software', action='store_true')
-				self.args = parser.parse_args()
+	def __init__(self) -> None:
+		parser = argparse.ArgumentParser("ClockApp")
+		parser.add_argument("-s", '--software', action='store_true')
+		self.args = parser.parse_args()
 
-		def isOnHardware(self):
-				return not self.args.software
+	def isOnHardware(self):
+		return not self.args.software
+	
+	def playLivestream(self):
+		self.streamPlayer.play()
+
+
+	def go(self):
+		def keyPressedAction(key:KeyCode):
+			if (key.char == 'r'):
+				self.playLivestream()
+			pass
+
+		state = AlarmClockState(Config())
+		self.streamPlayer = LivestreamPlayer(state.audioState)
 		
+		if self.isOnHardware():
+			import RPi.GPIO as GPIO
+			from oled.oled_pi import OLED
+			device = ssd1322()
+		else:
+			device = dummy(height=64, width=256, mode="1")
+		
+		CLOCK = Clock(device,state.configuration)
 
-		def go(self):
-				if self.isOnHardware():
-						import RPi.GPIO as GPIO
-						from oled.oled_pi import OLED
-						device = ssd1322()
-				else:
-						device = dummy(height=64, width=256, mode="1")
-				
-				displays = [
-						('7 Segment', Large7SegDisplay(device)),                 
-						('Binary', BinaryDisplay(device)),        
-						('Word', WordDisplay(device)),       
-						('S&T', SATDisplay(device)),
-						('Analog', PlaceHolder(device, 'Analog')),
-						('Roman', PlaceHolder(device, 'Roman')),
-						('Tetris', PlaceHolder(device, 'Tetris')),
-						#('Text', PlaceHolder(window, 'Text')),
-				]
-
-				# TODO: this should persist in a config file
-				config = {
-						'brightness': 15,
-						'am_pm': True,
-						'display_num': 0
-				}
-
-				CLOCK = Clock(device, displays, config)
-
-				loop = tornado.ioloop.IOLoop.current()
-
-				# LivestreamPlayer().play()
-
-				# Make sure the button handler runs in the tornando I/O loop
-				def _button_handler(_channel):
-						loop.add_callback(CLOCK.button_pressed_cb)
-
-				if self.isOnHardware():
-						GPIO.setmode(GPIO.BCM)
-						GPIO.setup(23, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-						GPIO.add_event_detect(23, GPIO.FALLING, callback=_button_handler, bouncetime=500)
-
-				root = os.path.join(os.path.dirname(__file__), "webroot")
-				handlers = [
-					(r"/clock", ClockHandler, {"clock": CLOCK}),
-					(r"/(.*)", tornado.web.StaticFileHandler, {"path": root, "default_filename": "index.html"}),
-				]
-				if not self.isOnHardware():
-						handlers= [(r"/display", DisplayHandler, {"device": device} ),]+handlers
+		loop = tornado.ioloop.IOLoop.current()
 
 
-				app = tornado.web.Application(handlers)
+		if self.isOnHardware():
+			GPIO.setmode(GPIO.BCM)
+			GPIO.setup(23, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+			GPIO.add_event_detect(23, GPIO.FALLING, callback=self.playLivestream, bouncetime=500)
+		else:
+			with Listener(on_press=keyPressedAction) as listener:
+				listener.join()
 
-				if self.isOnHardware():
-						app.listen(80)
-				else:
-						app.listen(8080)
+		root = os.path.join(os.path.dirname(__file__), "webroot")
+		handlers = [
+			(r"/clock", ClockHandler, {"clock": CLOCK}),
+			(r"/(.*)", tornado.web.StaticFileHandler, {"path": root, "default_filename": "index.html"}),
+		]
+		if not self.isOnHardware():
+				handlers= [(r"/display", DisplayHandler, {"device": device} ),]+handlers
 
-				# Every 10 seconds, update the display
-				def _time_change():
-						CLOCK.update_time()
-						loop.call_later(10, _time_change)
-				_time_change()
 
-				loop.start()
+		app = tornado.web.Application(handlers)
+
+		if self.isOnHardware():
+				app.listen(80)
+		else:
+				app.listen(8080)
+
+		# Every 10 seconds, update the display
+		def _time_change():
+				CLOCK.update_time()
+				loop.call_later(10, _time_change)
+		_time_change()
+
+		loop.start()
 
 if __name__ == '__main__':
 		ClockApp().go()

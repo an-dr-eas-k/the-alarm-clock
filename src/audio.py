@@ -1,26 +1,32 @@
 import vlc
 import time
 
-class LivestreamPlayer:
-	url = 'https://streams.br.de/bayern2sued_2.m3u'
+from domain import AudioDefinition
 
-	def __init__(self, url = None) -> None:
-		if (url != None):
-			self.url = url
+class LivestreamPlayer:
+	audioDefinition: AudioDefinition
+
+	def __init__(self, audioDefinition: AudioDefinition= None) -> None:
+		if (audioDefinition != None):
+			self.audioDefinition = audioDefinition
 
 	def play(self):
-		media_player = vlc.MediaListPlayer() 
+		self.media_player = vlc.MediaListPlayer() 
   
 		player = vlc.Instance() 
 		media_list = vlc.MediaList() 
-		media = player.media_new(self.url) 
+		media = player.media_new(self.audioDefinition.activeLivestreamUrl) 
 		media_list.add_media(media) 
-		media_player.set_media_list(media_list) 
-		print(f'start audio {self.url}')
-		media_player.play()
+		self.media_player.set_media_list(media_list) 
+		print(f'start audio {self.audioDefinition.activeLivestreamUrl}')
+		self.media_player.play()
 
 		time.sleep(20)
 		print('stop audio')
+
+	def stop(self):
+		self.media_player.stop()
+		pass
 
 if __name__ == '__main__':
 		LivestreamPlayer().play()
