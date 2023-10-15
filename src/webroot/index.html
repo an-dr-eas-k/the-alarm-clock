@@ -1,65 +1,55 @@
 <!doctype html>
 
 <html lang="en">
+
 <head>
-  <meta charset="utf-8">  
-  <title>IOT Clock</title>    
-  
-  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">  
-  
+	<meta charset="utf-8">
+	<title>IOT Clock</title>
+
+	<link href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet"
+		integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+
 </head>
 
 <body>
 
-<div class="container-fluid">
+	<div class="container-fluid">
 
-    <div class="row">
-        <div class="col-sm-12">
-            <h1>IOT Clock</h1>
-        </div>
-    </div>
-    
-    <div class="row" >
-	<div class="col-sm-2">		
-	  <div class="form-group">
-	    <label for="brightness">Brightness</label>
-	    <input type="number" min="1" max="15" class="form-control" id="brightness" name='brightness'
-	      onchange="send_change({brightness:parseInt($('#brightness').val())})">
-	  </div>	  
-	</div>
-	</div>
-	
-	<div class="row" >
-	<div class="col-sm-12">		
-	  <div class="form-group">
-	    <label>Time Mode</label>
-	    <br>
-	    <input type="radio" id="am_pm" name="mode" value="am_pm" onchange="send_change({am_pm:true})">
-  		<label for="am_pm">AM/PM</label>
-  		<br>
-  		<input type="radio" id="24_hour" name="mode" value="24_hour" onchange="send_change({am_pm:false})">
-        <label for="24_hour">24 Hour</label>
-	  </div>	  
-	</div>
-	</div>
-	
-	<div class="row" >
-	<div class="col-sm-12">		
-	  <div class="form-group" id="displays">
-	    <label>Display</label>	    
-	  </div>	  
-	</div>
+		<div class="row">
+			<div class="col-sm-12">
+				<h1>IOT Clock</h1>
+			</div>
+		</div>
+
+		<div class="row">
+			<div class="col-sm-2">
+				<div class="form-group">
+					<label for="brightness">Brightness</label>
+					<input type="number" min="1" max="15" class="form-control" id="brightness" name='brightness'
+						onchange="send_change({brightness:parseInt($('#brightness').val())})">
+				</div>
+			</div>
+		</div>
+
+		<div class="row">
+			<div class="col-sm-2">
+				<div class="form-group">
+					<label for="clockFormatString">Clock Format</label>
+					<input type="text" class="form-control" id="clockFormatString" name='clockFormatString'
+						onchange="send_change({clockFormatString:$('#clockFormatString').val()})">
+				</div>
+			</div>
+		</div>
+
 	</div>
 
-</div>
+	<script src="https://code.jquery.com/jquery-3.4.1.min.js"
+		integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+	<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"
+		integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
+		crossorigin="anonymous"></script>
 
-  <script
-  src="https://code.jquery.com/jquery-3.4.1.min.js"
-  integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
-  crossorigin="anonymous"></script>
-  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
-  
-  <script src="clock.js"></script>
+	<script src="clock.js"></script>
 
 </body>
 

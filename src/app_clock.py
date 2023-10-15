@@ -8,89 +8,29 @@ cd /home/pi/iot-clock/src
 python app_clock.py
 """
 
-import datetime
-import sys
 import os
-import time
 import io
 import base64
-from io import BytesIO
-from typing import Any
-from tornado import httputil
-import PIL.Image
+import threading
+import time
+import traceback
 import argparse
-from luma.oled.device import ssd1322,device
+from luma.oled.device import ssd1322
 from luma.core.device import dummy
 
 import tornado.ioloop
 import tornado.web
-from tornado.web import Application
-from audio import LivestreamPlayer
+from audio import Speaker
 
-from disp_large7seg import Large7SegDisplay
+from display import Display
 from domain import AlarmClockState, Config
-from oled.oled_window import OLEDWindow
-from oled.oled_stub import StubOLED
 
-import pynput
-from pynput import keyboard
-from pynput.keyboard import Key, Listener, KeyCode
+from gpiozero import Button
 
-
-
-# Singleton clock controller
-CLOCK = None
-
-
-class Clock:
-
-		def __init__(self, device: device, config):
-				self.device = device
-				self._xofs = -1
-				self._yofs = -1
-				self._dirx = 1
-				self._diry = 1
-				self._config = config
-
-		def button_pressed_cb(self):
-				self.set_display()
-
-		def get_config(self):
-				return self._config
-
-		def set_display(self):
-				self._display = Large7SegDisplay(self.device)
-				self.update_time()
-
-		def update_time(self):
-				window_size = self._display.get_window_size()
-				limits = [256 - window_size[0], 64 - window_size[1]]
-
-				self._xofs += self._dirx
-				if self._xofs > limits[0]:
-						self._xofs = limits[0]
-						self._dirx = -1
-				if self._xofs < 0:
-						self._xofs = 0
-						self._dirx = 1
-
-				self._yofs += self._diry
-				if self._yofs > limits[1]:
-						self._yofs = limits[1]
-						self._diry = -1
-				if self._yofs < 0:
-						self._yofs = 0
-						self._diry = 1
-
-				now = datetime.datetime.now()
-
-				hours = now.hour
-				mins = now.minute
-				secs = now.second
-
-				self.device.clear()
-				self._display.make_time(self._xofs, self._yofs, hours, mins, secs, self._config)
-
+button1 = 23
+button2 = 24
+button3 = 12
+button4 = 16
 
 class DisplayHandler(tornado.web.RequestHandler):
 
@@ -106,58 +46,35 @@ class DisplayHandler(tornado.web.RequestHandler):
 				my_html = '<img src="data:image/png;base64, {}">'.format(img_str.decode('utf-8'))
 				self.write(my_html)
 
-class ClockHandler(tornado.web.RequestHandler):
+class ConfigHandler(tornado.web.RequestHandler):
 
-		def initialize(self, clock: Clock) -> None:
-				self.clock = clock
-				self.config = self.clock.get_config()
+		def initialize(self, config: Config) -> None:
+				self.config = config
 
 		def _get_json(self):
-				disps = []
-				for item in self.clock.get_displays():
-						disps.append(item[0])
-				ret = {
-						'displays': disps,
-						'display_num': self.config['display_num'],
-						'brightness': self.config['brightness'],
-						'am_pm': self.config['am_pm'],
-				}        
-				return ret
+			ret = {
+					'brightness': self.config.brightness,
+					'clockFormatString': self.config.clockFormatString,
+			}        
+			return ret
 
 		def get(self):
 
-				# display_num : 0-N
-				# brightness : 0-15
-				# am_pm : true/false
+			brightness = self.get_argument('brightness', None)
+			clockFormatString = self.get_argument('clockFormatString', None)
 
-				display_num = self.get_argument('display_num', None)
-				brightness = self.get_argument('brightness', None)
-				am_pm = self.get_argument('am_pm', None)
+			if brightness is not None:
+				self.config.brightness = int(brightness)
 
-				changes = False
+			if clockFormatString is not None:
+				self.config.clockFormatString = clockFormatString
 
-				if display_num is not None:
-						self.config['display_num'] = int(display_num)
-						changes = True
-
-				if brightness is not None:
-						self.config['brightness'] = int(brightness)
-						changes = True
-
-				if am_pm is not None:
-						if am_pm.upper().startswith('T'):
-								self.config['am_pm'] = True
-						else:
-								self.config['am_pm'] = False
-						changes = True
-
-				# if changes:
-				# 		loop.add_callback(self.clock.set_display, self.config['display_num'])
-
-				self.set_header('Content-Type', 'application/json')
-				self.write(self._get_json())
+			self.set_header('Content-Type', 'application/json')
+			self.write(self._get_json())
 
 class ClockApp:
+
+	buttons = []
 
 	def __init__(self) -> None:
 		parser = argparse.ArgumentParser("ClockApp")
@@ -167,45 +84,85 @@ class ClockApp:
 	def isOnHardware(self):
 		return not self.args.software
 	
-	def playLivestream(self):
-		self.streamPlayer.play()
+	def repeat(self, callback: callable, startTime = time.time()):
+		startTime = startTime+1
+		callback()
+		threading.Timer( startTime - time.time(), lambda _: self.repeat(startTime) ).start()
 
+	def gpioInput(self, channel):
+		print(f"button {channel} pressed")
+		
+
+	def button1Action(self):
+		self.state.audioState.decreaseVolume()
+		self.speaker.adjustVolume()
+
+	def button2Action(self):
+		self.state.audioState.increaseVolume()
+		self.speaker.adjustVolume()
+
+	def button3Action(self):
+		exit(0) 
+
+	def button4Action(self):
+		self.state.audioState.toggleStream()
+		self.speaker.adjustStreaming()
+
+	def configureGpio(self):
+		dict(foo = "bar")
+		for button in ([
+			dict(b=button1, ht=0.5, hr=True, wh=self.button1Action), 
+			dict(b=button2, ht=0.5, hr=True, wh=self.button2Action), 
+			dict(b=button3, wa=self.button3Action), 
+			dict(b=button4, wa=self.button4Action)
+			]):
+			b = Button(button['b'])
+			if ('ht' in button): b.hold_time=button['ht']
+			if ('hr' in button): b.hold_repeat = button['hr']
+			if ('wh' in button): b.when_held = button['wh']
+			if ('wa' in button): b.when_activated = button['wa']
+			self.buttons.append(b)
 
 	def go(self):
-		def keyPressedAction(key:KeyCode):
-			if (key.char == 'r'):
-				self.playLivestream()
+		def keyPressedAction(key):
+			try:
+				if (key.char == 'r'):
+					self.playLivestream()
+				if (key.char == 's'):
+					self.speaker.stopStreaming()
+			except Exception:
+				print(traceback.format_exc())
 			pass
 
-		state = AlarmClockState(Config())
-		self.streamPlayer = LivestreamPlayer(state.audioState)
-		
-		if self.isOnHardware():
-			import RPi.GPIO as GPIO
-			from oled.oled_pi import OLED
-			device = ssd1322()
-		else:
-			device = dummy(height=64, width=256, mode="1")
-		
-		CLOCK = Clock(device,state.configuration)
+		self.state = AlarmClockState(Config())
 
+		device = dummy(height=64, width=256, mode="1")
+		if self.isOnHardware():
+			try:
+				device = ssd1322()
+			except: pass
+
+		self.speaker = Speaker(self.state.audioState)
+		self.display = Display(device, self.state)
+		
 		loop = tornado.ioloop.IOLoop.current()
 
 
 		if self.isOnHardware():
-			GPIO.setmode(GPIO.BCM)
-			GPIO.setup(23, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-			GPIO.add_event_detect(23, GPIO.FALLING, callback=self.playLivestream, bouncetime=500)
-		else:
-			with Listener(on_press=keyPressedAction) as listener:
-				listener.join()
+			self.configureGpio()
+		# else:
+			# import pynput
+			# from pynput import keyboard
+			# from pynput.keyboard import Key, Listener, KeyCode
+			# with Listener(on_press=keyPressedAction) as listener:
+			# 	listener.join()
 
 		root = os.path.join(os.path.dirname(__file__), "webroot")
 		handlers = [
-			(r"/clock", ClockHandler, {"clock": CLOCK}),
+			(r"/config", ConfigHandler, {"config": self.state.configuration}),
 			(r"/(.*)", tornado.web.StaticFileHandler, {"path": root, "default_filename": "index.html"}),
 		]
-		if not self.isOnHardware():
+		if isinstance(device, dummy):
 				handlers= [(r"/display", DisplayHandler, {"device": device} ),]+handlers
 
 
@@ -216,13 +173,18 @@ class ClockApp:
 		else:
 				app.listen(8080)
 
-		# Every 10 seconds, update the display
-		def _time_change():
-				CLOCK.update_time()
-				loop.call_later(10, _time_change)
-		_time_change()
+		def loopAction():
+				self.adjustClock()
+				loop.call_later(self.state.configuration.refreshTimeoutInSecs, loopAction)
+		loopAction()
 
 		loop.start()
 
+	def adjustClock(self):
+		self.display.adjustDisplay()
+		self.speaker.adjustSpeaker()
+
+
 if __name__ == '__main__':
-		ClockApp().go()
+	print ("start")
+	ClockApp().go()
