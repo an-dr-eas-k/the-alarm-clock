@@ -15,10 +15,9 @@ class Speaker(Observer):
 		self.threadLock = threading.Lock()
 		self.audioDefinition.registerObserver(self)
 
-	def notify(self, _):
-		super().notify(_)
+	def notify(self, propertyName, propertyValue):
+		super().notify(propertyName, propertyValue)
 		self.adjustSpeaker()
-			
 
 	def adjustSpeaker(self):
 		self.adjustStreaming()

@@ -21,8 +21,8 @@ class Display(Observer):
 		self.alarmClockState = state
 		self.alarmClockState.registerObserver(self)
 
-	def notify(self, _):
-		super().notify(_)
+	def notify(self, propertyName, propertyValue):
+		super().notify(propertyName, propertyValue)
 		self.adjustDisplay()
 					
 	def adjustDisplay(self):

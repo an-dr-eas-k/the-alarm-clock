@@ -3,7 +3,7 @@ from enum import Enum
 
 class Observer:
 
-	def notify(self, _):
+	def notify(self, propertyName: str, propertyValue: any):
 		pass
 
 
