@@ -19,18 +19,15 @@ class Controls:
 
 	def button1Action(self):
 		self.state.audioState.decreaseVolume()
-		self.speaker.adjustVolume()
 
 	def button2Action(self):
 		self.state.audioState.increaseVolume()
-		self.speaker.adjustVolume()
 
 	def button3Action(self):
 		exit(0) 
 
 	def button4Action(self):
 		self.state.audioState.toggleStream()
-		self.speaker.adjustStreaming()
 
 	def configureGpio(self):
 		for button in ([
