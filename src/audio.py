@@ -4,15 +4,21 @@ import subprocess
 import threading
 import re
 
-from domain import AudioDefinition
+from domain import AudioDefinition, Observer
 
-class Speaker:
+class Speaker(Observer):
 	audioDefinition: AudioDefinition
 	mediaPlayer: vlc.MediaListPlayer = None
 
 	def __init__(self, audioDefinition: AudioDefinition= AudioDefinition()) -> None:
 		self.audioDefinition = audioDefinition
 		self.threadLock = threading.Lock()
+		self.audioDefinition.registerObserver(self)
+
+	def notify(self, _):
+		super().notify(_)
+		self.adjustSpeaker()
+			
 
 	def adjustSpeaker(self):
 		self.adjustStreaming()

@@ -4,18 +4,26 @@ from luma.core.device import device
 from luma.core.render import canvas
 from PIL import ImageFont,Image, ImageOps
 
-from domain import AlarmClockState, Config
+from domain import AlarmClockState, Config, Observer
 
 
-class Display:
+class Display(Observer):
 
 	resourcesDir = f"{os.path.dirname(os.path.realpath(__file__))}/resources"
 	fontFile = f"{resourcesDir}/DSEG7ClassicMini-Bold.ttf"
 	noWifiFile = f"{resourcesDir}/no-wifi.mono.png" 
 
+	device: device
+	alarmClockState: AlarmClockState
+
 	def __init__(self, device: device, state: AlarmClockState):
 		self.device = device
 		self.alarmClockState = state
+		self.alarmClockState.registerObserver(self)
+
+	def notify(self, _):
+		super().notify(_)
+		self.adjustDisplay()
 					
 	def adjustDisplay(self):
 
