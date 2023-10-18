@@ -31,8 +31,8 @@ class Controls:
 
 	def configureGpio(self):
 		for button in ([
-			dict(b=button1, ht=0.5, hr=True, wh=self.button1Action), 
-			dict(b=button2, ht=0.5, hr=True, wh=self.button2Action), 
+			dict(b=button1, ht=0.5, hr=True, wa=self.button1Action, wh=self.button1Action), 
+			dict(b=button2, ht=0.5, hr=True, wa=self.button2Action, wh=self.button2Action), 
 			dict(b=button3, wa=self.button3Action), 
 			dict(b=button4, wa=self.button4Action)
 			]):
