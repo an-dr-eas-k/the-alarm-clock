@@ -106,7 +106,6 @@ class ClockApp:
 		self.display = Display(device, self.state.displayContent)
 		self.controls = Controls(self.state)
 		
-		loop = tornado.ioloop.IOLoop.current()
 
 
 		if self.isOnHardware():
@@ -133,18 +132,10 @@ class ClockApp:
 				app.listen(80)
 		else:
 				app.listen(8080)
+			
 
-		def loopAction():
-				self.adjustClock()
-				loop.call_later(self.state.configuration.refreshTimeoutInSecs, loopAction)
-		loopAction()
-
-		loop.start()
-
-	def adjustClock(self):
-		self.display.adjustDisplay()
-		self.speaker.adjustSpeaker()
-
+		while True:
+			time.sleep(1)
 
 if __name__ == '__main__':
 	print ("start")
