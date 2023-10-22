@@ -1,14 +1,21 @@
 from enum import Enum
+import sched
+import time
+from apscheduler.schedulers.background import BackgroundScheduler
 
 
 class Observer:
 
 	def notify(self, propertyName: str, propertyValue: any):
+		print(f"{self.__class__.__name__} is notified: {propertyName} changed to {propertyValue}")
 		pass
 
 
 class Observable:
-	observers = []
+	observers : []
+
+	def __init__(self):
+		self.observers = []
 
 	def notifyObservers(self, propertyName):
 		for k in [propertyName, f"_{propertyName}"]:
@@ -16,7 +23,7 @@ class Observable:
 				propertyName = k
 			
 		newValue = self.__dict__.get(propertyName)
-		print (f"changing {propertyName}, new value {newValue}")
+		print (f"{self.__class__.__name__}: changing {propertyName}, new value {newValue}")
 		for o in self.observers:
 			o.notify(propertyName, newValue)
 
@@ -47,9 +54,15 @@ class AudioDefinition(Observable):
 		print (f"toggle streaming, new value isStreaming={self.isStreaming}")
 		self.notifyObservers('isStreaming')
 
-class DisplayContent(Observable):
+class DisplayContent(Observable, Observer):
 	showVolume:bool= False
+	showVolumeTimer: sched.scheduler
 	showBlinkSegment:bool= True
+
+	def __init__(self):
+		super().__init__()
+		self.showVolumeTimer = sched.scheduler(time.time, time.sleep)
+		self.showVolumeTimer.run()
 
 	@property
 	def clock(self) -> str:
@@ -59,6 +72,21 @@ class DisplayContent(Observable):
 	def clock(self, value: str):
 		self._clock = value
 		self.notifyObservers('clock')
+
+	def resetVolume(self):
+		print("resetting volume")
+		self.showVolume = False
+
+	def notify(self, propertyName: str, propertyValue: any):
+		super().notify(propertyName, propertyValue)
+		if (propertyName == 'volumeInPercent'):
+			self.showVolume = True 
+			self.showVolumeTimer.queue.clear()
+			self.showVolumeTimer.enter(5, 1, self.resetVolume)
+			print("started volumetimer")
+
+
+
 
 class Mode(Enum):
 	Boot = 1
@@ -144,13 +172,9 @@ class AlarmClockState(Observable):
 		self.notifyObservers('mode')
 
 	def __init__(self, c: Config) -> None:
+		super().__init__()
 		self.configuration = c
 		self.audioState = AudioDefinition()
 		self.displayContent = DisplayContent()
+		self.audioState.registerObserver(self.displayContent)
 		self.mode = Mode.Boot
-
-	def registerObserver(self, observer: Observer):
-		super().registerObserver(observer)
-		self.configuration.registerObserver(observer)
-		self.displayContent.registerObserver(observer)
-		self.audioState.registerObserver(observer)

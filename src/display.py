@@ -3,7 +3,7 @@ from luma.core.device import device as lumadevice
 from luma.core.render import canvas
 from PIL import ImageFont,Image, ImageOps
 
-from domain import  DisplayContent, Observer
+from domain import DisplayContent, Observer
 
 
 class Display(Observer):
@@ -15,7 +15,7 @@ class Display(Observer):
 	device: lumadevice
 	content: DisplayContent
 
-	def __init__(self, device: lumadevice, content: DisplayContent):
+	def __init__(self, device: lumadevice, content: DisplayContent) -> None:
 		self.device = device
 		self.content = content
 		self.content.registerObserver(self)

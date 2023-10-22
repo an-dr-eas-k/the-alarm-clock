@@ -13,7 +13,6 @@ import io
 import base64
 import threading
 import time
-import traceback
 import argparse
 from luma.oled.device import ssd1322
 from luma.core.device import dummy
@@ -84,15 +83,6 @@ class ClockApp:
 
 
 	def go(self):
-		def keyPressedAction(key):
-			try:
-				if (key.char == 'r'):
-					self.playLivestream()
-				if (key.char == 's'):
-					self.speaker.stopStreaming()
-			except Exception:
-				print(traceback.format_exc())
-			pass
 
 		self.state = AlarmClockState(Config())
 
@@ -106,33 +96,23 @@ class ClockApp:
 		self.display = Display(device, self.state.displayContent)
 		self.controls = Controls(self.state)
 		
-
-
-		if self.isOnHardware():
-			self.controls.configureGpio()
-		# else:
-			# import pynput
-			# from pynput import keyboard
-			# from pynput.keyboard import Key, Listener, KeyCode
-			# with Listener(on_press=keyPressedAction) as listener:
-			# 	listener.join()
-
 		root = os.path.join(os.path.dirname(__file__), "webroot")
 		handlers = [
 			(r"/config", ConfigHandler, {"config": self.state.configuration}),
 			(r"/(.*)", tornado.web.StaticFileHandler, {"path": root, "default_filename": "index.html"}),
 		]
+
 		if isinstance(device, dummy):
 				handlers= [(r"/display", DisplayHandler, {"device": device} ),]+handlers
-
-
 		app = tornado.web.Application(handlers)
 
 		if self.isOnHardware():
-				app.listen(80)
+			self.controls.configureGpio()
+			app.listen(80)
 		else:
-				app.listen(8080)
-			
+			self.controls.configureKeyboard()
+			app.listen(8080)
+
 
 		while True:
 			time.sleep(1)

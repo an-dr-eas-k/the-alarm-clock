@@ -15,6 +15,15 @@
 			"console": "integratedTerminal",
 			"cwd": "${workspaceFolder}/src",
 			"justMyCode": false,
+		},
+		{
+			"name": "python foo.py",
+			"type": "python",
+			"request": "launch",
+			"program": "foo.py",
+			"console": "integratedTerminal",
+			"cwd": "${workspaceFolder}/src",
+			"justMyCode": false,
 		}
 	]
 }

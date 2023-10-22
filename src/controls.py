@@ -1,10 +1,10 @@
 import datetime
-import sched
-import time
+import traceback
 from gpiozero import Button
-
 from apscheduler.schedulers.background import BackgroundScheduler
-
+import pynput
+from pynput import keyboard
+from pynput.keyboard import Key, Listener, KeyCode
 from domain import AlarmClockState
 
 button1 = 23
@@ -37,6 +37,27 @@ class Controls:
 
 	def button4Action(self):
 		self.state.audioState.toggleStream()
+
+
+	def configureKeyboard(self):
+		def keyPressedAction(key):
+			print (f"pressed {key}")
+			if not hasattr(key, 'char'):
+				return
+			try:
+				if (key.char == '1'):
+					self.button1Action()
+				if (key.char == '2'):
+					self.button2Action()
+				if (key.char == '3'):
+					self.button3Action()
+				if (key.char == '4'):
+					self.button4Action()
+			except Exception:
+				print(traceback.format_exc())
+
+		with Listener(on_press=keyPressedAction) as listener:
+			listener.join()
 
 	def configureGpio(self):
 		for button in ([
