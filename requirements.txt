@@ -5,3 +5,4 @@ spidev
 tornado
 pynput
 gpiozero
+apscheduler

@@ -26,9 +26,6 @@ from controls import Controls
 from display import Display
 from domain import AlarmClockState, Config
 
-from gpiozero import Button
-
-
 class DisplayHandler(tornado.web.RequestHandler):
 
 		def initialize(self, device: dummy) -> None:
@@ -106,7 +103,7 @@ class ClockApp:
 			except: pass
 
 		self.speaker = Speaker(self.state.audioState)
-		self.display = Display(device, self.state)
+		self.display = Display(device, self.state.displayContent)
 		self.controls = Controls(self.state)
 		
 		loop = tornado.ioloop.IOLoop.current()

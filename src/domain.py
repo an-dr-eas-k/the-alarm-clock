@@ -11,6 +11,10 @@ class Observable:
 	observers = []
 
 	def notifyObservers(self, propertyName):
+		for k in [propertyName, f"_{propertyName}"]:
+			if (k in self.__dict__):
+				propertyName = k
+			
 		newValue = self.__dict__.get(propertyName)
 		print (f"changing {propertyName}, new value {newValue}")
 		for o in self.observers:
@@ -46,6 +50,15 @@ class AudioDefinition(Observable):
 class DisplayContent(Observable):
 	showVolume:bool= False
 	showBlinkSegment:bool= True
+
+	@property
+	def clock(self) -> str:
+		return self._clock
+
+	@clock.setter
+	def clock(self, value: str):
+		self._clock = value
+		self.notifyObservers('clock')
 
 class Mode(Enum):
 	Boot = 1

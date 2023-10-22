@@ -1,10 +1,9 @@
-import datetime
 import os
-from luma.core.device import device
+from luma.core.device import device as lumadevice
 from luma.core.render import canvas
 from PIL import ImageFont,Image, ImageOps
 
-from domain import AlarmClockState, Config, Observer
+from domain import  DisplayContent, Observer
 
 
 class Display(Observer):
@@ -13,13 +12,13 @@ class Display(Observer):
 	fontFile = f"{resourcesDir}/DSEG7ClassicMini-Bold.ttf"
 	noWifiFile = f"{resourcesDir}/no-wifi.mono.png" 
 
-	device: device
-	alarmClockState: AlarmClockState
+	device: lumadevice
+	content: DisplayContent
 
-	def __init__(self, device: device, state: AlarmClockState):
+	def __init__(self, device: lumadevice, content: DisplayContent):
 		self.device = device
-		self.alarmClockState = state
-		self.alarmClockState.registerObserver(self)
+		self.content = content
+		self.content.registerObserver(self)
 
 	def notify(self, propertyName, propertyValue):
 		super().notify(propertyName, propertyValue)
@@ -28,17 +27,7 @@ class Display(Observer):
 	def adjustDisplay(self):
 
 		font=ImageFont.truetype(self.fontFile, 40)
-		config = self.alarmClockState.configuration
-
-		now = datetime.datetime.now()
-		blinkSegment = " "
-		if (self.alarmClockState.displayContent.showBlinkSegment):
-			blinkSegment = config.blinkSegment
-
-		self.alarmClockState.displayContent.showBlinkSegment = not self.alarmClockState.displayContent.showBlinkSegment
-
-		text=now.strftime(config.clockFormatString.replace("<blinkSegment>", blinkSegment))
-		fontBBox = font.getbbox(text)
+		fontBBox = font.getbbox(self.content.clock)
 		width = fontBBox[2] - fontBBox[0]
 		height = fontBBox[3] - fontBBox[1]
 		with canvas(self.device) as draw:
@@ -52,7 +41,7 @@ class Display(Observer):
 				stroke_width=0, 
 				fill=1,
 				align='left',
-				text=text,
+				text=self.content.clock,
 				xy=[x, y],
 				font=font)
 

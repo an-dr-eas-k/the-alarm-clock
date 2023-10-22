@@ -1,4 +1,9 @@
+import datetime
+import sched
+import time
 from gpiozero import Button
+
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from domain import AlarmClockState
 
@@ -8,11 +13,15 @@ button3 = 12
 button4 = 16
 
 class Controls:
+	refreshScheduler = BackgroundScheduler()
 	buttons = []
 	state: AlarmClockState
 
 	def __init__(self, state: AlarmClockState) -> None:
 		self.state = state
+		self.updateClock()
+		self.refreshScheduler.add_job(self.updateClock, 'interval', seconds=self.state.configuration.refreshTimeoutInSecs)
+		self.refreshScheduler.start()
 
 	def gpioInput(self, channel):
 		print(f"button {channel} pressed")
@@ -42,3 +51,15 @@ class Controls:
 			if ('wh' in button): b.when_held = button['wh']
 			if ('wa' in button): b.when_activated = button['wa']
 			self.buttons.append(b)
+
+	def updateClock(self):
+		print ("update clock")
+		now = datetime.datetime.now()
+		blinkSegment = " "
+		if (self.state.displayContent.showBlinkSegment):
+			blinkSegment = self.state.configuration.blinkSegment
+
+		self.state.displayContent.showBlinkSegment = not self.state.displayContent.showBlinkSegment
+
+		self.state.displayContent.clock	\
+			= now.strftime(self.state.configuration.clockFormatString.replace("<blinkSegment>", blinkSegment))
