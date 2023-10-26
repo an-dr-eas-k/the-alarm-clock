@@ -56,8 +56,7 @@ class Controls:
 			except Exception:
 				print(traceback.format_exc())
 
-		with Listener(on_press=keyPressedAction) as listener:
-			listener.join()
+		Listener(on_press=keyPressedAction).start()
 
 	def configureGpio(self):
 		for button in ([

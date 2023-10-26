@@ -113,9 +113,9 @@ class ClockApp:
 			self.controls.configureKeyboard()
 			app.listen(8080)
 
+		tornado.ioloop.IOLoop.current().start()
+		
 
-		while True:
-			time.sleep(1)
 
 if __name__ == '__main__':
 	print ("start")
