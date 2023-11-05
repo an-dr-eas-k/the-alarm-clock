@@ -8,8 +8,6 @@ cd /home/pi/iot-clock/src
 python app_clock.py
 """
 
-import threading
-import time
 import argparse
 from luma.oled.device import ssd1322
 from luma.core.device import dummy
@@ -34,11 +32,6 @@ class ClockApp:
 	def isOnHardware(self):
 		return not self.args.software
 	
-	def repeat(self, callback: callable, startTime = time.time()):
-		startTime = startTime+1
-		callback()
-		threading.Timer( startTime - time.time(), lambda _: self.repeat(startTime) ).start()
-
 
 	def go(self):
 

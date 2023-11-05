@@ -14,11 +14,11 @@ function send_change(changes) {
 		}
 	}
 
-	$.get('/config' + qp, update_form)
+	$.get('/api/config' + qp, update_form)
 }
 
 $(function () {
 
-	$.get('/config', update_form)
+	$.get('/api/config', update_form)
 
 })

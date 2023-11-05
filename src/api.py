@@ -6,8 +6,6 @@ import os
 import tornado
 import tornado.web
 
-from luma.core.device import dummy
-
 from domain import AlarmClockState, Config
 
 class DisplayHandler(tornado.web.RequestHandler):
@@ -24,7 +22,7 @@ class DisplayHandler(tornado.web.RequestHandler):
 				my_html = '<img src="data:image/png;base64, {}">'.format(img_str.decode('utf-8'))
 				self.write(my_html)
 
-class ConfigHandler(tornado.web.RequestHandler):
+class ConfigApiHandler(tornado.web.RequestHandler):
 
 		def initialize(self, config: Config) -> None:
 				self.config = config
@@ -50,6 +48,11 @@ class ConfigHandler(tornado.web.RequestHandler):
 			self.set_header('Content-Type', 'application/json')
 			self.write(self._get_json())
 
+		def post(self):
+			foo =self.request.body_arguments
+			print(foo)
+        
+
 class Api:
 
 				app: tornado.web.Application
@@ -57,9 +60,8 @@ class Api:
 				def __init__(self, state: AlarmClockState, imageGetter):
 					root = os.path.join(os.path.dirname(__file__), "webroot")
 					handlers = [
-						(r"/config", ConfigHandler, {"config": state.configuration}),
-						(r"/alarm", tornado.web.StaticFileHandler, {"path": root, "default_filename": "alarm.html"}),
-						(r"/(.*)", tornado.web.StaticFileHandler, {"path": root, "default_filename": "index.html"}),
+						(r"/api/config", ConfigApiHandler, {"config": state.configuration}),
+						(r"/(.*)", tornado.web.StaticFileHandler, {"path": root, "default_filename": "alarm.html"}),
 					]
 
 					if imageGetter is not None:

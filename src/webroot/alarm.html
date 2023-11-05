@@ -4,27 +4,23 @@
 <head>
 	<title>Alarm Clock</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
-	<link rel="stylesheet"
-		href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/css/bootstrap-datetimepicker.min.css">
+	<link href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet"
+		integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
 </head>
 
 <body>
 	<div class="container">
 		<h1>Set Alarm</h1>
-		<form id="alarm-form">
+		<form id="alarm-form" action="/api/config" method="post">
 			<div class="form-group">
 				<label for="timepicker">Time:</label>
 				<div class="input-group date" id="timepicker">
-					<input type="text" class="form-control" name="time" />
-					<span class="input-group-addon">
-						<span class="glyphicon glyphicon-time"></span>
-					</span>
+					<input type="time" class="form-control" name="time" />
 				</div>
 			</div>
 			<div class="form-group">
 				<label for="daypicker">Day of the Week:</label>
-				<select class="form-control" name="day" id="daypicker">
+				<select multiple class="form-control" name="days" id="daypicker" size="7">
 					<option value="monday">Monday</option>
 					<option value="tuesday">Tuesday</option>
 					<option value="wednesday">Wednesday</option>
@@ -42,35 +38,26 @@
 		</form>
 	</div>
 	<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
-	<script
-		src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/js/bootstrap-datetimepicker.min.js"></script>
+
 	<script>
-		$(function () {
-			$('#timepicker').datetimepicker({
-				format: 'HH:mm',
-				stepping: 5
-			});
-			$('#alarm-form').submit(function (event) {
-				event.preventDefault();
-				var data = {
-					'hour': moment($('#timepicker').data('DateTimePicker').date()).hour(),
-					'minute': moment($('#timepicker').data('DateTimePicker').date()).minute(),
-					'day': $('#daypicker').val(),
-					'active': $('#activepicker').is(':checked')
-				};
-				$.ajax({
-					type: 'POST',
-					url: '/set-alarm',
-					contentType: 'application/json',
-					data: JSON.stringify(data),
-					success: function (response) {
-						alert(response);
-					},
-					error: function (xhr, status, error) {
-						alert('Error: ' + error);
-					}
-				});
-			});
+		const formId = 'alarm-form';
+		document.getElementById(formId).addEventListener('submit', function (event) {
+			event.preventDefault(); // Prevent the default form submission
+
+			// Perform an AJAX request to submit the form data to the backend
+			var xhr = new XMLHttpRequest();
+			xhr.open('POST', document.getElementById(formId).getAttribute('action'))
+			xhr.onload = function () {
+				if (xhr.status === 200) {
+					window.location.href = window.location.href;
+				} else {
+					console.error('Request failed. Status:', xhr.status);
+				}
+			};
+			xhr.send(new FormData(event.target));
 		});
+	</script>
+
+</body>
+
+</html>
