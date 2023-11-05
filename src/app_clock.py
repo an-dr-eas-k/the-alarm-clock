@@ -8,9 +8,6 @@ cd /home/pi/iot-clock/src
 python app_clock.py
 """
 
-import os
-import io
-import base64
 import threading
 import time
 import argparse
@@ -19,51 +16,12 @@ from luma.core.device import dummy
 
 import tornado.ioloop
 import tornado.web
+from api import Api
 from audio import Speaker
 from controls import Controls
 
 from display import Display
 from domain import AlarmClockState, Config
-
-class DisplayHandler(tornado.web.RequestHandler):
-
-		def initialize(self, device: dummy) -> None:
-				self.device = device
-
-		def get(self):
-				buffered = io.BytesIO()
-				img= self.device.image
-				img.save(buffered, format="png")
-				img.seek(0)
-				img_str = base64.b64encode(buffered.getvalue())
-				my_html = '<img src="data:image/png;base64, {}">'.format(img_str.decode('utf-8'))
-				self.write(my_html)
-
-class ConfigHandler(tornado.web.RequestHandler):
-
-		def initialize(self, config: Config) -> None:
-				self.config = config
-
-		def _get_json(self):
-			ret = {
-					'brightness': self.config.brightness,
-					'clockFormatString': self.config.clockFormatString,
-			}        
-			return ret
-
-		def get(self):
-
-			brightness = self.get_argument('brightness', None)
-			clockFormatString = self.get_argument('clockFormatString', None)
-
-			if brightness is not None:
-				self.config.brightness = int(brightness)
-
-			if clockFormatString is not None:
-				self.config.clockFormatString = clockFormatString
-
-			self.set_header('Content-Type', 'application/json')
-			self.write(self._get_json())
 
 class ClockApp:
 
@@ -87,7 +45,9 @@ class ClockApp:
 		self.state = AlarmClockState(Config())
 
 		device = dummy(height=64, width=256, mode="1")
+		port = 8080
 		if self.isOnHardware():
+			port = 80
 			try:
 				device = ssd1322()
 			except: pass
@@ -95,28 +55,17 @@ class ClockApp:
 		self.speaker = Speaker(self.state.audioState)
 		self.display = Display(device, self.state.displayContent)
 		self.controls = Controls(self.state)
+		self.api = Api(self.state, lambda:device.image if isinstance (device, dummy) else None)
+		self.api.start(port)
 		
-		root = os.path.join(os.path.dirname(__file__), "webroot")
-		handlers = [
-			(r"/config", ConfigHandler, {"config": self.state.configuration}),
-			(r"/(.*)", tornado.web.StaticFileHandler, {"path": root, "default_filename": "index.html"}),
-		]
-
-		if isinstance(device, dummy):
-				handlers= [(r"/display", DisplayHandler, {"device": device} ),]+handlers
-		app = tornado.web.Application(handlers)
 
 		if self.isOnHardware():
 			self.controls.configureGpio()
-			app.listen(80)
 		else:
 			self.controls.configureKeyboard()
-			app.listen(8080)
 
 		tornado.ioloop.IOLoop.current().start()
 		
-
-
 if __name__ == '__main__':
 	print ("start")
 	ClockApp().go()
