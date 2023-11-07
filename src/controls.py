@@ -75,8 +75,8 @@ class Controls:
 			if ('wh' in button): b.when_held = button['wh']
 			if ('wa' in button): b.when_activated = button['wa']
 			self.buttons.append(b)
-		powerAudioPin = DigitalOutputDevice(audioPowerPinId)
-		powerAudioPin.off()
+		self.powerAudioPin = DigitalOutputDevice(audioPowerPinId)
+		self.powerAudioPin.off()
 
 	def updateClock(self):
 		print ("update clock")
