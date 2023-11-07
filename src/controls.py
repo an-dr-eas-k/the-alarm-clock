@@ -2,9 +2,6 @@ import datetime
 import traceback
 from gpiozero import Button
 from apscheduler.schedulers.background import BackgroundScheduler
-import pynput
-from pynput import keyboard
-from pynput.keyboard import Key, Listener, KeyCode
 from domain import AlarmClockState
 
 button1 = 23
@@ -56,6 +53,7 @@ class Controls:
 			except Exception:
 				print(traceback.format_exc())
 
+		from pynput.keyboard import Listener
 		Listener(on_press=keyPressedAction).start()
 
 	def configureGpio(self):

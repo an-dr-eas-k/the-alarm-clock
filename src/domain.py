@@ -93,7 +93,43 @@ class Mode(Enum):
 	PreAlarm = 2
 	Alarm = 3
 
+class Weekday(Enum):
+	MONDAY = 1
+	TUESDAY = 2
+	WEDNESDAY = 3
+	THURSDAY = 4
+	FRIDAY = 5
+	SATURDAY = 6
+	SUNDAY = 7
+
+class AlarmDefinition:
+	time: str
+	weekdays: []
+	alarmName: str
+	isActive: bool
+
+	def toJson(self):
+		ret = {
+			'time': self.time,
+			'weekdays': list(map(lambda x: x.name, self.weekdays)), 
+			'alarmName': self.alarmName,
+			'isActive': self.isActive
+		}        
+		return ret
+
+
 class Config(Observable):
+
+	_alarmDefinitions: []
+
+	@property
+	def alarmDefinitions(self) -> []:
+		return self._alarmDefinitions
+
+	@alarmDefinitions.setter
+	def alarmDefinitions(self, value: AlarmDefinition):
+		self._alarmDefinitions.append(value)
+		self.notifyObservers('alarmDefinitions')
 
 	@property
 	def brightness(self) -> int:
@@ -130,6 +166,14 @@ class Config(Observable):
 	def blinkSegment(self, value: str):
 		self._blinkSegment = value
 		self.notifyObservers('blinkSegment')
+	
+	def toJson(self):
+			ret = {
+					'brightness': self.brightness,
+					'clockFormatString': self.clockFormatString,
+					'alarmDefinitions': ','.join( list(map(lambda x: x.toJson(), self.alarmDefinitions))), 
+			}        
+			return ret
 
 	def __init__(self) -> None:
 		super().__init__()
@@ -137,6 +181,7 @@ class Config(Observable):
 		self.clockFormatString = "%-H<blinkSegment>%M"
 		self.blinkSegment = ":"
 		self.refreshTimeoutInSecs = 1
+		self._alarmDefinitions = []
 
 class AlarmClockState(Observable):
 

@@ -2,11 +2,12 @@
 
 import base64
 import io
+import json
 import os
 import tornado
 import tornado.web
 
-from domain import AlarmClockState, Config
+from domain import AlarmClockState, AlarmDefinition, Config, Weekday
 
 class DisplayHandler(tornado.web.RequestHandler):
 
@@ -35,23 +36,24 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 			return ret
 
 		def get(self):
-
-			brightness = self.get_argument('brightness', None)
-			clockFormatString = self.get_argument('clockFormatString', None)
-
-			if brightness is not None:
-				self.config.brightness = int(brightness)
-
-			if clockFormatString is not None:
-				self.config.clockFormatString = clockFormatString
-
 			self.set_header('Content-Type', 'application/json')
-			self.write(self._get_json())
+			self.write(json.dumps( self.config.__dict__))
+
+		def parseAlarmDefinition(self, formArguments):
+			ala = AlarmDefinition()
+			ala.time = formArguments['time'][0]
+			ala.alarmName = formArguments['alarmName'][0]
+			ala.weekdays = Weekday._member_names_
+			if (formArguments.get('weekdays') is not None):
+				ala.weekdays = list(map(lambda weekday: Weekday[weekday.decode('utf8').upper()], formArguments['weekdays']))
+			ala.isActive = formArguments['isActive'][0] == 'on'
+			print(ala)
+			return ala
+
 
 		def post(self):
-			foo =self.request.body_arguments
-			print(foo)
-        
+			formArguments =self.request.body_arguments
+			self.config.alarmDefinitions = self.parseAlarmDefinition(formArguments)
 
 class Api:
 
