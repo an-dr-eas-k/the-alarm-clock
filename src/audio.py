@@ -4,29 +4,27 @@ import subprocess
 import threading
 import re
 
-from domain import AudioDefinition, Observer
+from domain import Observer
 
 class Speaker(Observer):
-	audioDefinition: AudioDefinition
 	mediaPlayer: vlc.MediaListPlayer = None
+	activeLivestreamUrl: str
 
-	def __init__(self, audioDefinition: AudioDefinition= AudioDefinition()) -> None:
-		self.audioDefinition = audioDefinition
+	def __init__(self) -> None:
 		self.threadLock = threading.Lock()
-		self.audioDefinition.registerObserver(self)
 
 	def notify(self, propertyName, propertyValue):
 		super().notify(propertyName, propertyValue)
-		self.adjustSpeaker()
+		if (propertyName == 'volumeInPercent'):
+			self.adjustVolume(propertyValue)
+		elif (propertyName == 'isStreaming'):
+			self.adjustStreaming(propertyValue)
+		elif (propertyName == 'activeLivestreamUrl'):
+			self.activeLivestreamUrl = propertyValue
 
-	def adjustSpeaker(self):
-		self.adjustStreaming()
-		self.adjustVolume()
-		pass
-
-	def adjustVolume(self):
+	def adjustVolume(self, newVolume: float):
 		controlName = self.get_first_control_name()
-		subprocess.call(["amixer", "sset", controlName, f"{self.audioDefinition.volumeInPercent * 100}%"], stdout=subprocess.DEVNULL)
+		subprocess.call(["amixer", "sset", controlName, f"{newVolume * 100}%"], stdout=subprocess.DEVNULL)
 		pass
 
 	def get_first_control_name(self):
@@ -38,17 +36,17 @@ class Speaker(Observer):
 		return first_control_name
 
 
-	def adjustStreaming(self):
+	def adjustStreaming(self, isStreaming: bool):
 		self.threadLock.acquire(True)
 
-		if (self.audioDefinition.isStreaming):
-			self.startStreaming()
+		if (isStreaming):
+			self.startStreaming(self.activeLivestreamUrl)
 		else:
 			self.stopStreaming()
 
 		self.threadLock.release()
 	
-	def startStreaming(self):
+	def startStreaming(self, activeLivestreamUrl: str):
 		if (self.mediaPlayer is not None):
 			return
 
@@ -56,10 +54,10 @@ class Speaker(Observer):
 	
 		player = vlc.Instance() 
 		media_list = vlc.MediaList() 
-		media = player.media_new(self.audioDefinition.activeLivestreamUrl) 
+		media = player.media_new(activeLivestreamUrl) 
 		media_list.add_media(media) 
 		self.mediaPlayer.set_media_list(media_list) 
-		print(f'start audio {self.audioDefinition.activeLivestreamUrl}')
+		print(f'start audio {activeLivestreamUrl}')
 		self.mediaPlayer.play()
 
 
@@ -73,4 +71,4 @@ class Speaker(Observer):
 		pass
 
 if __name__ == '__main__':
-		Speaker().adjustStreaming()
+		Speaker().adjustStreaming(True)

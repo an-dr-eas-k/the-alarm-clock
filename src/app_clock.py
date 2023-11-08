@@ -20,6 +20,7 @@ from controls import Controls
 
 from display import Display
 from domain import AlarmClockState, Config
+from gpo import GeneralPurposeOutput
 
 class ClockApp:
 
@@ -45,7 +46,9 @@ class ClockApp:
 				device = ssd1322()
 			except: pass
 
-		self.speaker = Speaker(self.state.audioState)
+		self.state.audioState.registerObserver(Speaker())
+		if (self.isOnHardware()):
+			self.state.audioState.registerObserver(GeneralPurposeOutput())
 		self.display = Display(device, self.state.displayContent)
 		self.controls = Controls(self.state)
 		self.api = Api(self.state, lambda:device.image if isinstance (device, dummy) else None)

@@ -1,4 +1,5 @@
 from enum import Enum
+import re
 import sched
 import time
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -22,13 +23,18 @@ class Observable:
 			if (k in self.__dict__):
 				propertyName = k
 			
-		newValue = self.__dict__.get(propertyName)
+		newValue = self.__getattribute__(propertyName)
 		print (f"{self.__class__.__name__}: changing {propertyName}, new value {newValue}")
 		for o in self.observers:
 			o.notify(propertyName, newValue)
 
 	def registerObserver(self, observer: Observer):
 		self.observers.append(observer)
+		for propertyName in filter(lambda x: not re.match(r"^__.*__$", x), dir(self)):
+			try:
+				self.notifyObservers(propertyName) 
+			except:
+				pass
 
 class AudioDefinition(Observable):
 	activeLivestreamUrl: str = 'https://streams.br.de/bayern2sued_2.m3u'
