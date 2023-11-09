@@ -10,7 +10,6 @@ button1Id = 23
 button2Id = 24
 button3Id = 12
 button4Id = 16
-audioPowerPinId = 14
 
 class Controls:
 	refreshScheduler = BackgroundScheduler()

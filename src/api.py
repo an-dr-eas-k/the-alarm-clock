@@ -37,22 +37,21 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 
 		def get(self):
 			self.set_header('Content-Type', 'application/json')
-			self.write(json.dumps( self.config.__dict__))
+			self.write(json.dumps( self.config.__dict__, default=lambda o: o.__dict__,skipkeys=True))
 
 		def parseAlarmDefinition(self, formArguments):
 			ala = AlarmDefinition()
-			ala.time = formArguments['time'][0]
-			ala.alarmName = formArguments['alarmName'][0]
+			ala.time = formArguments['time']
+			ala.alarmName = formArguments['alarmName']
 			ala.weekdays = Weekday._member_names_
 			if (formArguments.get('weekdays') is not None):
-				ala.weekdays = list(map(lambda weekday: Weekday[weekday.decode('utf8').upper()], formArguments['weekdays']))
-			ala.isActive = formArguments['isActive'][0] == 'on'
-			print(ala)
+				ala.weekdays = list(map(lambda weekday: Weekday[weekday.upper()], formArguments['weekdays']))
+			ala.isActive = formArguments['isActive'] == 'on'
 			return ala
 
 
 		def post(self):
-			formArguments =self.request.body_arguments
+			formArguments = tornado.escape.json_decode(self.request.body)
 			self.config.alarmDefinitions = self.parseAlarmDefinition(formArguments)
 
 class Api:
