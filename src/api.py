@@ -28,16 +28,9 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 		def initialize(self, config: Config) -> None:
 				self.config = config
 
-		def _get_json(self):
-			ret = {
-					'brightness': self.config.brightness,
-					'clockFormatString': self.config.clockFormatString,
-			}        
-			return ret
-
 		def get(self):
 			self.set_header('Content-Type', 'application/json')
-			self.write(json.dumps( self.config.__dict__, default=lambda o: o.__dict__,skipkeys=True))
+			self.write(self.config.serialize())
 
 		def parseAlarmDefinition(self, formArguments):
 			ala = AlarmDefinition()
@@ -45,7 +38,9 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 			ala.alarmName = formArguments['alarmName']
 			ala.weekdays = Weekday._member_names_
 			if (formArguments.get('weekdays') is not None):
-				ala.weekdays = list(map(lambda weekday: Weekday[weekday.upper()], formArguments['weekdays']))
+				ala.weekdays = list(map(
+					lambda weekday: Weekday[weekday.upper()], 
+					[formArguments['weekdays']]))
 			ala.isActive = formArguments['isActive'] == 'on'
 			return ala
 

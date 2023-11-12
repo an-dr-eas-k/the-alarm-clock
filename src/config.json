@@ -1,0 +1,7 @@
+{
+  "_brightness": 15,
+  "_clockFormatString": "%-H<blinkSegment>%M",
+  "_blinkSegment": ":",
+  "_refreshTimeoutInSecs": 1,
+  "_alarmDefinitions": []
+}

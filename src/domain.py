@@ -1,8 +1,10 @@
 from enum import Enum
+import json
 import re
 import sched
 import time
-from apscheduler.schedulers.background import BackgroundScheduler
+
+import jsonpickle
 
 
 class Observer:
@@ -10,7 +12,6 @@ class Observer:
 	def notify(self, propertyName: str, propertyValue: any):
 		print(f"{self.__class__.__name__} is notified: {propertyName} changed to {propertyValue}")
 		pass
-
 
 class Observable:
 	observers : []
@@ -30,7 +31,13 @@ class Observable:
 
 	def registerObserver(self, observer: Observer):
 		self.observers.append(observer)
-		for propertyName in filter(lambda x: not re.match(r"^__.*__$", x), dir(self)):
+		properties = [
+			attr for attr in dir(self) 
+			if True
+				and not re.match(r"^__.*__$", attr) 
+				and hasattr(self, attr) 
+				and not callable(getattr(self, attr)) ]
+		for propertyName in properties:
 			try:
 				self.notifyObservers(propertyName) 
 			except:
@@ -114,15 +121,6 @@ class AlarmDefinition:
 	alarmName: str
 	isActive: bool
 
-	def toJson(self):
-		ret = {
-			'time': self.time,
-			'weekdays': list(map(lambda x: x.name, self.weekdays)), 
-			'alarmName': self.alarmName,
-			'isActive': self.isActive
-		}        
-		return ret
-
 
 class Config(Observable):
 
@@ -173,14 +171,6 @@ class Config(Observable):
 		self._blinkSegment = value
 		self.notifyObservers('blinkSegment')
 	
-	def toJson(self):
-			ret = {
-					'brightness': self.brightness,
-					'clockFormatString': self.clockFormatString,
-					'alarmDefinitions': ','.join( list(map(lambda x: x.toJson(), self.alarmDefinitions))), 
-			}        
-			return ret
-
 	def __init__(self) -> None:
 		super().__init__()
 		self.brightness = 15
@@ -188,6 +178,26 @@ class Config(Observable):
 		self.blinkSegment = ":"
 		self.refreshTimeoutInSecs = 1
 		self._alarmDefinitions = []
+
+	def serialize(self):
+		# jsonpickle.encode(self)
+		def dictFilter ( di ):
+			return {
+				key: value for key, value in di.items()
+				if True
+				and key != 'observers' 
+				and not re.match("^__.*__$", key)
+				and (
+					isinstance(value, (int, float, str, bool, list)) 
+					or hasattr(value, '__dict__') 
+					) 
+			}
+
+		return json.dumps( 
+			dictFilter(self.__dict__), 
+			default=lambda o: dictFilter(o.__dict__), 
+			skipkeys=True, 
+			indent=2 )
 
 class AlarmClockState(Observable):
 

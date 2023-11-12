@@ -9,6 +9,7 @@ python app_clock.py
 """
 
 import argparse
+import os
 from luma.oled.device import ssd1322
 from luma.core.device import dummy
 
@@ -21,9 +22,9 @@ from controls import Controls
 from display import Display
 from domain import AlarmClockState, Config
 from gpo import GeneralPurposeOutput
+from persistence import Persistence
 
 class ClockApp:
-
 
 	def __init__(self) -> None:
 		parser = argparse.ArgumentParser("ClockApp")
@@ -45,6 +46,10 @@ class ClockApp:
 			try:
 				device = ssd1322()
 			except: pass
+
+		self.state.configuration.registerObserver(Persistence( \
+			self.state.configuration, \
+			f"{os.path.dirname(os.path.realpath(__file__))}/config.json"))
 
 		self.state.audioState.registerObserver(Speaker())
 		if (self.isOnHardware()):
