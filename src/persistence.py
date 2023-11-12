@@ -13,9 +13,6 @@ class Persistence(Observer):
 
 
 	def notify(self, propertyName: str, propertyValue: any):
-		# write self.config to file self.configFileName
-		foo = self.config.serialize()
 		with open(self.configFileName, 'w') as f:
 			f.write(self.config.serialize())
-		print (f"config written: {foo}")
 

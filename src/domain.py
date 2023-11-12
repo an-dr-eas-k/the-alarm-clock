@@ -1,5 +1,4 @@
 from enum import Enum
-import json
 import re
 import sched
 import time
@@ -42,6 +41,15 @@ class Observable:
 				self.notifyObservers(propertyName) 
 			except:
 				pass
+
+	def __getstate__(self):
+		state = self.__dict__.copy()
+		del state['observers']
+		return state
+
+	def __setstate__(self, state):
+		state['observers'] = []
+		self.__dict__.update(state)
 
 class AudioDefinition(Observable):
 	activeLivestreamUrl: str = 'https://streams.br.de/bayern2sued_2.m3u'
@@ -180,24 +188,12 @@ class Config(Observable):
 		self._alarmDefinitions = []
 
 	def serialize(self):
-		# jsonpickle.encode(self)
-		def dictFilter ( di ):
-			return {
-				key: value for key, value in di.items()
-				if True
-				and key != 'observers' 
-				and not re.match("^__.*__$", key)
-				and (
-					isinstance(value, (int, float, str, bool, list)) 
-					or hasattr(value, '__dict__') 
-					) 
-			}
+		return jsonpickle.encode(self, indent=2, )
 
-		return json.dumps( 
-			dictFilter(self.__dict__), 
-			default=lambda o: dictFilter(o.__dict__), 
-			skipkeys=True, 
-			indent=2 )
+	def deserialize(configFile):
+		with open(configFile, "r") as file:
+			fileContents = file.read()
+			return jsonpickle.decode(fileContents)
 
 class AlarmClockState(Observable):
 

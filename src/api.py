@@ -38,9 +38,12 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 			ala.alarmName = formArguments['alarmName']
 			ala.weekdays = Weekday._member_names_
 			if (formArguments.get('weekdays') is not None):
+				weekdays = formArguments['weekdays']
+				if not isinstance(weekdays, list):
+					weekdays = [weekdays]
 				ala.weekdays = list(map(
 					lambda weekday: Weekday[weekday.upper()], 
-					[formArguments['weekdays']]))
+					weekdays))
 			ala.isActive = formArguments['isActive'] == 'on'
 			return ala
 

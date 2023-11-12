@@ -25,6 +25,7 @@ from gpo import GeneralPurposeOutput
 from persistence import Persistence
 
 class ClockApp:
+	configFile = f"{os.path.dirname(os.path.realpath(__file__))}/config.json"
 
 	def __init__(self) -> None:
 		parser = argparse.ArgumentParser("ClockApp")
@@ -38,6 +39,8 @@ class ClockApp:
 	def go(self):
 
 		self.state = AlarmClockState(Config())
+		if os.path.exists(self.configFile):
+			self.state.configuration = Config.deserialize(self.configFile)
 
 		device = dummy(height=64, width=256, mode="1")
 		port = 8080
@@ -47,9 +50,8 @@ class ClockApp:
 				device = ssd1322()
 			except: pass
 
-		self.state.configuration.registerObserver(Persistence( \
-			self.state.configuration, \
-			f"{os.path.dirname(os.path.realpath(__file__))}/config.json"))
+		self.state.configuration.registerObserver(
+			Persistence( self.state.configuration, self.configFile))
 
 		self.state.audioState.registerObserver(Speaker())
 		if (self.isOnHardware()):

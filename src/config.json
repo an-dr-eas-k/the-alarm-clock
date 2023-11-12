@@ -1,7 +1,75 @@
 {
-  "_brightness": 15,
-  "_clockFormatString": "%-H<blinkSegment>%M",
-  "_blinkSegment": ":",
-  "_refreshTimeoutInSecs": 1,
-  "_alarmDefinitions": []
+  "py/object": "domain.Config",
+  "py/state": {
+    "_brightness": 15,
+    "_clockFormatString": "%-H<blinkSegment>%M",
+    "_blinkSegment": ":",
+    "_refreshTimeoutInSecs": 1,
+    "_alarmDefinitions": [
+      {
+        "py/object": "domain.AlarmDefinition",
+        "time": "",
+        "alarmName": "foo",
+        "weekdays": [
+          {
+            "py/reduce": [
+              {
+                "py/type": "domain.Weekday"
+              },
+              {
+                "py/tuple": [
+                  4
+                ]
+              }
+            ]
+          },
+          {
+            "py/reduce": [
+              {
+                "py/type": "domain.Weekday"
+              },
+              {
+                "py/tuple": [
+                  5
+                ]
+              }
+            ]
+          },
+          {
+            "py/reduce": [
+              {
+                "py/type": "domain.Weekday"
+              },
+              {
+                "py/tuple": [
+                  6
+                ]
+              }
+            ]
+          }
+        ],
+        "isActive": true
+      },
+      {
+        "py/object": "domain.AlarmDefinition",
+        "time": "",
+        "alarmName": "bar",
+        "weekdays": [
+          {
+            "py/reduce": [
+              {
+                "py/type": "domain.Weekday"
+              },
+              {
+                "py/tuple": [
+                  3
+                ]
+              }
+            ]
+          }
+        ],
+        "isActive": true
+      }
+    ]
+  }
 }
