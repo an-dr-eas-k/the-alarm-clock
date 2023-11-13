@@ -3,7 +3,7 @@ from luma.core.device import device as lumadevice
 from luma.core.render import canvas
 from PIL import ImageFont,Image, ImageOps
 
-from domain import DisplayContent, Observer
+from domain import DisplayContent, Observation, Observer
 
 
 class Display(Observer):
@@ -20,8 +20,8 @@ class Display(Observer):
 		self.content = content
 		self.content.registerObserver(self)
 
-	def notify(self, propertyName, propertyValue):
-		super().notify(propertyName, propertyValue)
+	def notify(self, observation: Observation):
+		super().notify(observation)
 		self.adjustDisplay()
 					
 	def adjustDisplay(self):

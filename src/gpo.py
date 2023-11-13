@@ -1,5 +1,5 @@
 
-from domain import AudioDefinition, Observer
+from domain import AudioDefinition, Observation, Observer
 from gpiozero import DigitalOutputDevice
 
 audioPowerPinId = 14
@@ -11,9 +11,9 @@ class GeneralPurposeOutput(Observer):
 	def __init__(self):
 		self.powerAudioPin = DigitalOutputDevice(audioPowerPinId)
 
-	def notify(self, propertyName, propertyValue):
-		super().notify(propertyName, propertyValue)
-		if (propertyName == 'isStreaming' and propertyValue):
+	def notify(self, observation: Observation):
+		super().notify(observation)
+		if (observation.propertyName == 'isStreaming' and observation.propertyValue):
 			self.powerAudioPin.on()
 		else:
 			self.powerAudioPin.off()

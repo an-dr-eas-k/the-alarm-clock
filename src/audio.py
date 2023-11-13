@@ -4,7 +4,7 @@ import subprocess
 import threading
 import re
 
-from domain import Observer
+from domain import Observation, Observer
 
 class Speaker(Observer):
 	mediaPlayer: vlc.MediaListPlayer = None
@@ -13,14 +13,14 @@ class Speaker(Observer):
 	def __init__(self) -> None:
 		self.threadLock = threading.Lock()
 
-	def notify(self, propertyName, propertyValue):
-		super().notify(propertyName, propertyValue)
-		if (propertyName == 'volumeInPercent'):
-			self.adjustVolume(propertyValue)
-		elif (propertyName == 'isStreaming'):
-			self.adjustStreaming(propertyValue)
-		elif (propertyName == 'activeLivestreamUrl'):
-			self.activeLivestreamUrl = propertyValue
+	def notify(self, observation: Observation):
+		super().notify(observation)
+		if (observation.propertyName == 'volumeInPercent'):
+			self.adjustVolume(observation.propertyValue)
+		elif (observation.propertyName == 'isStreaming'):
+			self.adjustStreaming(observation.propertyValue)
+		elif (observation.propertyName == 'activeLivestreamUrl'):
+			self.activeLivestreamUrl = observation.propertyValue
 
 	def adjustVolume(self, newVolume: float):
 		controlName = self.get_first_control_name()

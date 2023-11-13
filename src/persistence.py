@@ -1,5 +1,5 @@
 
-from domain import Config, Observer
+from domain import Config, Observation, Observer
 
 
 class Persistence(Observer):
@@ -12,7 +12,10 @@ class Persistence(Observer):
 		super().__init__()
 
 
-	def notify(self, propertyName: str, propertyValue: any):
+	def notify(self, observation: Observation):
+		if (observation.duringRegistration):
+			return
+
 		with open(self.configFileName, 'w') as f:
 			f.write(self.config.serialize())
 

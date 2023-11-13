@@ -69,6 +69,29 @@
           }
         ],
         "isActive": true
+      },
+      {
+        "py/object": "domain.AlarmDefinition",
+        "time": "",
+        "alarmName": "foo",
+        "weekdays": [
+          {
+            "py/reduce": [
+              {
+                "py/type": "domain.Weekday"
+              },
+              {
+                "py/tuple": [
+                  1
+                ]
+              }
+            ]
+          },
+          {
+            "py/id": 10
+          }
+        ],
+        "isActive": true
       }
     ]
   }

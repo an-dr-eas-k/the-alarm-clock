@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from enum import Enum
 import re
 import sched
@@ -5,11 +6,21 @@ import time
 
 import jsonpickle
 
+@dataclass
+class Observation:
+	propertyName: str
+	propertyValue: any
+	duringRegistration: bool
+
 
 class Observer:
 
-	def notify(self, propertyName: str, propertyValue: any):
-		print(f"{self.__class__.__name__} is notified: {propertyName} changed to {propertyValue}")
+	def notify(self, observation: Observation):
+		suffix = ""
+		if (observation.duringRegistration):
+			suffix = " (during registration)"
+
+		print(f"{self.__class__.__name__} is notified: {observation.propertyName} changed to {observation.propertyValue}{suffix}")
 		pass
 
 class Observable:
@@ -18,7 +29,7 @@ class Observable:
 	def __init__(self):
 		self.observers = []
 
-	def notifyObservers(self, propertyName):
+	def notifyObservers(self, propertyName, duringRegistration: bool = False):
 		for k in [propertyName, f"_{propertyName}"]:
 			if (k in self.__dict__):
 				propertyName = k
@@ -26,7 +37,7 @@ class Observable:
 		newValue = self.__getattribute__(propertyName)
 		print (f"{self.__class__.__name__}: changing {propertyName}, new value {newValue}")
 		for o in self.observers:
-			o.notify(propertyName, newValue)
+			o.notify(Observation(propertyName=propertyName, propertyValue=newValue, duringRegistration=duringRegistration) )
 
 	def registerObserver(self, observer: Observer):
 		self.observers.append(observer)
@@ -38,7 +49,7 @@ class Observable:
 				and not callable(getattr(self, attr)) ]
 		for propertyName in properties:
 			try:
-				self.notifyObservers(propertyName) 
+				self.notifyObservers(propertyName, True) 
 			except:
 				pass
 
@@ -98,9 +109,9 @@ class DisplayContent(Observable, Observer):
 		print("resetting volume")
 		self.showVolume = False
 
-	def notify(self, propertyName: str, propertyValue: any):
-		super().notify(propertyName, propertyValue)
-		if (propertyName == 'volumeInPercent'):
+	def notify(self, observation: Observation):
+		super().notify(observation)
+		if (observation.propertyName == 'volumeInPercent'):
 			self.showVolume = True 
 			self.showVolumeTimer.queue.clear()
 			self.showVolumeTimer.enter(5, 1, self.resetVolume)
