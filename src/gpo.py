@@ -13,7 +13,7 @@ class GeneralPurposeOutput(Observer):
 
 	def update(self, observation: Observation):
 		super().update(observation)
-		if (observation.property_name == 'isStreaming' and observation.new_value):
+		if (observation.property_name == 'is_streaming' and observation.new_value):
 			self.power_audio_pin.on()
 		else:
 			self.power_audio_pin.off()
