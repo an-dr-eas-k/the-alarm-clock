@@ -32,39 +32,39 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 			self.set_header('Content-Type', 'application/json')
 			self.write(self.config.serialize())
 
-		def parseAlarmDefinition(self, formArguments):
+		def parse_alarm_definition(self, form_arguments):
 			ala = AlarmDefinition()
-			ala.alarmName = formArguments['alarmName']
-			(ala.hour, ala.min)= formArguments['time'].split(':')
+			ala.alarm_name = form_arguments['alarmName']
+			(ala.hour, ala.min)= form_arguments['time'].split(':')
 			ala.weekdays = Weekday._member_names_
-			if (formArguments.get('weekdays') is not None):
-				weekdays = formArguments['weekdays']
+			if (form_arguments.get('weekdays') is not None):
+				weekdays = form_arguments['weekdays']
 				if not isinstance(weekdays, list):
 					weekdays = [weekdays]
 				ala.weekdays = list(map(
 					lambda weekday: Weekday[weekday.upper()], 
 					weekdays))
-			ala.isActive = formArguments['isActive'] == 'on'
+			ala.is_active = form_arguments['isActive'] == 'on'
 			return ala
 
 
 		def post(self):
-			formArguments = tornado.escape.json_decode(self.request.body)
-			self.config.alarmDefinitions = self.parseAlarmDefinition(formArguments)
+			form_arguments = tornado.escape.json_decode(self.request.body)
+			self.config.alarm_definitions = self.parse_alarm_definition(form_arguments)
 
 class Api:
 
 				app: tornado.web.Application
 
-				def __init__(self, state: AlarmClockState, imageGetter):
+				def __init__(self, state: AlarmClockState, image_getter):
 					root = os.path.join(os.path.dirname(__file__), "webroot")
 					handlers = [
 						(r"/api/config", ConfigApiHandler, {"config": state.configuration}),
 						(r"/(.*)", tornado.web.StaticFileHandler, {"path": root, "default_filename": "alarm.html"}),
 					]
 
-					if imageGetter is not None:
-							handlers= [(r"/display", DisplayHandler, {"imageGetter": imageGetter} ),]+handlers
+					if image_getter is not None:
+							handlers= [(r"/display", DisplayHandler, {"imageGetter": image_getter} ),]+handlers
 
 					self.app = tornado.web.Application(handlers)
 

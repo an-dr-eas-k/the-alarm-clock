@@ -32,7 +32,7 @@ class ClockApp:
 		parser.add_argument("-s", '--software', action='store_true')
 		self.args = parser.parse_args()
 
-	def isOnHardware(self):
+	def is_on_hardware(self):
 		return not self.args.software
 	
 
@@ -46,29 +46,29 @@ class ClockApp:
 
 		device = dummy(height=64, width=256, mode="1")
 		port = 8080
-		if self.isOnHardware():
+		if self.is_on_hardware():
 			port = 80
 			try:
 				device = ssd1322()
 			except: pass
 
-		self.state.configuration.registerObserver(
+		self.state.configuration.attach(
 			Persistence( self.state.configuration, self.configFile))
 
-		self.state.audioState.registerObserver(Speaker())
-		if (self.isOnHardware()):
-			self.state.audioState.registerObserver(GeneralPurposeOutput())
-		self.display = Display(device, self.state.displayContent)
+		self.state.audio_state.attach(Speaker())
+		if (self.is_on_hardware()):
+			self.state.audio_state.attach(GeneralPurposeOutput())
+		self.display = Display(device, self.state.display_content)
 		self.controls = Controls(self.state)
-		self.state.configuration.registerObserver(self.controls)
+		self.state.configuration.attach(self.controls)
 		self.api = Api(self.state, lambda:device.image if isinstance (device, dummy) else None)
 		self.api.start(port)
 		
 
-		if self.isOnHardware():
-			self.controls.configureGpio()
+		if self.is_on_hardware():
+			self.controls.configure_gpio()
 		else:
-			self.controls.configureKeyboard()
+			self.controls.configure_keyboard()
 
 		tornado.ioloop.IOLoop.current().start()
 		

@@ -2,13 +2,13 @@
 	"py/object": "domain.Config",
 	"py/state": {
 		"_brightness": 15,
-		"_clockFormatString": "%-H<blinkSegment>%M",
-		"_blinkSegment": ":",
-		"_refreshTimeoutInSecs": 1,
-		"_alarmDefinitions": [
+		"_clock_format_string": "%-H<blinkSegment>%M",
+		"_blink_segment": ":",
+		"_refresh_timeout_in_secs": 1,
+		"_alarm_definitions": [
 			{
 				"py/object": "domain.AlarmDefinition",
-				"alarmName": "my debugging alarm",
+				"alarm_name": "my debugging alarm",
 				"hour": "22",
 				"min": "35",
 				"weekdays": [
@@ -97,7 +97,7 @@
 						]
 					}
 				],
-				"isActive": true
+				"is_active": true
 			}
 		]
 	}

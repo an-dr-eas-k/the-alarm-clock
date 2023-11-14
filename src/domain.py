@@ -8,23 +8,23 @@ import jsonpickle
 from apscheduler.triggers.cron import CronTrigger
 
 class Observation:
-	duringRegistration: bool
+	during_registration: bool
 	reason: str = None
-	propertyName: str = None
-	newValue: any = None
+	property_name: str = None
+	new_value: any = None
 	observable: any = None
 
-	def __init__(self, propertyName: str = None, reason: str = None, duringRegistration: bool = False, observable: any = None) -> None:
-		assert propertyName or reason
-		self.duringRegistration = duringRegistration
+	def __init__(self, property_name: str = None, reason: str = None, during_registration: bool = False, observable: any = None) -> None:
+		assert property_name or reason
+		self.during_registration = during_registration
 		self.reason = reason
-		self.propertyName = propertyName
+		self.property_name = property_name
 		self.observable = observable
 
 	def to_string(self):
 		property_segment = ""
-		if self.propertyName:
-			property_segment = f"property {self.propertyName}={self.newValue}"
+		if self.property_name:
+			property_segment = f"property {self.property_name}={self.new_value}"
 		reason_segment = ""
 		if self.reason:
 			reason_segment = f"reason {self.reason}"
@@ -33,9 +33,8 @@ class Observation:
 
 class Observer:
 
-	def notify(self, observation: Observation):
+	def update(self, observation: Observation):
 		print(f"{self.__class__.__name__} is notified: {observation.to_string()}")
-		pass
 
 class Observable:
 	observers : []
@@ -43,20 +42,21 @@ class Observable:
 	def __init__(self):
 		self.observers = []
 
-	def notifyObservers(self, property=None, reason = None, duringRegistration: bool = False):
+	def notify(self, property=None, reason = None, during_registration: bool = False):
 
 		o: Observation
 		if property:
 			assert property in dir(self)
-			o = Observation(propertyName=property, duringRegistration=duringRegistration, observable=self)
-			o.newValue = self.__getattribute__(o.propertyName)
+			o = Observation(property_name=property, during_registration=during_registration, observable=self)
+			o.new_value = self.__getattribute__(o.property_name)
 		else:
-			o = Observation(reason=reason, duringRegistration=duringRegistration, observable=self)
+			o = Observation(reason=reason, during_registration=during_registration, observable=self)
 
 		for observer in self.observers:
-			observer.notify( o )
+			assert isinstance(observer, Observer)
+			observer.update( o )
 
-	def registerObserver(self, observer: Observer):
+	def attach(self, observer: Observer):
 		self.observers.append(observer)
 		properties = [
 			attr for attr in dir(self) 
@@ -65,9 +65,9 @@ class Observable:
 				and not re.match(r"^__.*__$", attr) 
 				and hasattr(self, attr) 
 				and not callable(getattr(self, attr)) ]
-		for propertyName in properties:
+		for property_name in properties:
 			try:
-				self.notifyObservers(property=propertyName, duringRegistration=True) 
+				self.notify(property=property_name, during_registration=True) 
 			except:
 				pass
 
@@ -107,17 +107,17 @@ class InternetRadio(AudioEffect):
 
 @dataclass
 class Spotify(AudioEffect):
-	playId: str
+	play_id: str
 
 
 class AlarmDefinition:
 	hour: int
 	min: int
 	weekdays: []
-	alarmName: str
-	isActive: bool
-	visualEffect: VisualEffect
-	audioEffect: AudioEffect = InternetRadio(url='https://streams.br.de/bayern2sued_2.m3u')
+	alarm_name: str
+	is_active: bool
+	visual_effect: VisualEffect
+	audio_effect: AudioEffect = InternetRadio(url='https://streams.br.de/bayern2sued_2.m3u')
 
 	def toCronTrigger(self) -> CronTrigger:
 		return CronTrigger(
@@ -127,53 +127,53 @@ class AlarmDefinition:
 		)
 
 class AudioDefinition(Observable):
-	_audioEffect: AudioEffect = InternetRadio(url='https://streams.br.de/bayern2sued_2.m3u')
-	isStreaming = False
-	volumeInPercent: float = 0.50
+	_audio_effect: AudioEffect = InternetRadio(url='https://streams.br.de/bayern2sued_2.m3u')
+	is_streaming = False
+	volume_in_percent: float = 0.50
 
 	@property
-	def audioEffect(self) -> str:
-		return self._audioEffect
+	def audio_effect(self) -> str:
+		return self._audio_effect
 
-	@audioEffect.setter
-	def audioEffect(self, value: AudioEffect):
-		self._audioEffect = value
-		self.notifyObservers(property='audioEffect')
+	@audio_effect.setter
+	def audio_effect(self, value: AudioEffect):
+		self._audio_effect = value
+		self.notify(property='audio_effect')
 
-	def increaseVolume(self):
-		self.volumeInPercent += 0.05
-		if self.volumeInPercent > 1:
-			self.volumeInPercent = 1
-		self.notifyObservers(property='volumeInPercent')
+	def increase_volume(self):
+		self.volume_in_percent += 0.05
+		if self.volume_in_percent > 1:
+			self.volume_in_percent = 1
+		self.notify(property='volume_in_percent')
 
-	def decreaseVolume(self):
-		self.volumeInPercent -= 0.05
-		if self.volumeInPercent < 0:
-			self.volumeInPercent = 0
-		self.notifyObservers(property='volumeInPercent')
+	def decrease_volume(self):
+		self.volume_in_percent -= 0.05
+		if self.volume_in_percent < 0:
+			self.volume_in_percent = 0
+		self.notify(property='volume_in_percent')
 
-	def toggleStream(self):
-		self.isStreaming = not self.isStreaming
-		self.notifyObservers(property='isStreaming')
+	def toggle_stream(self):
+		self.is_streaming = not self.is_streaming
+		self.notify(property='is_streaming')
 	
-	def startStream(self):
-		self.isStreaming = True
-		self.notifyObservers(property='isStreaming')
+	def start_stream(self):
+		self.is_streaming = True
+		self.notify(property='is_streaming')
 
-	def endStream(self):
-		self.isStreaming = False
-		self.notifyObservers(property='isStreaming')
+	def end_stream(self):
+		self.is_streaming = False
+		self.notify(property='is_streaming')
 
 
 class DisplayContent(Observable, Observer):
-	showVolume:bool= False
-	showVolumeTimer: sched.scheduler
-	showBlinkSegment:bool= True
+	show_volume:bool= False
+	show_volume_timer: sched.scheduler
+	show_blink_segment:bool= True
 
 	def __init__(self):
 		super().__init__()
-		self.showVolumeTimer = sched.scheduler(time.time, time.sleep)
-		self.showVolumeTimer.run()
+		self.show_volume_timer = sched.scheduler(time.time, time.sleep)
+		self.show_volume_timer.run()
 
 	@property
 	def clock(self) -> str:
@@ -182,33 +182,33 @@ class DisplayContent(Observable, Observer):
 	@clock.setter
 	def clock(self, value: str):
 		self._clock = value
-		self.notifyObservers(property='clock')
+		self.notify(property='clock')
 
-	def resetVolume(self):
+	def reset_volume(self):
 		print("resetting volume")
-		self.showVolume = False
+		self.show_volume = False
 
-	def notify(self, observation: Observation):
-		super().notify(observation)
-		if (observation.propertyName == 'volumeInPercent'):
-			self.showVolume = True 
-			self.showVolumeTimer.queue.clear()
-			self.showVolumeTimer.enter(5, 1, self.resetVolume)
+	def update(self, observation: Observation):
+		super().update(observation)
+		if (observation.property_name == 'volume_in_percent'):
+			self.show_volume = True 
+			self.show_volume_timer.queue.clear()
+			self.show_volume_timer.enter(5, 1, self.reset_volume)
 			print("started volumetimer")
 
 
 class Config(Observable):
 
-	_alarmDefinitions: []
+	_alarm_definitions: []
 
 	@property
-	def alarmDefinitions(self) -> []:
-		return self._alarmDefinitions
+	def alarm_definitions(self) -> []:
+		return self._alarm_definitions
 
-	@alarmDefinitions.setter
-	def alarmDefinitions(self, value: AlarmDefinition):
-		self._alarmDefinitions.append(value)
-		self.notifyObservers(property='alarmDefinitions')
+	@alarm_definitions.setter
+	def alarm_definitions(self, value: AlarmDefinition):
+		self._alarm_definitions.append(value)
+		self.notify(property='alarm_definitions')
 
 	@property
 	def brightness(self) -> int:
@@ -217,74 +217,74 @@ class Config(Observable):
 	@brightness.setter
 	def brightness(self, value: int):
 		self._brightness = value
-		self.notifyObservers(property='brightness')
+		self.notify(property='brightness')
 
 	@property
-	def refreshTimeoutInSecs(self) -> int:
-		return self._refreshTimeoutInSecs
+	def refresh_timeout_in_secs(self) -> int:
+		return self._refresh_timeout_in_secs
 
-	@refreshTimeoutInSecs.setter
-	def refreshTimeoutInSecs(self, value: int):
-		self._refreshTimeoutInSecs = value
-		self.notifyObservers(property='refreshTimeoutInSecs')
-
-	@property
-	def clockFormatString(self) -> str:
-		return self._clockFormatString
-
-	@clockFormatString.setter
-	def clockFormatString(self, value: str):
-		self._clockFormatString = value
-		self.notifyObservers(property='clockFormatString')
+	@refresh_timeout_in_secs.setter
+	def refresh_timeout_in_secs(self, value: int):
+		self._refresh_timeout_in_secs = value
+		self.notify(property='refresh_timeout_in_secs')
 
 	@property
-	def blinkSegment(self) -> str:
-		return self._blinkSegment
+	def clock_format_string(self) -> str:
+		return self._clock_format_string
 
-	@blinkSegment.setter
-	def blinkSegment(self, value: str):
-		self._blinkSegment = value
-		self.notifyObservers(property='blinkSegment')
+	@clock_format_string.setter
+	def clock_format_string(self, value: str):
+		self._clock_format_string = value
+		self.notify(property='clock_format_string')
+
+	@property
+	def blink_segment(self) -> str:
+		return self._blink_segment
+
+	@blink_segment.setter
+	def blink_segment(self, value: str):
+		self._blink_segment = value
+		self.notify(property='blink_segment')
 	
 	def __init__(self) -> None:
 		super().__init__()
 		self.brightness = 15
-		self.clockFormatString = "%-H<blinkSegment>%M"
-		self.blinkSegment = ":"
-		self.refreshTimeoutInSecs = 1
-		self._alarmDefinitions = []
+		self.clock_format_string = "%-H<blinkSegment>%M"
+		self.blink_segment = ":"
+		self.refresh_timeout_in_secs = 1
+		self._alarm_definitions = []
 
 	def serialize(self):
 		return jsonpickle.encode(self, indent=2, )
 
-	def deserialize(configFile):
-		with open(configFile, "r") as file:
-			fileContents = file.read()
-			return jsonpickle.decode(fileContents)
+	def deserialize(config_file):
+		with open(config_file, "r") as file:
+			file_contents = file.read()
+			return jsonpickle.decode(file_contents)
 
 class AlarmClockState(Observable):
 
 	configuration: Config
-	displayContent: DisplayContent
-	audioState: AudioDefinition
+	display_content: DisplayContent
+	audio_state: AudioDefinition
 
 	@property
-	def isWifiAvailable(self) -> bool:
-		return self._isWifiAvailable
+	def is_wifi_available(self) -> bool:
+		return self._is_wifi_available
 
-	@isWifiAvailable.setter
-	def isWifiAvailable(self, value: bool):
-		self._isWifiAvailable = value
-		self.notifyObservers(property='isWifiAvailable')
+	@is_wifi_available.setter
+	def is_wifi_available(self, value: bool):
+		self._is_wifi_available = value
+		self.notify(property='is_wifi_available')
 
 	@property
-	def isLuminous(self)-> bool:
-		return self._isLuminous
+	def is_luminous(self)-> bool:
+		return self._is_luminous
 
-	@isLuminous.setter
-	def isLuminous(self, value: bool):
-		self._isLuminous = value
-		self.notifyObservers(property='isLuminous')
+	@is_luminous.setter
+	def is_luminous(self, value: bool):
+		self._is_luminous = value
+		self.notify(property='is_luminous')
 	
 	@property
 	def mode(self)-> Mode:
@@ -293,12 +293,12 @@ class AlarmClockState(Observable):
 	@mode.setter
 	def mode(self, value: Mode):
 		self._mode = value
-		self.notifyObservers(property='mode')
+		self.notify(property='mode')
 
 	def __init__(self, c: Config) -> None:
 		super().__init__()
 		self.configuration = c
-		self.audioState = AudioDefinition()
-		self.displayContent = DisplayContent()
-		self.audioState.registerObserver(self.displayContent)
+		self.audio_state = AudioDefinition()
+		self.display_content = DisplayContent()
+		self.audio_state.attach(self.display_content)
 		self.mode = Mode.Boot

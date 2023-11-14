@@ -18,53 +18,53 @@ class SpotifyPlayer(MediaPlayer):
 	pass
 
 class InternetRadioPlayer(MediaPlayer):
-	vlcPlayer: vlc.MediaListPlayer = None
+	vlc_player: vlc.MediaListPlayer = None
 	url: str
 
 	def __init__(self, url: str):
 		self.url = url
 
 	def play(self):
-		if (self.vlcPlayer is not None):
+		if (self.vlc_player is not None):
 			return
 
-		self.vlcPlayer = vlc.MediaListPlayer() 
+		self.vlc_player = vlc.MediaListPlayer() 
 	
 		player = vlc.Instance() 
 		media_list = vlc.MediaList() 
 		media = player.media_new(self.url) 
 		media_list.add_media(media) 
-		self.vlcPlayer.set_media_list(media_list) 
+		self.vlc_player.set_media_list(media_list) 
 		print(f'start audio {self.url}')
-		self.vlcPlayer.play()
+		self.vlc_player.play()
 
 	def stop(self):
-		if (self.vlcPlayer is None):
+		if (self.vlc_player is None):
 			return
 
-		self.vlcPlayer.stop()
-		self.vlcPlayer = None
+		self.vlc_player.stop()
+		self.vlc_player = None
 
 
 class Speaker(Observer):
-	audioEffect: AudioEffect = None
+	audio_effect: AudioEffect = None
 
 	def __init__(self) -> None:
 		self.threadLock = threading.Lock()
 
-	def notify(self, observation: Observation):
-		super().notify(observation)
+	def update(self, observation: Observation):
+		super().update(observation)
 		if not isinstance(observation.observable, AudioDefinition):
 			return
 
-		if (observation.propertyName == 'volumeInPercent'):
-			self.adjustVolume(observation.observable.volumeInPercent)
-		elif (observation.propertyName == 'isStreaming'):
-			self.adjustStreaming(observation.observable.isStreaming)
-		elif (observation.propertyName == 'audioEffect'):
-			self.audioEffect = observation.observable.audioEffect
+		if (observation.property_name == 'volume_in_percent'):
+			self.adjust_volume(observation.observable.volume_in_percent)
+		elif (observation.property_name == 'is_streaming'):
+			self.adjust_streaming(observation.observable.is_streaming)
+		elif (observation.property_name == 'audio_effect'):
+			self.audio_effect = observation.observable.audio_effect
 
-	def adjustVolume(self, newVolumeInPercent: float):
+	def adjust_volume(self, newVolumeInPercent: float):
 		controlName = self.get_first_control_name()
 		subprocess.call(["amixer", "sset", controlName, f"{newVolumeInPercent}%"], stdout=subprocess.DEVNULL)
 		pass
@@ -78,11 +78,11 @@ class Speaker(Observer):
 		return first_control_name
 
 
-	def adjustStreaming(self, isStreaming: bool):
+	def adjust_streaming(self, isStreaming: bool):
 		self.threadLock.acquire(True)
 
 		if (isStreaming):
-			self.startStreaming(self.audioEffect)
+			self.startStreaming(self.audio_effect)
 		else:
 			self.stopStreaming()
 
@@ -90,20 +90,20 @@ class Speaker(Observer):
 	
 	def startStreaming(self, audioEffect: AudioEffect):
 		if isinstance(audioEffect, InternetRadio):
-			self.mediaPlayer = InternetRadioPlayer(audioEffect.url)
+			self.media_player = InternetRadioPlayer(audioEffect.url)
 
 		elif isinstance(audioEffect, Spotify):
-			self.mediaPlayer = SpotifyPlayer(audioEffect.playId)
+			self.media_player = SpotifyPlayer(audioEffect.play_id)
 		
-		self.mediaPlayer.play()
+		self.media_player.play()
 
 	def stopStreaming(self):
-		self.mediaPlayer.stop()
-		self.mediaPlayer = None
+		self.media_player.stop()
+		self.media_player = None
 
 
 if __name__ == '__main__':
 		s = Speaker()
-		s.audioEffect = InternetRadio(url='https://streams.br.de/bayern2sued_2.m3u')
-		s.adjustStreaming(True)
+		s.audio_effect = InternetRadio(url='https://streams.br.de/bayern2sued_2.m3u')
+		s.adjust_streaming(True)
 		time.sleep(100)
