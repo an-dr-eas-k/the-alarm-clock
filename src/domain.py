@@ -5,22 +5,36 @@ import sched
 import time
 
 import jsonpickle
+from apscheduler.triggers.cron import CronTrigger
 
-@dataclass
 class Observation:
-	propertyName: str
-	propertyValue: any
 	duringRegistration: bool
+	reason: str = None
+	propertyName: str = None
+	newValue: any = None
+	observable: any = None
+
+	def __init__(self, propertyName: str = None, reason: str = None, duringRegistration: bool = False, observable: any = None) -> None:
+		assert propertyName or reason
+		self.duringRegistration = duringRegistration
+		self.reason = reason
+		self.propertyName = propertyName
+		self.observable = observable
+
+	def to_string(self):
+		property_segment = ""
+		if self.propertyName:
+			property_segment = f"property {self.propertyName}={self.newValue}"
+		reason_segment = ""
+		if self.reason:
+			reason_segment = f"reason {self.reason}"
+		return f"observation {self.observable.__class__.__name__}: {reason_segment}{property_segment}"
 
 
 class Observer:
 
 	def notify(self, observation: Observation):
-		suffix = ""
-		if (observation.duringRegistration):
-			suffix = " (during registration)"
-
-		print(f"{self.__class__.__name__} is notified: {observation.propertyName} changed to {observation.propertyValue}{suffix}")
+		print(f"{self.__class__.__name__} is notified: {observation.to_string()}")
 		pass
 
 class Observable:
@@ -29,27 +43,31 @@ class Observable:
 	def __init__(self):
 		self.observers = []
 
-	def notifyObservers(self, propertyName, duringRegistration: bool = False):
-		for k in [propertyName, f"_{propertyName}"]:
-			if (k in self.__dict__):
-				propertyName = k
-			
-		newValue = self.__getattribute__(propertyName)
-		print (f"{self.__class__.__name__}: changing {propertyName}, new value {newValue}")
-		for o in self.observers:
-			o.notify(Observation(propertyName=propertyName, propertyValue=newValue, duringRegistration=duringRegistration) )
+	def notifyObservers(self, property=None, reason = None, duringRegistration: bool = False):
+
+		o: Observation
+		if property:
+			assert property in dir(self)
+			o = Observation(propertyName=property, duringRegistration=duringRegistration, observable=self)
+			o.newValue = self.__getattribute__(o.propertyName)
+		else:
+			o = Observation(reason=reason, duringRegistration=duringRegistration, observable=self)
+
+		for observer in self.observers:
+			observer.notify( o )
 
 	def registerObserver(self, observer: Observer):
 		self.observers.append(observer)
 		properties = [
 			attr for attr in dir(self) 
 			if True
+				and attr != 'observers'
 				and not re.match(r"^__.*__$", attr) 
 				and hasattr(self, attr) 
 				and not callable(getattr(self, attr)) ]
 		for propertyName in properties:
 			try:
-				self.notifyObservers(propertyName, True) 
+				self.notifyObservers(property=propertyName, duringRegistration=True) 
 			except:
 				pass
 
@@ -62,29 +80,90 @@ class Observable:
 		state['observers'] = []
 		self.__dict__.update(state)
 
+class Mode(Enum):
+	Boot = 1
+	PreAlarm = 2
+	Alarm = 3
+
+class Weekday(Enum):
+	MONDAY = 1
+	TUESDAY = 2
+	WEDNESDAY = 3
+	THURSDAY = 4
+	FRIDAY = 5
+	SATURDAY = 6
+	SUNDAY = 7
+
+
+class VisualEffect:
+	pass
+
+class AudioEffect:
+	pass
+
+@dataclass
+class InternetRadio(AudioEffect):
+	url: str
+
+@dataclass
+class Spotify(AudioEffect):
+	playId: str
+
+
+class AlarmDefinition:
+	hour: int
+	min: int
+	weekdays: []
+	alarmName: str
+	isActive: bool
+	visualEffect: VisualEffect
+	audioEffect: AudioEffect = InternetRadio(url='https://streams.br.de/bayern2sued_2.m3u')
+
+	def toCronTrigger(self) -> CronTrigger:
+		return CronTrigger(
+			day_of_week=",".join([ str(wd.value -1) for wd in self.weekdays]),
+			hour="*", # self.hour,
+			minute="*" # self.min
+		)
+
 class AudioDefinition(Observable):
-	activeLivestreamUrl: str = 'https://streams.br.de/bayern2sued_2.m3u'
+	_audioEffect: AudioEffect = InternetRadio(url='https://streams.br.de/bayern2sued_2.m3u')
 	isStreaming = False
 	volumeInPercent: float = 0.50
+
+	@property
+	def audioEffect(self) -> str:
+		return self._audioEffect
+
+	@audioEffect.setter
+	def audioEffect(self, value: AudioEffect):
+		self._audioEffect = value
+		self.notifyObservers(property='audioEffect')
 
 	def increaseVolume(self):
 		self.volumeInPercent += 0.05
 		if self.volumeInPercent > 1:
 			self.volumeInPercent = 1
-		print (f"increasing Volume, new value {self.volumeInPercent}")
-		self.notifyObservers('volumeInPercent')
+		self.notifyObservers(property='volumeInPercent')
 
 	def decreaseVolume(self):
 		self.volumeInPercent -= 0.05
 		if self.volumeInPercent < 0:
 			self.volumeInPercent = 0
-		print (f"decreasing Volume, new value {self.volumeInPercent}")
-		self.notifyObservers('volumeInPercent')
+		self.notifyObservers(property='volumeInPercent')
 
 	def toggleStream(self):
 		self.isStreaming = not self.isStreaming
-		print (f"toggle streaming, new value isStreaming={self.isStreaming}")
-		self.notifyObservers('isStreaming')
+		self.notifyObservers(property='isStreaming')
+	
+	def startStream(self):
+		self.isStreaming = True
+		self.notifyObservers(property='isStreaming')
+
+	def endStream(self):
+		self.isStreaming = False
+		self.notifyObservers(property='isStreaming')
+
 
 class DisplayContent(Observable, Observer):
 	showVolume:bool= False
@@ -103,7 +182,7 @@ class DisplayContent(Observable, Observer):
 	@clock.setter
 	def clock(self, value: str):
 		self._clock = value
-		self.notifyObservers('clock')
+		self.notifyObservers(property='clock')
 
 	def resetVolume(self):
 		print("resetting volume")
@@ -118,29 +197,6 @@ class DisplayContent(Observable, Observer):
 			print("started volumetimer")
 
 
-
-
-class Mode(Enum):
-	Boot = 1
-	PreAlarm = 2
-	Alarm = 3
-
-class Weekday(Enum):
-	MONDAY = 1
-	TUESDAY = 2
-	WEDNESDAY = 3
-	THURSDAY = 4
-	FRIDAY = 5
-	SATURDAY = 6
-	SUNDAY = 7
-
-class AlarmDefinition:
-	time: str
-	weekdays: []
-	alarmName: str
-	isActive: bool
-
-
 class Config(Observable):
 
 	_alarmDefinitions: []
@@ -152,7 +208,7 @@ class Config(Observable):
 	@alarmDefinitions.setter
 	def alarmDefinitions(self, value: AlarmDefinition):
 		self._alarmDefinitions.append(value)
-		self.notifyObservers('alarmDefinitions')
+		self.notifyObservers(property='alarmDefinitions')
 
 	@property
 	def brightness(self) -> int:
@@ -161,7 +217,7 @@ class Config(Observable):
 	@brightness.setter
 	def brightness(self, value: int):
 		self._brightness = value
-		self.notifyObservers('brightness')
+		self.notifyObservers(property='brightness')
 
 	@property
 	def refreshTimeoutInSecs(self) -> int:
@@ -170,7 +226,7 @@ class Config(Observable):
 	@refreshTimeoutInSecs.setter
 	def refreshTimeoutInSecs(self, value: int):
 		self._refreshTimeoutInSecs = value
-		self.notifyObservers('refreshTimeoutInSecs')
+		self.notifyObservers(property='refreshTimeoutInSecs')
 
 	@property
 	def clockFormatString(self) -> str:
@@ -179,7 +235,7 @@ class Config(Observable):
 	@clockFormatString.setter
 	def clockFormatString(self, value: str):
 		self._clockFormatString = value
-		self.notifyObservers('clockFormatString')
+		self.notifyObservers(property='clockFormatString')
 
 	@property
 	def blinkSegment(self) -> str:
@@ -188,7 +244,7 @@ class Config(Observable):
 	@blinkSegment.setter
 	def blinkSegment(self, value: str):
 		self._blinkSegment = value
-		self.notifyObservers('blinkSegment')
+		self.notifyObservers(property='blinkSegment')
 	
 	def __init__(self) -> None:
 		super().__init__()
@@ -219,7 +275,7 @@ class AlarmClockState(Observable):
 	@isWifiAvailable.setter
 	def isWifiAvailable(self, value: bool):
 		self._isWifiAvailable = value
-		self.notifyObservers('isWifiAvailable')
+		self.notifyObservers(property='isWifiAvailable')
 
 	@property
 	def isLuminous(self)-> bool:
@@ -228,7 +284,7 @@ class AlarmClockState(Observable):
 	@isLuminous.setter
 	def isLuminous(self, value: bool):
 		self._isLuminous = value
-		self.notifyObservers('isLuminous')
+		self.notifyObservers(property='isLuminous')
 	
 	@property
 	def mode(self)-> Mode:
@@ -237,7 +293,7 @@ class AlarmClockState(Observable):
 	@mode.setter
 	def mode(self, value: Mode):
 		self._mode = value
-		self.notifyObservers('mode')
+		self.notifyObservers(property='mode')
 
 	def __init__(self, c: Config) -> None:
 		super().__init__()

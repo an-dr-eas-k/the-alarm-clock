@@ -41,6 +41,8 @@ class ClockApp:
 		self.state = AlarmClockState(Config())
 		if os.path.exists(self.configFile):
 			self.state.configuration = Config.deserialize(self.configFile)
+		
+		print("config available")
 
 		device = dummy(height=64, width=256, mode="1")
 		port = 8080
@@ -58,6 +60,7 @@ class ClockApp:
 			self.state.audioState.registerObserver(GeneralPurposeOutput())
 		self.display = Display(device, self.state.displayContent)
 		self.controls = Controls(self.state)
+		self.state.configuration.registerObserver(self.controls)
 		self.api = Api(self.state, lambda:device.image if isinstance (device, dummy) else None)
 		self.api.start(port)
 		

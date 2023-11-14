@@ -34,8 +34,8 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 
 		def parseAlarmDefinition(self, formArguments):
 			ala = AlarmDefinition()
-			ala.time = formArguments['time']
 			ala.alarmName = formArguments['alarmName']
+			(ala.hour, ala.min)= formArguments['time'].split(':')
 			ala.weekdays = Weekday._member_names_
 			if (formArguments.get('weekdays') is not None):
 				weekdays = formArguments['weekdays']

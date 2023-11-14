@@ -17,10 +17,10 @@
 			"justMyCode": false,
 		},
 		{
-			"name": "python foo.py",
+			"name": "python audio.py",
 			"type": "python",
 			"request": "launch",
-			"program": "foo.py",
+			"program": "audio.py",
 			"console": "integratedTerminal",
 			"cwd": "${workspaceFolder}/src",
 			"justMyCode": false,

@@ -13,7 +13,7 @@ class GeneralPurposeOutput(Observer):
 
 	def notify(self, observation: Observation):
 		super().notify(observation)
-		if (observation.propertyName == 'isStreaming' and observation.propertyValue):
+		if (observation.propertyName == 'isStreaming' and observation.newValue):
 			self.powerAudioPin.on()
 		else:
 			self.powerAudioPin.off()

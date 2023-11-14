@@ -4,23 +4,43 @@ import sys
 import traceback
 from gpiozero import Button, DigitalOutputDevice
 from apscheduler.schedulers.background import BackgroundScheduler
-from domain import AlarmClockState
+from domain import AlarmClockState, AlarmDefinition, Observation, Observer, Config
 
 button1Id = 23
 button2Id = 24
 button3Id = 12
 button4Id = 16
 
-class Controls:
-	refreshScheduler = BackgroundScheduler()
+class Controls(Observer):
+	jobstores = {
+    'alarm': {'type': 'memory'},
+    'default': {'type': 'memory'}
+	}
+	scheduler = BackgroundScheduler(jobstores=jobstores)
 	buttons = []
 	state: AlarmClockState
 
 	def __init__(self, state: AlarmClockState) -> None:
 		self.state = state
 		self.updateClock()
-		self.refreshScheduler.add_job(self.updateClock, 'interval', seconds=self.state.configuration.refreshTimeoutInSecs)
-		self.refreshScheduler.start()
+		self.scheduler.add_job(
+			self.updateClock, 
+			'interval', 
+			seconds=self.state.configuration.refreshTimeoutInSecs, 
+			id="clockInterval")
+		self.scheduler.start()
+
+	def notify(self, observation: Observation):
+		super().notify(observation)
+		if (isinstance(observation.observable, Config)) and observation.propertyName == 'alarmDefinitions':
+			self.scheduler.remove_all_jobs(jobstore='alarm')
+			alDef: AlarmDefinition
+			for alDef in observation.observable.alarmDefinitions:
+				print(f"adding job for {alDef.alarmName}")
+				self.scheduler.add_job(
+					lambda : self.ringAlarm(alDef), 
+					jobstore='alarm', 
+					trigger=alDef.toCronTrigger())
 
 	def gpioInput(self, channel):
 		print(f"button {channel} pressed")
@@ -48,7 +68,8 @@ class Controls:
 				if (key.char == '2'):
 					self.button2Action()
 				if (key.char == '3'):
-					self.button3Action()
+					# self.button3Action()
+					pass
 				if (key.char == '4'):
 					self.button4Action()
 			except Exception:
@@ -82,3 +103,9 @@ class Controls:
 
 		self.state.displayContent.clock	\
 			= now.strftime(self.state.configuration.clockFormatString.replace("<blinkSegment>", blinkSegment))
+
+	def ringAlarm(self, alarmDefinition: AlarmDefinition):
+		print ("ring alarm")
+
+		self.state.audioState.audioEffect = alarmDefinition.audioEffect
+		self.state.audioState.startStream()
