@@ -65,6 +65,7 @@ class ClockApp:
 			self.controls = SoftwareControls(self.state)
 			
 		self.state.configuration.attach(self.controls)
+		self.state.audio_state.attach(self.controls)
 		self.controls.configure()
 
 		self.api = Api(self.state, lambda:device.image if isinstance (device, dummy) else None)

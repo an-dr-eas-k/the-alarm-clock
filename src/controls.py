@@ -4,7 +4,8 @@ import sys
 import traceback
 from gpiozero import Button, DigitalOutputDevice
 from apscheduler.schedulers.background import BackgroundScheduler
-from domain import AlarmClockState, AlarmDefinition, Observation, Observer, Config
+from apscheduler.triggers.date import DateTrigger
+from domain import AlarmClockState, AlarmDefinition, AudioDefinition, Observation, Observer, Config
 
 button1Id = 23
 button2Id = 24
@@ -32,12 +33,32 @@ class Controls(Observer):
 
 	def update(self, observation: Observation):
 		super().update(observation)
-		if (True 
-			and isinstance(observation.observable, Config)
-			and observation.property_name == 'alarm_definitions'):
+		if isinstance(observation.observable, Config):
+			self.update_from_config(observation, observation.observable)
+		if isinstance(observation.observable, AudioDefinition):
+			self.update_from_audio_definition(observation, observation.observable)
+
+	def update_from_audio_definition(self, observation: Observation, audio_definition: AudioDefinition):
+		if observation.property_name == 'volume' and not observation.during_registration:
+			self.state.display_content.show_volume_meter()
+			self.start_hide_volume_meter_trigger()
+
+	def start_hide_volume_meter_trigger(self):
+		job_id = 'hide_volume_meter_trigger'
+		trigger = DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(seconds=5))
+
+		existing_job = self.scheduler.get_job(job_id=job_id)
+		if existing_job:
+			self.scheduler.reschedule_job(job_id=job_id, trigger=trigger)
+		else:
+			self.scheduler.add_job(id=job_id, trigger=trigger,
+				func=self.state.display_content.hide_volume_meter)
+
+	def update_from_config(self, observation: Observation, config: Config):
+		if observation.property_name == 'alarm_definitions':
 			self.scheduler.remove_all_jobs(jobstore='alarm')
 			alDef: AlarmDefinition
-			for alDef in observation.observable.alarm_definitions:
+			for alDef in config.alarm_definitions:
 				print(f"adding job for {alDef.alarm_name}")
 				self.scheduler.add_job(
 					lambda : self.ring_alarm(alDef), 

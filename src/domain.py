@@ -98,15 +98,9 @@ class AudioDefinition(Observable):
 	def toggle_stream(self):
 		self.is_streaming = not self.is_streaming
 	
-class DisplayContent(Observable, Observer):
-	show_volume: bool= False
-	show_volume_timer: sched.scheduler
+class DisplayContent(Observable):
+	is_volume_meter_shown: bool= False
 	show_blink_segment:bool= True
-
-	def __init__(self):
-		super().__init__()
-		self.show_volume_timer = sched.scheduler(time.time, time.sleep)
-		self.show_volume_timer.run()
 
 	@property
 	def clock(self) -> str:
@@ -117,17 +111,13 @@ class DisplayContent(Observable, Observer):
 		self._clock = value
 		self.notify(property='clock')
 
-	def reset_volume(self):
-		print("resetting volume")
-		self.show_volume = False
+	def hide_volume_meter(self):
+		print("hide volume bar")
+		self.is_volume_meter_shown = False
 
-	def update(self, observation: Observation):
-		super().update(observation)
-		if (observation.property_name == 'volume'):
-			self.show_volume = True 
-			self.show_volume_timer.queue.clear()
-			self.show_volume_timer.enter(5, 1, self.reset_volume)
-			print("started volumetimer")
+	def show_volume_meter(self):
+		print("show volume bar")
+		self.is_volume_meter_shown = True 
 
 
 class Config(Observable):
@@ -233,5 +223,4 @@ class AlarmClockState(Observable):
 		self.configuration = c
 		self.audio_state = AudioDefinition()
 		self.display_content = DisplayContent()
-		self.audio_state.attach(self.display_content)
 		self.mode = Mode.Boot
