@@ -17,7 +17,7 @@ import tornado.ioloop
 import tornado.web
 from api import Api
 from audio import Speaker
-from controls import Controls
+from controls import Controls, SoftwareControls
 
 from display import Display
 from domain import AlarmClockState, Config
@@ -59,16 +59,16 @@ class ClockApp:
 		if (self.is_on_hardware()):
 			self.state.audio_state.attach(GeneralPurposeOutput())
 		self.display = Display(device, self.state.display_content)
-		self.controls = Controls(self.state)
+		if self.is_on_hardware():
+			self.controls = Controls(self.state)
+		else:
+			self.controls = SoftwareControls(self.state)
+			
 		self.state.configuration.attach(self.controls)
+		self.controls.configure()
+
 		self.api = Api(self.state, lambda:device.image if isinstance (device, dummy) else None)
 		self.api.start(port)
-		
-
-		if self.is_on_hardware():
-			self.controls.configure_gpio()
-		else:
-			self.controls.configure_keyboard()
 
 		tornado.ioloop.IOLoop.current().start()
 		

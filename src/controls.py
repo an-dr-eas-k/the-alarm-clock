@@ -56,28 +56,7 @@ class Controls(Observer):
 	def button4_action(self):
 		self.state.audio_state.toggle_stream()
 
-	def configure_keyboard(self):
-		def key_pressed_action(key):
-			print (f"pressed {key}")
-			if not hasattr(key, 'char'):
-				return
-			try:
-				if (key.char == '1'):
-					self.button1_action()
-				if (key.char == '2'):
-					self.button2_action()
-				if (key.char == '3'):
-					# self.button3_action()
-					pass
-				if (key.char == '4'):
-					self.button4_action()
-			except Exception:
-				print(traceback.format_exc())
-
-		from pynput.keyboard import Listener
-		Listener(on_press=key_pressed_action).start()
-
-	def configure_gpio(self):
+	def configure(self):
 		for button in ([
 			dict(b=button1Id, ht=0.5, hr=True, wa=self.button1_action, wh=self.button1_action), 
 			dict(b=button2Id, ht=0.5, hr=True, wa=self.button2_action, wh=self.button2_action), 
@@ -108,3 +87,28 @@ class Controls(Observer):
 
 		self.state.audio_state.audio_effect = alarmDefinition.audio_effect
 		self.state.audio_state.is_streaming = True
+
+class SoftwareControls(Controls):
+	def __init__(self, state: AlarmClockState) -> None:
+		super().__init__(state)
+
+	def configure(self):
+		def key_pressed_action(key):
+			print (f"pressed {key}")
+			if not hasattr(key, 'char'):
+				return
+			try:
+				if (key.char == '1'):
+					self.button1_action()
+				if (key.char == '2'):
+					self.button2_action()
+				if (key.char == '3'):
+					# self.button3_action()
+					pass
+				if (key.char == '4'):
+					self.button4_action()
+			except Exception:
+				print(traceback.format_exc())
+
+		from pynput.keyboard import Listener
+		Listener(on_press=key_pressed_action).start()
