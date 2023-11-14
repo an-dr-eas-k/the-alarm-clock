@@ -7,8 +7,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from domain import AlarmClockState, AlarmDefinition, AudioDefinition, Observation, Observer, Config
 
-button1Id = 23
-button2Id = 24
+button1Id = 14
+button2Id = 23
 button3Id = 12
 button4Id = 16
 
