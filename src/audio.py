@@ -35,8 +35,8 @@ class InternetRadioPlayer(MediaPlayer):
 		media = player.media_new(self.url) 
 		media_list.add_media(media) 
 		self.vlc_player.set_media_list(media_list) 
-		print(f'start audio {self.url}')
 		self.vlc_player.play()
+		print(f'started audio {self.url}')
 
 	def stop(self):
 		if (self.vlc_player is None):
@@ -48,6 +48,7 @@ class InternetRadioPlayer(MediaPlayer):
 
 class Speaker(Observer):
 	audio_effect: AudioEffect = None
+	media_player: MediaPlayer = None
 
 	def __init__(self) -> None:
 		self.threadLock = threading.Lock()
@@ -57,16 +58,16 @@ class Speaker(Observer):
 		if not isinstance(observation.observable, AudioDefinition):
 			return
 
-		if (observation.property_name == 'volume_in_percent'):
-			self.adjust_volume(observation.observable.volume_in_percent)
+		if (observation.property_name == 'volume'):
+			self.adjust_volume(observation.observable.volume)
 		elif (observation.property_name == 'is_streaming'):
 			self.adjust_streaming(observation.observable.is_streaming)
 		elif (observation.property_name == 'audio_effect'):
 			self.audio_effect = observation.observable.audio_effect
 
-	def adjust_volume(self, newVolumeInPercent: float):
-		controlName = self.get_first_control_name()
-		subprocess.call(["amixer", "sset", controlName, f"{newVolumeInPercent}%"], stdout=subprocess.DEVNULL)
+	def adjust_volume(self, newVolume: float):
+		control_name = self.get_first_control_name()
+		subprocess.call(["amixer", "sset", control_name, f"{newVolume * 100}%"], stdout=subprocess.DEVNULL)
 		pass
 
 	def get_first_control_name(self):
@@ -88,17 +89,19 @@ class Speaker(Observer):
 
 		self.threadLock.release()
 	
-	def startStreaming(self, audioEffect: AudioEffect):
-		if isinstance(audioEffect, InternetRadio):
-			self.media_player = InternetRadioPlayer(audioEffect.url)
+	def startStreaming(self, audio_effect: AudioEffect):
+		if isinstance(audio_effect, InternetRadio):
+			self.media_player = InternetRadioPlayer(audio_effect.url)
 
-		elif isinstance(audioEffect, Spotify):
-			self.media_player = SpotifyPlayer(audioEffect.play_id)
+		elif isinstance(audio_effect, Spotify):
+			self.media_player = SpotifyPlayer(audio_effect.play_id)
 		
 		self.media_player.play()
 
 	def stopStreaming(self):
-		self.media_player.stop()
+		if self.media_player is not None:
+			self.media_player.stop()
+
 		self.media_player = None
 
 

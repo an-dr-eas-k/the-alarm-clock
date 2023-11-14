@@ -44,9 +44,6 @@ class Controls(Observer):
 					jobstore='alarm', 
 					trigger=alDef.toCronTrigger())
 
-	def gpio_input(self, channel):
-		print(f"button {channel} pressed")
-
 	def button1_action(self):
 		self.state.audio_state.decrease_volume()
 
@@ -110,4 +107,4 @@ class Controls(Observer):
 		print ("ring alarm")
 
 		self.state.audio_state.audio_effect = alarmDefinition.audio_effect
-		self.state.audio_state.start_stream()
+		self.state.audio_state.is_streaming = True

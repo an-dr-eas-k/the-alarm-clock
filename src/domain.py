@@ -122,14 +122,11 @@ class AlarmDefinition:
 	def toCronTrigger(self) -> CronTrigger:
 		return CronTrigger(
 			day_of_week=",".join([ str(wd.value -1) for wd in self.weekdays]),
-			hour="*", # self.hour,
-			minute="*" # self.min
+			hour=self.hour,
+			minute=self.min
 		)
 
 class AudioDefinition(Observable):
-	_audio_effect: AudioEffect = InternetRadio(url='https://streams.br.de/bayern2sued_2.m3u')
-	is_streaming = False
-	volume_in_percent: float = 0.50
 
 	@property
 	def audio_effect(self) -> str:
@@ -140,33 +137,41 @@ class AudioDefinition(Observable):
 		self._audio_effect = value
 		self.notify(property='audio_effect')
 
+	@property
+	def volume(self) -> float:
+		return self._volume
+
+	@volume.setter
+	def volume(self, value: float):
+		self._volume = value
+		self.notify(property='volume')
+
+	@property
+	def is_streaming(self) -> str:
+		return self._is_streaming
+
+	@is_streaming.setter
+	def is_streaming(self, value: bool):
+		self._is_streaming = value
+		self.notify(property='is_streaming')
+
+	def __init__(self):
+		super().__init__()
+		self.audio_effect = InternetRadio(url='https://streams.br.de/bayern2sued_2.m3u')
+		self.volume = 0.8
+		self.is_streaming = False
+
 	def increase_volume(self):
-		self.volume_in_percent += 0.05
-		if self.volume_in_percent > 1:
-			self.volume_in_percent = 1
-		self.notify(property='volume_in_percent')
+		self.volume = min(self.volume + 0.05, 1.0)
 
 	def decrease_volume(self):
-		self.volume_in_percent -= 0.05
-		if self.volume_in_percent < 0:
-			self.volume_in_percent = 0
-		self.notify(property='volume_in_percent')
+		self.volume = max(self.volume - 0.05, 0.0)
 
 	def toggle_stream(self):
 		self.is_streaming = not self.is_streaming
-		self.notify(property='is_streaming')
 	
-	def start_stream(self):
-		self.is_streaming = True
-		self.notify(property='is_streaming')
-
-	def end_stream(self):
-		self.is_streaming = False
-		self.notify(property='is_streaming')
-
-
 class DisplayContent(Observable, Observer):
-	show_volume:bool= False
+	show_volume: bool= False
 	show_volume_timer: sched.scheduler
 	show_blink_segment:bool= True
 
@@ -190,7 +195,7 @@ class DisplayContent(Observable, Observer):
 
 	def update(self, observation: Observation):
 		super().update(observation)
-		if (observation.property_name == 'volume_in_percent'):
+		if (observation.property_name == 'volume'):
 			self.show_volume = True 
 			self.show_volume_timer.queue.clear()
 			self.show_volume_timer.enter(5, 1, self.reset_volume)
