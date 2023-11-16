@@ -25,7 +25,7 @@ class Display(Observer):
 		background_color = (255, 255, 255)
 		new_image = Image.new(self.device.mode, image.size, background_color)
 
-		new_image.paste(image, mask=image.split()[3])
+		new_image.paste(image)
 		return new_image
 
 	def update(self, observation: Observation):
