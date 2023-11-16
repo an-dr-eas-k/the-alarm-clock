@@ -3,6 +3,7 @@ import traceback
 from luma.core.device import device as luma_device
 from luma.core.render import canvas
 from PIL import ImageFont,Image, ImageOps
+from PIL.Image import Image as pil_image
 
 from domain import DisplayContent, Observation, Observer
 
@@ -21,11 +22,12 @@ class Display(Observer):
 		self.content = content
 		self.content.attach(self)
 
-	def fix_image(self, image: Image):
+	def fix_image(self, image: pil_image):
 		background_color = (255, 255, 255)
 		new_image = Image.new(self.device.mode, image.size, background_color)
-
-		new_image.paste(image)
+		foo = image.split()
+		bar = len(foo) -1
+		new_image.paste(image, mask=foo[bar])
 		return new_image
 
 	def update(self, observation: Observation):
