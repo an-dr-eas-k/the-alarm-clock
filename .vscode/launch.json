@@ -24,6 +24,18 @@
 			"console": "integratedTerminal",
 			"cwd": "${workspaceFolder}/src",
 			"justMyCode": false,
+		},
+		{
+			"name": "python display.py",
+			"type": "python",
+			"request": "launch",
+			"program": "display.py",
+			"args": [
+				"--software"
+			],
+			"console": "integratedTerminal",
+			"cwd": "${workspaceFolder}/src",
+			"justMyCode": false,
 		}
 	]
 }

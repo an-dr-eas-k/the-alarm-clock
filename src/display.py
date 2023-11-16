@@ -1,5 +1,5 @@
 import os
-from luma.core.device import device as lumadevice
+from luma.core.device import device as luma_device
 from luma.core.render import canvas
 from PIL import ImageFont,Image, ImageOps
 
@@ -12,10 +12,10 @@ class Display(Observer):
 	font_file = f"{resources_dir}/DSEG7ClassicMini-Bold.ttf"
 	no_wifi_file = f"{resources_dir}/no-wifi.mono.png" 
 
-	device: lumadevice
+	device: luma_device
 	content: DisplayContent
 
-	def __init__(self, device: lumadevice, content: DisplayContent) -> None:
+	def __init__(self, device: luma_device, content: DisplayContent) -> None:
 		self.device = device
 		self.content = content
 		self.content.attach(self)
@@ -45,3 +45,24 @@ class Display(Observer):
 				xy=[x, y],
 				font=font)
 
+
+if __name__ == '__main__':
+	import argparse
+	from luma.oled.device import ssd1322
+	from luma.core.interface.serial import spi
+	from luma.core.device import dummy
+	parser = argparse.ArgumentParser("Display")
+	parser.add_argument("-s", '--software', action='store_true')
+	is_on_hardware = not parser.parse_args().software
+	dev: luma_device
+
+	if is_on_hardware:
+		dev = ssd1322(serial_interface=spi(device=0, port=0))
+	else:
+		dev= dummy(height=64, width=256, mode="1")
+
+	with canvas(dev) as draw:
+		draw.text((20, 20), "Hello World!", fill="white")
+
+	if not is_on_hardware:
+		dev.image.save("foo.png", format="png")

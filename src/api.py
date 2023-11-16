@@ -1,11 +1,9 @@
-
-
 import base64
 import io
-import json
 import os
 import tornado
 import tornado.web
+from PIL import Image
 
 from domain import AlarmClockState, AlarmDefinition, Config, Weekday
 
@@ -17,6 +15,7 @@ class DisplayHandler(tornado.web.RequestHandler):
 		def get(self):
 				buffered = io.BytesIO()
 				img= self.imageGetter()
+				assert isinstance(img, Image)
 				img.save(buffered, format="png")
 				img.seek(0)
 				img_str = base64.b64encode(buffered.getvalue())
