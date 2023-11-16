@@ -131,5 +131,8 @@ class SoftwareControls(Controls):
 			except Exception:
 				print(traceback.format_exc())
 
-		from pynput.keyboard import Listener
-		Listener(on_press=key_pressed_action).start()
+		try:
+			from pynput.keyboard import Listener
+			Listener(on_press=key_pressed_action).start()
+		except:
+			super().configure()
