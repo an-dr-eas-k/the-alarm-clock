@@ -13,6 +13,7 @@ class DisplayHandler(tornado.web.RequestHandler):
 				self.imageGetter = imageGetter
 
 		def get(self):
+			try:
 				buffered = io.BytesIO()
 				img= self.imageGetter()
 				assert isinstance(img, Image)
@@ -21,6 +22,8 @@ class DisplayHandler(tornado.web.RequestHandler):
 				img_str = base64.b64encode(buffered.getvalue())
 				my_html = '<img src="data:image/png;base64, {}">'.format(img_str.decode('utf-8'))
 				self.write(my_html)
+			except Exception as e:
+				print(e)
 
 class ConfigApiHandler(tornado.web.RequestHandler):
 
