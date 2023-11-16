@@ -1,7 +1,7 @@
 #!/bin/bash
 
 check_internet() {
-		timeout=30
+		timeout=120
 		start_time=$(date +%s)
 		end_time=$((start_time + timeout))
 		ping_success=false
