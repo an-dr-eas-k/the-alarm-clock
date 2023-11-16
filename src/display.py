@@ -26,6 +26,8 @@ class Display(Observer):
 			self.adjust_display()
 		except Exception as e:
 			print(e)
+			with canvas(self.device) as draw:
+				draw.text((20,20), "exception!", fill="white")
 					
 	def adjust_display(self):
 		
