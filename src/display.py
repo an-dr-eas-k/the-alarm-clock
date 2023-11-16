@@ -1,4 +1,5 @@
 import os
+import traceback
 from luma.core.device import device as luma_device
 from luma.core.render import canvas
 from PIL import ImageFont,Image, ImageOps
@@ -20,15 +21,22 @@ class Display(Observer):
 		self.content = content
 		self.content.attach(self)
 
+# 	def fix_image(self, image: Image):
+# 	background_color = (255, 255, 255)  # RGB color tuple
+# 	new_image = Image.new("RGB", image.size, background_color)
+
+# # Paste the original image on top of the new image
+# new_image.paste(image, mask=image.split()[3])
+
 	def update(self, observation: Observation):
 		super().update(observation)
 		self.device.contrast(self.content.contrast)
 		try:
 			self.adjust_display()
 		except Exception as e:
-			print(e)
+			print(traceback.format_exc())
 			with canvas(self.device) as draw:
-				draw.text((20,20), "exception!", fill="white")
+				draw.text((20,20), f"exception! ({e})", fill="white")
 					
 	def adjust_display(self):
 		
@@ -40,9 +48,9 @@ class Display(Observer):
 			x = (draw.im.size[0]-width)/2
 			y = (draw.im.size[1]-height)/2
  
-			wifi = ImageOps.invert( Image.open( self.no_wifi_file ).convert(self.device.mode))
-			draw.bitmap([10,10], wifi
-							 .resize([int(0.05 * s) for s in wifi.size]), fill=1 )
+			# wifi = ImageOps.invert( Image.open( self.no_wifi_file ).convert(self.device.mode))
+			# draw.bitmap([10,10], wifi
+			# 				 .resize([int(0.05 * s) for s in wifi.size]), fill=1 )
 			draw.text(
 				stroke_width=0, 
 				fill='white',
