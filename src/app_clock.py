@@ -1,16 +1,8 @@
-"""
- - Add this line to /etc/rc.local (before the exit 0):
-	-   /home/pi/ONBOOT.sh 2> /home/pi/ONBOOT.errors > /home/pi/ONBOOT.stdout &
-	- Add the following ONBOOT.sh script to /home/pi and make it executable:
-	
-#!/bin/bash
-cd /home/pi/iot-clock/src
-python app_clock.py
-"""
-
 import argparse
 import os
 from luma.oled.device import ssd1322
+from luma.core.device import device as luma_device
+from luma.core.interface.serial import spi
 from luma.core.device import dummy
 
 import tornado.ioloop
@@ -44,26 +36,23 @@ class ClockApp:
 		
 		print("config available")
 
-		device = dummy(height=64, width=256, mode="1")
-		port = 8080
-		if self.is_on_hardware():
-			port = 80
-			try:
-				device = ssd1322()
-			except: pass
+		device: luma_device
 
+		if (self.is_on_hardware()):
+			self.controls = Controls(self.state)
+			self.state.audio_state.attach(GeneralPurposeOutput())
+			device = ssd1322(serial_interface=spi())
+			port = 80
+		else:
+			self.controls = SoftwareControls(self.state)
+			device = dummy(height=64, width=256, mode="1")
+			port = 8080
+
+		self.display = Display(device, self.state.display_content)
 		self.state.configuration.attach(
 			Persistence( self.state.configuration, self.configFile))
 
 		self.state.audio_state.attach(Speaker())
-		if (self.is_on_hardware()):
-			self.state.audio_state.attach(GeneralPurposeOutput())
-		self.display = Display(device, self.state.display_content)
-		if self.is_on_hardware():
-			self.controls = Controls(self.state)
-		else:
-			self.controls = SoftwareControls(self.state)
-			
 		self.state.configuration.attach(self.controls)
 		self.state.audio_state.attach(self.controls)
 		self.controls.configure()

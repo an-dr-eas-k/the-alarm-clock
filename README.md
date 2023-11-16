@@ -19,10 +19,10 @@ e               |              |    |   |    |         |                 |
 |               | GPIO17       | 11 |   | 12 | GPIO18  |                 |
 |               | GPIO27       | 13 |   | 14 |    GND  |  btn2           |
 |               | GPIO22       | 15 |   | 16 | GPIO23  |  btn2           |
-| spi (vbat, 2) |    3V3       | 17 |   | 18 | GPIO24  | spi (dc, 14)    |
-| spi (sdi, 5)  | GPIO10       | 19 |   | 20 |    GND  | spi (vss, 1)    |
+| spi (vbat, 2) |    3V3       | 17 |   | 18 | GPIO24  | spi (   dc, 14) |
+| spi ( sdi, 5) | GPIO10       | 19 |   | 20 |    GND  | spi (  vss,  1) |
 |               | GPIO09       | 21 |   | 22 | GPIO25  | spi (reset, 15) |
-| spi (sclk, 4) | GPIO11       | 23 |   | 24 | GPIO08  | spi (cs, 16)    |
+| spi (sclk, 4) | GPIO11       | 23 |   | 24 | GPIO08  | spi (   cs, 16) |
 |               |    GND       | 25 |   | 26 | GPIO07  |                 |
 |               | GPIO00       | 27 |   | 28 | GPIO01  |                 |
 |               | GPIO05       | 29 |   | 30 |    GND  |  btn3           |
