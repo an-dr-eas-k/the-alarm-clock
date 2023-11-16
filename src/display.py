@@ -51,6 +51,7 @@ if __name__ == '__main__':
 	from luma.oled.device import ssd1322
 	from luma.core.interface.serial import spi
 	from luma.core.device import dummy
+	import time
 	parser = argparse.ArgumentParser("Display")
 	parser.add_argument("-s", '--software', action='store_true')
 	is_on_hardware = not parser.parse_args().software
@@ -64,5 +65,7 @@ if __name__ == '__main__':
 	with canvas(dev) as draw:
 		draw.text((20, 20), "Hello World!", fill="white")
 
-	if not is_on_hardware:
+	if is_on_hardware:
+		time.sleep(120)
+	else:
 		dev.image.save("foo.png", format="png")
