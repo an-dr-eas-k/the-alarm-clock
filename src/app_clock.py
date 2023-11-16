@@ -45,7 +45,7 @@ class ClockApp:
 			port = 80
 		else:
 			self.controls = SoftwareControls(self.state)
-			device = dummy(height=64, width=256, mode="1")
+			device = dummy(height=64, width=256, mode="RGB")
 			port = 8080
 
 		self.display = Display(device, self.state.display_content)

@@ -24,10 +24,11 @@ class Display(Observer):
 		self.content.attach(self)
 
 	def fix_image(self, image: pil_image) -> pil_image:
-		background_color = (255, 255, 255)
-		new_image = Image.new(self.device.mode, image.size, background_color)
+		background_color =  (255, 255, 255)
+		new_image = Image.new("RGBA", image.size, background_color)
 		foo = image.split()
-		new_image.paste(image, mask=foo[0])
+
+		new_image.paste(image)
 		return new_image
 
 	def update(self, observation: Observation):
@@ -50,9 +51,9 @@ class Display(Observer):
 			x = (draw.im.size[0]-width)/2
 			y = (draw.im.size[1]-height)/2
  
-			wifi = ImageOps.invert( self.fix_image(Image.open( self.no_wifi_file )) )
-			draw.bitmap([10,10], wifi
-							 .resize([int(0.05 * s) for s in wifi.size]), fill=1 )
+			# wifi = self.fix_image(Image.open( self.no_wifi_file )) 
+			# draw.bitmap([10,10], wifi
+			# 				 .resize([int(0.05 * s) for s in wifi.size]), fill=1 )
 			draw.text(
 				stroke_width=0, 
 				fill='white',

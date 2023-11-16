@@ -72,6 +72,7 @@ class Controls(Observer):
 		self.state.audio_state.increase_volume()
 
 	def button3_action(self):
+		self.scheduler.shutdown(wait=False)
 		os._exit(0) 
 
 	def button4_action(self):
