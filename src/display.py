@@ -22,6 +22,7 @@ class Display(Observer):
 
 	def update(self, observation: Observation):
 		super().update(observation)
+		self.device.contrast(self.content.contrast)
 		try:
 			self.adjust_display()
 		except Exception as e:
@@ -39,9 +40,9 @@ class Display(Observer):
 			x = (draw.im.size[0]-width)/2
 			y = (draw.im.size[1]-height)/2
  
-			# wifi = ImageOps.invert( Image.open( self.no_wifi_file ))
-			# draw.bitmap([10,10], wifi
-			# 				 .resize([int(0.05 * s) for s in wifi.size]), fill=1 )
+			wifi = ImageOps.invert( Image.open( self.no_wifi_file ).convert(self.device.mode))
+			draw.bitmap([10,10], wifi
+							 .resize([int(0.05 * s) for s in wifi.size]), fill=1 )
 			draw.text(
 				stroke_width=0, 
 				fill='white',
