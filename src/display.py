@@ -40,7 +40,7 @@ class Display(Observer):
 					
 	def adjust_display(self):
 		
-		font=ImageFont.truetype(self.font_file, 40)
+		font=ImageFont.truetype(self.font_file, 50)
 		font_BBox = font.getbbox(self.content.clock)
 		width = font_BBox[2] - font_BBox[0]
 		height = font_BBox[3] - font_BBox[1]
