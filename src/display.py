@@ -19,15 +19,15 @@ class Display(Observer):
 
 	def __init__(self, device: luma_device, content: DisplayContent) -> None:
 		self.device = device
+		print(f"device mode: {self.device.mode}")
 		self.content = content
 		self.content.attach(self)
 
-	def fix_image(self, image: pil_image):
+	def fix_image(self, image: pil_image) -> pil_image:
 		background_color = (255, 255, 255)
 		new_image = Image.new(self.device.mode, image.size, background_color)
 		foo = image.split()
-		bar = len(foo) -1
-		new_image.paste(image, mask=foo[bar])
+		new_image.paste(image, mask=foo[0])
 		return new_image
 
 	def update(self, observation: Observation):
