@@ -3,7 +3,7 @@ import io
 import os
 import tornado
 import tornado.web
-from PIL import Image
+from PIL.Image import Image
 
 from domain import AlarmClockState, AlarmDefinition, Config, Weekday
 
