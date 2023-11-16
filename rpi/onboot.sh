@@ -23,8 +23,8 @@ check_internet() {
 check_internet
 
 
-git config pull.ff only
 cd /srv/the-alarm-clock
+git config pull.ff only
 git pull
 while true; do
 	echo "invoking app_clock.py"
