@@ -36,7 +36,6 @@ class Display(Observer):
 		width = font_BBox[2] - font_BBox[0]
 		height = font_BBox[3] - font_BBox[1]
 		with canvas(self.device) as draw:
-			draw.text((20, 20), "Hello World!", fill="white")
 			x = (draw.im.size[0]-width)/2
 			y = (draw.im.size[1]-height)/2
  
