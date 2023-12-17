@@ -33,7 +33,7 @@ class Display(Observer):
 
 	def update(self, observation: Observation):
 		super().update(observation)
-		self.device.contrast(self.content.contrast)
+		self.device.contrast(self.content.contrast_16*16)
 		try:
 			self.adjust_display()
 		except Exception as e:
@@ -52,7 +52,7 @@ class Display(Observer):
 							.resize([int(0.05 * s) for s in wifi.size]), fill=1 )
 
 	def write_clock(self, draw: ImageDraw.ImageDraw):
-		fill = Display.to_fill(self.content.grayscale_intensity)
+		fill = Display.to_fill(self.content.brightness_16*16)
 		font=ImageFont.truetype(self.font_file, 50)
 		font_BBox = font.getbbox(self.content.clock)
 		width = font_BBox[2] - font_BBox[0]

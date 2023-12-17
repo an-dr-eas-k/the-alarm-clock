@@ -101,8 +101,8 @@ class AudioDefinition(Observable):
 class DisplayContent(Observable):
 	is_volume_meter_shown: bool= False
 	show_blink_segment:bool= True
-	contrast: int= 0
-	grayscale_intensity: int= 16
+	contrast_16: int= 0
+	brightness_16: int= 1
 
 	@property
 	def clock(self) -> str:

@@ -64,6 +64,8 @@ class Controls(Observer):
 					lambda : self.ring_alarm(alDef), 
 					jobstore='alarm', 
 					trigger=alDef.toCronTrigger())
+		if observation.property_name == 'brightness':
+			self.state.display_content.brightness_16 = config.brightness
 
 	def button1_action(self):
 		self.state.audio_state.decrease_volume()
