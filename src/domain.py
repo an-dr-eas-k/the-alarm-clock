@@ -101,7 +101,7 @@ class AudioDefinition(Observable):
 class DisplayContent(Observable):
 	is_volume_meter_shown: bool= False
 	show_blink_segment:bool= True
-	contrast: int= 1
+	contrast: int= 0
 	grayscale_intensity: int= 16
 
 	@property
