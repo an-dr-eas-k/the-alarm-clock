@@ -52,7 +52,7 @@ class Display(Observer):
 							.resize([int(0.05 * s) for s in wifi.size]), fill=1 )
 
 	def write_clock(self, draw: ImageDraw.ImageDraw):
-		fill = Display.to_fill(16)
+		fill = Display.to_fill(self.content.grayscale_intensity)
 		font=ImageFont.truetype(self.font_file, 50)
 		font_BBox = font.getbbox(self.content.clock)
 		width = font_BBox[2] - font_BBox[0]
