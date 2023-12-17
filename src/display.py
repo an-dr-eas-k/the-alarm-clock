@@ -2,7 +2,7 @@ import os
 import traceback
 from luma.core.device import device as luma_device
 from luma.core.render import canvas
-from PIL import ImageFont,Image, ImageOps
+from PIL import ImageFont,Image, ImageOps, ImageDraw
 from PIL.Image import Image as pil_image
 
 from domain import DisplayContent, Observation, Observer
@@ -42,12 +42,17 @@ class Display(Observer):
 				draw.text((20,20), f"exception! ({e})", fill="white")
 					
 	def adjust_display(self):
+		self.write_clock()
 		
+
+	def write_clock(self):
+		fill = self.to_fill(32)
 		font=ImageFont.truetype(self.font_file, 50)
 		font_BBox = font.getbbox(self.content.clock)
 		width = font_BBox[2] - font_BBox[0]
 		height = font_BBox[3] - font_BBox[1]
-		with canvas(self.device) as draw:
+		draw: ImageDraw.ImageDraw
+		with canvas(self.device) as draw: 
 			x = (draw.im.size[0]-width)/2
 			y = (draw.im.size[1]-height)/2
  
@@ -56,11 +61,14 @@ class Display(Observer):
 			# 				 .resize([int(0.05 * s) for s in wifi.size]), fill=1 )
 			draw.text(
 				stroke_width=0, 
-				fill='white',
+				fill=fill,
 				align='left',
 				text=self.content.clock,
 				xy=[x, y],
 				font=font)
+
+	def to_fill(self, color):
+		return (color << 16) | (color << 8) | color
 
 
 if __name__ == '__main__':
