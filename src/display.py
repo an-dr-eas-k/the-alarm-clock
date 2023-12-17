@@ -94,4 +94,5 @@ if __name__ == '__main__':
 	if is_on_hardware:
 		time.sleep(10)
 	else:
-		dev.image.save("foo.png", format="png")
+		save_file = f"{os.path.dirname(os.path.realpath(__file__))}/../../display_test.png"
+		dev.image.save(save_file, format="png")
