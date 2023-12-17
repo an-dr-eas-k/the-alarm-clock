@@ -42,32 +42,33 @@ class Display(Observer):
 				draw.text((20,20), f"exception! ({e})", fill="white")
 					
 	def adjust_display(self):
-		self.write_clock()
+		with canvas(self.device) as draw: 
+			self.write_clock(draw)
+			self.write_wifi_status(draw)
 		
+	def write_wifi_status(self, draw: ImageDraw.ImageDraw):
+		wifi = self.fix_image(Image.open( self.no_wifi_file )) 
+		draw.bitmap([10,10], wifi
+							.resize([int(0.05 * s) for s in wifi.size]), fill=1 )
 
-	def write_clock(self):
-		fill = self.to_fill(32)
+	def write_clock(self, draw: ImageDraw.ImageDraw):
+		fill = Display.to_fill(16)
 		font=ImageFont.truetype(self.font_file, 50)
 		font_BBox = font.getbbox(self.content.clock)
 		width = font_BBox[2] - font_BBox[0]
 		height = font_BBox[3] - font_BBox[1]
-		draw: ImageDraw.ImageDraw
-		with canvas(self.device) as draw: 
-			x = (draw.im.size[0]-width)/2
-			y = (draw.im.size[1]-height)/2
- 
-			# wifi = self.fix_image(Image.open( self.no_wifi_file )) 
-			# draw.bitmap([10,10], wifi
-			# 				 .resize([int(0.05 * s) for s in wifi.size]), fill=1 )
-			draw.text(
-				stroke_width=0, 
-				fill=fill,
-				align='left',
-				text=self.content.clock,
-				xy=[x, y],
-				font=font)
+		x = (draw.im.size[0]-width)/2
+		y = (draw.im.size[1]-height)/2
 
-	def to_fill(self, color):
+		draw.text(
+			stroke_width=0, 
+			fill=fill,
+			align='left',
+			text=self.content.clock,
+			xy=[x, y],
+			font=font)
+
+	def to_fill(color):
 		return (color << 16) | (color << 8) | color
 
 
