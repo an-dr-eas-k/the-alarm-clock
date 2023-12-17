@@ -102,7 +102,7 @@ class DisplayContent(Observable):
 	is_volume_meter_shown: bool= False
 	show_blink_segment:bool= True
 	contrast: int= 1
-	grayscale_intensity: int= 2
+	grayscale_intensity: int= 8
 
 	@property
 	def clock(self) -> str:
