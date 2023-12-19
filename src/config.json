@@ -9,8 +9,8 @@
       {
         "py/object": "domain.AlarmDefinition",
         "alarm_name": "my debugging alarm",
-        "hour": "22",
-        "min": "35",
+        "hour": 22,
+        "min": 35,
         "weekdays": [
           "MONDAY",
           "TUESDAY",
@@ -25,8 +25,8 @@
       {
         "py/object": "domain.AlarmDefinition",
         "alarm_name": "default morning alarm",
-        "hour": "06",
-        "min": "45",
+        "hour": 6,
+        "min": 45,
         "weekdays": [
           "MONDAY",
           "TUESDAY",

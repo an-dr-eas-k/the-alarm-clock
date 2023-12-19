@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timedelta, date
+from datetime import  date, time
 from enum import Enum
 
 import jsonpickle
@@ -62,6 +62,8 @@ class AlarmDefinition:
 				minute=self.min
 			)
 
+	def to_time_string(self) -> str:
+		return time(hour=self.hour, minute=self.min).strftime("%H:%M")
 
 	def to_weekdays_string(self) -> str:
 		if self.weekdays is not None and len(self.weekdays) > 0:

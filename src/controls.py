@@ -59,6 +59,8 @@ class Controls(Observer):
 			self.scheduler.remove_all_jobs(jobstore='alarm')
 			alDef: AlarmDefinition
 			for alDef in config.alarm_definitions:
+				if not alDef.is_active:
+					continue
 				print(f"adding job for {alDef.alarm_name}")
 				self.scheduler.add_job(
 					lambda : self.ring_alarm(alDef), 

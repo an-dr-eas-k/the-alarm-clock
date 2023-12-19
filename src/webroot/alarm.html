@@ -74,7 +74,7 @@
 			{% for alarm_definition in config.alarm_definitions %}
 			<tr>
 				<td>{{ escape(alarm_definition.alarm_name) }}</td>
-				<td>{{ escape(f"{alarm_definition.hour}:{alarm_definition.min}") }}</td>
+				<td>{{ escape(f"{alarm_definition.to_time_string()}") }}</td>
 				<td>{{ escape(alarm_definition.to_weekdays_string()) }}</td>
 				<td>{{ escape(str(alarm_definition.is_active)) }}</td>
 				<td>
