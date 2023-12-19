@@ -12,90 +12,13 @@
         "hour": "22",
         "min": "35",
         "weekdays": [
-          {
-            "py/reduce": [
-              {
-                "py/type": "domain.Weekday"
-              },
-              {
-                "py/tuple": [
-                  1
-                ]
-              }
-            ]
-          },
-          {
-            "py/reduce": [
-              {
-                "py/type": "domain.Weekday"
-              },
-              {
-                "py/tuple": [
-                  2
-                ]
-              }
-            ]
-          },
-          {
-            "py/reduce": [
-              {
-                "py/type": "domain.Weekday"
-              },
-              {
-                "py/tuple": [
-                  3
-                ]
-              }
-            ]
-          },
-          {
-            "py/reduce": [
-              {
-                "py/type": "domain.Weekday"
-              },
-              {
-                "py/tuple": [
-                  4
-                ]
-              }
-            ]
-          },
-          {
-            "py/reduce": [
-              {
-                "py/type": "domain.Weekday"
-              },
-              {
-                "py/tuple": [
-                  5
-                ]
-              }
-            ]
-          },
-          {
-            "py/reduce": [
-              {
-                "py/type": "domain.Weekday"
-              },
-              {
-                "py/tuple": [
-                  6
-                ]
-              }
-            ]
-          },
-          {
-            "py/reduce": [
-              {
-                "py/type": "domain.Weekday"
-              },
-              {
-                "py/tuple": [
-                  7
-                ]
-              }
-            ]
-          }
+          "MONDAY",
+          "TUESDAY",
+          "WEDNESDAY",
+          "THURSDAY",
+          "FRIDAY",
+          "SATURDAY",
+          "SUNDAY"
         ],
         "is_active": true
       },
@@ -105,21 +28,11 @@
         "hour": "06",
         "min": "45",
         "weekdays": [
-          {
-            "py/id": 5
-          },
-          {
-            "py/id": 6
-          },
-          {
-            "py/id": 7
-          },
-          {
-            "py/id": 8
-          },
-          {
-            "py/id": 9
-          }
+          "MONDAY",
+          "TUESDAY",
+          "WEDNESDAY",
+          "THURSDAY",
+          "FRIDAY"
         ],
         "is_active": true
       }

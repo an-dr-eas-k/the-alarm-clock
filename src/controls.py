@@ -63,7 +63,7 @@ class Controls(Observer):
 				self.scheduler.add_job(
 					lambda : self.ring_alarm(alDef), 
 					jobstore='alarm', 
-					trigger=alDef.toCronTrigger())
+					trigger=alDef.to_cron_trigger())
 		if observation.property_name == 'brightness':
 			self.state.display_content.brightness_16 = config.brightness
 

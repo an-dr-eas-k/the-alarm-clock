@@ -1,7 +1,6 @@
 from dataclasses import dataclass
+from datetime import datetime, timedelta, date
 from enum import Enum
-import sched
-import time
 
 import jsonpickle
 from apscheduler.triggers.cron import CronTrigger
@@ -42,17 +41,33 @@ class AlarmDefinition:
 	hour: int
 	min: int
 	weekdays: []
+	date: date
 	alarm_name: str
 	is_active: bool
 	visual_effect: VisualEffect
 	audio_effect: AudioEffect = InternetRadio(url='https://streams.br.de/bayern2sued_2.m3u')
 
-	def toCronTrigger(self) -> CronTrigger:
-		return CronTrigger(
-			day_of_week=",".join([ str(wd.value -1) for wd in self.weekdays]),
-			hour=self.hour,
-			minute=self.min
-		)
+	def to_cron_trigger(self) -> CronTrigger:
+		if (self.date is not None):
+			return CronTrigger(
+				start_date=self.date,
+				end_date=self.date,
+				hour=self.hour,
+				minute=self.min
+			)
+		elif (self.weekdays is not None and len(self.weekdays) > 0):
+			return CronTrigger(
+				day_of_week=",".join([ str(Weekday[wd].value -1) for wd in self.weekdays]),
+				hour=self.hour,
+				minute=self.min
+			)
+
+
+	def to_weekdays_string(self) -> str:
+		if self.weekdays is not None and len(self.weekdays) > 0:
+			return ", ".join([ Weekday[wd].name.lower().capitalize() for wd in self.weekdays ])
+		elif (self.date is not None):
+			return self.date.strftime("%Y-%m-%d")
 
 class AudioDefinition(Observable):
 
@@ -130,9 +145,14 @@ class Config(Observable):
 	def alarm_definitions(self) -> []:
 		return self._alarm_definitions
 
-	@alarm_definitions.setter
-	def alarm_definitions(self, value: AlarmDefinition):
+	def add_alarm_definition(self, value: AlarmDefinition):
+		if any(alarm_def.alarm_name == value.alarm_name for alarm_def in self._alarm_definitions):
+			raise ValueError(f"Alarm with name '{value.alarm_name}' already exists.")
 		self._alarm_definitions.append(value)
+		self.notify(property='alarm_definitions')
+
+	def remove_alarm_definition(self, alarm_name: str):
+		self._alarm_definitions = [ alarm_def for alarm_def in self._alarm_definitions if alarm_def.alarm_name != alarm_name ]
 		self.notify(property='alarm_definitions')
 
 	@property
@@ -180,7 +200,7 @@ class Config(Observable):
 		self._alarm_definitions = []
 
 	def serialize(self):
-		return jsonpickle.encode(self, indent=2, )
+		return jsonpickle.encode(self, indent=2)
 
 	def deserialize(config_file):
 		with open(config_file, "r") as file:
