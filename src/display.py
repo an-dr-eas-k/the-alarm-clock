@@ -11,7 +11,8 @@ from domain import DisplayContent, Observation, Observer
 class Display(Observer):
 
 	resources_dir = f"{os.path.dirname(os.path.realpath(__file__))}/resources"
-	font_file = f"{resources_dir}/DSEG7ClassicMini-Bold.ttf"
+	font_file_7segment = f"{resources_dir}/DSEG7ClassicMini-Bold.ttf"
+	font_file_nerd = f"{resources_dir}/CousineNerdFontMono-Regular.ttf"
 	no_wifi_file = f"{resources_dir}/no-wifi.mono.png" 
 
 	device: luma_device
@@ -47,9 +48,8 @@ class Display(Observer):
 			self.write_wifi_status(draw)
 		
 	def write_wifi_status(self, draw: ImageDraw.ImageDraw):
-		wifi = self.fix_image(Image.open( self.no_wifi_file )) 
-		draw.bitmap([10,10], wifi
-							.resize([int(0.05 * s) for s in wifi.size]), fill=1 )
+		font=ImageFont.truetype(self.font_file_nerd, 40)
+		draw.text([2,-9], '\U000f16b5', fill=self.get_fill(), font=font)
 
 	def write_clock(self, draw: ImageDraw.ImageDraw):
 		fill = Display.to_fill(self.content.brightness_16*16)
