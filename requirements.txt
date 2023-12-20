@@ -1,0 +1,9 @@
+luma.core
+luma.oled
+python-vlc
+spidev
+tornado
+pynput
+gpiozero
+apscheduler
+jsonpickle

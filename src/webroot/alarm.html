@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>Alarm Clock</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet"
+		integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+	<script>
+		function onSubmit(event) {
+			event.preventDefault();
+			console.log(event)
+
+			var formData = new FormData(event.target);
+			var jsonData = {};
+
+			for (var pair of formData.entries()) {
+				var key = pair[0];
+				var value = pair[1];
+
+				if (jsonData.hasOwnProperty(key)) {
+					if (Array.isArray(jsonData[key])) {
+						jsonData[key].push(value);
+					} else {
+						jsonData[key] = [jsonData[key], value];
+					}
+				} else {
+					jsonData[key] = value;
+				}
+			}
+
+			var xhr = new XMLHttpRequest();
+			xhr.open('POST', event.target.action);
+			xhr.setRequestHeader('Content-Type', 'application/json');
+			xhr.onload = function () {
+				if (xhr.status !== 200) {
+					console.error('Request failed. Status:', xhr.status);
+				}
+			};
+			xhr.send(JSON.stringify(jsonData));
+		}
+	</script>
+</head>
+
+<body>
+	<div class="container">
+		<h1>Set Alarm</h1>
+		<form id="alarm-form" action="/api/config" method="post" onsubmit="onSubmit(event)">
+			<div class="form-group">
+				<label for="nametextfield">Name:</label>
+				<div class="input-group alarmName" id="nametextfield">
+					<input type="text" class="form-control" name="alarmName" />
+				</div>
+			</div>
+			<div class="form-group">
+				<label for="timepicker">Time:</label>
+				<div class="input-group date" id="timepicker">
+					<input type="time" class="form-control" name="time" />
+				</div>
+			</div>
+			<div class="form-group">
+				<label for="daypicker">Weekdays:</label>
+				<select multiple class="form-control" name="weekdays" id="daypicker" size="7">
+					<option value="monday">Monday</option>
+					<option value="tuesday">Tuesday</option>
+					<option value="wednesday">Wednesday</option>
+					<option value="thursday">Thursday</option>
+					<option value="friday">Friday</option>
+					<option value="saturday">Saturday</option>
+					<option value="sunday">Sunday</option>
+				</select>
+			</div>
+			<div class="form-group">
+				<label for="activepicker">Active:</label>
+				<input type="checkbox" checked name="isActive" id="activepicker" />
+			</div>
+			<button type="submit" class="btn btn-primary">Set Alarm</button>
+		</form>
+	</div>
+
+</body>
+
+</html>

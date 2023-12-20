@@ -1,57 +1,33 @@
-# Clock
 
-A simple clock for the TV room.
+# Getting started
+```
+pip3 install -r requirements.txt
+python3 src/app_clock.py
+```
 
-Display is from this project: [https://github.com/topherCantrell/ER-OLEDM032-1](https://github.com/topherCantrell/ER-OLEDM032-1)
+7 Segment Font is included from https://github.com/keshikan/DSEG/releases
 
-### As seen on Adafruit Show and Tell
-[![](art/adafruit.jpg)](https://www.adafruit.com/) <br>
-https://youtu.be/juNfdw3cQBY?t=981
+# Connection Guide
 
-# Links
-
-https://saelaenx.wordpress.com/2012/10/03/on-the-glcd-fonts/
-
-https://learn.parallax.com/tutorials/language/blocklyprop/oled-display-blocklyprop/installing-oled-fonts
-
-# Parts
-
-![](art/parts.jpg)
-
-# Screen saver
-
-TODO
-
-# Display implementations
-
-## 7 Segment
-![](art/dispSeg.jpg)
-
-## Binary
-![](art/dispBinary.jpg)
-
-## Word
-![](art/dispWord.jpg)
-
-## S&T
-![](art/dispSAT.jpg)
-
-## TODO
-  - Analog
-  - Tetris
-  - Roman
-  - Text
-  - Type font
-  - Potty mouth
-  
-# Web Interface
-
-![](art/web.jpg)
-  
-# Construction
-
-![](art/construct1.jpg)
-
-![](art/construct2.jpg)
-
-![](art/construct3.jpg)
+||||||||
+|---------------|--------------|----|---|----|---------|-----------------|
+|  light        |    3V3       |  1 |   |  2 |     5V  |                 |
+|  light        | GPIO02       |  3 |   |  4 |     5V  |                 |
+|  light        | GPIO03       |  5 |   |  6 |    GND  |  btn1           |
+|               | GPIO04       |  7 |   |  8 | GPIO14  |  btn1           |
+|  light        |    GND       |  9 |   | 10 | GPIO15  |                 |
+|               | GPIO17       | 11 |   | 12 | GPIO18  |                 |
+|               | GPIO27       | 13 |   | 14 |    GND  |  btn2           |
+|               | GPIO22       | 15 |   | 16 | GPIO23  |  btn2           |
+| spi (vbat, 2) |    3V3       | 17 |   | 18 | GPIO24  | spi (   dc, 14) |
+| spi ( sdi, 5) | GPIO10       | 19 |   | 20 |    GND  | spi (  vss,  1) |
+|               | GPIO09       | 21 |   | 22 | GPIO25  | spi (reset, 15) |
+| spi (sclk, 4) | GPIO11       | 23 |   | 24 | GPIO08  | spi (   cs, 16) |
+|               |    GND       | 25 |   | 26 | GPIO07  |                 |
+|               | GPIO00       | 27 |   | 28 | GPIO01  |                 |
+|               | GPIO05       | 29 |   | 30 |    GND  |  btn3           |
+|               | GPIO06       | 31 |   | 32 | GPIO12  |  btn3           |
+|               | GPIO13       | 33 |   | 34 |    GND  |  btn4           |
+|               | GPIO19       | 35 |   | 36 | GPIO16  |  btn4           |
+|               | GPIO26       | 37 |   | 38 | GPIO20  |                 |
+|  amp          |    GND       | 39 |   | 40 | GPIO21  |  amp            |

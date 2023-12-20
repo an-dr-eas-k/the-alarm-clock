@@ -1,0 +1,128 @@
+{
+  "py/object": "domain.Config",
+  "py/state": {
+    "_brightness": 15,
+    "_clock_format_string": "%-H<blinkSegment>%M",
+    "_blink_segment": ":",
+    "_refresh_timeout_in_secs": 1,
+    "_alarm_definitions": [
+      {
+        "py/object": "domain.AlarmDefinition",
+        "alarm_name": "my debugging alarm",
+        "hour": "22",
+        "min": "35",
+        "weekdays": [
+          {
+            "py/reduce": [
+              {
+                "py/type": "domain.Weekday"
+              },
+              {
+                "py/tuple": [
+                  1
+                ]
+              }
+            ]
+          },
+          {
+            "py/reduce": [
+              {
+                "py/type": "domain.Weekday"
+              },
+              {
+                "py/tuple": [
+                  2
+                ]
+              }
+            ]
+          },
+          {
+            "py/reduce": [
+              {
+                "py/type": "domain.Weekday"
+              },
+              {
+                "py/tuple": [
+                  3
+                ]
+              }
+            ]
+          },
+          {
+            "py/reduce": [
+              {
+                "py/type": "domain.Weekday"
+              },
+              {
+                "py/tuple": [
+                  4
+                ]
+              }
+            ]
+          },
+          {
+            "py/reduce": [
+              {
+                "py/type": "domain.Weekday"
+              },
+              {
+                "py/tuple": [
+                  5
+                ]
+              }
+            ]
+          },
+          {
+            "py/reduce": [
+              {
+                "py/type": "domain.Weekday"
+              },
+              {
+                "py/tuple": [
+                  6
+                ]
+              }
+            ]
+          },
+          {
+            "py/reduce": [
+              {
+                "py/type": "domain.Weekday"
+              },
+              {
+                "py/tuple": [
+                  7
+                ]
+              }
+            ]
+          }
+        ],
+        "is_active": true
+      },
+      {
+        "py/object": "domain.AlarmDefinition",
+        "alarm_name": "default morning alarm",
+        "hour": "06",
+        "min": "45",
+        "weekdays": [
+          {
+            "py/id": 5
+          },
+          {
+            "py/id": 6
+          },
+          {
+            "py/id": 7
+          },
+          {
+            "py/id": 8
+          },
+          {
+            "py/id": 9
+          }
+        ],
+        "is_active": true
+      }
+    ]
+  }
+}
