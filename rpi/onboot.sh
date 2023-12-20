@@ -22,13 +22,9 @@ check_internet() {
 
 check_internet
 
-
 cd /srv/the-alarm-clock
 git config pull.ff only
-git pull
 while true; do
-	echo "invoking app_clock.py"
-	python3 -u src/app_clock.py
 	echo "update from git"
 	git pull
 	echo "git status"
@@ -36,4 +32,6 @@ while true; do
 	git log -1
 	echo "installing requirements"
 	pip3 install -r requirements.txt
+	echo "invoking app_clock.py"
+	python3 -u src/app_clock.py
 done
