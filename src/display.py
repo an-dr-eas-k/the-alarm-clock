@@ -1,5 +1,6 @@
 import os
 import traceback
+import struct
 from luma.core.device import device as luma_device
 from luma.core.render import canvas
 from PIL import ImageFont,Image, ImageOps, ImageDraw
@@ -24,13 +25,12 @@ class Display(Observer):
 		self.content = content
 		self.content.attach(self)
 
-	def fix_image(self, image: pil_image) -> pil_image:
-		background_color =  (255, 255, 255)
-		new_image = Image.new("RGBA", image.size, background_color)
-		foo = image.split()
+	def get_fill(self) -> int:
+		color = self.content.brightness_16*16
+		return (color << 16) | (color << 8) | color
 
-		new_image.paste(image)
-		return new_image
+	def get_clock_string(self) -> str:
+		return self.content.clock.replace("7", "`")
 
 	def update(self, observation: Observation):
 		super().update(observation)
@@ -52,9 +52,8 @@ class Display(Observer):
 		draw.text([2,-9], '\U000f16b5', fill=self.get_fill(), font=font)
 
 	def write_clock(self, draw: ImageDraw.ImageDraw):
-		fill = Display.to_fill(self.content.brightness_16*16)
-		font=ImageFont.truetype(self.font_file, 50)
-		font_BBox = font.getbbox(self.content.clock)
+		font=ImageFont.truetype(self.font_file_7segment, 50)
+		font_BBox = font.getbbox(self.get_clock_string())
 		width = font_BBox[2] - font_BBox[0]
 		height = font_BBox[3] - font_BBox[1]
 		x = (draw.im.size[0]-width)/2
@@ -62,14 +61,12 @@ class Display(Observer):
 
 		draw.text(
 			stroke_width=0, 
-			fill=fill,
+			fill=self.get_fill(),
 			align='left',
-			text=self.content.clock,
+			text=self.get_clock_string(),
 			xy=[x, y],
 			font=font)
 
-	def to_fill(color):
-		return (color << 16) | (color << 8) | color
 
 
 if __name__ == '__main__':
