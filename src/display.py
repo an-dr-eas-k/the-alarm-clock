@@ -35,7 +35,6 @@ class Display(Observer):
 		clock_string = "!" * (desired_length - len(clock_string)) + clock_string
 		return clock_string
 
-
 	def update(self, observation: Observation):
 		super().update(observation)
 		self.device.contrast(self.content.contrast_16*16)
@@ -52,8 +51,9 @@ class Display(Observer):
 			self.write_wifi_status(draw)
 		
 	def write_wifi_status(self, draw: ImageDraw.ImageDraw):
-		font=ImageFont.truetype(self.font_file_nerd, 40)
-		draw.text([2,-9], '\U000f16b5', fill=self.get_fill(), font=font)
+		if (self.content.is_wifi_alarm):
+			font=ImageFont.truetype(self.font_file_nerd, 40)
+			draw.text([2,-9], '\U000f16b5', fill=self.get_fill(), font=font)
 
 	def write_clock(self, draw: ImageDraw.ImageDraw):
 		font=ImageFont.truetype(self.font_file_7segment, 50)

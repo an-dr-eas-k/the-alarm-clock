@@ -1,6 +1,6 @@
 import datetime
 import os
-import sys
+import subprocess
 import traceback
 from gpiozero import Button, DigitalOutputDevice
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -29,7 +29,12 @@ class Controls(Observer):
 			'interval', 
 			seconds=self.state.configuration.refresh_timeout_in_secs, 
 			id="clock_interval")
-		self.scheduler.start()
+
+		self.scheduler.add_job(
+			self.update_wifi_status, 
+			'interval', 
+			seconds=60,
+			id="wifi_check_interval")
 
 	def update(self, observation: Observation):
 		super().update(observation)
@@ -107,6 +112,17 @@ class Controls(Observer):
 
 		self.state.display_content.clock	\
 			= now.strftime(self.state.configuration.clock_format_string.replace("<blinkSegment>", blink_segment))
+
+	def update_wifi_status(self):
+
+		def is_ping_successful(hostname):
+			result = subprocess.run(
+				["ping", "-c", "1", hostname], 
+				stdout=subprocess.DEVNULL, 
+				stderr=subprocess.DEVNULL)
+			return result.returncode == 0
+
+		self.state.is_wifi_available = is_ping_successful("google.com")
 
 	def ring_alarm(self, alarmDefinition: AlarmDefinition):
 		print ("ring alarm")
