@@ -2,7 +2,7 @@
   "py/object": "domain.Config",
   "py/state": {
     "_brightness": 15,
-    "_clock_format_string": "%_H<blinkSegment>%M",
+    "_clock_format_string": "%-H<blinkSegment>%M",
     "_blink_segment": ":",
     "_refresh_timeout_in_secs": 1,
     "_alarm_definitions": [

@@ -30,7 +30,11 @@ class Display(Observer):
 		return (color << 16) | (color << 8) | color
 
 	def get_clock_string(self) -> str:
-		return self.content.clock.replace("7", "`")
+		clock_string = self.content.clock.replace("7", "`")
+		desired_length = 5
+		clock_string = "!" * (desired_length - len(clock_string)) + clock_string
+		return clock_string
+
 
 	def update(self, observation: Observation):
 		super().update(observation)
