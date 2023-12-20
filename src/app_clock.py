@@ -12,7 +12,7 @@ from audio import Speaker
 from controls import Controls, SoftwareControls
 
 from display import Display
-from domain import AlarmClockState, Config
+from domain import AlarmClockState, Config, DisplayContent
 from gpo import GeneralPurposeOutput
 from persistence import Persistence
 
@@ -36,19 +36,23 @@ class ClockApp:
 		
 		print("config available")
 
+		display_content = DisplayContent()
+		self.state.attach(display_content)
+		self.state.configuration.attach(display_content)
+
 		device: luma_device
 
 		if (self.is_on_hardware()):
-			self.controls = Controls(self.state)
+			self.controls = Controls(self.state, display_content)
 			self.state.audio_state.attach(GeneralPurposeOutput())
 			device = ssd1322(serial_interface=spi(device=0, port=0))
 			port = 80
 		else:
-			self.controls = SoftwareControls(self.state)
+			self.controls = SoftwareControls(self.state, display_content)
 			device = dummy(height=64, width=256, mode="RGB")
 			port = 8080
 
-		self.display = Display(device, self.state.display_content)
+		self.display = Display(device, display_content)
 		self.state.configuration.attach(
 			Persistence( self.state.configuration, self.configFile))
 

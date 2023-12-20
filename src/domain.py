@@ -115,30 +115,6 @@ class AudioDefinition(Observable):
 	def toggle_stream(self):
 		self.is_streaming = not self.is_streaming
 	
-class DisplayContent(Observable):
-	is_volume_meter_shown: bool= False
-	show_blink_segment:bool= True
-	contrast_16: int= 0
-	brightness_16: int= 1
-
-	@property
-	def clock(self) -> str:
-		return self._clock
-
-	@clock.setter
-	def clock(self, value: str):
-		self._clock = value
-		self.notify(property='clock')
-
-	def hide_volume_meter(self):
-		print("hide volume bar")
-		self.is_volume_meter_shown = False
-
-	def show_volume_meter(self):
-		print("show volume bar")
-		self.is_volume_meter_shown = True 
-
-
 class Config(Observable):
 
 	_alarm_definitions: []
@@ -212,8 +188,17 @@ class Config(Observable):
 class AlarmClockState(Observable):
 
 	configuration: Config
-	display_content: DisplayContent
 	audio_state: AudioDefinition
+	show_blink_segment: bool = True
+
+	@property
+	def clock(self) -> str:
+		return self._clock
+
+	@clock.setter
+	def clock(self, value: str):
+		self._clock = value
+		self.notify(property='clock')
 
 	@property
 	def is_wifi_available(self) -> bool:
@@ -246,5 +231,43 @@ class AlarmClockState(Observable):
 		super().__init__()
 		self.configuration = c
 		self.audio_state = AudioDefinition()
-		self.display_content = DisplayContent()
 		self.mode = Mode.Boot
+
+class DisplayContent(Observable, Observer):
+	is_volume_meter_shown: bool=False
+	is_wifi_alarm: bool=False
+	contrast_16: int=0
+	brightness_16: int=1
+	clock:str
+
+	def notify(self):
+		super().notify(reason="display_changed")
+
+	def update(self, observation: Observation):
+		super().update(observation)
+		if isinstance(observation.observable, AlarmClockState):
+			self.update_from_state(observation, observation.observable)
+		if isinstance(observation.observable, Config):
+			self.update_from_config(observation, observation.observable)
+
+	def update_from_state(self, observation: Observation, state: AlarmClockState):
+		if observation.property_name == 'is_wifi_available':
+			self.is_wifi_alarm = not state.is_wifi_available
+		if observation.property_name == 'clock':
+			self.clock = state.clock
+			self.notify()
+
+	def update_from_config(self, observation: Observation, config: Config):
+		if observation.property_name == 'brightness':
+			self.brightness_16 = int(config.brightness)
+
+	def hide_volume_meter(self):
+		print("hide volume bar")
+		self.is_volume_meter_shown = False
+		self.notify()
+
+	def show_volume_meter(self):
+		print("show volume bar")
+		self.is_volume_meter_shown = True 
+		self.notify()
+

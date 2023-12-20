@@ -5,7 +5,7 @@ import traceback
 from gpiozero import Button, DigitalOutputDevice
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
-from domain import AlarmClockState, AlarmDefinition, AudioDefinition, Observation, Observer, Config
+from domain import AlarmClockState, AlarmDefinition, AudioDefinition, DisplayContent, Observation, Observer, Config
 
 button1Id = 14
 button2Id = 23
@@ -21,9 +21,13 @@ class Controls(Observer):
 	buttons = []
 	state: AlarmClockState
 
-	def __init__(self, state: AlarmClockState) -> None:
+	def __init__(self, state: AlarmClockState, display_content: DisplayContent) -> None:
 		self.state = state
-		self.update_clock()
+		self.display_content = display_content
+		self.add_scheduler_jobs()
+		self.scheduler.start()
+
+	def add_scheduler_jobs(self):
 		self.scheduler.add_job(
 			self.update_clock, 
 			'interval', 
@@ -45,7 +49,7 @@ class Controls(Observer):
 
 	def update_from_audio_definition(self, observation: Observation, audio_definition: AudioDefinition):
 		if observation.property_name == 'volume' and not observation.during_registration:
-			self.state.display_content.show_volume_meter()
+			self.display_content.show_volume_meter()
 			self.start_hide_volume_meter_trigger()
 
 	def start_hide_volume_meter_trigger(self):
@@ -57,7 +61,7 @@ class Controls(Observer):
 			self.scheduler.reschedule_job(job_id=job_id, trigger=trigger)
 		else:
 			self.scheduler.add_job(id=job_id, trigger=trigger,
-				func=self.state.display_content.hide_volume_meter)
+				func=self.display_content.hide_volume_meter)
 
 	def update_from_config(self, observation: Observation, config: Config):
 		if observation.property_name == 'alarm_definitions':
@@ -71,8 +75,6 @@ class Controls(Observer):
 					lambda : self.ring_alarm(alDef), 
 					jobstore='alarm', 
 					trigger=alDef.to_cron_trigger())
-		if observation.property_name == 'brightness':
-			self.state.display_content.brightness_16 = config.brightness
 
 	def button1_action(self):
 		self.state.audio_state.decrease_volume()
@@ -105,12 +107,12 @@ class Controls(Observer):
 		print ("update clock")
 		now = datetime.datetime.now()
 		blink_segment = " "
-		if (self.state.display_content.show_blink_segment):
+		if (self.state.show_blink_segment):
 			blink_segment = self.state.configuration.blink_segment
+		
+		self.state.show_blink_segment = not self.state.show_blink_segment
 
-		self.state.display_content.show_blink_segment = not self.state.display_content.show_blink_segment
-
-		self.state.display_content.clock	\
+		self.state.clock	\
 			= now.strftime(self.state.configuration.clock_format_string.replace("<blinkSegment>", blink_segment))
 
 	def update_wifi_status(self):
@@ -131,8 +133,9 @@ class Controls(Observer):
 		self.state.audio_state.is_streaming = True
 
 class SoftwareControls(Controls):
-	def __init__(self, state: AlarmClockState) -> None:
-		super().__init__(state)
+	def __init__(self, state: AlarmClockState, display_content: DisplayContent) -> None:
+		super().__init__(state, display_content)
+		self.state.configuration.brightness = 12
 
 	def configure(self):
 		def key_pressed_action(key):
