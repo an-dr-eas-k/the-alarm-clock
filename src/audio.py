@@ -32,11 +32,11 @@ class InternetRadioPlayer(MediaPlayer):
 	
 		player = vlc.Instance([
 			"--no-video", 
-			"--network-caching=10000",
-			"--live-caching=10000",
-			"--file-logging",
-      "--logfile=vlc.log",
-      "--log-verbose=3"
+			"--network-caching=3000",
+			"--live-caching=3000",
+			# "--file-logging",
+      # "--logfile=/var/log/the-alarm-clock-vlc.log",
+      # "--log-verbose=3"
 		]) 
 		media_list = vlc.MediaList() 
 		media = player.media_new(self.url) 
