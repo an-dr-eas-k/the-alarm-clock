@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import  date, time
+from datetime import  date, time, timedelta
 from enum import Enum
 
 import jsonpickle
@@ -48,16 +48,16 @@ class AlarmDefinition:
 	audio_effect: AudioEffect = InternetRadio(url='https://streams.br.de/bayern2sued_2.m3u')
 
 	def to_cron_trigger(self) -> CronTrigger:
-		if (self.date is not None):
+		if (self.weekdays is not None and len(self.weekdays) > 0):
 			return CronTrigger(
-				start_date=self.date,
-				end_date=self.date,
+				day_of_week=",".join([ str(Weekday[wd].value -1) for wd in self.weekdays]),
 				hour=self.hour,
 				minute=self.min
 			)
-		elif (self.weekdays is not None and len(self.weekdays) > 0):
+		elif (self.date is not None):
 			return CronTrigger(
-				day_of_week=",".join([ str(Weekday[wd].value -1) for wd in self.weekdays]),
+				start_date=self.date,
+				end_date=self.date+timedelta(days=1),
 				hour=self.hour,
 				minute=self.min
 			)

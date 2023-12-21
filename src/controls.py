@@ -5,16 +5,18 @@ import traceback
 from gpiozero import Button, DigitalOutputDevice
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
+from apscheduler.job import Job
 from domain import AlarmClockState, AlarmDefinition, AudioDefinition, DisplayContent, Observation, Observer, Config
 
 button1Id = 14
 button2Id = 23
 button3Id = 12
 button4Id = 16
+alarm_store = 'alarm'
 
 class Controls(Observer):
 	jobstores = {
-    'alarm': {'type': 'memory'},
+    alarm_store: {'type': 'memory'},
     'default': {'type': 'memory'}
 	}
 	scheduler = BackgroundScheduler(jobstores=jobstores)
@@ -65,16 +67,24 @@ class Controls(Observer):
 
 	def update_from_config(self, observation: Observation, config: Config):
 		if observation.property_name == 'alarm_definitions':
-			self.scheduler.remove_all_jobs(jobstore='alarm')
+			self.scheduler.remove_all_jobs(jobstore=alarm_store)
 			alDef: AlarmDefinition
 			for alDef in config.alarm_definitions:
 				if not alDef.is_active:
 					continue
-				print(f"adding job for {alDef.alarm_name}")
+				print(f"adding job for '{alDef.alarm_name}'")
 				self.scheduler.add_job(
 					lambda : self.ring_alarm(alDef), 
-					jobstore='alarm', 
+					id=alDef.alarm_name,
+					jobstore=alarm_store,
 					trigger=alDef.to_cron_trigger())
+			self.cleanup_alarms()
+			self.print_active_jobs()
+
+	def print_active_jobs(self):
+			for job in self.scheduler.get_jobs(jobstore=alarm_store):
+				if (job.next_run_time is not None):
+					print(job.next_run_time.strftime(f"next runtime for '{job.id}': %Y-%m-%d %H:%M:%S"))
 
 	def button1_action(self):
 		self.state.audio_state.decrease_volume()
@@ -127,10 +137,19 @@ class Controls(Observer):
 		self.state.is_wifi_available = is_ping_successful("google.com")
 
 	def ring_alarm(self, alarmDefinition: AlarmDefinition):
-		print ("ring alarm")
+		print (f"ring alarm {alarmDefinition.alarm_name}")
 
 		self.state.audio_state.audio_effect = alarmDefinition.audio_effect
 		self.state.audio_state.is_streaming = True
+
+		if alarmDefinition.date is not None:
+			self.state.configuration.remove_alarm_definition(alarmDefinition.alarm_name)
+
+	def cleanup_alarms(self):
+		job: Job
+		for job in self.scheduler.get_jobs(jobstore=alarm_store):
+			if job.next_run_time is None:
+				self.state.configuration.remove_alarm_definition(job.id)
 
 class SoftwareControls(Controls):
 	def __init__(self, state: AlarmClockState, display_content: DisplayContent) -> None:

@@ -54,7 +54,7 @@ class ClockApp:
 
 		self.display = Display(device, display_content)
 		self.state.configuration.attach(
-			Persistence( self.state.configuration, self.configFile))
+			Persistence( self.configFile))
 
 		self.state.audio_state.attach(Speaker())
 		self.state.configuration.attach(self.controls)
