@@ -8,10 +8,10 @@ from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
 from domain import AlarmClockState, AlarmDefinition, AudioDefinition, DisplayContent, Observation, Observer, Config
 
-button1Id = 14
-button2Id = 23
-button3Id = 12
-button4Id = 16
+button1Id = 0
+button2Id = 5
+button3Id = 6
+button4Id = 13
 alarm_store = 'alarm'
 
 class Controls(Observer):
