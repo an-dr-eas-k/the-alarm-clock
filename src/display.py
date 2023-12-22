@@ -1,3 +1,4 @@
+import logging
 import os
 import traceback
 import struct
@@ -21,7 +22,7 @@ class Display(Observer):
 
 	def __init__(self, device: luma_device, content: DisplayContent) -> None:
 		self.device = device
-		print(f"device mode: {self.device.mode}")
+		logging.info("device mode: %s", self.device.mode)
 		self.content = content
 		self.content.attach(self)
 
@@ -41,7 +42,7 @@ class Display(Observer):
 		try:
 			self.adjust_display()
 		except Exception as e:
-			print(traceback.format_exc())
+			logging.warning("%s", traceback.format_exc())
 			with canvas(self.device) as draw:
 				draw.text((20,20), f"exception! ({e})", fill="white")
 					

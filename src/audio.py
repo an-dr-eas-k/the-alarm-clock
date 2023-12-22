@@ -1,3 +1,4 @@
+import logging
 import vlc
 import time
 import subprocess 
@@ -43,7 +44,7 @@ class InternetRadioPlayer(MediaPlayer):
 		media_list.add_media(media) 
 		self.vlc_player.set_media_list(media_list) 
 		self.vlc_player.play()
-		print(f'started audio {self.url}')
+		logging.info('started audio %s', self.url)
 
 	def stop(self):
 		if (self.vlc_player is None):
@@ -51,6 +52,7 @@ class InternetRadioPlayer(MediaPlayer):
 
 		self.vlc_player.stop()
 		self.vlc_player = None
+		logging.info(f'stopped audio')
 
 
 class Speaker(Observer):

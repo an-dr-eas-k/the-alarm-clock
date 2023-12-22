@@ -1,41 +1,50 @@
 {
-	// Use IntelliSense to learn about possible attributes.
-	// Hover to view descriptions of existing attributes.
-	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-	"version": "0.2.0",
-	"configurations": [
-		{
-			"name": "python app_clock.py",
-			"type": "python",
-			"request": "launch",
-			"program": "app_clock.py",
-			"args": [
-				"--software"
-			],
-			"console": "integratedTerminal",
-			"cwd": "${workspaceFolder}/src",
-			"justMyCode": false,
-		},
-		{
-			"name": "python audio.py",
-			"type": "python",
-			"request": "launch",
-			"program": "audio.py",
-			"console": "integratedTerminal",
-			"cwd": "${workspaceFolder}/src",
-			"justMyCode": false,
-		},
-		{
-			"name": "python display.py",
-			"type": "python",
-			"request": "launch",
-			"program": "display.py",
-			"args": [
-				"--software"
-			],
-			"console": "integratedTerminal",
-			"cwd": "${workspaceFolder}/src",
-			"justMyCode": false,
-		}
-	]
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "python app_clock.py",
+      "type": "python",
+      "request": "launch",
+      "program": "app_clock.py",
+      "args": [
+        "--software"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/src",
+      "justMyCode": false,
+    },
+    {
+      "name": "python audio.py",
+      "type": "python",
+      "request": "launch",
+      "program": "audio.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/src",
+      "justMyCode": false,
+    },
+    {
+      "name": "python display.py",
+      "type": "python",
+      "request": "launch",
+      "program": "display.py",
+      "args": [
+        "--software"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/src",
+      "justMyCode": false,
+    },
+    {
+      "name": "python geolocation.py",
+      "type": "python",
+      "request": "launch",
+      "program": "geolocation.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/src/utils",
+      "justMyCode": false,
+    }
+  ]
 }

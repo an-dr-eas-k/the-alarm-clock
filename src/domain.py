@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import  date, time, timedelta
 from enum import Enum
+import logging
 
 import jsonpickle
 from apscheduler.triggers.cron import CronTrigger
@@ -253,6 +254,8 @@ class DisplayContent(Observable, Observer):
 	def update_from_state(self, observation: Observation, state: AlarmClockState):
 		if observation.property_name == 'is_wifi_available':
 			self.is_wifi_alarm = not state.is_wifi_available
+		if observation.property_name == 'is_luminous':
+			self.contrast_16 = 16 if state.is_luminous else 0
 		if observation.property_name == 'clock':
 			self.clock = state.clock
 			self.notify()
@@ -262,12 +265,12 @@ class DisplayContent(Observable, Observer):
 			self.brightness_16 = int(config.brightness)
 
 	def hide_volume_meter(self):
-		print("hide volume bar")
+		logging.info("volume bar shown: %s", False)
 		self.is_volume_meter_shown = False
 		self.notify()
 
 	def show_volume_meter(self):
-		print("show volume bar")
+		logging.info("volume bar shown: %s", True)
 		self.is_volume_meter_shown = True 
 		self.notify()
 

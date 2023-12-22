@@ -1,4 +1,5 @@
 import datetime
+import logging
 import os
 import subprocess
 import traceback
@@ -7,17 +8,19 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
 from domain import AlarmClockState, AlarmDefinition, AudioDefinition, DisplayContent, Observation, Observer, Config
+from utils.geolocation import SunEvent, get_sun_event_cron_trigger, last_sun_event
 
 button1Id = 0
 button2Id = 5
 button3Id = 6
 button4Id = 13
 alarm_store = 'alarm'
+default_store = 'default'
 
 class Controls(Observer):
 	jobstores = {
     alarm_store: {'type': 'memory'},
-    'default': {'type': 'memory'}
+    default_store: {'type': 'memory'}
 	}
 	scheduler = BackgroundScheduler(jobstores=jobstores)
 	buttons = []
@@ -26,21 +29,32 @@ class Controls(Observer):
 	def __init__(self, state: AlarmClockState, display_content: DisplayContent) -> None:
 		self.state = state
 		self.display_content = display_content
+		self.sun_event_occured(last_sun_event())
 		self.add_scheduler_jobs()
 		self.scheduler.start()
+		self.print_active_jobs(default_store)
 
 	def add_scheduler_jobs(self):
 		self.scheduler.add_job(
 			self.update_clock, 
 			'interval', 
 			seconds=self.state.configuration.refresh_timeout_in_secs, 
-			id="clock_interval")
+			id="clock_interval",
+			jobstore=default_store)
 
 		self.scheduler.add_job(
 			self.update_wifi_status, 
 			'interval', 
 			seconds=60,
-			id="wifi_check_interval")
+			id="wifi_check_interval", 
+			jobstore=default_store)
+
+		for event in SunEvent.__members__.values():
+			self.scheduler.add_job(
+				lambda : self.sun_event_occured(event), 
+				trigger=get_sun_event_cron_trigger(event),
+				id=event.value,
+				jobstore=default_store)
 
 	def update(self, observation: Observation):
 		super().update(observation)
@@ -72,19 +86,19 @@ class Controls(Observer):
 			for alDef in config.alarm_definitions:
 				if not alDef.is_active:
 					continue
-				print(f"adding job for '{alDef.alarm_name}'")
+				logging.info("adding job for '%s'", alDef.alarm_name)
 				self.scheduler.add_job(
 					lambda : self.ring_alarm(alDef), 
 					id=alDef.alarm_name,
 					jobstore=alarm_store,
 					trigger=alDef.to_cron_trigger())
 			self.cleanup_alarms()
-			self.print_active_jobs()
+			self.print_active_jobs(alarm_store)
 
-	def print_active_jobs(self):
-			for job in self.scheduler.get_jobs(jobstore=alarm_store):
-				if (job.next_run_time is not None):
-					print(job.next_run_time.strftime(f"next runtime for '{job.id}': %Y-%m-%d %H:%M:%S"))
+	def print_active_jobs(self, jobstore):
+			for job in self.scheduler.get_jobs(jobstore=jobstore):
+				if (hasattr(job, 'next_run_time') and job.next_run_time is not None):
+					logging.info("next runtime for job '%s': %s", job.id, job.next_run_time.strftime(f"%Y-%m-%d %H:%M:%S"))
 
 	def button1_action(self):
 		self.state.audio_state.decrease_volume()
@@ -114,7 +128,6 @@ class Controls(Observer):
 			self.buttons.append(b)
 
 	def update_clock(self):
-		print ("update clock")
 		now = datetime.datetime.now()
 		blink_segment = " "
 		if (self.state.show_blink_segment):
@@ -124,6 +137,7 @@ class Controls(Observer):
 
 		self.state.clock	\
 			= now.strftime(self.state.configuration.clock_format_string.replace("<blinkSegment>", blink_segment))
+		logging.info ("update clock %s", self.state.clock)
 
 	def update_wifi_status(self):
 
@@ -135,9 +149,14 @@ class Controls(Observer):
 			return result.returncode == 0
 
 		self.state.is_wifi_available = is_ping_successful("google.com")
+		logging.info ("update wifi, is available: %s", self.state.is_wifi_available)
+
+	def sun_event_occured(self, event: SunEvent):
+		logging.info ("sun event %s", event)
+		self.state.is_luminous = event == SunEvent.sunrise
 
 	def ring_alarm(self, alarmDefinition: AlarmDefinition):
-		print (f"ring alarm {alarmDefinition.alarm_name}")
+		logging.info ("ring alarm %s", alarmDefinition.alarm_name)
 
 		self.state.audio_state.audio_effect = alarmDefinition.audio_effect
 		self.state.audio_state.is_streaming = True
@@ -158,7 +177,7 @@ class SoftwareControls(Controls):
 
 	def configure(self):
 		def key_pressed_action(key):
-			print (f"pressed {key}")
+			logging.info ("pressed %s", key)
 			if not hasattr(key, 'char'):
 				return
 			try:
@@ -172,7 +191,7 @@ class SoftwareControls(Controls):
 				if (key.char == '4'):
 					self.button4_action()
 			except Exception:
-				print(traceback.format_exc())
+				logging.warning("%s", traceback.format_exc())
 
 		try:
 			from pynput.keyboard import Listener

@@ -1,4 +1,6 @@
 import argparse
+import logging
+import logging.config
 import os
 from luma.oled.device import ssd1322
 from luma.core.device import device as luma_device
@@ -20,6 +22,7 @@ class ClockApp:
 	configFile = f"{os.path.dirname(os.path.realpath(__file__))}/config.json"
 
 	def __init__(self) -> None:
+		logging.config.fileConfig('logging.conf')
 		parser = argparse.ArgumentParser("ClockApp")
 		parser.add_argument("-s", '--software', action='store_true')
 		self.args = parser.parse_args()
@@ -34,7 +37,7 @@ class ClockApp:
 		if os.path.exists(self.configFile):
 			self.state.configuration = Config.deserialize(self.configFile)
 		
-		print("config available")
+		logging.info("config available")
 
 		display_content = DisplayContent()
 		self.state.attach(display_content)
@@ -67,5 +70,5 @@ class ClockApp:
 		tornado.ioloop.IOLoop.current().start()
 		
 if __name__ == '__main__':
-	print ("start")
+	logging.info ("start")
 	ClockApp().go()
