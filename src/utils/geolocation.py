@@ -6,56 +6,70 @@ from astral import LocationInfo
 from astral.sun import sun
 from apscheduler.triggers.cron import CronTrigger
 
+from utils.singleton import singleton
+
 class SunEvent(Enum):
 	sunrise = 'sunrise'
 	sunset = 'sunset'
 
-def ipinfo():
-	url = 'http://ip-api.com/json'
-	response = urlopen(url)
-	return json.load(response)
+@singleton
+class GeoLocation:
 
-def get_location_info() -> LocationInfo:
-	ip_info = ipinfo()
-	return LocationInfo(
-		ip_info['city'], 
-		ip_info['region'], 
-		ip_info['timezone'], 
-		ip_info['lat'], 
-		ip_info['lon'])
+	def __init__(self):
+		self.location_info = self.get_location_info()
 
-def get_sun_event(
-		event: SunEvent, 
-		day: datetime.date = datetime.date.today()) -> datetime.datetime:
+	def now(self) -> datetime.datetime:
+		return datetime.datetime.now(self.location_info.tzinfo)
 
-	location = get_location_info()
-	return sun(location.observer, date=day)[event.value]
+	def ip_info(self):
+		url = 'http://ip-api.com/json'
+		response = urlopen(url)
+		return json.load(response)
 
-def get_sun_event_cron_trigger(
-		event: SunEvent, 
-		day: datetime.date = datetime.date.today()) -> CronTrigger:
+	def get_location_info(self) -> LocationInfo:
+		ip_info = self.ip_info()
+		return LocationInfo(
+			ip_info['city'], 
+			ip_info['region'], 
+			ip_info['timezone'], 
+			ip_info['lat'], 
+			ip_info['lon'])
 
-	event_time = get_sun_event(event, day+datetime.timedelta(days=1))
-	return CronTrigger(
-		start_date=event_time.date(),
-		end_date=event_time.date()+datetime.timedelta(days=1),
-		hour=event_time.hour,
-		minute=event_time.minute
-	)
+	def get_sun_event(self,
+			event: SunEvent, 
+			day: datetime.date = None) -> datetime.datetime:
 
-def last_sun_event(dt: datetime.datetime =None ) -> SunEvent:
-	location = get_location_info()
-	if dt is None:
-		dt = datetime.datetime.now(location.tzinfo)
-	localSun = sun(location.observer, date=dt.date(), tzinfo=location.tzinfo)
-	return SunEvent.sunrise \
-		if dt > localSun[SunEvent.sunrise.value] and dt < localSun[SunEvent.sunset.value] \
-		else SunEvent.sunset
+		day = self.now().date() if day is None else day
+
+		return sun(self.location_info.observer, date=day)[event.value]
+
+	def get_sun_event_cron_trigger(self,
+			event: SunEvent, 
+			day: datetime.date = None) -> CronTrigger:
+
+		day = self.now().date() if day is None else day
+
+		event_time = self.get_sun_event(event, day+datetime.timedelta(days=1))
+		return CronTrigger(
+			start_date=event_time.date(),
+			end_date=event_time.date()+datetime.timedelta(days=1),
+			hour=event_time.hour,
+			minute=event_time.minute
+		)
+
+	def last_sun_event(self, dt: datetime.datetime =None ) -> SunEvent:
+		if dt is None:
+			dt = datetime.datetime.now(self.location_info.tzinfo)
+		localSun = sun(self.location_info.observer, date=dt.date(), tzinfo=self.location_info.tzinfo)
+		return SunEvent.sunrise \
+			if dt > localSun[SunEvent.sunrise.value] and dt < localSun[SunEvent.sunset.value] \
+			else SunEvent.sunset
 
 if __name__ == '__main__':
-	data = ipinfo()
+	gl = GeoLocation()
+	data = GeoLocation.ip_info()
 
 	print (data)
 
-	print (get_sun_event('sunrise').strftime('%H:%M:%S'))
-	print (get_sun_event('sunset').strftime('%H:%M:%S'))
+	print (gl.get_sun_event('sunrise').strftime('%H:%M:%S'))
+	print (gl.get_sun_event('sunset').strftime('%H:%M:%S'))

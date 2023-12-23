@@ -8,7 +8,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
 from domain import AlarmClockState, AlarmDefinition, AudioDefinition, DisplayContent, Observation, Observer, Config
-from utils.geolocation import SunEvent, get_sun_event_cron_trigger, last_sun_event
+from utils.geolocation import GeoLocation, SunEvent
 
 button1Id = 0
 button2Id = 5
@@ -29,7 +29,7 @@ class Controls(Observer):
 	def __init__(self, state: AlarmClockState, display_content: DisplayContent) -> None:
 		self.state = state
 		self.display_content = display_content
-		self.sun_event_occured(last_sun_event())
+		self.sun_event_occured(state.geo_location.last_sun_event())
 		self.add_scheduler_jobs()
 		self.scheduler.start()
 		self.print_active_jobs(default_store)
@@ -52,7 +52,7 @@ class Controls(Observer):
 		for event in SunEvent.__members__.values():
 			self.scheduler.add_job(
 				lambda : self.sun_event_occured(event), 
-				trigger=get_sun_event_cron_trigger(event),
+				trigger=self.state.geo_location.get_sun_event_cron_trigger(event),
 				id=event.value,
 				jobstore=default_store)
 
@@ -70,7 +70,7 @@ class Controls(Observer):
 
 	def start_hide_volume_meter_trigger(self):
 		job_id = 'hide_volume_meter_trigger'
-		trigger = DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(seconds=5))
+		trigger = DateTrigger(run_date=GeoLocation().now() + datetime.timedelta(seconds=5))
 
 		existing_job = self.scheduler.get_job(job_id=job_id)
 		if existing_job:
@@ -128,7 +128,6 @@ class Controls(Observer):
 			self.buttons.append(b)
 
 	def update_clock(self):
-		now = datetime.datetime.now()
 		blink_segment = " "
 		if (self.state.show_blink_segment):
 			blink_segment = self.state.configuration.blink_segment
@@ -136,7 +135,7 @@ class Controls(Observer):
 		self.state.show_blink_segment = not self.state.show_blink_segment
 
 		self.state.clock	\
-			= now.strftime(self.state.configuration.clock_format_string.replace("<blinkSegment>", blink_segment))
+			= GeoLocation().now().strftime(self.state.configuration.clock_format_string.replace("<blinkSegment>", blink_segment))
 		logging.info ("update clock %s", self.state.clock)
 
 	def update_wifi_status(self):

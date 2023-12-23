@@ -7,6 +7,7 @@ import jsonpickle
 from apscheduler.triggers.cron import CronTrigger
 
 from observer import Observable, Observation, Observer
+from utils.geolocation import GeoLocation
 
 class Mode(Enum):
 	Boot = 1
@@ -233,6 +234,7 @@ class AlarmClockState(Observable):
 		self.configuration = c
 		self.audio_state = AudioDefinition()
 		self.mode = Mode.Boot
+		self.geo_location = GeoLocation()
 
 class DisplayContent(Observable, Observer):
 	is_volume_meter_shown: bool=False
@@ -255,7 +257,7 @@ class DisplayContent(Observable, Observer):
 		if observation.property_name == 'is_wifi_available':
 			self.is_wifi_alarm = not state.is_wifi_available
 		if observation.property_name == 'is_luminous':
-			self.contrast_16 = 16 if state.is_luminous else 0
+			self.contrast_16 = 10 if state.is_luminous else 1
 		if observation.property_name == 'clock':
 			self.clock = state.clock
 			self.notify()

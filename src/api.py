@@ -7,6 +7,7 @@ from PIL.Image import Image
 from datetime import datetime, timedelta
 
 from domain import AlarmClockState, AlarmDefinition, Config, Weekday
+from utils.geolocation import GeoLocation
 
 class DisplayHandler(tornado.web.RequestHandler):
 
@@ -49,7 +50,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 		self.config.add_alarm_definition ( self.parse_alarm_definition(form_arguments) )
 
 	def get_future_date(hour, minute):
-		now = datetime.now()
+		now = GeoLocation().now()
 		target = now.replace(hour=hour, minute=minute)
 		if target < now:
 				target = target + timedelta(days=1)
@@ -69,6 +70,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 				lambda weekday: Weekday[weekday.upper()].name, 
 				weekdays))
 		else:
+
 			next_day = ConfigApiHandler.get_future_date(ala.hour, ala.min)
 			ala.date = next_day
 		ala.is_active = form_arguments['isActive'] == 'on'
