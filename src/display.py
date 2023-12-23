@@ -28,7 +28,7 @@ class Display(Observer):
 
 	def get_fill(self) -> int:
 		color = self.content.brightness_16*16
-		return (color << 16) | (color << 8) | color
+		return min(255,(color << 16) | (color << 8) | color)
 
 	def get_clock_string(self) -> str:
 		clock_string = self.content.clock.replace("7", "`")
@@ -38,7 +38,7 @@ class Display(Observer):
 
 	def update(self, observation: Observation):
 		super().update(observation)
-		self.device.contrast(self.content.contrast_16*16)
+		self.device.contrast(min(255, self.content.contrast_16*16))
 		try:
 			self.adjust_display()
 		except Exception as e:

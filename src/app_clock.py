@@ -22,7 +22,7 @@ class ClockApp:
 	configFile = f"{os.path.dirname(os.path.realpath(__file__))}/config.json"
 
 	def __init__(self) -> None:
-		logging.config.fileConfig('logging.conf')
+		logging.config.fileConfig(os.path.join(os.path.dirname(os.path.relpath(__file__)), 'logging.conf'))
 		parser = argparse.ArgumentParser("ClockApp")
 		parser.add_argument("-s", '--software', action='store_true')
 		self.args = parser.parse_args()
