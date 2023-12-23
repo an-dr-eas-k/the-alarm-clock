@@ -6,7 +6,7 @@ import logging
 import jsonpickle
 from apscheduler.triggers.cron import CronTrigger
 
-from observer import Observable, Observation, Observer
+from utils.observer import Observable, Observation, Observer
 from utils.geolocation import GeoLocation
 
 class Mode(Enum):
