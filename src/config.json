@@ -1,7 +1,7 @@
 {
   "py/object": "domain.Config",
   "py/state": {
-    "_brightness": 0,
+    "_brightness": 1,
     "_clock_format_string": "%-H<blinkSegment>%M",
     "_blink_segment": ":",
     "_refresh_timeout_in_secs": 1,
