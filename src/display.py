@@ -47,7 +47,7 @@ class Display(Observer):
 				draw.text((20,20), f"exception! ({e})", fill="white")
 					
 	def adjust_display(self):
-		self.device.contrast(max(0, min(255, get_room_brightness()/65000*255)))
+		self.device.contrast(max(0, min(255, int(get_room_brightness()/65000*255))))
 		with canvas(self.device) as draw: 
 			self.write_clock(draw)
 			self.write_wifi_status(draw)
