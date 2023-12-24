@@ -8,7 +8,7 @@ from PIL import ImageFont,Image, ImageOps, ImageDraw
 from PIL.Image import Image as pil_image
 
 from domain import DisplayContent, Observation, Observer
-from gpi import get_room_brightness
+from gpi import get_room_brightness, get_room_brightness_255
 
 
 class Display(Observer):
@@ -47,7 +47,7 @@ class Display(Observer):
 				draw.text((20,20), f"exception! ({e})", fill="white")
 					
 	def adjust_display(self):
-		self.device.contrast(max(0, min(255, int(get_room_brightness()/65000*255))))
+		self.device.contrast(get_room_brightness_255())
 		with canvas(self.device) as draw: 
 			self.write_clock(draw)
 			self.write_wifi_status(draw)
