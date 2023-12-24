@@ -1,14 +1,12 @@
 import logging
 import os
 import traceback
-import struct
 from luma.core.device import device as luma_device
 from luma.core.render import canvas
-from PIL import ImageFont,Image, ImageOps, ImageDraw
-from PIL.Image import Image as pil_image
+from PIL import ImageFont, ImageDraw
 
 from domain import DisplayContent, Observation, Observer
-from gpi import get_room_brightness, get_room_brightness_255
+from gpi import get_room_brightness_255
 
 
 class Display(Observer):
