@@ -11,11 +11,11 @@ python3 src/app_clock.py
 
 |         |||||||||
 |---------|---------------|--------------|----|---|----|---------|-----------------|---------|
-|         |  light        |    3V3       |  1 |   |  2 |     5V  |                 |         |
-|         |  light        | GPIO02       |  3 |   |  4 |     5V  |  amp ( +5V, 6)  |    blue |
-|         |  light        | GPIO03       |  5 |   |  6 |    GND  |  amp ( GND, 7)  |   white |
+| red     |  vcc          |    3V3       |  1 |   |  2 |     5V  |                 |         |
+| orange  |  i2c (sda)    | GPIO02       |  3 |   |  4 |     5V  |  amp ( +5V, 6)  |    blue |
+| yellow  |  i2c (scl)    | GPIO03       |  5 |   |  6 |    GND  |  amp ( GND, 7)  |   white |
 |         |               | GPIO04       |  7 |   |  8 | GPIO14  |  amp (  SW, 5)  |  yellow |
-|         |  light        |    GND       |  9 |   | 10 | GPIO15  |                 |         |
+| brown   |  gnd          |    GND       |  9 |   | 10 | GPIO15  |                 |         |
 |         |               | GPIO17       | 11 |   | 12 | GPIO18  |  i2s (future)   |         |
 |         |               | GPIO27       | 13 |   | 14 |    GND  |                 |         |
 |         | mute (future) | GPIO22       | 15 |   | 16 | GPIO23  |                 |         |

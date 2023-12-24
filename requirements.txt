@@ -8,3 +8,4 @@ gpiozero
 apscheduler
 jsonpickle
 astral
+adafruit-circuitpython-bh1750
