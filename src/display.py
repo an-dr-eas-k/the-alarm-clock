@@ -26,7 +26,7 @@ class Display(Observer):
 		self.content.attach(self)
 
 	def get_fill(self) -> int:
-		color = self.content.brightness_16*16
+		color = self.content.brightness_16*15
 		logging.debug("color_255: %s", color)
 		return min(255,(color << 16) | (color << 8) | color)
 
