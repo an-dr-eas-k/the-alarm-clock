@@ -26,9 +26,14 @@ class Display(Observer):
 		self.content.attach(self)
 
 	def get_fill(self) -> int:
-		color = self.content.brightness_16*15
-		logging.debug("color_255: %s", color)
-		return min(255,(color << 16) | (color << 8) | color)
+		color = min(255, self.content.brightness_16*16)
+		logging.debug("fill_255: %s", color)
+		return (color << 16) | (color << 8) | color
+
+	def set_contrast(self):
+		room_brightness_255  = get_room_brightness_255()
+		logging.debug("display_contrast_255: %s", room_brightness_255)
+		self.device.contrast(room_brightness_255)
 
 	def get_clock_string(self) -> str:
 		clock_string = self.content.clock.replace("7", "`")
@@ -45,11 +50,6 @@ class Display(Observer):
 			with canvas(self.device) as draw:
 				draw.text((20,20), f"exception! ({e})", fill="white")
 
-	def set_contrast(self):
-		room_brightness_255  = get_room_brightness_255()
-		logging.debug("room_brightness_255: %s", room_brightness_255)
-		self.device.contrast(room_brightness_255)
-					
 	def adjust_display(self):
 		self.set_contrast();
 		with canvas(self.device) as draw: 
