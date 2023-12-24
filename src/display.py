@@ -27,6 +27,7 @@ class Display(Observer):
 
 	def get_fill(self) -> int:
 		color = self.content.brightness_16*16
+		logging.debug("color_255: %s", color)
 		return min(255,(color << 16) | (color << 8) | color)
 
 	def get_clock_string(self) -> str:
@@ -43,9 +44,14 @@ class Display(Observer):
 			logging.warning("%s", traceback.format_exc())
 			with canvas(self.device) as draw:
 				draw.text((20,20), f"exception! ({e})", fill="white")
+
+	def set_contrast(self):
+		room_brightness_255  = get_room_brightness_255()
+		logging.debug("room_brightness_255: %s", room_brightness_255)
+		self.device.contrast(room_brightness_255)
 					
 	def adjust_display(self):
-		self.device.contrast(get_room_brightness_255())
+		self.set_contrast();
 		with canvas(self.device) as draw: 
 			self.write_clock(draw)
 			self.write_wifi_status(draw)
