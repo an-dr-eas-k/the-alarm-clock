@@ -13,14 +13,17 @@ def get_room_brightness() -> float:
 	except:
 		return -1
 
+def respect_ranges(value: float) ->  int:
+	return int(max(16, min(255, value)))
+
 def get_room_brightness_16() -> int:
-	brightness_16= int(max(0, min(15, get_room_brightness()/2500 * 15)))
+	brightness_16= respect_ranges(get_room_brightness()/2500 * 15)
 	logging.debug("brightness_16: %s", brightness_16)
 	return brightness_16
 
 def get_room_brightness_256_v2() -> int:
 	# return 15 if get_room_brightness() > 1 else 1
-	brightness_256_v2 = int(max(0, min(255, 500/(1+math.exp(-0.1*get_room_brightness()))-250)))
+	brightness_256_v2 = respect_ranges( 500/(1+math.exp(-0.1*get_room_brightness()))-250)
 	logging.debug("brightness_256_v2: %s", brightness_256_v2)
 	return brightness_256_v2
 
