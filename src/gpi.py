@@ -1,4 +1,5 @@
 import logging
+import math
 import time
 import board
 import adafruit_bh1750
@@ -14,6 +15,9 @@ def get_room_brightness() -> float:
 
 def get_room_brightness_255() -> int:
 	return int(max(0, min(255, get_room_brightness()/2500 * 255)))
+
+def get_room_brightness_255_2() -> int:
+	return int(max(0, min(255, 500/(1+math.exp(-0.1*get_room_brightness()))-250)))
 
 
 if __name__ == "__main__":

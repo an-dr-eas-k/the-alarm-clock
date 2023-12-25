@@ -6,7 +6,7 @@ from luma.core.render import canvas
 from PIL import ImageFont, ImageDraw
 
 from domain import DisplayContent, Observation, Observer
-from gpi import get_room_brightness_255
+from gpi import get_room_brightness_255, get_room_brightness_255_2
 
 
 class Display(Observer):
@@ -31,7 +31,7 @@ class Display(Observer):
 		return (color << 16) | (color << 8) | color
 
 	def set_contrast(self):
-		room_brightness_255  = get_room_brightness_255()
+		room_brightness_255  = get_room_brightness_255_2()
 		logging.debug("display_contrast_255: %s", room_brightness_255)
 		self.device.contrast(room_brightness_255)
 
