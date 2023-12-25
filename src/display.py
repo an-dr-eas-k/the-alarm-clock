@@ -18,6 +18,7 @@ class Presentation:
 	content: DisplayContent
 
 	def __init__(self, device: luma_device, content: DisplayContent) -> None:
+		logging.info("used presentation: %s", self.__class__.__name__)
 		self.device = device
 		self.content = content
 
@@ -27,11 +28,8 @@ class Presentation:
 		clock_string = "!" * (desired_length - len(clock_string)) + clock_string
 		return clock_string
 
-
 	def get_fill(self):
-		room_brightness_16  = get_room_brightness_16_v2()
-		logging.debug("room_brightness_16: %s", room_brightness_16)
-		greyscale_value = room_brightness_16*16
+		greyscale_value = 1
 		return (greyscale_value << 16) | (greyscale_value << 8) | greyscale_value
 
 	def write_wifi_status(self, draw: ImageDraw.ImageDraw):

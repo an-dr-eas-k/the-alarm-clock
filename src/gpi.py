@@ -8,13 +8,15 @@ def get_room_brightness() -> float:
 	try:
 		i2c = board.I2C()
 		sensor = adafruit_bh1750.BH1750(i2c)
-		logging.info("brightness: %s", sensor.lux)
+		logging.debug("raw sensor value in lux: %s", sensor.lux)
 		return sensor.lux
 	except:
 		return -1
 
 def get_room_brightness_16() -> int:
-	return int(max(0, min(15, get_room_brightness()/2500 * 15)))
+	brightness_16= int(max(0, min(15, get_room_brightness()/2500 * 15)))
+	logging.debug("brightness_16: %s", brightness_16)
+	return brightness_16
 
 def get_room_brightness_16_v2() -> int:
 	return 15 if get_room_brightness() > 1 else 1
