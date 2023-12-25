@@ -81,7 +81,7 @@ class BrightPresentation(Presentation):
 		return (greyscale_value << 16) | (greyscale_value << 8) | greyscale_value
 
 	def present(self):
-		self.device.contrast(128)
+		self.device.contrast(16)
 		super().present()
 
 class Display(Observer):
