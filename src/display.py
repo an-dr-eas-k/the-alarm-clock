@@ -6,7 +6,7 @@ from luma.core.render import canvas
 from PIL import ImageFont, ImageDraw
 
 from domain import DisplayContent, Observation, Observer
-from gpi import get_room_brightness, get_room_brightness_16, get_room_brightness_16_v2
+from gpi import get_room_brightness, get_room_brightness_16, get_room_brightness_256_v2
 
 resources_dir = f"{os.path.dirname(os.path.realpath(__file__))}/resources"
 
@@ -64,12 +64,16 @@ class DozyPresentation(Presentation):
 	def present(self):
 		self.device.contrast(16)
 		super().present()
-		pass
 
 class BrightPresentation(Presentation):
 
+	def get_fill(self):
+		greyscale_value = get_room_brightness_256_v2()
+		return (greyscale_value << 16) | (greyscale_value << 8) | greyscale_value
+
 	def present(self):
-		pass
+		self.device.contrast(128)
+		super().present()
 
 class Display(Observer):
 

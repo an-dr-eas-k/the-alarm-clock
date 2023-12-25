@@ -18,9 +18,11 @@ def get_room_brightness_16() -> int:
 	logging.debug("brightness_16: %s", brightness_16)
 	return brightness_16
 
-def get_room_brightness_16_v2() -> int:
-	return 15 if get_room_brightness() > 1 else 1
-	# return int(max(0, min(255, 500/(1+math.exp(-0.1*get_room_brightness()))-250)))
+def get_room_brightness_256_v2() -> int:
+	# return 15 if get_room_brightness() > 1 else 1
+	brightness_256_v2 = int(max(0, min(255, 500/(1+math.exp(-0.1*get_room_brightness()))-250)))
+	logging.debug("brightness_256_v2: %s", brightness_256_v2)
+	return brightness_256_v2
 
 
 if __name__ == "__main__":
