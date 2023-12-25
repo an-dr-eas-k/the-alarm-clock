@@ -22,6 +22,10 @@ class Presentation:
 		self.device = device
 		self.content = content
 
+
+	def get_clock_font(self):
+		return ImageFont.truetype(self.font_file_7segment, 60)
+
 	def get_clock_string(self) -> str:
 		clock_string = self.content.clock.replace("7", "`")
 		desired_length = 5
@@ -38,7 +42,7 @@ class Presentation:
 			draw.text([2,-9], '\U000f16b5', fill=self.get_fill(), font=font)
 
 	def write_clock(self, draw: ImageDraw.ImageDraw):
-		font=ImageFont.truetype(self.font_file_7segment, 50)
+		font=self.get_clock_font()
 		font_BBox = font.getbbox(self.get_clock_string())
 		width = font_BBox[2] - font_BBox[0]
 		height = font_BBox[3] - font_BBox[1]
@@ -60,6 +64,11 @@ class Presentation:
 			self.write_wifi_status(draw)
 
 class DozyPresentation(Presentation):
+
+	font_file_7segment = f"{resources_dir}/DSEG7ClassicMini-Light.ttf"
+
+	def get_clock_font(self):
+		return ImageFont.truetype(self.font_file_7segment, 40)
 
 	def present(self):
 		self.device.contrast(16)
