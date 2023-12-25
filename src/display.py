@@ -25,15 +25,15 @@ class Display(Observer):
 		self.content = content
 		self.content.attach(self)
 
-	def get_fill(self) -> int:
+	def set_contrast(self) -> int:
 		color = min(255, self.content.brightness_16*16)
 		logging.debug("fill_255: %s", color)
-		return (color << 16) | (color << 8) | color
+		self.device.contrast(color)
 
-	def set_contrast(self):
+	def get_fill(self):
 		room_brightness_255  = get_room_brightness_255_2()
 		logging.debug("display_contrast_255: %s", room_brightness_255)
-		self.device.contrast(room_brightness_255)
+		return (room_brightness_255 << 16) | (room_brightness_255 << 8) | room_brightness_255
 
 	def get_clock_string(self) -> str:
 		clock_string = self.content.clock.replace("7", "`")
