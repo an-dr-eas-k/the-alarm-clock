@@ -4,7 +4,7 @@ import os
 import tornado
 import tornado.web
 from PIL.Image import Image
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from domain import AlarmClockState, AlarmDefinition, Config, Weekday
 from utils.geolocation import GeoLocation

@@ -152,7 +152,7 @@ class Controls(Observer):
 
 	def sun_event_occured(self, event: SunEvent):
 		logging.info ("sun event %s", event)
-		self.state.is_luminous = event == SunEvent.sunrise
+		self.state.is_daytime = event == SunEvent.sunrise
 
 	def ring_alarm(self, alarmDefinition: AlarmDefinition):
 		logging.info ("ring alarm %s", alarmDefinition.alarm_name)

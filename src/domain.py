@@ -212,13 +212,13 @@ class AlarmClockState(Observable):
 		self.notify(property='is_wifi_available')
 
 	@property
-	def is_luminous(self)-> bool:
-		return self._is_luminous
+	def is_daytime(self)-> bool:
+		return self._is_daytime
 
-	@is_luminous.setter
-	def is_luminous(self, value: bool):
-		self._is_luminous = value
-		self.notify(property='is_luminous')
+	@is_daytime.setter
+	def is_daytime(self, value: bool):
+		self._is_daytime = value
+		self.notify(property='is_daytime')
 	
 	@property
 	def mode(self)-> Mode:
@@ -235,13 +235,21 @@ class AlarmClockState(Observable):
 		self.audio_state = AudioDefinition()
 		self.mode = Mode.Boot
 		self.geo_location = GeoLocation()
+		self.is_wifi_available = True
 
 class DisplayContent(Observable, Observer):
 	is_volume_meter_shown: bool=False
-	is_wifi_alarm: bool=False
-	contrast_16: int=0
-	brightness_16: int=1
 	clock:str
+
+	def __init__(self, state: AlarmClockState):
+		super().__init__()
+		self.state = state
+
+	def get_brightness_16(self) -> int:
+		return min(15, max(1, self.state.configuration.brightness))
+
+	def get_is_wifi_available(self)-> bool:
+		return self.state.is_wifi_available
 
 	def notify(self):
 		super().notify(reason="display_changed")
@@ -250,21 +258,11 @@ class DisplayContent(Observable, Observer):
 		super().update(observation)
 		if isinstance(observation.observable, AlarmClockState):
 			self.update_from_state(observation, observation.observable)
-		if isinstance(observation.observable, Config):
-			self.update_from_config(observation, observation.observable)
 
 	def update_from_state(self, observation: Observation, state: AlarmClockState):
-		if observation.property_name == 'is_wifi_available':
-			self.is_wifi_alarm = not state.is_wifi_available
-		if observation.property_name == 'is_luminous':
-			self.contrast_16 = 10 if state.is_luminous else 1
 		if observation.property_name == 'clock':
 			self.clock = state.clock
 			self.notify()
-
-	def update_from_config(self, observation: Observation, config: Config):
-		if observation.property_name == 'brightness':
-			self.brightness_16 = int(config.brightness)
 
 	def hide_volume_meter(self):
 		logging.info("volume bar shown: %s", False)

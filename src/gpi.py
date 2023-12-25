@@ -13,11 +13,11 @@ def get_room_brightness() -> float:
 	except:
 		return -1
 
-def get_room_brightness_255() -> int:
-	return int(max(0, min(255, get_room_brightness()/2500 * 255)))
+def get_room_brightness_16() -> int:
+	return int(max(0, min(15, get_room_brightness()/2500 * 15)))
 
-def get_room_brightness_255_2() -> int:
-	return 255 if get_room_brightness() > 1 else 0
+def get_room_brightness_16_v2() -> int:
+	return 15 if get_room_brightness() > 1 else 1
 	# return int(max(0, min(255, 500/(1+math.exp(-0.1*get_room_brightness()))-250)))
 
 

@@ -39,9 +39,8 @@ class ClockApp:
 		
 		logging.info("config available")
 
-		display_content = DisplayContent()
+		display_content = DisplayContent(self.state)
 		self.state.attach(display_content)
-		self.state.configuration.attach(display_content)
 
 		device: luma_device
 

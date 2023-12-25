@@ -6,34 +6,20 @@ from luma.core.render import canvas
 from PIL import ImageFont, ImageDraw
 
 from domain import DisplayContent, Observation, Observer
-from gpi import get_room_brightness_255, get_room_brightness_255_2
+from gpi import get_room_brightness_16, get_room_brightness_16_v2
 
+resources_dir = f"{os.path.dirname(os.path.realpath(__file__))}/resources"
 
-class Display(Observer):
-
-	resources_dir = f"{os.path.dirname(os.path.realpath(__file__))}/resources"
+class Presentation:
 	font_file_7segment = f"{resources_dir}/DSEG7ClassicMini-Bold.ttf"
 	font_file_nerd = f"{resources_dir}/CousineNerdFontMono-Regular.ttf"
-	no_wifi_file = f"{resources_dir}/no-wifi.mono.png" 
 
 	device: luma_device
 	content: DisplayContent
 
 	def __init__(self, device: luma_device, content: DisplayContent) -> None:
 		self.device = device
-		logging.info("device mode: %s", self.device.mode)
 		self.content = content
-		self.content.attach(self)
-
-	def set_contrast(self) -> int:
-		color = min(255, self.content.brightness_16*16)
-		logging.debug("fill_255: %s", color)
-		self.device.contrast(color)
-
-	def get_fill(self):
-		room_brightness_255  = get_room_brightness_255_2()
-		logging.debug("display_contrast_255: %s", room_brightness_255)
-		return (room_brightness_255 << 16) | (room_brightness_255 << 8) | room_brightness_255
 
 	def get_clock_string(self) -> str:
 		clock_string = self.content.clock.replace("7", "`")
@@ -41,23 +27,15 @@ class Display(Observer):
 		clock_string = "!" * (desired_length - len(clock_string)) + clock_string
 		return clock_string
 
-	def update(self, observation: Observation):
-		super().update(observation)
-		try:
-			self.adjust_display()
-		except Exception as e:
-			logging.warning("%s", traceback.format_exc())
-			with canvas(self.device) as draw:
-				draw.text((20,20), f"exception! ({e})", fill="white")
 
-	def adjust_display(self):
-		self.set_contrast();
-		with canvas(self.device) as draw: 
-			self.write_clock(draw)
-			self.write_wifi_status(draw)
-		
+	def get_fill(self):
+		room_brightness_16  = get_room_brightness_16_v2()
+		logging.debug("room_brightness_16: %s", room_brightness_16)
+		greyscale_value = room_brightness_16*16
+		return (greyscale_value << 16) | (greyscale_value << 8) | greyscale_value
+
 	def write_wifi_status(self, draw: ImageDraw.ImageDraw):
-		if (self.content.is_wifi_alarm):
+		if not self.content.get_is_wifi_available():
 			font=ImageFont.truetype(self.font_file_nerd, 40)
 			draw.text([2,-9], '\U000f16b5', fill=self.get_fill(), font=font)
 
@@ -78,7 +56,52 @@ class Display(Observer):
 			font=font)
 
 
+	def present(self):
+		with canvas(self.device) as draw: 
+			self.write_clock(draw)
+			self.write_wifi_status(draw)
 
+class DozyPresentation(Presentation):
+
+	def present(self):
+		self.device.contrast(1)
+		super().present()
+		pass
+
+class BrightPresentation(Presentation):
+
+	def present(self):
+		pass
+
+class Display(Observer):
+
+	device: luma_device
+	content: DisplayContent
+
+	def __init__(self, device: luma_device, content: DisplayContent) -> None:
+		self.device = device
+		logging.info("device mode: %s", self.device.mode)
+		self.content = content
+		self.content.attach(self)
+
+	def update(self, observation: Observation):
+		super().update(observation)
+		try:
+			self.adjust_display()
+		except Exception as e:
+			logging.warning("%s", traceback.format_exc())
+			with canvas(self.device) as draw:
+				draw.text((20,20), f"exception! ({e})", fill="white")
+
+	def adjust_display(self):
+		p: Presentation
+		if (get_room_brightness_16() < 10 ):
+			p = DozyPresentation(self.device, self.content)
+		else:
+			p = BrightPresentation(self.device, self.content)
+
+		p.present()
+		
 if __name__ == '__main__':
 	import argparse
 	from luma.oled.device import ssd1322
