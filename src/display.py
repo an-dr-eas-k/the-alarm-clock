@@ -93,7 +93,7 @@ class Display(Observer):
 
 	def adjust_display(self):
 		p: Presentation
-		if (get_room_brightness() < 10 ):
+		if (get_room_brightness() <= 1 ):
 			p = DozyPresentation(self.device, self.content)
 		else:
 			p = BrightPresentation(self.device, self.content)
