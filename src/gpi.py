@@ -17,7 +17,8 @@ def get_room_brightness_255() -> int:
 	return int(max(0, min(255, get_room_brightness()/2500 * 255)))
 
 def get_room_brightness_255_2() -> int:
-	return int(max(0, min(255, 500/(1+math.exp(-0.1*get_room_brightness()))-250)))
+	return 255 if get_room_brightness() > 1 else 0
+	# return int(max(0, min(255, 500/(1+math.exp(-0.1*get_room_brightness()))-250)))
 
 
 if __name__ == "__main__":
