@@ -29,7 +29,7 @@ class Presentation:
 		return clock_string
 
 	def get_fill(self):
-		greyscale_value = 1
+		greyscale_value = 16
 		return (greyscale_value << 16) | (greyscale_value << 8) | greyscale_value
 
 	def write_wifi_status(self, draw: ImageDraw.ImageDraw):
@@ -62,7 +62,7 @@ class Presentation:
 class DozyPresentation(Presentation):
 
 	def present(self):
-		self.device.contrast(1)
+		self.device.contrast(16)
 		super().present()
 		pass
 
