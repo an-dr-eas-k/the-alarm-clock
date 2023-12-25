@@ -33,7 +33,7 @@ class Presentation:
 		return clock_string
 
 	def get_fill(self):
-		greyscale_value = 16
+		greyscale_value = get_room_brightness_256_v2()
 		return (greyscale_value << 16) | (greyscale_value << 8) | greyscale_value
 
 	def write_wifi_status(self, draw: ImageDraw.ImageDraw):
@@ -57,8 +57,8 @@ class Presentation:
 			xy=[x, y],
 			font=font)
 
-
 	def present(self):
+		self.device.contrast(16)
 		with canvas(self.device) as draw: 
 			self.write_clock(draw)
 			self.write_wifi_status(draw)
@@ -67,22 +67,16 @@ class DozyPresentation(Presentation):
 
 	font_file_7segment = f"{resources_dir}/DSEG7ClassicMini-Light.ttf"
 
+	def get_fill(self):
+		greyscale_value = 16
+		return (greyscale_value << 16) | (greyscale_value << 8) | greyscale_value
+
 	def get_clock_font(self):
 		return ImageFont.truetype(self.font_file_7segment, 40)
 
-	def present(self):
-		self.device.contrast(16)
-		super().present()
-
 class BrightPresentation(Presentation):
+	pass
 
-	def get_fill(self):
-		greyscale_value = get_room_brightness_256_v2()
-		return (greyscale_value << 16) | (greyscale_value << 8) | greyscale_value
-
-	def present(self):
-		self.device.contrast(16)
-		super().present()
 
 class Display(Observer):
 
