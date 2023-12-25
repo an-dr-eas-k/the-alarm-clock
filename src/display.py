@@ -6,7 +6,7 @@ from luma.core.render import canvas
 from PIL import ImageFont, ImageDraw
 
 from domain import DisplayContent, Observation, Observer
-from gpi import get_room_brightness_16, get_room_brightness_16_v2
+from gpi import get_room_brightness, get_room_brightness_16, get_room_brightness_16_v2
 
 resources_dir = f"{os.path.dirname(os.path.realpath(__file__))}/resources"
 
@@ -93,7 +93,7 @@ class Display(Observer):
 
 	def adjust_display(self):
 		p: Presentation
-		if (get_room_brightness_16() < 10 ):
+		if (get_room_brightness() < 10 ):
 			p = DozyPresentation(self.device, self.content)
 		else:
 			p = BrightPresentation(self.device, self.content)
