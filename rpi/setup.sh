@@ -8,8 +8,19 @@ chown $UID:$UID /srv/the-alarm-clock
 if [ -z "$( grep the-alarm-clock /etc/rc.local )" ]; then
 	sed -i '/exit/d' /etc/rc.local
 	cat >> /etc/rc.local << "EOF"
-bash /srv/the-alarm-clock/rpi/onboot.sh 2> /var/log/the-alarm-clock.errors > /var/log/the-alarm-clock.stdout &
+bash /srv/the-alarm-clock/rpi/onboot.sh 2> /var/log/the-alarm-clock.errout > /var/log/the-alarm-clock.stdout &
 exit 0
 EOF
 
 fi
+
+
+	cat >> /etc/logrotate.d/the-alarm-clock << "EOF"
+/var/log/the-alarm-clock.errout
+/var/log/the-alarm-clock.stdout
+{
+	rotate 10
+	size 1M
+	compress
+}
+EOF
