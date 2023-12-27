@@ -1,68 +1,112 @@
+import logging
 import os
 import traceback
 from luma.core.device import device as luma_device
 from luma.core.render import canvas
-from PIL import ImageFont,Image, ImageOps
-from PIL.Image import Image as pil_image
+from PIL import ImageFont, ImageDraw
 
 from domain import DisplayContent, Observation, Observer
+from gpi import get_room_brightness, get_room_brightness_16, get_room_brightness_256_v2
+
+resources_dir = f"{os.path.dirname(os.path.realpath(__file__))}/resources"
+
+class Presentation:
+	font_file_7segment = f"{resources_dir}/DSEG7ClassicMini-Bold.ttf"
+	font_file_nerd = f"{resources_dir}/CousineNerdFontMono-Regular.ttf"
+
+	device: luma_device
+	content: DisplayContent
+
+	def __init__(self, device: luma_device, content: DisplayContent) -> None:
+		logging.info("used presentation: %s", self.__class__.__name__)
+		self.device = device
+		self.content = content
+
+
+	def get_clock_font(self):
+		return ImageFont.truetype(self.font_file_7segment, 60)
+
+	def get_clock_string(self) -> str:
+		clock_string = self.content.clock.replace("7", "`")
+		desired_length = 5
+		clock_string = "!" * (desired_length - len(clock_string)) + clock_string
+		return clock_string
+
+	def get_fill(self):
+		greyscale_value = get_room_brightness_256_v2()
+		return (greyscale_value << 16) | (greyscale_value << 8) | greyscale_value
+
+	def write_wifi_status(self, draw: ImageDraw.ImageDraw):
+		if not self.content.get_is_wifi_available():
+			font=ImageFont.truetype(self.font_file_nerd, 40)
+			draw.text([2,-9], '\U000f16b5', fill=self.get_fill(), font=font)
+
+	def write_clock(self, draw: ImageDraw.ImageDraw):
+		font=self.get_clock_font()
+		font_BBox = font.getbbox(self.get_clock_string())
+		width = font_BBox[2] - font_BBox[0]
+		height = font_BBox[3] - font_BBox[1]
+		x = (draw.im.size[0]-width)/2
+		y = (draw.im.size[1]-height)/2
+
+		draw.text(
+			stroke_width=0, 
+			fill=self.get_fill(),
+			align='left',
+			text=self.get_clock_string(),
+			xy=[x, y],
+			font=font)
+
+	def present(self):
+		self.device.contrast(16)
+		with canvas(self.device) as draw: 
+			self.write_clock(draw)
+			self.write_wifi_status(draw)
+
+class DozyPresentation(Presentation):
+
+	font_file_7segment = f"{resources_dir}/DSEG7ClassicMini-Light.ttf"
+
+	def get_fill(self):
+		greyscale_value = 16
+		return (greyscale_value << 16) | (greyscale_value << 8) | greyscale_value
+
+	def get_clock_font(self):
+		return ImageFont.truetype(self.font_file_7segment, 40)
+
+class BrightPresentation(Presentation):
+	pass
 
 
 class Display(Observer):
-
-	resources_dir = f"{os.path.dirname(os.path.realpath(__file__))}/resources"
-	font_file = f"{resources_dir}/DSEG7ClassicMini-Bold.ttf"
-	no_wifi_file = f"{resources_dir}/no-wifi.mono.png" 
 
 	device: luma_device
 	content: DisplayContent
 
 	def __init__(self, device: luma_device, content: DisplayContent) -> None:
 		self.device = device
-		print(f"device mode: {self.device.mode}")
+		logging.info("device mode: %s", self.device.mode)
 		self.content = content
 		self.content.attach(self)
 
-	def fix_image(self, image: pil_image) -> pil_image:
-		background_color =  (255, 255, 255)
-		new_image = Image.new("RGBA", image.size, background_color)
-		foo = image.split()
-
-		new_image.paste(image)
-		return new_image
-
 	def update(self, observation: Observation):
 		super().update(observation)
-		self.device.contrast(self.content.contrast)
 		try:
 			self.adjust_display()
 		except Exception as e:
-			print(traceback.format_exc())
+			logging.warning("%s", traceback.format_exc())
 			with canvas(self.device) as draw:
 				draw.text((20,20), f"exception! ({e})", fill="white")
-					
+
 	def adjust_display(self):
+		p: Presentation
+		if (get_room_brightness() <= 1 ):
+			p = DozyPresentation(self.device, self.content)
+		else:
+			p = BrightPresentation(self.device, self.content)
+
+		p.present()
 		
-		font=ImageFont.truetype(self.font_file, 50)
-		font_BBox = font.getbbox(self.content.clock)
-		width = font_BBox[2] - font_BBox[0]
-		height = font_BBox[3] - font_BBox[1]
-		with canvas(self.device) as draw:
-			x = (draw.im.size[0]-width)/2
-			y = (draw.im.size[1]-height)/2
- 
-			# wifi = self.fix_image(Image.open( self.no_wifi_file )) 
-			# draw.bitmap([10,10], wifi
-			# 				 .resize([int(0.05 * s) for s in wifi.size]), fill=1 )
-			draw.text(
-				stroke_width=0, 
-				fill='white',
-				align='left',
-				text=self.content.clock,
-				xy=[x, y],
-				font=font)
-
-
 if __name__ == '__main__':
 	import argparse
 	from luma.oled.device import ssd1322
@@ -85,4 +129,5 @@ if __name__ == '__main__':
 	if is_on_hardware:
 		time.sleep(10)
 	else:
-		dev.image.save("foo.png", format="png")
+		save_file = f"{os.path.dirname(os.path.realpath(__file__))}/../../display_test.png"
+		dev.image.save(save_file, format="png")

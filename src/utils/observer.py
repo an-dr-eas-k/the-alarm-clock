@@ -1,3 +1,4 @@
+import logging
 import re
 
 class Observation:
@@ -27,7 +28,7 @@ class Observation:
 class Observer:
 
 	def update(self, observation: Observation):
-		print(f"{self.__class__.__name__} is notified: {observation.to_string()}")
+		logging.debug(f"{self.__class__.__name__} is notified: {observation.to_string()}")
 
 class Observable:
 	observers : []

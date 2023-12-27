@@ -1,12 +1,13 @@
 from dataclasses import dataclass
+from datetime import  date, time, timedelta
 from enum import Enum
-import sched
-import time
+import logging
 
 import jsonpickle
 from apscheduler.triggers.cron import CronTrigger
 
-from observer import Observable, Observation, Observer
+from utils.observer import Observable, Observation, Observer
+from utils.geolocation import GeoLocation
 
 class Mode(Enum):
 	Boot = 1
@@ -42,17 +43,35 @@ class AlarmDefinition:
 	hour: int
 	min: int
 	weekdays: []
+	date: date
 	alarm_name: str
 	is_active: bool
 	visual_effect: VisualEffect
 	audio_effect: AudioEffect = InternetRadio(url='https://streams.br.de/bayern2sued_2.m3u')
 
-	def toCronTrigger(self) -> CronTrigger:
-		return CronTrigger(
-			day_of_week=",".join([ str(wd.value -1) for wd in self.weekdays]),
-			hour=self.hour,
-			minute=self.min
-		)
+	def to_cron_trigger(self) -> CronTrigger:
+		if (self.weekdays is not None and len(self.weekdays) > 0):
+			return CronTrigger(
+				day_of_week=",".join([ str(Weekday[wd].value -1) for wd in self.weekdays]),
+				hour=self.hour,
+				minute=self.min
+			)
+		elif (self.date is not None):
+			return CronTrigger(
+				start_date=self.date,
+				end_date=self.date+timedelta(days=1),
+				hour=self.hour,
+				minute=self.min
+			)
+
+	def to_time_string(self) -> str:
+		return time(hour=self.hour, minute=self.min).strftime("%H:%M")
+
+	def to_weekdays_string(self) -> str:
+		if self.weekdays is not None and len(self.weekdays) > 0:
+			return ", ".join([ Weekday[wd].name.lower().capitalize() for wd in self.weekdays ])
+		elif (self.date is not None):
+			return self.date.strftime("%Y-%m-%d")
 
 class AudioDefinition(Observable):
 
@@ -98,29 +117,6 @@ class AudioDefinition(Observable):
 	def toggle_stream(self):
 		self.is_streaming = not self.is_streaming
 	
-class DisplayContent(Observable):
-	is_volume_meter_shown: bool= False
-	show_blink_segment:bool= True
-	contrast: int= 1
-
-	@property
-	def clock(self) -> str:
-		return self._clock
-
-	@clock.setter
-	def clock(self, value: str):
-		self._clock = value
-		self.notify(property='clock')
-
-	def hide_volume_meter(self):
-		print("hide volume bar")
-		self.is_volume_meter_shown = False
-
-	def show_volume_meter(self):
-		print("show volume bar")
-		self.is_volume_meter_shown = True 
-
-
 class Config(Observable):
 
 	_alarm_definitions: []
@@ -129,9 +125,14 @@ class Config(Observable):
 	def alarm_definitions(self) -> []:
 		return self._alarm_definitions
 
-	@alarm_definitions.setter
-	def alarm_definitions(self, value: AlarmDefinition):
+	def add_alarm_definition(self, value: AlarmDefinition):
+		if any(alarm_def.alarm_name == value.alarm_name for alarm_def in self._alarm_definitions):
+			raise ValueError(f"Alarm with name '{value.alarm_name}' already exists.")
 		self._alarm_definitions.append(value)
+		self.notify(property='alarm_definitions')
+
+	def remove_alarm_definition(self, alarm_name: str):
+		self._alarm_definitions = [ alarm_def for alarm_def in self._alarm_definitions if alarm_def.alarm_name != alarm_name ]
 		self.notify(property='alarm_definitions')
 
 	@property
@@ -179,7 +180,7 @@ class Config(Observable):
 		self._alarm_definitions = []
 
 	def serialize(self):
-		return jsonpickle.encode(self, indent=2, )
+		return jsonpickle.encode(self, indent=2)
 
 	def deserialize(config_file):
 		with open(config_file, "r") as file:
@@ -189,8 +190,17 @@ class Config(Observable):
 class AlarmClockState(Observable):
 
 	configuration: Config
-	display_content: DisplayContent
 	audio_state: AudioDefinition
+	show_blink_segment: bool = True
+
+	@property
+	def clock(self) -> str:
+		return self._clock
+
+	@clock.setter
+	def clock(self, value: str):
+		self._clock = value
+		self.notify(property='clock')
 
 	@property
 	def is_wifi_available(self) -> bool:
@@ -202,13 +212,13 @@ class AlarmClockState(Observable):
 		self.notify(property='is_wifi_available')
 
 	@property
-	def is_luminous(self)-> bool:
-		return self._is_luminous
+	def is_daytime(self)-> bool:
+		return self._is_daytime
 
-	@is_luminous.setter
-	def is_luminous(self, value: bool):
-		self._is_luminous = value
-		self.notify(property='is_luminous')
+	@is_daytime.setter
+	def is_daytime(self, value: bool):
+		self._is_daytime = value
+		self.notify(property='is_daytime')
 	
 	@property
 	def mode(self)-> Mode:
@@ -223,5 +233,44 @@ class AlarmClockState(Observable):
 		super().__init__()
 		self.configuration = c
 		self.audio_state = AudioDefinition()
-		self.display_content = DisplayContent()
 		self.mode = Mode.Boot
+		self.geo_location = GeoLocation()
+		self.is_wifi_available = True
+
+class DisplayContent(Observable, Observer):
+	is_volume_meter_shown: bool=False
+	clock:str
+
+	def __init__(self, state: AlarmClockState):
+		super().__init__()
+		self.state = state
+
+	def get_brightness_16(self) -> int:
+		return min(15, max(1, self.state.configuration.brightness))
+
+	def get_is_wifi_available(self)-> bool:
+		return self.state.is_wifi_available
+
+	def notify(self):
+		super().notify(reason="display_changed")
+
+	def update(self, observation: Observation):
+		super().update(observation)
+		if isinstance(observation.observable, AlarmClockState):
+			self.update_from_state(observation, observation.observable)
+
+	def update_from_state(self, observation: Observation, state: AlarmClockState):
+		if observation.property_name == 'clock':
+			self.clock = state.clock
+			self.notify()
+
+	def hide_volume_meter(self):
+		logging.info("volume bar shown: %s", False)
+		self.is_volume_meter_shown = False
+		self.notify()
+
+	def show_volume_meter(self):
+		logging.info("volume bar shown: %s", True)
+		self.is_volume_meter_shown = True 
+		self.notify()
+

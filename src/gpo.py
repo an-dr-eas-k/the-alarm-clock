@@ -2,7 +2,7 @@
 from domain import AudioDefinition, Observation, Observer
 from gpiozero import DigitalOutputDevice
 
-audio_power_pin_id = 21
+audio_power_pin_id = 14
 
 class GeneralPurposeOutput(Observer):
 
