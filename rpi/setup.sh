@@ -21,6 +21,5 @@ fi
 {
 	rotate 10
 	size 1M
-	compress
 }
 EOF
