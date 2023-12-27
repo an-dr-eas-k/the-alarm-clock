@@ -78,7 +78,7 @@
 				<td>{{ escape(alarm_definition.to_weekdays_string()) }}</td>
 				<td>{{ escape(str(alarm_definition.is_active)) }}</td>
 				<td>
-					<button type="submit" class="btn btn-primary" value="{{ alarm_definition.alarm_name }}"
+					<button type="submit" class="btn btn-primary" value="{{ alarm_definition.id }}"
 						onclick="onClickDeleteAlarm(event)">Delete</button>
 				</td>
 			</tr>

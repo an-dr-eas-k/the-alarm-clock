@@ -40,6 +40,7 @@ class Spotify(AudioEffect):
 
 
 class AlarmDefinition:
+	id: int
 	hour: int
 	min: int
 	weekdays: []
@@ -126,8 +127,7 @@ class Config(Observable):
 		return self._alarm_definitions
 
 	def add_alarm_definition(self, value: AlarmDefinition):
-		if any(alarm_def.alarm_name == value.alarm_name for alarm_def in self._alarm_definitions):
-			raise ValueError(f"Alarm with name '{value.alarm_name}' already exists.")
+		value.id = sorted(self._alarm_definitions, key=lambda x: x.id, reverse=True)[0].id+1
 		self._alarm_definitions.append(value)
 		self.notify(property='alarm_definitions')
 

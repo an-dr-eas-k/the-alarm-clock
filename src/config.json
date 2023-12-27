@@ -8,6 +8,7 @@
     "_alarm_definitions": [
       {
         "py/object": "domain.AlarmDefinition",
+        "id": 1,
         "alarm_name": "my debugging alarm",
         "hour": 22,
         "min": 35,
@@ -24,6 +25,7 @@
       },
       {
         "py/object": "domain.AlarmDefinition",
+        "id": 2,
         "alarm_name": "default morning alarm",
         "hour": 6,
         "min": 45,

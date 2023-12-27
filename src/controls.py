@@ -89,7 +89,7 @@ class Controls(Observer):
 				logging.info("adding job for '%s'", alDef.alarm_name)
 				self.scheduler.add_job(
 					lambda : self.ring_alarm(alDef), 
-					id=alDef.alarm_name,
+					id=alDef.id,
 					jobstore=alarm_store,
 					trigger=alDef.to_cron_trigger())
 			self.cleanup_alarms()
@@ -161,7 +161,7 @@ class Controls(Observer):
 		self.state.audio_state.is_streaming = True
 
 		if alarmDefinition.date is not None:
-			self.state.configuration.remove_alarm_definition(alarmDefinition.alarm_name)
+			self.state.configuration.remove_alarm_definition(alarmDefinition.id)
 
 	def cleanup_alarms(self):
 		job: Job

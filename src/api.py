@@ -42,8 +42,8 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 		self.set_header('Content-Type', 'application/json')
 		self.write(self.config.serialize())
 	
-	def delete(self, alarm_name):
-		self.config.remove_alarm_definition(alarm_name) 
+	def delete(self, alarm_id):
+		self.config.remove_alarm_definition(alarm_id) 
 
 	def post(self, _):
 		form_arguments = tornado.escape.json_decode(self.request.body)
