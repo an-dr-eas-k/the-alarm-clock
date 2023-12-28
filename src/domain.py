@@ -38,6 +38,10 @@ class InternetRadio(AudioEffect):
 class Spotify(AudioEffect):
 	play_id: str
 
+class AudioStream:
+	id: int
+	stream_name: str
+	stream_url: str
 
 class AlarmDefinition:
 	id: int
@@ -73,6 +77,14 @@ class AlarmDefinition:
 			return ", ".join([ Weekday[wd].name.lower().capitalize() for wd in self.weekdays ])
 		elif (self.date is not None):
 			return self.date.strftime("%Y-%m-%d")
+
+	def set_future_date(self, hour, minute):
+		now = GeoLocation().now()
+		target = now.replace(hour=hour, minute=minute)
+		if target < now:
+				target = target + timedelta(days=1)
+		self.date = target.date()
+
 
 class AudioDefinition(Observable):
 
@@ -120,20 +132,37 @@ class AudioDefinition(Observable):
 	
 class Config(Observable):
 
-	_alarm_definitions: []
+	_alarm_definitions: [] = []
+	_audio_streams: [] = []
 
 	@property
 	def alarm_definitions(self) -> []:
 		return self._alarm_definitions
 
+	def get_next_id(array_with_ids: []) -> int:
+		return sorted(array_with_ids, key=lambda x: x.id, reverse=True)[0].id+1 if len(array_with_ids) > 0 else 1
+
 	def add_alarm_definition(self, value: AlarmDefinition):
-		value.id = sorted(self._alarm_definitions, key=lambda x: x.id, reverse=True)[0].id+1
+		value.id = Config.get_next_id(self._alarm_definitions)
 		self._alarm_definitions.append(value)
 		self.notify(property='alarm_definitions')
 
-	def remove_alarm_definition(self, alarm_name: str):
-		self._alarm_definitions = [ alarm_def for alarm_def in self._alarm_definitions if alarm_def.alarm_name != alarm_name ]
+	def remove_alarm_definition(self, id: int):
+		self._alarm_definitions = [ alarm_def for alarm_def in self._alarm_definitions if alarm_def.id != id ]
 		self.notify(property='alarm_definitions')
+
+	@property
+	def audio_streams(self) -> []:
+		return self._audio_streams
+
+	def add_audio_stream(self, value: AudioStream):
+		value.id = Config.get_next_id(self._audio_streams)
+		self._audio_streams.append(value)
+		self.notify(property='audio_streams')
+
+	def remove_audio_stream(self, id: int):
+		self._audio_streams = [ stream_def for stream_def in self._audio_streams if stream_def.id != id ]
+		self.notify(property='audio_streams')
 
 	@property
 	def brightness(self) -> int:
@@ -177,7 +206,6 @@ class Config(Observable):
 		self.clock_format_string = "%-H<blinkSegment>%M"
 		self.blink_segment = ":"
 		self.refresh_timeout_in_secs = 1
-		self._alarm_definitions = []
 
 	def serialize(self):
 		return jsonpickle.encode(self, indent=2)

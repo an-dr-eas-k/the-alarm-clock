@@ -1,12 +1,14 @@
 import base64
 import io
+import logging
 import os
+import traceback
 import tornado
 import tornado.web
 from PIL.Image import Image
 from datetime import timedelta
 
-from domain import AlarmClockState, AlarmDefinition, Config, Weekday
+from domain import AlarmClockState, AlarmDefinition, AudioStream, Config, Weekday
 from utils.geolocation import GeoLocation
 
 class DisplayHandler(tornado.web.RequestHandler):
@@ -31,30 +33,53 @@ class ConfigHandler(tornado.web.RequestHandler):
 		self.config = config
 
 	def get(self, *args, **kwargs):
-		self.render(f'{self.root}/alarm.html', config=self.config)
+		try:
+			self.render(f'{self.root}/alarm.html', config=self.config)
+		except:
+			logging.warning("%s", traceback.format_exc())
 
 class ConfigApiHandler(tornado.web.RequestHandler):
 
 	def initialize(self, config: Config) -> None:
 		self.config = config
 
+	def split_path_arguments(path) -> tuple[str, int]:
+		path_args = path[0].split('/')
+		return (path_args[0], int(path_args[1]) if len(path_args) > 1 else -1)
+
 	def get(self):
-		self.set_header('Content-Type', 'application/json')
-		self.write(self.config.serialize())
+		try:
+			self.set_header('Content-Type', 'application/json')
+			self.write(self.config.serialize())
+		except:
+			logging.warning("%s", traceback.format_exc())
 	
-	def delete(self, alarm_id):
-		self.config.remove_alarm_definition(alarm_id) 
+	def delete(self, *args):
+		try:
+			(type, id) = ConfigApiHandler.split_path_arguments(args)
+			if (type == 'alarm'):
+				self.config.remove_alarm_definition(id) 
+			elif type == 'stream':
+				self.config.remove_audio_stream(id) 
+		except:
+			logging.warning("%s", traceback.format_exc())
 
-	def post(self, _):
-		form_arguments = tornado.escape.json_decode(self.request.body)
-		self.config.add_alarm_definition ( self.parse_alarm_definition(form_arguments) )
+	def post(self, *args):
+		try:
+			(type, id) = ConfigApiHandler.split_path_arguments(args)
+			form_arguments = tornado.escape.json_decode(self.request.body)
+			if (type == 'alarm'):
+				self.config.add_alarm_definition ( self.parse_alarm_definition(form_arguments) )
+			elif type == 'stream':
+				self.config.add_audio_stream ( self.parse_stream_definition(form_arguments) )
+		except:
+			logging.warning("%s", traceback.format_exc())
 
-	def get_future_date(hour, minute):
-		now = GeoLocation().now()
-		target = now.replace(hour=hour, minute=minute)
-		if target < now:
-				target = target + timedelta(days=1)
-		return target.date()
+	def parse_stream_definition(self, form_arguments) -> AlarmDefinition:
+		auSt = AudioStream()
+		auSt.stream_name = form_arguments['streamName']
+		auSt.stream_url = form_arguments['streamUrl']
+		return auSt
 
 	def parse_alarm_definition(self, form_arguments) -> AlarmDefinition:
 		ala = AlarmDefinition()
@@ -70,9 +95,8 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 				lambda weekday: Weekday[weekday.upper()].name, 
 				weekdays))
 		else:
+			ala.set_future_date(ala.hour, ala.min)
 
-			next_day = ConfigApiHandler.get_future_date(ala.hour, ala.min)
-			ala.date = next_day
 		ala.is_active = form_arguments['isActive'] == 'on'
 		return ala
 

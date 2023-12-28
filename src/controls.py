@@ -89,7 +89,7 @@ class Controls(Observer):
 				logging.info("adding job for '%s'", alDef.alarm_name)
 				self.scheduler.add_job(
 					lambda : self.ring_alarm(alDef), 
-					id=alDef.id,
+					id=f'{alDef.id}',
 					jobstore=alarm_store,
 					trigger=alDef.to_cron_trigger())
 			self.cleanup_alarms()
