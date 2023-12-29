@@ -27,21 +27,21 @@ class Weekday(Enum):
 class VisualEffect:
 	pass
 
-class AudioEffect:
-	pass
-
-@dataclass
-class InternetRadio(AudioEffect):
-	url: str
-
-@dataclass
-class Spotify(AudioEffect):
-	play_id: str
-
 class AudioStream:
 	id: int
 	stream_name: str
 	stream_url: str
+
+class AudioEffect:
+	volume: float
+
+@dataclass
+class InternetRadio(AudioEffect):
+	stream_definition: AudioStream = None
+
+@dataclass
+class Spotify(AudioEffect):
+	play_id: str
 
 class AlarmDefinition:
 	id: int
@@ -52,7 +52,7 @@ class AlarmDefinition:
 	alarm_name: str
 	is_active: bool
 	visual_effect: VisualEffect
-	audio_effect: AudioEffect = InternetRadio(url='https://streams.br.de/bayern2sued_2.m3u')
+	audio_effect: AudioEffect
 
 	def to_cron_trigger(self) -> CronTrigger:
 		if (self.weekdays is not None and len(self.weekdays) > 0):
@@ -117,7 +117,7 @@ class AudioDefinition(Observable):
 
 	def __init__(self):
 		super().__init__()
-		self.audio_effect = InternetRadio(url='https://streams.br.de/bayern2sued_2.m3u')
+		self.audio_effect = None
 		self.volume = 0.8
 		self.is_streaming = False
 
@@ -159,6 +159,9 @@ class Config(Observable):
 		value.id = Config.get_next_id(self._audio_streams)
 		self._audio_streams.append(value)
 		self.notify(property='audio_streams')
+
+	def get_audio_stream(self, id: int) -> AudioStream:
+		return next((stream for stream in self._audio_streams if stream.id == id), None)
 
 	def remove_audio_stream(self, id: int):
 		self._audio_streams = [ stream_def for stream_def in self._audio_streams if stream_def.id != id ]

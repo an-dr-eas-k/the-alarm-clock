@@ -8,7 +8,7 @@ import tornado.web
 from PIL.Image import Image
 from datetime import timedelta
 
-from domain import AlarmClockState, AlarmDefinition, AudioStream, Config, Weekday
+from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, Config, InternetRadio, Weekday
 from utils.geolocation import GeoLocation
 
 class DisplayHandler(tornado.web.RequestHandler):
@@ -81,6 +81,13 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 		auSt.stream_url = form_arguments['streamUrl']
 		return auSt
 
+	def parse_audio_effect(self, form_arguments) -> AudioStream:
+		stream_id = int(form_arguments['streamId'])
+		auSt = InternetRadio()
+		auSt.stream_definition = self.config.get_audio_stream(stream_id)
+		auSt.volume = float(form_arguments['volume'])
+		return auSt
+
 	def parse_alarm_definition(self, form_arguments) -> AlarmDefinition:
 		ala = AlarmDefinition()
 		ala.alarm_name = form_arguments['alarmName']
@@ -97,6 +104,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 		else:
 			ala.set_future_date(ala.hour, ala.min)
 
+		ala.audio_effect = self.parse_audio_effect(form_arguments)
 		ala.is_active = form_arguments['isActive'] == 'on'
 		return ala
 

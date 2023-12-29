@@ -21,6 +21,16 @@
           "SATURDAY",
           "SUNDAY"
         ],
+        "audio_effect": {
+          "py/object": "domain.InternetRadio",
+          "stream_definition": {
+            "py/object": "domain.AudioStream",
+            "stream_name": "br2",
+            "stream_url": "https://streams.br.de/bayern2sued_2.m3u",
+            "id": 1
+          },
+          "volume": 0.9
+        },
         "is_active": true
       },
       {
@@ -36,6 +46,16 @@
           "THURSDAY",
           "FRIDAY"
         ],
+        "audio_effect": {
+          "py/object": "domain.InternetRadio",
+          "stream_definition": {
+            "py/object": "domain.AudioStream",
+            "stream_name": "puls",
+            "stream_url": "https://streams.br.de/puls_2.m3u",
+            "id": 2
+          },
+          "volume": 1
+        },
         "is_active": true
       }
     ],
@@ -45,6 +65,12 @@
         "stream_name": "br2",
         "stream_url": "https://streams.br.de/bayern2sued_2.m3u",
         "id": 1
+      },
+      {
+        "py/object": "domain.AudioStream",
+        "stream_name": "puls",
+        "stream_url": "https://streams.br.de/puls_2.m3u",
+        "id": 2
       }
     ]
   }

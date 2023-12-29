@@ -6,6 +6,12 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
 		integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+	<style>
+		label {
+			width: 200px;
+			margin-top: 1.5rem;
+		}
+	</style>
 
 	<script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
 
@@ -66,6 +72,11 @@
 			};
 			xhr.send(content);
 		}
+
+		function updateVolume(event) {
+			console.log(event.target.value)
+			document.getElementById('volumeValue').textContent = event.target.value;
+		}
 	</script>
 
 </head>
@@ -79,14 +90,18 @@
 					<th>Name</th>
 					<th>Time</th>
 					<th>Weekdays</th>
+					<th>Stream</th>
+					<th>Volume</th>
 					<th>is active</th>
-					<th></th>
+					<th style="width: 1%"></th>
 				</tr>
 				{% for alarm_definition in config.alarm_definitions %}
 				<tr>
 					<td>{{ escape(alarm_definition.alarm_name) }}</td>
 					<td>{{ escape(f"{alarm_definition.to_time_string()}") }}</td>
 					<td>{{ escape(alarm_definition.to_weekdays_string()) }}</td>
+					<td>{{ escape(alarm_definition.audio_effect.stream_definition.stream_name ) }}</td>
+					<td>{{ alarm_definition.audio_effect.volume }}</td>
 					<td>{{ escape(str(alarm_definition.is_active)) }}</td>
 					<td>
 						<button type="submit" class="btn btn-primary" value="{{ alarm_definition.id }}"
@@ -124,6 +139,20 @@
 									</select>
 								</div>
 								<div class="form-group">
+									<label for="stream-picker">Stream:</label>
+									<select class="form-control" name="streamId" id="stream-picker" size="">
+										{% for stream in config.audio_streams %}
+										<option value="{{ stream.id }}">{{ escape(stream.stream_name) }}</option>
+										{% end %}
+									</select>
+								</div>
+								<div class="form-group">
+									<label for="volume-picker">Volume:</label>
+									<input id="volume-picker" name="volume" type="range" min="0" value="0.9" max="1" step="0.01"
+										oninput="updateVolume(event)">
+									<span id="volumeValue"></span>
+								</div>
+								<div class="form-group">
 									<label for="activepicker">Active:</label>
 									<input type="checkbox" checked name="isActive" id="activepicker" />
 								</div>
@@ -132,8 +161,8 @@
 						</div>
 					</td>
 					<td>
-						<button type="submit" class="btn btn-primary"
-							onclick="onClickToggleAddForm('add-alarm-container')">+</button>
+						<button type="submit" class="btn btn-primary" onclick="onClickToggleAddForm('add-alarm-container')"
+							style="width: 100%;">+</button>
 					</td>
 				</tr>
 			</table>
@@ -144,7 +173,7 @@
 				<tr>
 					<th>Name</th>
 					<th>Url</th>
-					<th></th>
+					<th style="width: 1%"></th>
 				</tr>
 				{% for audio_stream in config.audio_streams %}
 				<tr>
@@ -168,7 +197,7 @@
 									</div>
 								</div>
 								<div class="form-group">
-									<label for="url">Name:</label>
+									<label for="url">Url:</label>
 									<div class="input-group" id="url">
 										<input type="text" class="form-control" name="streamUrl" />
 									</div>
@@ -178,8 +207,8 @@
 						</div>
 					</td>
 					<td>
-						<button type="submit" class="btn btn-primary"
-							onclick="onClickToggleAddForm('add-stream-container')">+</button>
+						<button type="submit" class="btn btn-primary" onclick="onClickToggleAddForm('add-stream-container')"
+							style="width: 100%;">+</button>
 					</td>
 				</tr>
 			</table>
