@@ -11,6 +11,10 @@
 			width: 200px;
 			margin-top: 1.5rem;
 		}
+
+		.row {
+			margin-top: 1.5rem;
+		}
 	</style>
 
 	<script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
@@ -84,7 +88,7 @@
 <body data-bs-theme="dark">
 	<div class="container">
 		<div id="alarm-container" class="row">
-			<h3>Existing Alarms</h3>
+			<h3>Alarms</h3>
 			<table class="table table-striped">
 				<tr>
 					<th>Name</th>
@@ -110,7 +114,7 @@
 				</tr>
 				{% end %}
 				<tr>
-					<td colspan="4">
+					<td colspan="6">
 						<div id="add-alarm-container" style="margin: 20px; display:none;">
 							<h3>Add Alarm</h3>
 							<form id="alarm-form" action="/api/config/alarm" method="post" onsubmit="onSubmitNew(event)">

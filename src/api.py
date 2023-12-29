@@ -105,7 +105,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 			ala.set_future_date(ala.hour, ala.min)
 
 		ala.audio_effect = self.parse_audio_effect(form_arguments)
-		ala.is_active = form_arguments['isActive'] == 'on'
+		ala.is_active = form_arguments.get('isActive') is not None and form_arguments['isActive'] == 'on'
 		return ala
 
 
