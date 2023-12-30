@@ -94,9 +94,8 @@
 					<th>Name</th>
 					<th>Time</th>
 					<th>Weekdays</th>
-					<th>Stream</th>
-					<th>Volume</th>
-					<th>is active</th>
+					<th>Effect</th>
+					<th>on</th>
 					<th style="width: 1%"></th>
 				</tr>
 				{% for alarm_definition in config.alarm_definitions %}
@@ -104,9 +103,9 @@
 					<td>{{ escape(alarm_definition.alarm_name) }}</td>
 					<td>{{ escape(f"{alarm_definition.to_time_string()}") }}</td>
 					<td>{{ escape(alarm_definition.to_weekdays_string()) }}</td>
-					<td>{{ escape(alarm_definition.audio_effect.stream_definition.stream_name ) }}</td>
-					<td>{{ alarm_definition.audio_effect.volume }}</td>
-					<td>{{ escape(str(alarm_definition.is_active)) }}</td>
+					<td>stream: {{ escape(alarm_definition.audio_effect.stream_definition.stream_name ) }},
+						vol: {{ alarm_definition.audio_effect.volume }}</td>
+					<td>{% if alarm_definition.is_active %} &#x2713; {% else %} &#x2715; {% end %}</td>
 					<td>
 						<button type="submit" class="btn btn-primary" value="{{ alarm_definition.id }}"
 							onclick="onClickDelete('alarm', event)">Delete</button>
@@ -114,7 +113,7 @@
 				</tr>
 				{% end %}
 				<tr>
-					<td colspan="6">
+					<td colspan="5">
 						<div id="add-alarm-container" style="margin: 20px; display:none;">
 							<h3>Add Alarm</h3>
 							<form id="alarm-form" action="/api/config/alarm" method="post" onsubmit="onSubmitNew(event)">
