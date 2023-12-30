@@ -1,4 +1,6 @@
+from cgitb import grey
 import logging
+import math
 import os
 import traceback
 from luma.core.device import device as luma_device
@@ -6,7 +8,8 @@ from luma.core.render import canvas
 from PIL import ImageFont, ImageDraw
 
 from domain import DisplayContent, Observation, Observer
-from gpi import get_room_brightness, get_room_brightness_256_v2
+from gpi import get_room_brightness
+from utils.singleton import singleton
 
 resources_dir = f"{os.path.dirname(os.path.realpath(__file__))}/resources"
 
@@ -17,10 +20,11 @@ class Presentation:
 	device: luma_device
 	content: DisplayContent
 
-	def __init__(self, device: luma_device, content: DisplayContent) -> None:
+	def __init__(self, room_brightness: float, device: luma_device, content: DisplayContent) -> None:
 		logging.info("used presentation: %s", self.__class__.__name__)
 		self.device = device
 		self.content = content
+		self.room_brightness = room_brightness
 
 
 	def get_clock_font(self):
@@ -32,8 +36,12 @@ class Presentation:
 		clock_string = "!" * (desired_length - len(clock_string)) + clock_string
 		return clock_string
 
+	def respect_ranges(value: float) ->  int:
+		return int(max(16, min(255, value)))
+
 	def get_fill(self):
-		greyscale_value = get_room_brightness_256_v2()
+		greyscale_value = Presentation.respect_ranges( 500/(1+math.exp(-0.1*self.room_brightness))-250)
+		logging.debug("greyscale_value: %s", greyscale_value)
 		return (greyscale_value << 16) | (greyscale_value << 8) | greyscale_value
 
 	def write_wifi_status(self, draw: ImageDraw.ImageDraw):
@@ -63,17 +71,20 @@ class Presentation:
 			self.write_clock(draw)
 			self.write_wifi_status(draw)
 
+@singleton
 class DozyPresentation(Presentation):
 
 	font_file_7segment = f"{resources_dir}/DSEG7ClassicMini-Light.ttf"
 
-	def get_fill(self):
-		greyscale_value = 16
-		return (greyscale_value << 16) | (greyscale_value << 8) | greyscale_value
+
+	def __init__(self, device: luma_device, content: DisplayContent) -> None:
+		super().__init__(0.0, device, content)
+
 
 	def get_clock_font(self):
 		return ImageFont.truetype(self.font_file_7segment, 40)
 
+@singleton
 class BrightPresentation(Presentation):
 	pass
 
@@ -100,10 +111,11 @@ class Display(Observer):
 
 	def adjust_display(self):
 		p: Presentation
-		if (get_room_brightness() <= 1 ):
+		room_brightness = get_room_brightness()
+		if (room_brightness <= 1 ):
 			p = DozyPresentation(self.device, self.content)
 		else:
-			p = BrightPresentation(self.device, self.content)
+			p = BrightPresentation(room_brightness, self.device, self.content)
 
 		p.present()
 		
