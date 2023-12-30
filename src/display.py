@@ -19,13 +19,12 @@ class Presentation:
 
 	device: luma_device
 	content: DisplayContent
+	room_brightness: float
 
-	def __init__(self, room_brightness: float, device: luma_device, content: DisplayContent) -> None:
+	def __init__(self, device: luma_device, content: DisplayContent) -> None:
 		logging.info("used presentation: %s", self.__class__.__name__)
 		self.device = device
 		self.content = content
-		self.room_brightness = room_brightness
-
 
 	def get_clock_font(self):
 		return ImageFont.truetype(self.font_file_7segment, 60)
@@ -65,7 +64,8 @@ class Presentation:
 			xy=[x, y],
 			font=font)
 
-	def present(self):
+	def present(self, room_brightness: float):
+		self.room_brightness = room_brightness
 		self.device.contrast(16)
 		with canvas(self.device) as draw: 
 			self.write_clock(draw)
@@ -117,7 +117,7 @@ class Display(Observer):
 		else:
 			p = BrightPresentation(room_brightness, self.device, self.content)
 
-		p.present()
+		p.present(room_brightness)
 		
 if __name__ == '__main__':
 	import argparse
