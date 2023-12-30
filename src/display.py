@@ -14,7 +14,7 @@ from utils.singleton import singleton
 resources_dir = f"{os.path.dirname(os.path.realpath(__file__))}/resources"
 
 class Presentation:
-	font_file_7segment = f"{resources_dir}/DSEG7ClassicMini-Bold.ttf"
+	font_file_7segment = f"{resources_dir}/DSEG7Classic-Regular.ttf"
 	font_file_nerd = f"{resources_dir}/CousineNerdFontMono-Regular.ttf"
 
 	device: luma_device
@@ -27,7 +27,7 @@ class Presentation:
 		self.content = content
 
 	def get_clock_font(self):
-		return ImageFont.truetype(self.font_file_7segment, 60)
+		return ImageFont.truetype(self.font_file_7segment, 50)
 
 	def get_clock_string(self) -> str:
 		clock_string = self.content.clock.replace("7", "`")
