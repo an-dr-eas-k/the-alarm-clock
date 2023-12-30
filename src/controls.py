@@ -172,7 +172,6 @@ class Controls(Observer):
 class SoftwareControls(Controls):
 	def __init__(self, state: AlarmClockState, display_content: DisplayContent) -> None:
 		super().__init__(state, display_content)
-		self.state.configuration.brightness = 12
 
 	def configure(self):
 		def key_pressed_action(key):

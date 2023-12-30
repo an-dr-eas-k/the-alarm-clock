@@ -168,15 +168,6 @@ class Config(Observable):
 		self.notify(property='audio_streams')
 
 	@property
-	def brightness(self) -> int:
-		return self._brightness
-
-	@brightness.setter
-	def brightness(self, value: int):
-		self._brightness = value
-		self.notify(property='brightness')
-
-	@property
 	def refresh_timeout_in_secs(self) -> int:
 		return self._refresh_timeout_in_secs
 
@@ -205,7 +196,6 @@ class Config(Observable):
 	
 	def __init__(self) -> None:
 		super().__init__()
-		self.brightness = 15
 		self.clock_format_string = "%-H<blinkSegment>%M"
 		self.blink_segment = ":"
 		self.refresh_timeout_in_secs = 1
@@ -275,9 +265,6 @@ class DisplayContent(Observable, Observer):
 	def __init__(self, state: AlarmClockState):
 		super().__init__()
 		self.state = state
-
-	def get_brightness_16(self) -> int:
-		return min(15, max(1, self.state.configuration.brightness))
 
 	def get_is_wifi_available(self)-> bool:
 		return self.state.is_wifi_available

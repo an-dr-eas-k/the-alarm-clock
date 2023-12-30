@@ -6,7 +6,7 @@ from luma.core.render import canvas
 from PIL import ImageFont, ImageDraw
 
 from domain import DisplayContent, Observation, Observer
-from gpi import get_room_brightness, get_room_brightness_16, get_room_brightness_256_v2
+from gpi import get_room_brightness, get_room_brightness_256_v2
 
 resources_dir = f"{os.path.dirname(os.path.realpath(__file__))}/resources"
 

@@ -11,7 +11,7 @@ def get_room_brightness() -> float:
 		logging.debug("raw sensor value in lux: %s", sensor.lux)
 		return sensor.lux
 	except:
-		return -1
+		return 10000
 
 def respect_ranges(value: float) ->  int:
 	return int(max(16, min(255, value)))
