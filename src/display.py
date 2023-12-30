@@ -115,7 +115,7 @@ class Display(Observer):
 		if (room_brightness <= 1 ):
 			p = DozyPresentation(self.device, self.content)
 		else:
-			p = BrightPresentation(room_brightness, self.device, self.content)
+			p = BrightPresentation(self.device, self.content)
 
 		p.present(room_brightness)
 		
