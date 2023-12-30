@@ -76,11 +76,6 @@ class DozyPresentation(Presentation):
 
 	font_file_7segment = f"{resources_dir}/DSEG7ClassicMini-Light.ttf"
 
-
-	def __init__(self, device: luma_device, content: DisplayContent) -> None:
-		super().__init__(0.0, device, content)
-
-
 	def get_clock_font(self):
 		return ImageFont.truetype(self.font_file_7segment, 40)
 
