@@ -51,11 +51,13 @@
 			location.reload();
 		}
 
-		function onClickSave(type, event) {
-			console.log(type);
-			const newValue = document.getElementById(type).value
-			console.log(newValue);
-			sendToBackend('/api/config/' + type, 'POST', newValue);
+		function onClickSave(newValue, type, selector = null, property = null) {
+			// console.log(`Type: ${type}, Selector: ${selector}, Property: ${property}, New Value: ${newValue}`);
+			let path = type
+			if (property !== null) {
+				path = [type, selector, property].join('/');
+			}
+			sendToBackend('/api/config/' + path, 'POST', newValue);
 			location.reload();
 		}
 
@@ -119,7 +121,12 @@
 					<td>{{ escape(alarm_definition.to_weekdays_string()) }}</td>
 					<td>stream: {{ escape(alarm_definition.audio_effect.stream_definition.stream_name ) }},
 						vol: {{ alarm_definition.audio_effect.volume }}</td>
-					<td>{% if alarm_definition.is_active %} &#x2713; {% else %} &#x2715; {% end %}</td>
+					<td>
+						<button type="submit" class="btn btn-primary btn-row-action"
+							onclick="onClickSave('{{ not alarm_definition.is_active }}', 'alarm', '{{ alarm_definition.id }}', 'is_active' )">
+							{% if alarm_definition.is_active %} &#x2713; {% else %} &#x2715; {% end %}
+						</button>
+					</td>
 					<td>
 						<button type="submit" class="btn btn-primary btn-row-action" value="{{ alarm_definition.id }}"
 							onclick="onClickDelete('alarm', event)">Delete</button>
@@ -243,7 +250,8 @@
 					<td><input type="text" id="dwd_station_id"
 							value="{{ escape( config.dwd_station_id ) if config.dwd_station_id is not None else '' }}" /></td>
 					<td><button type="submit" class="btn btn-primary btn-row-action"
-							onclick="onClickSave('dwd_station_id', event)">Save</button></td>
+							onclick="onClickSave(document.getElementById('dwd_station_id').value, 'dwd_station_id')">Save</button>
+					</td>
 				</tr>
 			</table>
 		</div>

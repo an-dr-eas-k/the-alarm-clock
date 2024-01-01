@@ -9,6 +9,22 @@ from apscheduler.triggers.cron import CronTrigger
 from utils.observer import Observable, Observation, Observer
 from utils.geolocation import GeoLocation
 
+def try_update(object, property_name: str, value: str) -> bool:
+	if hasattr(object, property_name):
+		attr_value = getattr(object, property_name)
+		attr_type = type(attr_value)
+		if attr_type == bool:
+			value = value.lower() in ("yes", "true", "t", "1")
+		else:
+			value = attr_type(value) if len(value) > 0 else None
+		if value != attr_value:
+			setattr(object, property_name, value)
+			if isinstance(object, Observable):
+				object.notify(property=property_name)
+		return True
+	return False
+
+
 class Mode(Enum):
 	Boot = 1
 	PreAlarm = 2
@@ -144,13 +160,17 @@ class Config(Observable):
 		return sorted(array_with_ids, key=lambda x: x.id, reverse=True)[0].id+1 if len(array_with_ids) > 0 else 1
 
 	def add_alarm_definition(self, value: AlarmDefinition):
-		value.id = Config.get_next_id(self._alarm_definitions)
+		value.id = Config.get_next_id(self._alarm_definitions) if value.id is None else value.id
 		self._alarm_definitions.append(value)
+		self._alarm_definitions = sorted(self._alarm_definitions, key=lambda x: x.id)
 		self.notify(property='alarm_definitions')
 
 	def remove_alarm_definition(self, id: int):
 		self._alarm_definitions = [ alarm_def for alarm_def in self._alarm_definitions if alarm_def.id != id ]
 		self.notify(property='alarm_definitions')
+
+	def get_alarm_definition(self, id: int) -> AlarmDefinition:
+		return next((alarm for alarm in self._alarm_definitions if alarm.id == id), None)
 
 	@property
 	def audio_streams(self) -> []:
@@ -218,15 +238,6 @@ class Config(Observable):
 			file_contents = file.read()
 			return jsonpickle.decode(file_contents)
 			
-	def try_update(self, property_name, value) -> bool:
-		value = value if value is not '' else None
-			
-		if hasattr(self, property_name):
-			if value != getattr(self, property_name):
-				setattr(self, property_name, value)
-				self.notify(property=property_name)
-			return True
-		return False
 
 class AlarmClockState(Observable):
 

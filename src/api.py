@@ -8,7 +8,7 @@ import tornado.web
 from PIL.Image import Image
 from datetime import timedelta
 
-from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, Config, InternetRadio, Weekday
+from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, Config, InternetRadio, Weekday, try_update
 from utils.geolocation import GeoLocation
 
 class DisplayHandler(tornado.web.RequestHandler):
@@ -43,9 +43,13 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 	def initialize(self, config: Config) -> None:
 		self.config = config
 
-	def split_path_arguments(path) -> tuple[str, int]:
+	def split_path_arguments(path) -> tuple[str, int, str]:
 		path_args = path[0].split('/')
-		return (path_args[0], int(path_args[1]) if len(path_args) > 1 else -1)
+		return (
+			path_args[0], 
+			int(path_args[1]) if len(path_args) > 1 else None,
+			path_args[2] if len(path_args) > 2 else None
+		)
 
 	def get(self):
 		try:
@@ -66,13 +70,21 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 
 	def post(self, *args):
 		try:
-			(type, id) = ConfigApiHandler.split_path_arguments(args)
-			if self.config.try_update(type, tornado.escape.to_unicode(self.request.body)):
+			(type, id, property) = ConfigApiHandler.split_path_arguments(args)
+			simpleValue = tornado.escape.to_unicode(self.request.body)
+			if try_update(self.config, type, simpleValue):
+				return
+			alarmDef = self.config.get_alarm_definition(id)
+			if True \
+				and alarmDef is not None \
+				and try_update(alarmDef, property, simpleValue):
+				self.config.remove_alarm_definition(id)
+				self.config.add_alarm_definition(alarmDef)
 				return
 			
 			form_arguments = tornado.escape.json_decode(self.request.body)
-			if (type == 'alarm'):
-				self.config.add_alarm_definition ( self.parse_alarm_definition(form_arguments) )
+			if type == 'alarm':
+					self.config.add_alarm_definition ( self.parse_alarm_definition(form_arguments) )
 			elif type == 'stream':
 				self.config.add_audio_stream ( self.parse_stream_definition(form_arguments) )
 		except:
