@@ -15,6 +15,14 @@
 		.row {
 			margin-top: 1.5rem;
 		}
+
+		.btn-row-action {
+			width: 100%;
+		}
+
+		.btn-column {
+			width: 90px;
+		}
 	</style>
 
 	<script>
@@ -40,6 +48,14 @@
 
 		function onClickDelete(type, event) {
 			sendToBackend('/api/config/' + type + '/' + event.target.value, 'DELETE', null);
+			location.reload();
+		}
+
+		function onClickSave(type, event) {
+			console.log(type);
+			const newValue = document.getElementById(type).value
+			console.log(newValue);
+			sendToBackend('/api/config/' + type, 'POST', newValue);
 			location.reload();
 		}
 
@@ -94,7 +110,7 @@
 					<th>Weekdays</th>
 					<th>Effect</th>
 					<th>on</th>
-					<th style="width: 1%"></th>
+					<th class="btn-column"></th>
 				</tr>
 				{% for alarm_definition in config.alarm_definitions %}
 				<tr>
@@ -105,7 +121,7 @@
 						vol: {{ alarm_definition.audio_effect.volume }}</td>
 					<td>{% if alarm_definition.is_active %} &#x2713; {% else %} &#x2715; {% end %}</td>
 					<td>
-						<button type="submit" class="btn btn-primary" value="{{ alarm_definition.id }}"
+						<button type="submit" class="btn btn-primary btn-row-action" value="{{ alarm_definition.id }}"
 							onclick="onClickDelete('alarm', event)">Delete</button>
 					</td>
 				</tr>
@@ -162,8 +178,8 @@
 						</div>
 					</td>
 					<td>
-						<button type="submit" class="btn btn-primary" onclick="onClickToggleAddForm('add-alarm-container')"
-							style="width: 100%;">+</button>
+						<button type="submit" class="btn btn-primary btn-row-action"
+							onclick="onClickToggleAddForm('add-alarm-container')" style="width: 100%;">+</button>
 					</td>
 				</tr>
 			</table>
@@ -174,14 +190,14 @@
 				<tr>
 					<th>Name</th>
 					<th>Url</th>
-					<th style="width: 1%"></th>
+					<th class="btn-column"></th>
 				</tr>
 				{% for audio_stream in config.audio_streams %}
 				<tr>
 					<td>{{ escape(audio_stream.stream_name) }}</td>
 					<td>{{ escape(audio_stream.stream_url) }}</td>
 					<td>
-						<button type="submit" class="btn btn-primary" value="{{ audio_stream.id }}"
+						<button type="submit" class="btn btn-primary btn-row-action" value="{{ audio_stream.id }}"
 							onclick="onClickDelete('stream', event)">Delete</button>
 					</td>
 				</tr>
@@ -208,9 +224,26 @@
 						</div>
 					</td>
 					<td>
-						<button type="submit" class="btn btn-primary" onclick="onClickToggleAddForm('add-stream-container')"
-							style="width: 100%;">+</button>
+						<button type="submit" class="btn btn-primary btn-row-action"
+							onclick="onClickToggleAddForm('add-stream-container')" style="width: 100%;">+</button>
 					</td>
+				</tr>
+			</table>
+		</div>
+		<div id="general-config" class="row">
+			<h3>Config</h3>
+			<table class="table table-striped">
+				<tr>
+					<th>Name</th>
+					<th>Value</th>
+					<th class="btn-column"></th>
+				</tr>
+				<tr>
+					<td>DWD StationId</td>
+					<td><input type="text" id="dwd_station_id"
+							value="{{ escape( config.dwd_station_id ) if config.dwd_station_id is not None else '' }}" /></td>
+					<td><button type="submit" class="btn btn-primary btn-row-action"
+							onclick="onClickSave('dwd_station_id', event)">Save</button></td>
 				</tr>
 			</table>
 		</div>

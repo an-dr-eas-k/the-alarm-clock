@@ -67,6 +67,9 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 	def post(self, *args):
 		try:
 			(type, id) = ConfigApiHandler.split_path_arguments(args)
+			if self.config.try_update(type, tornado.escape.to_unicode(self.request.body)):
+				return
+			
 			form_arguments = tornado.escape.json_decode(self.request.body)
 			if (type == 'alarm'):
 				self.config.add_alarm_definition ( self.parse_alarm_definition(form_arguments) )
