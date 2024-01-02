@@ -60,7 +60,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 	
 	def delete(self, *args):
 		try:
-			(type, id) = ConfigApiHandler.split_path_arguments(args)
+			(type, id, _) = ConfigApiHandler.split_path_arguments(args)
 			if (type == 'alarm'):
 				self.config.remove_alarm_definition(id) 
 			elif type == 'stream':
