@@ -101,7 +101,6 @@ class AlarmDefinition:
 				target = target + timedelta(days=1)
 		self.date = target.date()
 
-
 class AudioDefinition(Observable):
 
 	@property
@@ -156,13 +155,20 @@ class Config(Observable):
 	def alarm_definitions(self) -> []:
 		return self._alarm_definitions
 
+	def append_item_with_id(item_with_id, list) -> []:
+		Config.assure_item_id(item_with_id, list)
+		list.append(item_with_id)
+		return sorted(list, key=lambda x: x.id)
+
+	def assure_item_id(item_with_id, list):
+		if not hasattr(item_with_id, 'id') or item_with_id.id is None:
+			item_with_id.id = Config.get_next_id(list)
+
 	def get_next_id(array_with_ids: []) -> int:
 		return sorted(array_with_ids, key=lambda x: x.id, reverse=True)[0].id+1 if len(array_with_ids) > 0 else 1
 
 	def add_alarm_definition(self, value: AlarmDefinition):
-		value.id = Config.get_next_id(self._alarm_definitions) if value.id is None else value.id
-		self._alarm_definitions.append(value)
-		self._alarm_definitions = sorted(self._alarm_definitions, key=lambda x: x.id)
+		self._alarm_definitions = Config.append_item_with_id(value, self._alarm_definitions)
 		self.notify(property='alarm_definitions')
 
 	def remove_alarm_definition(self, id: int):
@@ -177,8 +183,7 @@ class Config(Observable):
 		return self._audio_streams
 
 	def add_audio_stream(self, value: AudioStream):
-		value.id = Config.get_next_id(self._audio_streams)
-		self._audio_streams.append(value)
+		self._audio_streams = Config.append_item_with_id(value, self._audio_streams)
 		self.notify(property='audio_streams')
 
 	def get_audio_stream(self, id: int) -> AudioStream:
