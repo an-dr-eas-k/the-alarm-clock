@@ -20,12 +20,24 @@
 			width: 100%;
 		}
 
+		.btn-action {
+			width: 100%;
+			background-color: #8b0000;
+			border-color: #8b0000;
+		}
+
 		.btn-column {
 			width: 90px;
 		}
 	</style>
 
 	<script>
+
+		function onClickAction(type, event) {
+			sendToBackend('/api/action/' + type, 'POST', null);
+			location.reload();
+		}
+
 		function formToJSON(formData) {
 			var jsonData = {};
 
@@ -254,6 +266,24 @@
 					</td>
 				</tr>
 			</table>
+		</div>
+		<div id="general-actions" class="row">
+			<h3>Actions</h3>
+			<div class="col">
+				<button type="submit" class="btn btn-primary btn-action"
+					onclick="onClickAction('update', event)">Update</button>
+			</div>
+			<div class="col">
+				<button type="submit" class="btn btn-primary btn-action"
+					onclick="onClickAction('reboot', event)">Reboot</button>
+			</div>
+			<div class="col">
+				<button type="submit" class="btn btn-primary btn-action"
+					onclick="onClickAction('shutdown', event)">Shutdown</button>
+			</div>
+		</div>
+		<div id="footer" class="row">
+			<p>Copyright 2022 - 2023</p>
 		</div>
 	</div>
 </body>

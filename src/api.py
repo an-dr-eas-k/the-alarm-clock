@@ -11,6 +11,14 @@ from datetime import timedelta
 from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, Config, InternetRadio, Weekday, try_update
 from utils.geolocation import GeoLocation
 
+def split_path_arguments(path) -> tuple[str, int, str]:
+	path_args = path[0].split('/')
+	return (
+		path_args[0], 
+		int(path_args[1]) if len(path_args) > 1 else None,
+		path_args[2] if len(path_args) > 2 else None
+	)
+
 class DisplayHandler(tornado.web.RequestHandler):
 
 	def initialize(self, imageGetter) -> None:
@@ -38,18 +46,29 @@ class ConfigHandler(tornado.web.RequestHandler):
 		except:
 			logging.warning("%s", traceback.format_exc())
 
+class ActionApiHandler(tornado.web.RequestHandler):
+
+	def post(self, *args):
+		try:
+			(type, _1, _2) = split_path_arguments(args)
+
+			if(type == 'update'):
+				os._exit(0)
+			elif (type == 'reboot'):
+				os.system('sudo reboot')
+			elif (type == 'shutdown'):
+				os.system('sudo shutdown -h now')
+			else:
+				logging.warning("Unknown action: %s", type)
+
+		except:
+			logging.warning("%s", traceback.format_exc())
+
+
 class ConfigApiHandler(tornado.web.RequestHandler):
 
 	def initialize(self, config: Config) -> None:
 		self.config = config
-
-	def split_path_arguments(path) -> tuple[str, int, str]:
-		path_args = path[0].split('/')
-		return (
-			path_args[0], 
-			int(path_args[1]) if len(path_args) > 1 else None,
-			path_args[2] if len(path_args) > 2 else None
-		)
 
 	def get(self):
 		try:
@@ -60,7 +79,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 	
 	def delete(self, *args):
 		try:
-			(type, id, _) = ConfigApiHandler.split_path_arguments(args)
+			(type, id, _) = split_path_arguments(args)
 			if (type == 'alarm'):
 				self.config.remove_alarm_definition(id) 
 			elif type == 'stream':
@@ -70,7 +89,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 
 	def post(self, *args):
 		try:
-			(type, id, property) = ConfigApiHandler.split_path_arguments(args)
+			(type, id, property) = split_path_arguments(args)
 			simpleValue = tornado.escape.to_unicode(self.request.body)
 			if try_update(self.config, type, simpleValue):
 				return
@@ -132,6 +151,7 @@ class Api:
 		root = os.path.join(os.path.dirname(__file__), "webroot")
 		handlers = [
 			(r"/api/config/?(.*)", ConfigApiHandler, {"config": state.configuration}),
+			(r"/api/action/?(.*)", ActionApiHandler ),
 			(r"/(.*)", ConfigHandler, {"config": state.configuration}),
 			# (r"/(.*)", tornado.web.StaticFileHandler, {"path": root, "default_filename": "alarm.html"}),
 		]

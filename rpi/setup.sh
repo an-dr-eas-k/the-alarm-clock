@@ -30,3 +30,7 @@ fi
 	size 1M
 }
 EOF
+
+	cat >> /etc/sudoers.d/the-alarm-clock << "EOF"
+%the-alarm-clock	ALL=(ALL:ALL) NOPASSWD: /usr/sbin/shutdown, /usr/sbin/reboot
+EOF

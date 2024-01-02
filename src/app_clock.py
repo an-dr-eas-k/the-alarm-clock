@@ -30,7 +30,6 @@ class ClockApp:
 	def is_on_hardware(self):
 		return not self.args.software
 	
-
 	def go(self):
 
 		self.state = AlarmClockState(Config())
