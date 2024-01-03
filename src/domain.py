@@ -104,7 +104,7 @@ class AlarmDefinition:
 class AudioDefinition(Observable):
 
 	@property
-	def audio_effect(self) -> str:
+	def audio_effect(self) -> AudioEffect:
 		return self._audio_effect
 
 	@audio_effect.setter

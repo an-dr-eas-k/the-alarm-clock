@@ -77,6 +77,7 @@ class Speaker(Observer):
 	def adjust_volume(self, newVolume: float):
 		control_name = self.get_first_control_name()
 		subprocess.call(["amixer", "sset", control_name, f"{newVolume * 100}%"], stdout=subprocess.DEVNULL)
+		logging.debug(f"set volume to {newVolume}")
 		pass
 
 	def get_first_control_name(self):

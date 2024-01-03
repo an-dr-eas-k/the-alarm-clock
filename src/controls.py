@@ -7,7 +7,7 @@ from gpiozero import Button, DigitalOutputDevice
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
-from domain import AlarmClockState, AlarmDefinition, AudioDefinition, DisplayContent, Observation, Observer, Config
+from domain import AlarmClockState, AlarmDefinition, AudioDefinition, DisplayContent, InternetRadio, Observation, Observer, Config
 from utils.geolocation import GeoLocation, SunEvent
 
 button1Id = 0
@@ -121,6 +121,12 @@ class Controls(Observer):
 
 	def button4_action(self):
 		try:
+			audio_state = self.state.audio_state
+			if not audio_state.audio_effect:
+					first_stream = self.state.configuration.audio_streams[0]
+					audio_state.audio_effect = InternetRadio(stream_definition=first_stream)
+					audio_state.audio_effect.volume = 0.9
+
 			self.state.audio_state.toggle_stream()
 		except:
 			logging.error("%s", traceback.format_exc())
