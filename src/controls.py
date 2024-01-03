@@ -101,17 +101,29 @@ class Controls(Observer):
 					logging.info("next runtime for job '%s': %s", job.id, job.next_run_time.strftime(f"%Y-%m-%d %H:%M:%S"))
 
 	def button1_action(self):
-		self.state.audio_state.decrease_volume()
+		try:
+			self.state.audio_state.decrease_volume()
+		except:
+			logging.error("%s", traceback.format_exc())
 
 	def button2_action(self):
-		self.state.audio_state.increase_volume()
+		try:
+			self.state.audio_state.increase_volume()
+		except:
+			logging.error("%s", traceback.format_exc())
 
 	def button3_action(self):
-		self.scheduler.shutdown(wait=False)
-		os._exit(0) 
+		try:
+			self.scheduler.shutdown(wait=False)
+			os._exit(0) 
+		except:
+			logging.error("%s", traceback.format_exc())
 
 	def button4_action(self):
-		self.state.audio_state.toggle_stream()
+		try:
+			self.state.audio_state.toggle_stream()
+		except:
+			logging.error("%s", traceback.format_exc())
 
 	def configure(self):
 		for button in ([
@@ -128,15 +140,18 @@ class Controls(Observer):
 			self.buttons.append(b)
 
 	def update_clock(self):
-		blink_segment = " "
-		if (self.state.show_blink_segment):
-			blink_segment = self.state.configuration.blink_segment
-		
-		self.state.show_blink_segment = not self.state.show_blink_segment
+		try:
+			blink_segment = " "
+			if (self.state.show_blink_segment):
+				blink_segment = self.state.configuration.blink_segment
+			
+			self.state.show_blink_segment = not self.state.show_blink_segment
 
-		self.state.clock	\
-			= GeoLocation().now().strftime(self.state.configuration.clock_format_string.replace("<blinkSegment>", blink_segment))
-		logging.info ("update clock %s", self.state.clock)
+			self.state.clock	\
+				= GeoLocation().now().strftime(self.state.configuration.clock_format_string.replace("<blinkSegment>", blink_segment))
+			logging.info ("update clock %s", self.state.clock)
+		except:
+			logging.error("%s", traceback.format_exc())
 
 	def update_wifi_status(self):
 
@@ -147,21 +162,30 @@ class Controls(Observer):
 				stderr=subprocess.DEVNULL)
 			return result.returncode == 0
 
-		self.state.is_wifi_available = is_ping_successful("google.com")
-		logging.info ("update wifi, is available: %s", self.state.is_wifi_available)
+		try:
+			self.state.is_wifi_available = is_ping_successful("google.com")
+			logging.info ("update wifi, is available: %s", self.state.is_wifi_available)
+		except:
+			logging.error("%s", traceback.format_exc())
 
 	def sun_event_occured(self, event: SunEvent):
-		logging.info ("sun event %s", event)
-		self.state.is_daytime = event == SunEvent.sunrise
+		try:
+			logging.info ("sun event %s", event)
+			self.state.is_daytime = event == SunEvent.sunrise
+		except:
+			logging.error("%s", traceback.format_exc())
 
 	def ring_alarm(self, alarmDefinition: AlarmDefinition):
-		logging.info ("ring alarm %s", alarmDefinition.alarm_name)
+		try:
+			logging.info ("ring alarm %s", alarmDefinition.alarm_name)
 
-		self.state.audio_state.audio_effect = alarmDefinition.audio_effect
-		self.state.audio_state.is_streaming = True
+			self.state.audio_state.audio_effect = alarmDefinition.audio_effect
+			self.state.audio_state.is_streaming = True
 
-		if alarmDefinition.date is not None:
-			self.state.configuration.remove_alarm_definition(alarmDefinition.id)
+			if alarmDefinition.date is not None:
+				self.state.configuration.remove_alarm_definition(alarmDefinition.id)
+		except:
+			logging.error("%s", traceback.format_exc())
 
 	def cleanup_alarms(self):
 		job: Job
