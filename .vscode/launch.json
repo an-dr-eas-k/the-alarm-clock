@@ -45,6 +45,15 @@
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/src/utils",
       "justMyCode": false,
+    },
+    {
+      "name": "python svgconverter.py",
+      "type": "python",
+      "request": "launch",
+      "program": "svgconverter.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/src/utils",
+      "justMyCode": false,
     }
   ]
 }

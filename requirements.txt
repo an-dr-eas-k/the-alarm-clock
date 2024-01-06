@@ -9,3 +9,7 @@ apscheduler
 jsonpickle
 astral
 adafruit-circuitpython-bh1750
+cairosvg
+svglib
+reportlab
+weasyprint == 57.0
