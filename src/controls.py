@@ -100,27 +100,31 @@ class Controls(Observer):
 				if (hasattr(job, 'next_run_time') and job.next_run_time is not None):
 					logging.info("next runtime for job '%s': %s", job.id, job.next_run_time.strftime(f"%Y-%m-%d %H:%M:%S"))
 
-	def button1_action(self):
+	def button_action(action, button_id):
 		try:
-			self.state.audio_state.decrease_volume()
+			logging.info("button %s pressed", button_id)
+			action()
 		except:
 			logging.error("%s", traceback.format_exc())
+		
+
+	def button1_action(self):
+		Controls.button_action(self.state.audio_state.decrease_volume, 1)
 
 	def button2_action(self):
-		try:
-			self.state.audio_state.increase_volume()
-		except:
-			logging.error("%s", traceback.format_exc())
+		Controls.button_action(self.state.audio_state.increase_volume, 2)
 
 	def button3_action(self):
-		try:
+
+		def exit():
 			self.scheduler.shutdown(wait=False)
 			os._exit(0) 
-		except:
-			logging.error("%s", traceback.format_exc())
+
+		Controls.button_action(exit, 3)
 
 	def button4_action(self):
-		try:
+
+		def toggle_stream():
 			audio_state = self.state.audio_state
 			if not audio_state.audio_effect:
 					first_stream = self.state.configuration.audio_streams[0]
@@ -128,8 +132,8 @@ class Controls(Observer):
 					audio_state.audio_effect.volume = 0.9
 
 			self.state.audio_state.toggle_stream()
-		except:
-			logging.error("%s", traceback.format_exc())
+		
+		Controls.button_action(toggle_stream, 4)
 
 	def configure(self):
 		for button in ([
