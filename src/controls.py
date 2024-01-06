@@ -88,12 +88,19 @@ class Controls(Observer):
 					continue
 				logging.info("adding job for '%s'", alDef.alarm_name)
 				self.scheduler.add_job(
-					lambda : self.ring_alarm(alDef), 
+					func=self.ring_alarm,
+					args=(alDef,),
 					id=f'{alDef.id}',
 					jobstore=alarm_store,
 					trigger=alDef.to_cron_trigger())
 			self.cleanup_alarms()
+			self.display_content.next_alarm_job = self.get_next_alarm_job()
 			self.print_active_jobs(alarm_store)
+
+	def get_next_alarm_job(self) -> Job:
+		jobs = sorted (self.scheduler.get_jobs(jobstore=alarm_store), key=lambda job: job.next_run_time)
+		return jobs[0] if len(jobs) > 0 else None
+
 
 	def print_active_jobs(self, jobstore):
 			for job in self.scheduler.get_jobs(jobstore=jobstore):

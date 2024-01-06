@@ -1,14 +1,16 @@
 from cgitb import grey
+import datetime
 import logging
 import math
 import os
 import traceback
 from luma.core.device import device as luma_device
 from luma.core.render import canvas
-from PIL import ImageFont, ImageDraw
+from PIL import ImageFont, ImageDraw, Image
 
 from domain import DisplayContent, Observation, Observer
 from gpi import get_room_brightness
+from utils.geolocation import GeoLocation
 from utils.singleton import singleton
 
 resources_dir = f"{os.path.dirname(os.path.realpath(__file__))}/resources"
@@ -17,20 +19,18 @@ class Presentation:
 	font_file_7segment = f"{resources_dir}/DSEG7Classic-Regular.ttf"
 	font_file_nerd = f"{resources_dir}/CousineNerdFontMono-Regular.ttf"
 
-	device: luma_device
 	content: DisplayContent
 	room_brightness: float
 
-	def __init__(self, device: luma_device, content: DisplayContent) -> None:
+	def __init__(self, content: DisplayContent) -> None:
 		logging.info("used presentation: %s", self.__class__.__name__)
-		self.device = device
 		self.content = content
 
 	def get_clock_font(self):
 		return ImageFont.truetype(self.font_file_7segment, 50)
 
-	def get_clock_string(self) -> str:
-		clock_string = self.content.clock.replace("7", "`")
+	def get_clock_string(clock: str) -> str:
+		clock_string = clock.replace("7", "`")
 		desired_length = 5
 		clock_string = "!" * (desired_length - len(clock_string)) + clock_string
 		return clock_string
@@ -45,12 +45,13 @@ class Presentation:
 
 	def write_wifi_status(self, draw: ImageDraw.ImageDraw):
 		if not self.content.get_is_wifi_available():
-			font=ImageFont.truetype(self.font_file_nerd, 40)
+			font=ImageFont.truetype(self.font_file_nerd, 20)
 			draw.text([2,-9], '\U000f16b5', fill=self.get_fill(), font=font)
 
 	def write_clock(self, draw: ImageDraw.ImageDraw):
 		font=self.get_clock_font()
-		font_BBox = font.getbbox(self.get_clock_string())
+		clock_string = Presentation.get_clock_string(self.content.clock)
+		font_BBox = font.getbbox(clock_string)
 		width = font_BBox[2] - font_BBox[0]
 		height = font_BBox[3] - font_BBox[1]
 		x = (draw.im.size[0]-width)/2
@@ -60,16 +61,41 @@ class Presentation:
 			stroke_width=0, 
 			fill=self.get_fill(),
 			align='left',
-			text=self.get_clock_string(),
+			text=clock_string,
 			xy=[x, y],
 			font=font)
+	
+	def write_next_alarm(self, draw: ImageDraw.ImageDraw):
+		next_alarm_job = self.content.next_alarm_job
+		if next_alarm_job is None:
+			return
+		next_run_time: datetime = next_alarm_job.next_run_time
+		
+		if next_run_time is None or (next_run_time - GeoLocation().now()).total_seconds() / 3600 > 12.0:
+			return
 
-	def present(self, room_brightness: float):
+		font_nerd=ImageFont.truetype(self.font_file_nerd, 10)
+		font_7segment=ImageFont.truetype(self.font_file_7segment, 8)
+
+		next_alarm_string = Presentation.get_clock_string(next_run_time.strftime("%H:%M "))
+		font_BBox_7segment = font_7segment.getbbox(next_alarm_string)
+		alarm_symbol = "󰀠"
+		font_BBox_symbol = font_nerd.getbbox(alarm_symbol)
+		height = max(font_BBox_7segment[3], font_BBox_symbol[3])
+		pos = [
+			draw.im.size[0]-font_BBox_7segment[2]-font_BBox_symbol[2]-2, 
+			draw.im.size[1]-height-2]
+		draw.text(pos, next_alarm_string, fill=self.get_fill(), font=font_7segment)
+		pos = [
+			draw.im.size[0]-font_BBox_symbol[2]-2, 
+			draw.im.size[1]-height-2]
+		draw.text(pos, alarm_symbol, fill=self.get_fill(), font=font_nerd)
+
+	def present(self, draw, room_brightness: float):
 		self.room_brightness = room_brightness
-		self.device.contrast(16)
-		with canvas(self.device) as draw: 
-			self.write_clock(draw)
-			self.write_wifi_status(draw)
+		self.write_clock(draw)
+		self.write_next_alarm(draw)
+		self.write_wifi_status(draw)
 
 @singleton
 class DozyPresentation(Presentation):
@@ -108,11 +134,13 @@ class Display(Observer):
 		p: Presentation
 		room_brightness = get_room_brightness()
 		if (room_brightness <= 1 ):
-			p = DozyPresentation(self.device, self.content)
+			p = DozyPresentation(self.content)
 		else:
-			p = BrightPresentation(self.device, self.content)
+			p = BrightPresentation(self.content)
 
-		p.present(room_brightness)
+		self.device.contrast(16)
+		with canvas(self.device) as draw: 
+			p.present(draw, room_brightness)
 		
 if __name__ == '__main__':
 	import argparse

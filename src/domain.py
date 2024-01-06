@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import  date, time, timedelta
+from apscheduler.job import Job
 from enum import Enum
 import logging
 
@@ -297,6 +298,7 @@ class AlarmClockState(Observable):
 class DisplayContent(Observable, Observer):
 	is_volume_meter_shown: bool=False
 	clock:str
+	next_alarm_job: Job
 
 	def __init__(self, state: AlarmClockState):
 		super().__init__()
