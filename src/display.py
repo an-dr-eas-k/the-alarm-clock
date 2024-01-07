@@ -8,12 +8,12 @@ from luma.core.device import device as luma_device
 from luma.core.render import canvas
 from PIL import ImageFont, ImageDraw, Image
 
+from app_clock import resources_dir
 from domain import DisplayContent, Observation, Observer
 from gpi import get_room_brightness
 from utils.geolocation import GeoLocation
 from utils.singleton import singleton
 
-resources_dir = f"{os.path.dirname(os.path.realpath(__file__))}/resources"
 
 class Presentation:
 	font_file_7segment = f"{resources_dir}/DSEG7Classic-Regular.ttf"

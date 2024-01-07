@@ -18,6 +18,8 @@ from domain import AlarmClockState, Config, DisplayContent
 from gpo import GeneralPurposeOutput
 from persistence import Persistence
 
+resources_dir = f"{os.path.dirname(os.path.realpath(__file__))}/resources"
+
 class ClockApp:
 	configFile = f"{os.path.dirname(os.path.realpath(__file__))}/config.json"
 
