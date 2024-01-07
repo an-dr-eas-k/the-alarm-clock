@@ -7,8 +7,8 @@ import traceback
 from luma.core.device import device as luma_device
 from luma.core.render import canvas
 from PIL import ImageFont, ImageDraw, Image
+from PIL.ImageFont import FreeTypeFont
 
-from app_clock import resources_dir
 from domain import DisplayContent, Observation, Observer
 from gpi import get_room_brightness
 from utils.geolocation import GeoLocation
@@ -16,9 +16,35 @@ from utils.singleton import singleton
 
 resources_dir = f"{os.path.dirname(os.path.realpath(__file__))}/resources"
 
+def get_concat_h(im1, im2):
+    dst = Image.new('RGB', (im1.width + im2.width, im1.height))
+    dst.paste(im1, (0, 0))
+    dst.paste(im2, (im1.width, 0))
+    return dst
+
+def get_concat_h_multi_blank(im_list):
+    _im = im_list.pop(0)
+    for im in im_list:
+        _im = get_concat_h(_im, im)
+    return _im
+
+def text_to_image(
+text: str,
+font: FreeTypeFont,
+color: (int, int, int), #color is in RGB
+font_align="center"):
+
+   box = font.getbbox(text)
+   img = Image.new("RGBA", (box[0], box[1]))
+   draw = ImageDraw.Draw(img)
+   draw_point = (0, 0)
+   draw.multiline_text(draw_point, text, font=font, fill=color, align=font_align)
+   return img
+
 class Presentation:
 	font_file_7segment = f"{resources_dir}/DSEG7Classic-Regular.ttf"
 	font_file_nerd = f"{resources_dir}/CousineNerdFontMono-Regular.ttf"
+	font_file_weather = f"{resources_dir}/weather-icons/weathericons-regular-webfont.ttf"
 
 	content: DisplayContent
 	room_brightness: float
@@ -43,6 +69,18 @@ class Presentation:
 		greyscale_value = Presentation.respect_ranges( 500/(1+math.exp(-0.3*self.room_brightness))-250, min_value, max_value)
 		logging.debug("greyscale_value: %s", greyscale_value)
 		return (greyscale_value << 16) | (greyscale_value << 8) | greyscale_value
+
+	# def write_wifi_status(self, draw: ImageDraw.ImageDraw):
+	# 	# if not self.content.get_is_wifi_available():
+	# 		no_wifi_symbol = '\U000f1eb9'
+	# 		font=ImageFont.truetype(self.font_file_nerd, 20)
+
+	# 		bbox = font.getbbox(no_wifi_symbol)
+	# 		wifi_image = Image.new("RGBA", [bbox[2], bbox[3]])
+	# 		ImageDraw.Draw(wifi_image).text([0,0], no_wifi_symbol, fill='white', font=font)
+			
+	# 		draw.bitmap([0,0], wifi_image, fill='white')
+
 
 	def write_wifi_status(self, draw: ImageDraw.ImageDraw):
 		if not self.content.get_is_wifi_available():
@@ -80,7 +118,7 @@ class Presentation:
 
 		fill = self.get_fill(min_value=32)
 
-		next_alarm_string = Presentation.get_clock_string(next_run_time.strftime(" %H:%M"))
+		next_alarm_string = Presentation.get_clock_string(next_run_time.strftime("%-H:%M"))
 		font_BBox_7segment = font_7segment.getbbox(next_alarm_string)
 		alarm_symbol = "󰀠"
 		font_BBox_symbol = font_nerd.getbbox(alarm_symbol)
@@ -92,16 +130,39 @@ class Presentation:
 		draw.text(pos, alarm_symbol, fill=fill, font=font_nerd)
 
 		pos = [
-			font_BBox_symbol[2] +2,
+			font_BBox_symbol[2] +6,
 			draw.im.size[1]-height-2]
 		draw.text(pos, next_alarm_string, fill=fill, font=font_7segment)
 
+	def write_weather_status(self, draw: ImageDraw.ImageDraw):
+		weather = self.content.current_weather
+		if weather is None:
+			return
+		weather_character = weather.code.to_character()
+		font_weather=ImageFont.truetype(self.font_file_weather, 20)
+		font_7segment=ImageFont.truetype(self.font_file_7segment, 20)
+		
+		# weather_image = text_to_image(weather_character, font_weather, (150, 150, 150))
+		# weather_image.save("weather.png")
+		# temperature_image = text_to_image(str(weather.temperature), font_7segment, (255,255,255))
+		# get_concat_h(weather_image, temperature_image).save("weather.png")
+		# draw.bitmap([0,0], get_concat_h_multi_blank([weather_image, temperature_image]), fill=self.get_fill())
+		# i: Image.Image = draw.im
+		# draw.paste(weather_image, (0,0))
+		# draw.im.paste(weather_image, None)
+
+		draw.text([2,-4], weather_character, fill=self.get_fill(), font=font_weather)
+		# weather_temperature = "{:.{}f}".format(weather.temperature, 1 if weather.temperature < 10 else 0)
+		# draw.text([2, 24], weather_temperature, fill=self.get_fill(), font=font_7segment)
 
 	def present(self, draw, room_brightness: float):
 		self.room_brightness = room_brightness
 		self.write_clock(draw)
 		self.write_next_alarm(draw)
-		self.write_wifi_status(draw)
+		if not self.content.get_is_wifi_available():
+			self.write_wifi_status(draw)
+		else:
+			self.write_weather_status(draw)
 
 @singleton
 class DozyPresentation(Presentation):

@@ -8,7 +8,7 @@ import jsonpickle
 from apscheduler.triggers.cron import CronTrigger
 
 from utils.observer import Observable, Observation, Observer
-from utils.geolocation import GeoLocation
+from utils.geolocation import GeoLocation, Weather
 
 def try_update(object, property_name: str, value: str) -> bool:
 	if hasattr(object, property_name):
@@ -153,7 +153,7 @@ class Config(Observable):
 
 	_alarm_definitions: [] = []
 	_audio_streams: [] = []
-	_dwd_station_id: str = None
+	dwd_station_id: str = None
 
 	@property
 	def alarm_definitions(self) -> []:
@@ -224,15 +224,6 @@ class Config(Observable):
 		self._blink_segment = value
 		self.notify(property='blink_segment')
 	
-	@property
-	def dwd_station_id(self) -> str:
-		return self._dwd_station_id
-
-	@dwd_station_id.setter
-	def dwd_station_id(self, value: str):
-		self._dwd_station_id = value
-		self.notify(property='dwd_station_id')
-
 	def __init__(self) -> None:
 		super().__init__()
 		self.clock_format_string = "%-H<blinkSegment>%M"
@@ -302,6 +293,7 @@ class DisplayContent(Observable, Observer):
 	is_volume_meter_shown: bool=False
 	clock:str
 	next_alarm_job: Job
+	current_weather: Weather
 
 	def __init__(self, state: AlarmClockState):
 		super().__init__()

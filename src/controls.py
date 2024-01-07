@@ -1,11 +1,14 @@
 import datetime
+import json
 import logging
 import os
 import subprocess
 import traceback
-from gpiozero import Button, DigitalOutputDevice
+from urllib.request import urlopen
+from gpiozero import Button
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
+from apscheduler.triggers.cron import CronTrigger
 from apscheduler.job import Job
 from domain import AlarmClockState, AlarmDefinition, AudioDefinition, DisplayContent, InternetRadio, Observation, Observer, Config
 from utils.geolocation import GeoLocation, SunEvent
@@ -30,6 +33,7 @@ class Controls(Observer):
 		self.state = state
 		self.display_content = display_content
 		self.sun_event_occured(state.geo_location.last_sun_event())
+		self.update_weather_status()
 		self.add_scheduler_jobs()
 		self.scheduler.start()
 		self.print_active_jobs(default_store)
@@ -47,6 +51,14 @@ class Controls(Observer):
 			'interval', 
 			seconds=60,
 			id="wifi_check_interval", 
+			jobstore=default_store)
+
+			# trigger=CronTrigger(hour="*/4"),
+		self.scheduler.add_job(
+			self.update_weather_status,
+			'interval', 
+			minutes=30,
+			id="weather_check_interval", 
 			jobstore=default_store)
 
 		for event in SunEvent.__members__.values():
@@ -169,6 +181,14 @@ class Controls(Observer):
 			logging.info ("update clock %s", self.state.clock)
 		except:
 			logging.error("%s", traceback.format_exc())
+
+	def update_weather_status(self):
+		try:
+			self.display_content.current_weather = GeoLocation().get_current_weather()
+			logging.info ("weather updated: %s", self.display_content.current_weather)
+		except:
+			logging.error("%s", traceback.format_exc())
+
 
 	def update_wifi_status(self):
 

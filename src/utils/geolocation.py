@@ -1,5 +1,7 @@
 from enum import Enum
 import json
+import os
+import xml.etree.ElementTree as ET
 from urllib.request import urlopen
 import datetime
 from astral import LocationInfo
@@ -7,6 +9,37 @@ from astral.sun import sun
 from apscheduler.triggers.cron import CronTrigger
 
 from utils.singleton import singleton
+
+
+weather_icons_dir = f"{os.path.dirname(os.path.realpath(__file__))}/../resources/weather-icons"
+
+class WMO_Code:
+
+	def __init__(self, code: int):
+		self.code = code
+
+	def to_character(self):
+		tree = ET.parse(f"{weather_icons_dir}/weathericons.xml")
+		root = tree.getroot()
+
+		weather_icon_element = root.find(f".//string[@name='wi_wmo4680_{self.code}']")
+		if weather_icon_element is not None:
+			return weather_icon_element.text
+		else:
+			return None
+
+class Weather:
+	code: WMO_Code
+	temperature: float
+
+	def __init__(self, code: int, temperature: float):
+		self.code = WMO_Code(code)
+		self.temperature = temperature
+
+	def __str__(self):
+		return f"code: {self.code} temperature: {self.temperature}"
+
+
 
 class SunEvent(Enum):
 	sunrise = 'sunrise'
@@ -64,6 +97,11 @@ class GeoLocation:
 		return SunEvent.sunrise \
 			if dt > localSun[SunEvent.sunrise.value] and dt < localSun[SunEvent.sunset.value] \
 			else SunEvent.sunset
+
+	def get_current_weather(self):
+		url = f"https://api.open-meteo.com/v1/forecast?latitude={self.location_info.latitude}&longitude={self.location_info.longitude}&current=temperature_2m&current=weather_code"
+		data = json.load(urlopen(url))
+		return Weather (code=data['current']['weather_code'], temperature=data['current']['temperature_2m']) 
 
 if __name__ == '__main__':
 	gl = GeoLocation()
