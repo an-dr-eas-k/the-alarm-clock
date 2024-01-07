@@ -78,6 +78,8 @@ class Presentation:
 		font_nerd=ImageFont.truetype(self.font_file_nerd, 20)
 		font_7segment=ImageFont.truetype(self.font_file_7segment, 13)
 
+		fill = self.get_fill()+32
+
 		next_alarm_string = Presentation.get_clock_string(next_run_time.strftime(" %H:%M"))
 		font_BBox_7segment = font_7segment.getbbox(next_alarm_string)
 		alarm_symbol = "󰀠"
@@ -87,12 +89,13 @@ class Presentation:
 		pos = [
 			4,
 			draw.im.size[1]-height-8]
-		draw.text(pos, alarm_symbol, fill=self.get_fill()+16, font=font_nerd)
+		draw.text(pos, alarm_symbol, fill=fill, font=font_nerd)
 
 		pos = [
 			font_BBox_symbol[2] +2,
 			draw.im.size[1]-height-2]
-		draw.text(pos, next_alarm_string, fill=self.get_fill()+16, font=font_7segment)
+		draw.text(pos, next_alarm_string, fill=fill, font=font_7segment)
+
 
 	def present(self, draw, room_brightness: float):
 		self.room_brightness = room_brightness
