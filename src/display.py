@@ -39,7 +39,8 @@ class Presentation:
 		return int(max(16, min(255, value)))
 
 	def get_fill(self):
-		greyscale_value = Presentation.respect_ranges( 500/(1+math.exp(-0.1*self.room_brightness))-250)
+		# returns a value between 16 and 255
+		greyscale_value = Presentation.respect_ranges( 500/(1+math.exp(-0.3*self.room_brightness))-250)
 		logging.debug("greyscale_value: %s", greyscale_value)
 		return (greyscale_value << 16) | (greyscale_value << 8) | greyscale_value
 
@@ -133,7 +134,7 @@ class Display(Observer):
 	def adjust_display(self):
 		p: Presentation
 		room_brightness = get_room_brightness()
-		if (room_brightness <= 1 ):
+		if (room_brightness <= 0.1 ):
 			p = DozyPresentation(self.content)
 		else:
 			p = BrightPresentation(self.content)
