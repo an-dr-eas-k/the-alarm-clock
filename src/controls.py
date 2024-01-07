@@ -199,10 +199,15 @@ class Controls(Observer):
 			self.state.audio_state.audio_effect = alarmDefinition.audio_effect
 			self.state.audio_state.is_streaming = True
 
-			if alarmDefinition.date is not None:
-				self.state.configuration.remove_alarm_definition(alarmDefinition.id)
+			self.after_ring_alarm(alarmDefinition)
 		except:
 			logging.error("%s", traceback.format_exc())
+
+	def after_ring_alarm(self, alarmDefinition: AlarmDefinition):
+		self.display_content.next_alarm_job = self.get_next_alarm_job()
+		if alarmDefinition.is_one_time():
+			self.state.configuration.remove_alarm_definition(alarmDefinition.id)
+
 
 	def cleanup_alarms(self):
 		job: Job

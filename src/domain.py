@@ -102,6 +102,9 @@ class AlarmDefinition:
 				target = target + timedelta(days=1)
 		self.date = target.date()
 
+	def is_one_time(self) -> bool:
+		return self.date is not None
+
 class AudioDefinition(Observable):
 
 	@property
