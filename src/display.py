@@ -55,7 +55,7 @@ class Presentation:
 		font_BBox = font.getbbox(clock_string)
 		width = font_BBox[2] - font_BBox[0]
 		height = font_BBox[3] - font_BBox[1]
-		x = (draw.im.size[0]-width)/2
+		x = (draw.im.size[0]-width)
 		y = (draw.im.size[1]-height)/2
 
 		draw.text(
@@ -75,22 +75,24 @@ class Presentation:
 		if next_run_time is None or (next_run_time - GeoLocation().now()).total_seconds() / 3600 > 12.0:
 			return
 
-		font_nerd=ImageFont.truetype(self.font_file_nerd, 10)
-		font_7segment=ImageFont.truetype(self.font_file_7segment, 8)
+		font_nerd=ImageFont.truetype(self.font_file_nerd, 20)
+		font_7segment=ImageFont.truetype(self.font_file_7segment, 13)
 
-		next_alarm_string = Presentation.get_clock_string(next_run_time.strftime("%H:%M "))
+		next_alarm_string = Presentation.get_clock_string(next_run_time.strftime(" %H:%M"))
 		font_BBox_7segment = font_7segment.getbbox(next_alarm_string)
 		alarm_symbol = "󰀠"
 		font_BBox_symbol = font_nerd.getbbox(alarm_symbol)
 		height = max(font_BBox_7segment[3], font_BBox_symbol[3])
+
 		pos = [
-			draw.im.size[0]-font_BBox_7segment[2]-font_BBox_symbol[2]-2, 
+			4,
+			draw.im.size[1]-height-8]
+		draw.text(pos, alarm_symbol, fill=self.get_fill(), font=font_nerd)
+
+		pos = [
+			font_BBox_symbol[2] +2,
 			draw.im.size[1]-height-2]
 		draw.text(pos, next_alarm_string, fill=self.get_fill(), font=font_7segment)
-		pos = [
-			draw.im.size[0]-font_BBox_symbol[2]-2, 
-			draw.im.size[1]-height-2]
-		draw.text(pos, alarm_symbol, fill=self.get_fill(), font=font_nerd)
 
 	def present(self, draw, room_brightness: float):
 		self.room_brightness = room_brightness
