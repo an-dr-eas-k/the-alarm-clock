@@ -14,6 +14,7 @@ from gpi import get_room_brightness
 from utils.geolocation import GeoLocation
 from utils.singleton import singleton
 
+resources_dir = f"{os.path.dirname(os.path.realpath(__file__))}/resources"
 
 class Presentation:
 	font_file_7segment = f"{resources_dir}/DSEG7Classic-Regular.ttf"
@@ -35,19 +36,18 @@ class Presentation:
 		clock_string = "!" * (desired_length - len(clock_string)) + clock_string
 		return clock_string
 
-	def respect_ranges(value: float) ->  int:
-		return int(max(16, min(255, value)))
+	def respect_ranges(value: float, min_value: int = 16, max_value: int = 255) ->  int:
+		return int(max(min_value, min(max_value, value)))
 
-	def get_fill(self):
-		# returns a value between 16 and 255
-		greyscale_value = Presentation.respect_ranges( 500/(1+math.exp(-0.3*self.room_brightness))-250)
+	def get_fill(self, min_value: int=16, max_value: int=255):
+		greyscale_value = Presentation.respect_ranges( 500/(1+math.exp(-0.3*self.room_brightness))-250, min_value, max_value)
 		logging.debug("greyscale_value: %s", greyscale_value)
 		return (greyscale_value << 16) | (greyscale_value << 8) | greyscale_value
 
 	def write_wifi_status(self, draw: ImageDraw.ImageDraw):
 		if not self.content.get_is_wifi_available():
-			font=ImageFont.truetype(self.font_file_nerd, 20)
-			draw.text([2,-9], '\U000f16b5', fill=self.get_fill(), font=font)
+			font=ImageFont.truetype(self.font_file_nerd, 30)
+			draw.text([2,-6], '\U000f05aa', fill=self.get_fill(), font=font)
 
 	def write_clock(self, draw: ImageDraw.ImageDraw):
 		font=self.get_clock_font()
@@ -78,7 +78,7 @@ class Presentation:
 		font_nerd=ImageFont.truetype(self.font_file_nerd, 20)
 		font_7segment=ImageFont.truetype(self.font_file_7segment, 13)
 
-		fill = self.get_fill()+32
+		fill = self.get_fill(min_value=32)
 
 		next_alarm_string = Presentation.get_clock_string(next_run_time.strftime(" %H:%M"))
 		font_BBox_7segment = font_7segment.getbbox(next_alarm_string)

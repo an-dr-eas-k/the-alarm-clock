@@ -6,10 +6,8 @@ import traceback
 import tornado
 import tornado.web
 from PIL.Image import Image
-from datetime import timedelta
 
 from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, Config, InternetRadio, Weekday, try_update
-from utils.geolocation import GeoLocation
 
 def split_path_arguments(path) -> tuple[str, int, str]:
 	path_args = path[0].split('/')
