@@ -66,7 +66,7 @@ class Presentation:
 		return int(max(min_value, min(max_value, value)))
 
 	def get_fill(self, min_value: int=16, max_value: int=255):
-		greyscale_value = Presentation.respect_ranges( 500/(1+math.exp(-0.3*self.room_brightness))-250, min_value, max_value)
+		greyscale_value = Presentation.respect_ranges( 500/(1+math.exp(-0.25*self.room_brightness))-250, min_value, max_value)
 		logging.debug("greyscale_value: %s", greyscale_value)
 		return (greyscale_value << 16) | (greyscale_value << 8) | greyscale_value
 
