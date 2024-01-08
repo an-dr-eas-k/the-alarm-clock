@@ -155,14 +155,17 @@ class Presentation:
 		# weather_temperature = "{:.{}f}".format(weather.temperature, 1 if weather.temperature < 10 else 0)
 		# draw.text([2, 24], weather_temperature, fill=self.get_fill(), font=font_7segment)
 
-	def present(self, draw, room_brightness: float):
+	def present(self, bounding_box: tuple, room_brightness: float):
 		self.room_brightness = room_brightness
+		im = Image.new("RGB", bounding_box, color='black')
+		draw = ImageDraw.Draw(im)
 		self.write_clock(draw)
 		self.write_next_alarm(draw)
 		if not self.content.get_is_wifi_available():
 			self.write_wifi_status(draw)
 		else:
 			self.write_weather_status(draw)
+		return im
 
 @singleton
 class DozyPresentation(Presentation):
@@ -206,8 +209,9 @@ class Display(Observer):
 			p = BrightPresentation(self.content)
 
 		self.device.contrast(16)
-		with canvas(self.device) as draw: 
-			p.present(draw, room_brightness)
+		im = p.present([self.device.width, self.device.height], room_brightness)
+		im.save("../../display_test.png")
+		self.device.display(im)
 		
 if __name__ == '__main__':
 	import argparse
