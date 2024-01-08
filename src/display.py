@@ -9,7 +9,7 @@ from luma.core.render import canvas
 from PIL import ImageFont, ImageDraw, Image
 from PIL.ImageFont import FreeTypeFont
 
-from domain import AlarmClockState, Config, DisplayContent, Observation, Observer
+from domain import Config, DisplayContent, Observation, Observer
 from gpi import get_room_brightness
 from utils.geolocation import GeoLocation
 from utils.singleton import singleton
@@ -133,7 +133,6 @@ class Presentation:
 		dst.paste(temperature_image, (x, y))
 		dst.paste(weather_image, (0, 0))
 		return dst
-		# return get_concat_h_multi_blank([weather_image, Image.new(mode='RGB', size=(3, 2)), temperature_image])
 
 	def present(self, room_brightness: float):
 		self.room_brightness = room_brightness
@@ -158,6 +157,14 @@ class DozyPresentation(Presentation):
 
 	def get_clock_font(self):
 		return ImageFont.truetype(self.font_file_7segment, 40)
+
+	def draw_clock(self) -> Image.Image:
+		font=self.get_clock_font()
+		clock_string = self.format_clock_string(GeoLocation().now(), self.content.show_blink_segment)
+		return text_to_image(clock_string, font, self.get_fill())
+
+	def draw_weather_status(self) -> Image.Image:
+		return Image.new(mode='RGB', size=(1, 1), color='black')
 
 @singleton
 class BrightPresentation(Presentation):
