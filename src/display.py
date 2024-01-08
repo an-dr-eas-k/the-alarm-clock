@@ -85,7 +85,7 @@ class Presentation:
 	def write_wifi_status(self, draw: ImageDraw.ImageDraw):
 		if not self.content.get_is_wifi_available():
 			font=ImageFont.truetype(self.font_file_nerd, 30)
-			draw.text([2,-6], '\U000f05aa', fill=self.get_fill(), font=font)
+			draw.text([2,-6], '\U000f05aa', fill=self.get_fill(min_value=32), font=font)
 
 	def write_clock(self, draw: ImageDraw.ImageDraw):
 		font=self.get_clock_font()
@@ -151,7 +151,7 @@ class Presentation:
 		# draw.paste(weather_image, (0,0))
 		# draw.im.paste(weather_image, None)
 
-		draw.text([2,-4], weather_character, fill=self.get_fill(), font=font_weather)
+		draw.text([2,-4], weather_character, fill=self.get_fill(min_value=32), font=font_weather)
 		# weather_temperature = "{:.{}f}".format(weather.temperature, 1 if weather.temperature < 10 else 0)
 		# draw.text([2, 24], weather_temperature, fill=self.get_fill(), font=font_7segment)
 
