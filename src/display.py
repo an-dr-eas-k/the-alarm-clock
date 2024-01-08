@@ -210,7 +210,7 @@ class Display(Observer):
 
 		self.device.contrast(16)
 		im = p.present([self.device.width, self.device.height], room_brightness)
-		im.save("../../display_test.png")
+		# im.save("../../display_test.png")
 		self.device.display(im)
 		
 if __name__ == '__main__':
