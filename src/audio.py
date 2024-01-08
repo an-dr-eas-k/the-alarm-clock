@@ -100,7 +100,6 @@ class Speaker(Observer):
 		self.threadLock.release()
 	
 	def startStreaming(self, audio_effect: AudioEffect):
-		self.adjust_volume(audio_effect.volume)
 		if isinstance(audio_effect, InternetRadio):
 			self.media_player = InternetRadioPlayer(audio_effect.stream_definition.stream_url)
 

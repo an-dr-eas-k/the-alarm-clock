@@ -114,6 +114,7 @@ class AudioDefinition(Observable):
 	@audio_effect.setter
 	def audio_effect(self, value: AudioEffect):
 		self._audio_effect = value
+		self.volume = value.volume
 		self.notify(property='audio_effect')
 
 	@property
