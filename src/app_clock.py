@@ -54,7 +54,7 @@ class ClockApp:
 			device = dummy(height=64, width=256, mode="RGB")
 			port = 8080
 
-		self.display = Display(device, display_content)
+		self.display = Display(device, display_content, self.state.configuration)
 		self.state.configuration.attach(
 			Persistence( self.configFile))
 
@@ -63,7 +63,7 @@ class ClockApp:
 		self.state.audio_state.attach(self.controls)
 		self.controls.configure()
 
-		self.api = Api(self.state, lambda:device.image if isinstance (device, dummy) else None)
+		self.api = Api(self.state, lambda:self.display.current_display_image)
 		self.api.start(port)
 
 		tornado.ioloop.IOLoop.current().start()

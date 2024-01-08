@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import  date, time, timedelta
+import datetime
 from apscheduler.job import Job
 from enum import Enum
 import logging
@@ -9,6 +10,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from utils.observer import Observable, Observation, Observer
 from utils.geolocation import GeoLocation, Weather
+from utils.singleton import singleton
 
 def try_update(object, property_name: str, value: str) -> bool:
 	if hasattr(object, property_name):
@@ -245,16 +247,15 @@ class AlarmClockState(Observable):
 
 	configuration: Config
 	audio_state: AudioDefinition
-	show_blink_segment: bool = True
 
 	@property
-	def clock(self) -> str:
-		return self._clock
+	def show_blink_segment(self) -> bool:
+		return self._show_blink_segment
 
-	@clock.setter
-	def clock(self, value: str):
-		self._clock = value
-		self.notify(property='clock')
+	@show_blink_segment.setter
+	def show_blink_segment(self, value: bool):
+		self._show_blink_segment = value
+		self.notify(property='show_blink_segment')
 
 	@property
 	def is_wifi_available(self) -> bool:
@@ -290,12 +291,13 @@ class AlarmClockState(Observable):
 		self.mode = Mode.Boot
 		self.geo_location = GeoLocation()
 		self.is_wifi_available = True
+		self.show_blink_segment = True
 
 class DisplayContent(Observable, Observer):
 	is_volume_meter_shown: bool=False
-	clock:str
 	next_alarm_job: Job
 	current_weather: Weather
+	show_blink_segment: bool
 
 	def __init__(self, state: AlarmClockState):
 		super().__init__()
@@ -313,8 +315,8 @@ class DisplayContent(Observable, Observer):
 			self.update_from_state(observation, observation.observable)
 
 	def update_from_state(self, observation: Observation, state: AlarmClockState):
-		if observation.property_name == 'clock':
-			self.clock = state.clock
+		if observation.property_name == 'show_blink_segment':
+			self.show_blink_segment = state.show_blink_segment
 			self.notify()
 
 	def hide_volume_meter(self):

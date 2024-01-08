@@ -53,11 +53,10 @@ class Controls(Observer):
 			id="wifi_check_interval", 
 			jobstore=default_store)
 
-			# trigger=CronTrigger(hour="*/4"),
 		self.scheduler.add_job(
 			self.update_weather_status,
 			'interval', 
-			minutes=30,
+			minutes=5,
 			id="weather_check_interval", 
 			jobstore=default_store)
 
@@ -170,15 +169,8 @@ class Controls(Observer):
 
 	def update_clock(self):
 		try:
-			blink_segment = " "
-			if (self.state.show_blink_segment):
-				blink_segment = self.state.configuration.blink_segment
-			
 			self.state.show_blink_segment = not self.state.show_blink_segment
-
-			self.state.clock	\
-				= GeoLocation().now().strftime(self.state.configuration.clock_format_string.replace("<blinkSegment>", blink_segment))
-			logging.info ("update clock %s", self.state.clock)
+			logging.info ("update show blink segment: %s", self.state.show_blink_segment)
 		except:
 			logging.error("%s", traceback.format_exc())
 

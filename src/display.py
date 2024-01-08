@@ -9,7 +9,7 @@ from luma.core.render import canvas
 from PIL import ImageFont, ImageDraw, Image
 from PIL.ImageFont import FreeTypeFont
 
-from domain import DisplayContent, Observation, Observer
+from domain import AlarmClockState, Config, DisplayContent, Observation, Observer
 from gpi import get_room_brightness
 from utils.geolocation import GeoLocation
 from utils.singleton import singleton
@@ -17,29 +17,34 @@ from utils.singleton import singleton
 resources_dir = f"{os.path.dirname(os.path.realpath(__file__))}/resources"
 
 def get_concat_h(im1, im2):
-    dst = Image.new('RGB', (im1.width + im2.width, im1.height))
-    dst.paste(im1, (0, 0))
-    dst.paste(im2, (im1.width, 0))
-    return dst
+	height = max(im1.height, im2.height)
+	dst = Image.new('RGBA', (im1.width + im2.width, height))
+	y=int(( height - im1.height ) / 2)
+	dst.paste(im1, (0, y))
+	y=int(( height - im2.height ) / 2)
+	dst.paste(im2, (im1.width, y))
+	return dst
 
 def get_concat_h_multi_blank(im_list):
-    _im = im_list.pop(0)
-    for im in im_list:
-        _im = get_concat_h(_im, im)
-    return _im
+	_im = im_list.pop(0)
+	for im in im_list:
+			_im = get_concat_h(_im, im)
+	return _im
 
 def text_to_image(
-text: str,
-font: FreeTypeFont,
-color: (int, int, int), #color is in RGB
-font_align="center"):
-
+	text: str,
+	font: FreeTypeFont,
+	fg_color,
+	bg_color = 'black',
+	mode: str = 'RGB',
+):
    box = font.getbbox(text)
-   img = Image.new("RGBA", (box[0], box[1]))
-   draw = ImageDraw.Draw(img)
-   draw_point = (0, 0)
-   draw.multiline_text(draw_point, text, font=font, fill=color, align=font_align)
+   img = Image.new(mode, (box[2]-box[0], box[3]-box[1]), bg_color)
+   ImageDraw.Draw(img).text([-box[0],-box[1]], text, font=font, fill=fg_color)
    return img
+
+def greyscale_to_color(grayscale_value: int):
+		return (grayscale_value << 16) | (grayscale_value << 8) | grayscale_value
 
 class Presentation:
 	font_file_7segment = f"{resources_dir}/DSEG7Classic-Regular.ttf"
@@ -49,15 +54,19 @@ class Presentation:
 	content: DisplayContent
 	room_brightness: float
 
-	def __init__(self, content: DisplayContent) -> None:
+	def __init__(self, content: DisplayContent, config: Config, size: tuple[int, int]) -> None:
 		logging.info("used presentation: %s", self.__class__.__name__)
 		self.content = content
+		self.config = config
+		self.display_size = size
 
 	def get_clock_font(self):
 		return ImageFont.truetype(self.font_file_7segment, 50)
 
-	def get_clock_string(clock: str) -> str:
-		clock_string = clock.replace("7", "`")
+	def format_clock_string(self, clock: datetime, show_blink_segment: bool = True) -> str:
+		blink_segment = self.config.blink_segment if show_blink_segment else " "
+		clock_string = clock.strftime(self.config.clock_format_string.replace("<blinkSegment>", blink_segment))
+		clock_string = clock_string.replace("7", "`")
 		desired_length = 5
 		clock_string = "!" * (desired_length - len(clock_string)) + clock_string
 		return clock_string
@@ -65,46 +74,23 @@ class Presentation:
 	def respect_ranges(value: float, min_value: int = 16, max_value: int = 255) ->  int:
 		return int(max(min_value, min(max_value, value)))
 
+	def get_grayscale_value(self, min_value: int=16, max_value: int=255):
+		return Presentation.respect_ranges( 500/(1+math.exp(-0.25*self.room_brightness))-250, min_value, max_value)
+
 	def get_fill(self, min_value: int=16, max_value: int=255):
-		greyscale_value = Presentation.respect_ranges( 500/(1+math.exp(-0.25*self.room_brightness))-250, min_value, max_value)
-		logging.debug("greyscale_value: %s", greyscale_value)
-		return (greyscale_value << 16) | (greyscale_value << 8) | greyscale_value
+		return greyscale_to_color( self.get_grayscale_value(min_value, max_value) )
 
-	# def write_wifi_status(self, draw: ImageDraw.ImageDraw):
-	# 	# if not self.content.get_is_wifi_available():
-	# 		no_wifi_symbol = '\U000f1eb9'
-	# 		font=ImageFont.truetype(self.font_file_nerd, 20)
+	def write_wifi_status(self) -> Image.Image:
+		font=ImageFont.truetype(self.font_file_nerd, 30)
+		return text_to_image('\U000f05aa', font, self.get_fill(min_value=32))
 
-	# 		bbox = font.getbbox(no_wifi_symbol)
-	# 		wifi_image = Image.new("RGBA", [bbox[2], bbox[3]])
-	# 		ImageDraw.Draw(wifi_image).text([0,0], no_wifi_symbol, fill='white', font=font)
-			
-	# 		draw.bitmap([0,0], wifi_image, fill='white')
-
-
-	def write_wifi_status(self, draw: ImageDraw.ImageDraw):
-		if not self.content.get_is_wifi_available():
-			font=ImageFont.truetype(self.font_file_nerd, 30)
-			draw.text([2,-6], '\U000f05aa', fill=self.get_fill(min_value=32), font=font)
-
-	def write_clock(self, draw: ImageDraw.ImageDraw):
+	def draw_clock(self) -> Image.Image:
 		font=self.get_clock_font()
-		clock_string = Presentation.get_clock_string(self.content.clock)
-		font_BBox = font.getbbox(clock_string)
-		width = font_BBox[2] - font_BBox[0]
-		height = font_BBox[3] - font_BBox[1]
-		x = (draw.im.size[0]-width)
-		y = (draw.im.size[1]-height)/2
-
-		draw.text(
-			stroke_width=0, 
-			fill=self.get_fill(),
-			align='left',
-			text=clock_string,
-			xy=[x, y],
-			font=font)
+		clock_string = self.format_clock_string(GeoLocation().now(), self.content.show_blink_segment)
+		clock_image = text_to_image(clock_string, font, self.get_fill())
+		return clock_image.resize([int(clock_image.width*0.95), clock_image.height])
 	
-	def write_next_alarm(self, draw: ImageDraw.ImageDraw):
+	def draw_next_alarm(self) -> Image.Image:
 		next_alarm_job = self.content.next_alarm_job
 		if next_alarm_job is None:
 			return
@@ -118,53 +104,51 @@ class Presentation:
 
 		fill = self.get_fill(min_value=32)
 
-		next_alarm_string = Presentation.get_clock_string(next_run_time.strftime("%-H:%M"))
-		font_BBox_7segment = font_7segment.getbbox(next_alarm_string)
+		next_alarm_string = self.format_clock_string(next_run_time)
+		next_alarm_img = text_to_image(next_alarm_string, font_7segment, fill)
 		alarm_symbol = "󰀠"
-		font_BBox_symbol = font_nerd.getbbox(alarm_symbol)
-		height = max(font_BBox_7segment[3], font_BBox_symbol[3])
+		alarm_symbol_img = text_to_image(alarm_symbol, font_nerd, fill)
 
-		pos = [
-			4,
-			draw.im.size[1]-height-8]
-		draw.text(pos, alarm_symbol, fill=fill, font=font_nerd)
+		return get_concat_h_multi_blank([alarm_symbol_img, Image.new(mode='RGB', size=(3, 2)), next_alarm_img])
 
-		pos = [
-			font_BBox_symbol[2] +6,
-			draw.im.size[1]-height-2]
-		draw.text(pos, next_alarm_string, fill=fill, font=font_7segment)
-
-	def write_weather_status(self, draw: ImageDraw.ImageDraw):
+	def draw_weather_status(self) -> Image.Image:
 		weather = self.content.current_weather
 		if weather is None:
-			return
+			return None
 		weather_character = weather.code.to_character()
 		font_weather=ImageFont.truetype(self.font_file_weather, 20)
-		font_7segment=ImageFont.truetype(self.font_file_7segment, 20)
+		font_7segment=ImageFont.truetype(self.font_file_7segment, 24)
 		
-		# weather_image = text_to_image(weather_character, font_weather, (150, 150, 150))
-		# weather_image.save("weather.png")
-		# temperature_image = text_to_image(str(weather.temperature), font_7segment, (255,255,255))
-		# get_concat_h(weather_image, temperature_image).save("weather.png")
-		# draw.bitmap([0,0], get_concat_h_multi_blank([weather_image, temperature_image]), fill=self.get_fill())
-		# i: Image.Image = draw.im
-		# draw.paste(weather_image, (0,0))
-		# draw.im.paste(weather_image, None)
+		weather_image = text_to_image(weather_character, font_weather, self.get_fill(min_value=32))
+		formatter = "{: .1f}"
+		if abs(weather.temperature) >=10:
+			formatter = "{: .0f}"
+		temperature_image = text_to_image(formatter.format(weather.temperature), font_7segment, self.get_fill(min_value=32))
 
-		draw.text([2,-4], weather_character, fill=self.get_fill(min_value=32), font=font_weather)
-		# weather_temperature = "{:.{}f}".format(weather.temperature, 1 if weather.temperature < 10 else 0)
-		# draw.text([2, 24], weather_temperature, fill=self.get_fill(), font=font_7segment)
+		width = int(0.6*weather_image.width) +temperature_image.width
+		height = int(0.6*weather_image.height) + temperature_image.height
+		dst = Image.new('RGB', [width, height])
+		x=int(0.6*weather_image.width)
+		y=int(0.6*weather_image.height)
+		dst.paste(temperature_image, (x, y))
+		dst.paste(weather_image, (0, 0))
+		return dst
+		# return get_concat_h_multi_blank([weather_image, Image.new(mode='RGB', size=(3, 2)), temperature_image])
 
-	def present(self, bounding_box: tuple, room_brightness: float):
+	def present(self, room_brightness: float):
 		self.room_brightness = room_brightness
-		im = Image.new("RGB", bounding_box, color='black')
-		draw = ImageDraw.Draw(im)
-		self.write_clock(draw)
-		self.write_next_alarm(draw)
+		logging.debug("room_brightness: %s, greyscale_value: %s", self.room_brightness, self.get_grayscale_value())
+		im = Image.new("RGB", self.display_size, color='black')
+
+		clock_image= self.draw_clock()
+		im.paste(clock_image, ((im.width-clock_image.width),int((im.height-clock_image.height)/2)))
+
+		next_alarm_image = self.draw_next_alarm()
+		im.paste(self.draw_next_alarm(), (2,im.height-next_alarm_image.height-2))
 		if not self.content.get_is_wifi_available():
-			self.write_wifi_status(draw)
+			im.paste(self.write_wifi_status(), (2,2))
 		else:
-			self.write_weather_status(draw)
+			im.paste(self.draw_weather_status(), (2,4))
 		return im
 
 @singleton
@@ -184,11 +168,13 @@ class Display(Observer):
 
 	device: luma_device
 	content: DisplayContent
+	current_display_image: Image.Image
 
-	def __init__(self, device: luma_device, content: DisplayContent) -> None:
+	def __init__(self, device: luma_device, content: DisplayContent, config: Config) -> None:
 		self.device = device
 		logging.info("device mode: %s", self.device.mode)
 		self.content = content
+		self.config = config
 		self.content.attach(self)
 
 	def update(self, observation: Observation):
@@ -204,14 +190,13 @@ class Display(Observer):
 		p: Presentation
 		room_brightness = get_room_brightness()
 		if (room_brightness <= 0.1 ):
-			p = DozyPresentation(self.content)
+			p = DozyPresentation(self.content, self.config, [self.device.width, self.device.height])
 		else:
-			p = BrightPresentation(self.content)
+			p = BrightPresentation(self.content, self.config, [self.device.width, self.device.height])
 
 		self.device.contrast(16)
-		im = p.present([self.device.width, self.device.height], room_brightness)
-		# im.save("../../display_test.png")
-		self.device.display(im)
+		self.current_display_image = p.present(room_brightness)
+		self.device.display(self.current_display_image)
 		
 if __name__ == '__main__':
 	import argparse
