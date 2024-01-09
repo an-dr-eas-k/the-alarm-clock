@@ -3,49 +3,20 @@ import datetime
 import logging
 import math
 import os
+import sys
 import traceback
 from luma.core.device import device as luma_device
 from luma.core.device import dummy as luma_dummy
 from luma.core.render import canvas
-from PIL import ImageFont, ImageDraw, Image
-from PIL.ImageFont import FreeTypeFont
+from PIL import ImageFont, Image
 
 from domain import Config, DisplayContent, Observation, Observer
 from gpi import get_room_brightness
+from utils.drawing import get_concat_h_multi_blank, greyscale_to_color, text_to_image
 from utils.geolocation import GeoLocation
 from utils.singleton import singleton
 
 resources_dir = f"{os.path.dirname(os.path.realpath(__file__))}/resources"
-
-def get_concat_h(im1, im2):
-	height = max(im1.height, im2.height)
-	dst = Image.new('RGBA', (im1.width + im2.width, height))
-	y=int(( height - im1.height ) / 2)
-	dst.paste(im1, (0, y))
-	y=int(( height - im2.height ) / 2)
-	dst.paste(im2, (im1.width, y))
-	return dst
-
-def get_concat_h_multi_blank(im_list):
-	_im = im_list.pop(0)
-	for im in im_list:
-			_im = get_concat_h(_im, im)
-	return _im
-
-def text_to_image(
-	text: str,
-	font: FreeTypeFont,
-	fg_color,
-	bg_color = 'black',
-	mode: str = 'RGB',
-):
-   box = font.getbbox(text)
-   img = Image.new(mode, (box[2]-box[0], box[3]-box[1]), bg_color)
-   ImageDraw.Draw(img).text([-box[0],-box[1]], text, font=font, fill=fg_color)
-   return img
-
-def greyscale_to_color(grayscale_value: int):
-		return (grayscale_value << 16) | (grayscale_value << 8) | grayscale_value
 
 class Presentation:
 	empty_image = Image.new("RGBA", (0, 0))
@@ -62,9 +33,6 @@ class Presentation:
 		self.config = config
 		self.display_size = size
 
-	def get_clock_font(self):
-		return ImageFont.truetype(self.font_file_7segment, 50)
-
 	def format_clock_string(self, clock: datetime, show_blink_segment: bool = True) -> str:
 		blink_segment = self.config.blink_segment if show_blink_segment else " "
 		clock_string = clock.strftime(self.config.clock_format_string.replace("<blinkSegment>", blink_segment))
@@ -80,28 +48,42 @@ class Presentation:
 		return Presentation.respect_ranges( 500/(1+math.exp(-0.25*self.room_brightness))-250, min_value, max_value)
 
 	def get_fill(self, min_value: int=16, max_value: int=255):
+		minutes_until_alarm = self.get_minutes_until_alarm()
+		if minutes_until_alarm < 4:
+			return greyscale_to_color(0)
+		if minutes_until_alarm < 6:
+			return greyscale_to_color(max_value)
 		return greyscale_to_color( self.get_grayscale_value(min_value, max_value) )
 
 	def get_background(self, min_value: int=0, max_value: int=200):
+		minutes_until_alarm = self.get_minutes_until_alarm()
+		if minutes_until_alarm < 2:
+			return greyscale_to_color(max_value)
+		if minutes_until_alarm < 4:
+			return greyscale_to_color(max_value//2)
 		return greyscale_to_color(max(min(0, max_value), min_value))
 
 	def draw_wifi_status(self) -> Image.Image:
 		font=ImageFont.truetype(self.font_file_nerd, 30)
 		no_wifi_symbol = "\U000f05aa"
-		return text_to_image(no_wifi_symbol, font, fg_color=self.get_fill(min_value=32))
+		return text_to_image(no_wifi_symbol, font, fg_color=self.get_fill(min_value=32), bg_color=self.get_background())
 
 	def draw_clock(self) -> Image.Image:
-		font=self.get_clock_font()
+		font= ImageFont.truetype(self.font_file_7segment, 50)
 		clock_string = self.format_clock_string(GeoLocation().now(), self.content.show_blink_segment)
-		clock_image = text_to_image(clock_string, font, fg_color=self.get_fill())
+		clock_image = text_to_image(clock_string, font, fg_color=self.get_fill(), bg_color=self.get_background())
 		return clock_image.resize([int(clock_image.width*0.95), clock_image.height])
+
+	def get_minutes_until_alarm(self) -> int:
+		next_alarm = self.get_next_alarm()
+		return (next_alarm - GeoLocation().now()).total_seconds() / 60 if next_alarm is not None else sys.maxsize
 	
-	def draw_next_alarm(self) -> Image.Image:
+	def get_next_alarm(self) -> datetime:
 		next_alarm_job = self.content.next_alarm_job
-		if next_alarm_job is None:
-			return self.empty_image
-		next_run_time: datetime = next_alarm_job.next_run_time
+		return None if next_alarm_job is None else next_alarm_job.next_run_time
 		
+	def draw_next_alarm(self) -> Image.Image:
+		next_run_time = self.get_next_alarm()
 		if next_run_time is None or (next_run_time - GeoLocation().now()).total_seconds() / 3600 > 12.0:
 			return self.empty_image
 
@@ -111,11 +93,11 @@ class Presentation:
 		fill = self.get_fill(min_value=32)
 
 		next_alarm_string = self.format_clock_string(next_run_time)
-		next_alarm_img = text_to_image(next_alarm_string, font_7segment, fg_color=fill)
+		next_alarm_img = text_to_image(next_alarm_string, font_7segment, fg_color=fill, bg_color=self.get_background())
 		alarm_symbol = "󰀠"
-		alarm_symbol_img = text_to_image(alarm_symbol, font_nerd, fg_color=fill)
+		alarm_symbol_img = text_to_image(alarm_symbol, font_nerd, fg_color=fill, bg_color=self.get_background())
 
-		return get_concat_h_multi_blank([alarm_symbol_img, Image.new(mode='RGBA', size=(3, 2)), next_alarm_img])
+		return get_concat_h_multi_blank([alarm_symbol_img, Image.new(mode='RGBA', size=(3, 0), color=(0, 0, 0, 0)), next_alarm_img])
 
 	def draw_weather_status(self) -> Image.Image:
 		weather = self.content.current_weather
@@ -125,15 +107,15 @@ class Presentation:
 		font_weather=ImageFont.truetype(self.font_file_weather, 20)
 		font_7segment=ImageFont.truetype(self.font_file_7segment, 24)
 		
-		weather_image = text_to_image(weather_character, font_weather, fg_color=self.get_fill(min_value=32))
+		weather_image = text_to_image(weather_character, font_weather, fg_color=self.get_fill(min_value=32), bg_color=self.get_background())
 		formatter = "{: .1f}"
 		if abs(weather.temperature) >=10:
 			formatter = "{: .0f}"
-		temperature_image = text_to_image(formatter.format(weather.temperature), font_7segment, fg_color=self.get_fill(min_value=32))
+		temperature_image = text_to_image(formatter.format(weather.temperature), font_7segment, fg_color=self.get_fill(min_value=32), bg_color=self.get_background())
 
 		width = int(0.6*weather_image.width) +temperature_image.width
 		height = int(0.6*weather_image.height) + temperature_image.height
-		dst = Image.new('RGB', [width, height])
+		dst = Image.new('RGB', [width, height], color=self.get_background())
 		x=int(0.6*weather_image.width)
 		y=int(0.6*weather_image.height)
 		dst.paste(temperature_image, (x, y))
@@ -149,7 +131,7 @@ class Presentation:
 		im.paste(clock_image, ((im.width-clock_image.width),int((im.height-clock_image.height)/2)))
 
 		next_alarm_image = self.draw_next_alarm()
-		im.paste(next_alarm_image, (2,im.height-next_alarm_image.height-2))
+		im.paste(next_alarm_image, (2,im.height-next_alarm_image.height-2), next_alarm_image)
 		if self.content.get_is_wifi_available():
 			im.paste(self.draw_weather_status(), (2,4))
 		else:
@@ -161,21 +143,21 @@ class DozyPresentation(Presentation):
 
 	font_file_7segment = f"{resources_dir}/DSEG7ClassicMini-Light.ttf"
 
-	def get_clock_font(self):
-		return ImageFont.truetype(self.font_file_7segment, 40)
-
 	def draw_clock(self) -> Image.Image:
-		font=self.get_clock_font()
+		if self.get_minutes_until_alarm() < 10:
+			return super().draw_clock()
+		font= ImageFont.truetype(self.font_file_7segment, 40)
 		clock_string = self.format_clock_string(GeoLocation().now(), self.content.show_blink_segment)
 		return text_to_image(clock_string, font, fg_color=self.get_fill())
 
 	def draw_weather_status(self) -> Image.Image:
+		if self.get_minutes_until_alarm() < 10:
+			return super().draw_weather_status()
 		return self.empty_image
 
 @singleton
 class BrightPresentation(Presentation):
 	pass
-
 
 class Display(Observer):
 
