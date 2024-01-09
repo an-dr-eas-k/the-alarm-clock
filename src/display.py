@@ -47,6 +47,7 @@ def greyscale_to_color(grayscale_value: int):
 		return (grayscale_value << 16) | (grayscale_value << 8) | grayscale_value
 
 class Presentation:
+	empty_image = Image.new("RGBA", (0, 0))
 	font_file_7segment = f"{resources_dir}/DSEG7Classic-Regular.ttf"
 	font_file_nerd = f"{resources_dir}/CousineNerdFontMono-Regular.ttf"
 	font_file_weather = f"{resources_dir}/weather-icons/weathericons-regular-webfont.ttf"
@@ -93,11 +94,11 @@ class Presentation:
 	def draw_next_alarm(self) -> Image.Image:
 		next_alarm_job = self.content.next_alarm_job
 		if next_alarm_job is None:
-			return
+			return self.empty_image
 		next_run_time: datetime = next_alarm_job.next_run_time
 		
 		if next_run_time is None or (next_run_time - GeoLocation().now()).total_seconds() / 3600 > 12.0:
-			return
+			return self.empty_image
 
 		font_nerd=ImageFont.truetype(self.font_file_nerd, 20)
 		font_7segment=ImageFont.truetype(self.font_file_7segment, 13)
@@ -114,7 +115,7 @@ class Presentation:
 	def draw_weather_status(self) -> Image.Image:
 		weather = self.content.current_weather
 		if weather is None:
-			return None
+			return self.empty_image
 		weather_character = weather.code.to_character()
 		font_weather=ImageFont.truetype(self.font_file_weather, 20)
 		font_7segment=ImageFont.truetype(self.font_file_7segment, 24)
@@ -143,11 +144,11 @@ class Presentation:
 		im.paste(clock_image, ((im.width-clock_image.width),int((im.height-clock_image.height)/2)))
 
 		next_alarm_image = self.draw_next_alarm()
-		im.paste(self.draw_next_alarm(), (2,im.height-next_alarm_image.height-2))
-		if not self.content.get_is_wifi_available():
-			im.paste(self.write_wifi_status(), (2,2))
-		else:
+		im.paste(next_alarm_image, (2,im.height-next_alarm_image.height-2))
+		if self.content.get_is_wifi_available():
 			im.paste(self.draw_weather_status(), (2,4))
+		else:
+			im.paste(self.write_wifi_status(), (2,2))
 		return im
 
 @singleton
