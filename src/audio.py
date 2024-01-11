@@ -77,6 +77,7 @@ class Speaker(Observer):
 	def adjust_volume(self, newVolume: float):
 		control_name = self.get_first_control_name()
 		subprocess.call(["amixer", "sset", control_name, f"{newVolume * 100}%"], stdout=subprocess.DEVNULL)
+		logging.debug(f"set volume to {newVolume}")
 		pass
 
 	def get_first_control_name(self):
@@ -100,7 +101,7 @@ class Speaker(Observer):
 	
 	def startStreaming(self, audio_effect: AudioEffect):
 		if isinstance(audio_effect, InternetRadio):
-			self.media_player = InternetRadioPlayer(audio_effect.url)
+			self.media_player = InternetRadioPlayer(audio_effect.stream_definition.stream_url)
 
 		elif isinstance(audio_effect, Spotify):
 			self.media_player = SpotifyPlayer(audio_effect.play_id)

@@ -1,5 +1,7 @@
 from dataclasses import dataclass
-from datetime import  date, time, timedelta
+from datetime import date, time, timedelta
+import datetime
+from apscheduler.job import Job
 from enum import Enum
 import logging
 
@@ -7,7 +9,23 @@ import jsonpickle
 from apscheduler.triggers.cron import CronTrigger
 
 from utils.observer import Observable, Observation, Observer
-from utils.geolocation import GeoLocation
+from utils.geolocation import GeoLocation, Weather
+
+def try_update(object, property_name: str, value: str) -> bool:
+	if hasattr(object, property_name):
+		attr_value = getattr(object, property_name)
+		attr_type = type(attr_value)
+		if attr_type == bool:
+			value = value.lower() in ("yes", "true", "t", "1")
+		else:
+			value = attr_type(value) if len(value) > 0 else None
+		if value != attr_value:
+			setattr(object, property_name, value)
+			if isinstance(object, Observable):
+				object.notify(property=property_name)
+		return True
+	return False
+
 
 class Mode(Enum):
 	Boot = 1
@@ -27,19 +45,24 @@ class Weekday(Enum):
 class VisualEffect:
 	pass
 
+class AudioStream:
+	id: int
+	stream_name: str
+	stream_url: str
+
 class AudioEffect:
-	pass
+	volume: float
 
 @dataclass
 class InternetRadio(AudioEffect):
-	url: str
+	stream_definition: AudioStream = None
 
 @dataclass
 class Spotify(AudioEffect):
 	play_id: str
 
-
 class AlarmDefinition:
+	id: int
 	hour: int
 	min: int
 	weekdays: []
@@ -47,7 +70,7 @@ class AlarmDefinition:
 	alarm_name: str
 	is_active: bool
 	visual_effect: VisualEffect
-	audio_effect: AudioEffect = InternetRadio(url='https://streams.br.de/bayern2sued_2.m3u')
+	audio_effect: AudioEffect
 
 	def to_cron_trigger(self) -> CronTrigger:
 		if (self.weekdays is not None and len(self.weekdays) > 0):
@@ -73,15 +96,27 @@ class AlarmDefinition:
 		elif (self.date is not None):
 			return self.date.strftime("%Y-%m-%d")
 
+	def set_future_date(self, hour, minute):
+		now = GeoLocation().now()
+		target = now.replace(hour=hour, minute=minute)
+		if target < now:
+				target = target + timedelta(days=1)
+		self.date = target.date()
+
+	def is_one_time(self) -> bool:
+		return self.date is not None
+
 class AudioDefinition(Observable):
 
 	@property
-	def audio_effect(self) -> str:
+	def audio_effect(self) -> AudioEffect:
 		return self._audio_effect
 
 	@audio_effect.setter
 	def audio_effect(self, value: AudioEffect):
 		self._audio_effect = value
+		if value is not None:
+			self.volume = value.volume
 		self.notify(property='audio_effect')
 
 	@property
@@ -104,7 +139,7 @@ class AudioDefinition(Observable):
 
 	def __init__(self):
 		super().__init__()
-		self.audio_effect = InternetRadio(url='https://streams.br.de/bayern2sued_2.m3u')
+		self.audio_effect = None
 		self.volume = 0.8
 		self.is_streaming = False
 
@@ -119,30 +154,51 @@ class AudioDefinition(Observable):
 	
 class Config(Observable):
 
-	_alarm_definitions: []
+	_alarm_definitions: [] = []
+	_audio_streams: [] = []
+	dwd_station_id: str = None
 
 	@property
 	def alarm_definitions(self) -> []:
 		return self._alarm_definitions
 
+	def append_item_with_id(item_with_id, list) -> []:
+		Config.assure_item_id(item_with_id, list)
+		list.append(item_with_id)
+		return sorted(list, key=lambda x: x.id)
+
+	def assure_item_id(item_with_id, list):
+		if not hasattr(item_with_id, 'id') or item_with_id.id is None:
+			item_with_id.id = Config.get_next_id(list)
+
+	def get_next_id(array_with_ids: []) -> int:
+		return sorted(array_with_ids, key=lambda x: x.id, reverse=True)[0].id+1 if len(array_with_ids) > 0 else 1
+
 	def add_alarm_definition(self, value: AlarmDefinition):
-		if any(alarm_def.alarm_name == value.alarm_name for alarm_def in self._alarm_definitions):
-			raise ValueError(f"Alarm with name '{value.alarm_name}' already exists.")
-		self._alarm_definitions.append(value)
+		self._alarm_definitions = Config.append_item_with_id(value, self._alarm_definitions)
 		self.notify(property='alarm_definitions')
 
-	def remove_alarm_definition(self, alarm_name: str):
-		self._alarm_definitions = [ alarm_def for alarm_def in self._alarm_definitions if alarm_def.alarm_name != alarm_name ]
+	def remove_alarm_definition(self, id: int):
+		self._alarm_definitions = [ alarm_def for alarm_def in self._alarm_definitions if alarm_def.id != id ]
 		self.notify(property='alarm_definitions')
+
+	def get_alarm_definition(self, id: int) -> AlarmDefinition:
+		return next((alarm for alarm in self._alarm_definitions if alarm.id == id), None)
 
 	@property
-	def brightness(self) -> int:
-		return self._brightness
+	def audio_streams(self) -> []:
+		return self._audio_streams
 
-	@brightness.setter
-	def brightness(self, value: int):
-		self._brightness = value
-		self.notify(property='brightness')
+	def add_audio_stream(self, value: AudioStream):
+		self._audio_streams = Config.append_item_with_id(value, self._audio_streams)
+		self.notify(property='audio_streams')
+
+	def get_audio_stream(self, id: int) -> AudioStream:
+		return next((stream for stream in self._audio_streams if stream.id == id), None)
+
+	def remove_audio_stream(self, id: int):
+		self._audio_streams = [ stream_def for stream_def in self._audio_streams if stream_def.id != id ]
+		self.notify(property='audio_streams')
 
 	@property
 	def refresh_timeout_in_secs(self) -> int:
@@ -173,11 +229,9 @@ class Config(Observable):
 	
 	def __init__(self) -> None:
 		super().__init__()
-		self.brightness = 15
 		self.clock_format_string = "%-H<blinkSegment>%M"
 		self.blink_segment = ":"
 		self.refresh_timeout_in_secs = 1
-		self._alarm_definitions = []
 
 	def serialize(self):
 		return jsonpickle.encode(self, indent=2)
@@ -186,21 +240,21 @@ class Config(Observable):
 		with open(config_file, "r") as file:
 			file_contents = file.read()
 			return jsonpickle.decode(file_contents)
+			
 
 class AlarmClockState(Observable):
 
 	configuration: Config
 	audio_state: AudioDefinition
-	show_blink_segment: bool = True
 
 	@property
-	def clock(self) -> str:
-		return self._clock
+	def show_blink_segment(self) -> bool:
+		return self._show_blink_segment
 
-	@clock.setter
-	def clock(self, value: str):
-		self._clock = value
-		self.notify(property='clock')
+	@show_blink_segment.setter
+	def show_blink_segment(self, value: bool):
+		self._show_blink_segment = value
+		self.notify(property='show_blink_segment')
 
 	@property
 	def is_wifi_available(self) -> bool:
@@ -236,17 +290,17 @@ class AlarmClockState(Observable):
 		self.mode = Mode.Boot
 		self.geo_location = GeoLocation()
 		self.is_wifi_available = True
+		self.show_blink_segment = True
 
 class DisplayContent(Observable, Observer):
 	is_volume_meter_shown: bool=False
-	clock:str
+	next_alarm_job: Job
+	current_weather: Weather
+	show_blink_segment: bool
 
 	def __init__(self, state: AlarmClockState):
 		super().__init__()
 		self.state = state
-
-	def get_brightness_16(self) -> int:
-		return min(15, max(1, self.state.configuration.brightness))
 
 	def get_is_wifi_available(self)-> bool:
 		return self.state.is_wifi_available
@@ -260,8 +314,8 @@ class DisplayContent(Observable, Observer):
 			self.update_from_state(observation, observation.observable)
 
 	def update_from_state(self, observation: Observation, state: AlarmClockState):
-		if observation.property_name == 'clock':
-			self.clock = state.clock
+		if observation.property_name == 'show_blink_segment':
+			self.show_blink_segment = state.show_blink_segment
 			self.notify()
 
 	def hide_volume_meter(self):
@@ -273,4 +327,16 @@ class DisplayContent(Observable, Observer):
 		logging.info("volume bar shown: %s", True)
 		self.is_volume_meter_shown = True 
 		self.notify()
+
+	def get_timedelta_to_alarm(self) -> timedelta:
+		# positive if before alarm
+		next_alarm = self.get_next_alarm()
+		if next_alarm is None:
+			return timedelta.max
+		diff = next_alarm - GeoLocation().now()
+		return diff
+	
+	def get_next_alarm(self) -> datetime:
+		next_alarm_job = self.next_alarm_job
+		return None if next_alarm_job is None else next_alarm_job.next_run_time
 

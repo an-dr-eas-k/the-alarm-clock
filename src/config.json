@@ -1,11 +1,36 @@
 {
   "py/object": "domain.Config",
   "py/state": {
-    "_brightness": 1,
     "_clock_format_string": "%-H<blinkSegment>%M",
     "_blink_segment": ":",
     "_refresh_timeout_in_secs": 1,
     "_alarm_definitions": [
+      {
+        "py/object": "domain.AlarmDefinition",
+        "alarm_name": "default morning alarm",
+        "hour": 6,
+        "min": 45,
+        "weekdays": [
+          "MONDAY",
+          "TUESDAY",
+          "WEDNESDAY",
+          "THURSDAY",
+          "FRIDAY"
+        ],
+        "date": null,
+        "audio_effect": {
+          "py/object": "domain.InternetRadio",
+          "stream_definition": {
+            "py/object": "domain.AudioStream",
+            "stream_name": "br2",
+            "stream_url": "https://streams.br.de/bayern2sued_2.m3u",
+            "id": 1
+          },
+          "volume": 1.0
+        },
+        "is_active": true,
+        "id": 1
+      },
       {
         "py/object": "domain.AlarmDefinition",
         "alarm_name": "my debugging alarm",
@@ -20,22 +45,29 @@
           "SATURDAY",
           "SUNDAY"
         ],
-        "is_active": true
+        "date": null,
+        "audio_effect": {
+          "py/object": "domain.InternetRadio",
+          "stream_definition": {
+            "py/object": "domain.AudioStream",
+            "stream_name": "puls",
+            "stream_url": "https://streams.br.de/puls_2.m3u",
+            "id": 2
+          },
+          "volume": 0.9
+        },
+        "is_active": true,
+        "id": 2
+      }
+    ],
+    "_audio_streams": [
+      {
+        "py/id": 6
       },
       {
-        "py/object": "domain.AlarmDefinition",
-        "alarm_name": "default morning alarm",
-        "hour": 6,
-        "min": 45,
-        "weekdays": [
-          "MONDAY",
-          "TUESDAY",
-          "WEDNESDAY",
-          "THURSDAY",
-          "FRIDAY"
-        ],
-        "is_active": true
+        "py/id": 10
       }
-    ]
+    ],
+    "dwd_station_id": "10865"
   }
 }

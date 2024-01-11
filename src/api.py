@@ -1,13 +1,21 @@
 import base64
 import io
+import logging
 import os
+import traceback
 import tornado
 import tornado.web
 from PIL.Image import Image
-from datetime import timedelta
 
-from domain import AlarmClockState, AlarmDefinition, Config, Weekday
-from utils.geolocation import GeoLocation
+from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, Config, InternetRadio, Weekday, try_update
+
+def split_path_arguments(path) -> tuple[str, int, str]:
+	path_args = path[0].split('/')
+	return (
+		path_args[0], 
+		int(path_args[1]) if len(path_args) > 1 else None,
+		path_args[2] if len(path_args) > 2 else None
+	)
 
 class DisplayHandler(tornado.web.RequestHandler):
 
@@ -31,7 +39,29 @@ class ConfigHandler(tornado.web.RequestHandler):
 		self.config = config
 
 	def get(self, *args, **kwargs):
-		self.render(f'{self.root}/alarm.html', config=self.config)
+		try:
+			self.render(f'{self.root}/alarm.html', config=self.config)
+		except:
+			logging.warning("%s", traceback.format_exc())
+
+class ActionApiHandler(tornado.web.RequestHandler):
+
+	def post(self, *args):
+		try:
+			(type, _1, _2) = split_path_arguments(args)
+
+			if(type == 'update'):
+				os._exit(0)
+			elif (type == 'reboot'):
+				os.system('sudo reboot')
+			elif (type == 'shutdown'):
+				os.system('sudo shutdown -h now')
+			else:
+				logging.warning("Unknown action: %s", type)
+
+		except:
+			logging.warning("%s", traceback.format_exc())
+
 
 class ConfigApiHandler(tornado.web.RequestHandler):
 
@@ -39,22 +69,56 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 		self.config = config
 
 	def get(self):
-		self.set_header('Content-Type', 'application/json')
-		self.write(self.config.serialize())
+		try:
+			self.set_header('Content-Type', 'application/json')
+			self.write(self.config.serialize())
+		except:
+			logging.warning("%s", traceback.format_exc())
 	
-	def delete(self, alarm_name):
-		self.config.remove_alarm_definition(alarm_name) 
+	def delete(self, *args):
+		try:
+			(type, id, _) = split_path_arguments(args)
+			if (type == 'alarm'):
+				self.config.remove_alarm_definition(id) 
+			elif type == 'stream':
+				self.config.remove_audio_stream(id) 
+		except:
+			logging.warning("%s", traceback.format_exc())
 
-	def post(self, _):
-		form_arguments = tornado.escape.json_decode(self.request.body)
-		self.config.add_alarm_definition ( self.parse_alarm_definition(form_arguments) )
+	def post(self, *args):
+		try:
+			(type, id, property) = split_path_arguments(args)
+			simpleValue = tornado.escape.to_unicode(self.request.body)
+			if try_update(self.config, type, simpleValue):
+				return
+			alarmDef = self.config.get_alarm_definition(id)
+			if True \
+				and alarmDef is not None \
+				and try_update(alarmDef, property, simpleValue):
+				self.config.remove_alarm_definition(id)
+				self.config.add_alarm_definition(alarmDef)
+				return
+			
+			form_arguments = tornado.escape.json_decode(self.request.body)
+			if type == 'alarm':
+					self.config.add_alarm_definition ( self.parse_alarm_definition(form_arguments) )
+			elif type == 'stream':
+				self.config.add_audio_stream ( self.parse_stream_definition(form_arguments) )
+		except:
+			logging.warning("%s", traceback.format_exc())
 
-	def get_future_date(hour, minute):
-		now = GeoLocation().now()
-		target = now.replace(hour=hour, minute=minute)
-		if target < now:
-				target = target + timedelta(days=1)
-		return target.date()
+	def parse_stream_definition(self, form_arguments) -> AlarmDefinition:
+		auSt = AudioStream()
+		auSt.stream_name = form_arguments['streamName']
+		auSt.stream_url = form_arguments['streamUrl']
+		return auSt
+
+	def parse_audio_effect(self, form_arguments) -> AudioStream:
+		stream_id = int(form_arguments['streamId'])
+		auSt = InternetRadio()
+		auSt.stream_definition = self.config.get_audio_stream(stream_id)
+		auSt.volume = float(form_arguments['volume'])
+		return auSt
 
 	def parse_alarm_definition(self, form_arguments) -> AlarmDefinition:
 		ala = AlarmDefinition()
@@ -70,10 +134,10 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 				lambda weekday: Weekday[weekday.upper()].name, 
 				weekdays))
 		else:
+			ala.set_future_date(ala.hour, ala.min)
 
-			next_day = ConfigApiHandler.get_future_date(ala.hour, ala.min)
-			ala.date = next_day
-		ala.is_active = form_arguments['isActive'] == 'on'
+		ala.audio_effect = self.parse_audio_effect(form_arguments)
+		ala.is_active = form_arguments.get('isActive') is not None and form_arguments['isActive'] == 'on'
 		return ala
 
 
@@ -85,6 +149,7 @@ class Api:
 		root = os.path.join(os.path.dirname(__file__), "webroot")
 		handlers = [
 			(r"/api/config/?(.*)", ConfigApiHandler, {"config": state.configuration}),
+			(r"/api/action/?(.*)", ActionApiHandler ),
 			(r"/(.*)", ConfigHandler, {"config": state.configuration}),
 			# (r"/(.*)", tornado.web.StaticFileHandler, {"path": root, "default_filename": "alarm.html"}),
 		]
