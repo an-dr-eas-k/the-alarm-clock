@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import  date, time, timedelta
+from datetime import date, time, timedelta
 import datetime
 from apscheduler.job import Job
 from enum import Enum
@@ -10,7 +10,6 @@ from apscheduler.triggers.cron import CronTrigger
 
 from utils.observer import Observable, Observation, Observer
 from utils.geolocation import GeoLocation, Weather
-from utils.singleton import singleton
 
 def try_update(object, property_name: str, value: str) -> bool:
 	if hasattr(object, property_name):
@@ -328,4 +327,16 @@ class DisplayContent(Observable, Observer):
 		logging.info("volume bar shown: %s", True)
 		self.is_volume_meter_shown = True 
 		self.notify()
+
+	def get_timedelta_to_alarm(self) -> timedelta:
+		# negative if before alarm
+		next_alarm = self.get_next_alarm()
+		if next_alarm is None:
+			return timedelta.max
+		diff = GeoLocation().now() - next_alarm
+		return diff
+	
+	def get_next_alarm(self) -> datetime:
+		next_alarm_job = self.next_alarm_job
+		return None if next_alarm_job is None else next_alarm_job.next_run_time
 

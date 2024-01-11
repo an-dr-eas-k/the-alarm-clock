@@ -28,5 +28,5 @@ def text_to_image(
    ImageDraw.Draw(img).text([-box[0],-box[1]], text, font=font, fill=fg_color)
    return img
 
-def greyscale_to_color(grayscale_value: int):
+def grayscale_to_color(grayscale_value: int):
 		return (grayscale_value << 16) | (grayscale_value << 8) | grayscale_value

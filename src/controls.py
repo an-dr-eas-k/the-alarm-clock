@@ -169,8 +169,8 @@ class Controls(Observer):
 
 	def update_clock(self):
 		try:
-			self.state.show_blink_segment = not self.state.show_blink_segment
 			logging.info ("update show blink segment: %s", self.state.show_blink_segment)
+			self.state.show_blink_segment = not self.state.show_blink_segment
 		except:
 			logging.error("%s", traceback.format_exc())
 
