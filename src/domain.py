@@ -329,11 +329,11 @@ class DisplayContent(Observable, Observer):
 		self.notify()
 
 	def get_timedelta_to_alarm(self) -> timedelta:
-		# negative if before alarm
+		# positive if before alarm
 		next_alarm = self.get_next_alarm()
 		if next_alarm is None:
 			return timedelta.max
-		diff = GeoLocation().now() - next_alarm
+		diff = next_alarm - GeoLocation().now()
 		return diff
 	
 	def get_next_alarm(self) -> datetime:
