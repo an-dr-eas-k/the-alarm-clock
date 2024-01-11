@@ -49,26 +49,28 @@ class DisplayFormatter:
 		bold_clock_font = ImageFont.truetype(f"{resources_dir}/DSEG7Classic-Regular.ttf", 50)
 		light_clock_font = ImageFont.truetype(f"{resources_dir}/DSEG7ClassicMini-Light.ttf", 40)
 
+		alarm_in_minutes = time_delta_to_alarm.total_seconds() / 60
+
 		self.background_grayscale_16=0
 		self.foreground_grayscale_16=self.get_grayscale_value(room_brightness)
 		self.clock_font = bold_clock_font if room_brightness > 0.1 else light_clock_font
 
-		if (time_delta_to_alarm.total_seconds() / 60) < -8:
+		if alarm_in_minutes < -8:
 			return 
 
-		if (time_delta_to_alarm.total_seconds() / 60) < -4:
+		if alarm_in_minutes < -4:
 			self.background_grayscale_16=0
 			self.foreground_grayscale_16=15
 			self.clock_font=bold_clock_font
 			return
 
-		if (time_delta_to_alarm.total_seconds() / 60) < -2:
+		if alarm_in_minutes < -2:
 			self.background_grayscale_16=7
 			self.foreground_grayscale_16=0
 			self.clock_font=bold_clock_font
 			return
 
-		if (time_delta_to_alarm.total_seconds() / 60) < 0:
+		if alarm_in_minutes < 0:
 			self.background_grayscale_16=15
 			self.foreground_grayscale_16=0
 			self.clock_font=bold_clock_font
