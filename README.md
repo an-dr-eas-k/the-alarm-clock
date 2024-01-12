@@ -6,6 +6,8 @@ python3 src/app_clock.py
 ```
 
 7 Segment Font is included from https://github.com/keshikan/DSEG/releases
+weather symbols are included from https://github.com/erikflowers/weather-icons
+
 
 # Connection Guide
 

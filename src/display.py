@@ -57,7 +57,7 @@ class DisplayFormatter:
 
 		self.background_grayscale_16=0
 		self.foreground_grayscale_16=self.get_grayscale_value(room_brightness)
-		self.clock_font = bold_clock_font if room_brightness > 0.1 else light_clock_font
+		self.clock_font = bold_clock_font if room_brightness >= 0.01 else light_clock_font
 
 		if alarm_in_minutes > 8:
 			return 
@@ -145,7 +145,7 @@ class NextAlarmPresenter(Presenter):
 			font_7segment, 
 			fg_color=self.formatter.foreground_color(min_value=2),
 			bg_color=self.formatter.background_color())
-		alarm_symbol = "󰀠"
+		alarm_symbol = "\U000f0020"
 		alarm_symbol_img = text_to_image(
 			alarm_symbol, 
 			font_nerd, 
@@ -218,15 +218,16 @@ class Display(Observer):
 
 	def adjust_display(self):
 		self.device.contrast(16)
-		self.formatter.update_formatter(get_room_brightness())
+		room_brightness = get_room_brightness()
+		self.formatter.update_formatter(room_brightness)
 
-		self.current_display_image = self.present()
+		self.current_display_image = self.present(room_brightness)
 		self.device.display(self.current_display_image)
 		if isinstance (self.device, luma_dummy):
 			self.current_display_image.save(f"{os.path.dirname(os.path.realpath(__file__))}/../../display_test.png", format="png")
 
 
-	def present(self):
+	def present(self, room_brightness: int) -> Image.Image:
 		im = Image.new("RGB", self.device.size, color=self.formatter.background_color())
 
 		clock_image= self.clock_presenter.draw()
@@ -234,10 +235,10 @@ class Display(Observer):
 
 		next_alarm_image = self.next_alarm_presenter.draw()
 		im.paste(next_alarm_image, (2,im.height-next_alarm_image.height-2), next_alarm_image)
-		if self.content.get_is_wifi_available():
-			im.paste(self.weather_status_presenter.draw(), (2,4))
-		else:
+		if not self.content.get_is_wifi_available():
 			im.paste(self.wifi_status_presenter.draw(), (2,2))
+		elif (room_brightness >= 0.01):
+			im.paste(self.weather_status_presenter.draw(), (2,4))
 		return im
 		
 if __name__ == '__main__':
