@@ -13,7 +13,7 @@ from gpi import get_room_brightness
 from utils.drawing import get_concat_h_multi_blank, grayscale_to_color, text_to_image
 from utils.geolocation import GeoLocation
 
-resources_dir = f"{os.path.dirname(os.path.realpath(__file__))}/resources"
+from resources.resources import fonts_dir, weather_icons_dir
 
 class DisplayFormatter:
 
@@ -50,8 +50,8 @@ class DisplayFormatter:
 		self.adjust_display_internal(room_brightness, time_delta_to_alarm)
 
 	def adjust_display_internal(self, room_brightness: float, time_delta_to_alarm: datetime.timedelta):
-		bold_clock_font = ImageFont.truetype(f"{resources_dir}/DSEG7Classic-Regular.ttf", 50)
-		light_clock_font = ImageFont.truetype(f"{resources_dir}/DSEG7ClassicMini-Light.ttf", 40)
+		bold_clock_font = ImageFont.truetype(f"{fonts_dir}/DSEG7Classic-Regular.ttf", 50)
+		light_clock_font = ImageFont.truetype(f"{fonts_dir}/DSEG7ClassicMini-Light.ttf", 40)
 
 		alarm_in_minutes = time_delta_to_alarm.total_seconds() / 60
 
@@ -90,8 +90,8 @@ class DisplayFormatter:
 
 class Presenter:
 	empty_image = Image.new("RGBA", (0, 0))
-	font_file_7segment = f"{resources_dir}/DSEG7Classic-Regular.ttf"
-	font_file_nerd = f"{resources_dir}/CousineNerdFontMono-Regular.ttf"
+	font_file_7segment = f"{fonts_dir}/DSEG7Classic-Regular.ttf"
+	font_file_nerd = f"{fonts_dir}/CousineNerdFontMono-Regular.ttf"
 
 	content: DisplayContent
 
@@ -158,7 +158,7 @@ class NextAlarmPresenter(Presenter):
 class WeatherStatusPresenter(Presenter):
 	def __init__(self, formatter: DisplayFormatter, content: DisplayContent) -> None:
 		super().__init__(formatter, content)
-		self.font_file_weather = f"{resources_dir}/weather-icons/weathericons-regular-webfont.ttf"
+		self.font_file_weather = f"{weather_icons_dir}/weathericons-regular-webfont.ttf"
 
 	def draw(self) -> Image.Image:
 		weather = self.content.current_weather

@@ -1,6 +1,5 @@
 from enum import Enum
 import json
-import os
 import xml.etree.ElementTree as ET
 from urllib.request import urlopen
 import datetime
@@ -10,8 +9,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from utils.singleton import singleton
 
-
-weather_icons_dir = f"{os.path.dirname(os.path.realpath(__file__))}/../resources/weather-icons"
+from resources.resources import weather_icons_dir
 
 class WMO_Code:
 
