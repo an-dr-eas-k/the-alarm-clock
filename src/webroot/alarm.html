@@ -264,11 +264,11 @@
 					<th class="btn-column"></th>
 				</tr>
 				<tr>
-					<td>DWD StationId</td>
-					<td><input type="text" id="dwd_station_id"
-							value="{{ escape( config.dwd_station_id ) if config.dwd_station_id is not None else '' }}" /></td>
+					<td>Local Alarm File</td>
+					<td><input type="text" id="local_alarm_file"
+							value="{{ escape( config.local_alarm_file ) if config.local_alarm_file is not None else '' }}" /></td>
 					<td><button type="submit" class="btn btn-primary btn-row-action"
-							onclick="onClickSave(document.getElementById('dwd_station_id').value, 'dwd_station_id')">Save</button>
+							onclick="onClickSave(document.getElementById('local_alarm_file').value, 'local_alarm_file')">Save</button>
 					</td>
 				</tr>
 			</table>

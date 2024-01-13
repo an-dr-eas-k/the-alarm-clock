@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import date, time, timedelta
 import datetime
+import os
 from apscheduler.job import Job
 from enum import Enum
 import logging
@@ -10,6 +11,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from utils.observer import Observable, Observation, Observer
 from utils.geolocation import GeoLocation, Weather
+from resources.resources import alarms_dir
 
 def try_update(object, property_name: str, value: str) -> bool:
 	if hasattr(object, property_name):
@@ -45,13 +47,15 @@ class Weekday(Enum):
 class VisualEffect:
 	pass
 
+@dataclass
 class AudioStream:
-	id: int
 	stream_name: str
 	stream_url: str
+	id: int = -1
 
 class AudioEffect:
 	volume: float
+	guaranteed: bool
 
 @dataclass
 class InternetRadio(AudioEffect):
@@ -70,7 +74,7 @@ class AlarmDefinition:
 	alarm_name: str
 	is_active: bool
 	visual_effect: VisualEffect
-	audio_effect: AudioEffect
+	_audio_effect: AudioEffect
 
 	def to_cron_trigger(self) -> CronTrigger:
 		if (self.weekdays is not None and len(self.weekdays) > 0):
@@ -105,6 +109,15 @@ class AlarmDefinition:
 
 	def is_one_time(self) -> bool:
 		return self.date is not None
+
+	@property
+	def audio_effect(self) -> AudioEffect:
+		self._audio_effect.guaranteed = True
+		return self._audio_effect
+
+	@audio_effect.setter
+	def audio_effect(self, value: AudioEffect):
+		self._audio_effect = value
 
 class AudioDefinition(Observable):
 
@@ -154,9 +167,13 @@ class AudioDefinition(Observable):
 	
 class Config(Observable):
 
+	_clock_format_string = "%-H<blinkSegment>%M"
+	_blink_segment = ":"
+	_refresh_timeout_in_secs = 1
+
 	_alarm_definitions: [] = []
 	_audio_streams: [] = []
-	dwd_station_id: str = None
+	offline_alarm: AudioStream = AudioStream(stream_name='Offline Alarm', stream_url=os.path.join(alarms_dir, 'Timer.ogg'))
 
 	@property
 	def alarm_definitions(self) -> []:
@@ -226,20 +243,26 @@ class Config(Observable):
 	def blink_segment(self, value: str):
 		self._blink_segment = value
 		self.notify(property='blink_segment')
-	
-	def __init__(self) -> None:
-		super().__init__()
-		self.clock_format_string = "%-H<blinkSegment>%M"
-		self.blink_segment = ":"
-		self.refresh_timeout_in_secs = 1
 
+	@property
+	def local_alarm_file(self) -> str:
+		return os.path.basename(self.offline_alarm.stream_url)
+
+	@local_alarm_file.setter
+	def local_alarm_file(self, value: str):
+		full_file_path = os.path.join(alarms_dir, value)
+		self.offline_alarm = AudioStream(stream_name='Offline Alarm', stream_url=full_file_path)
+		self.notify(property='blink_segment')
+	
 	def serialize(self):
 		return jsonpickle.encode(self, indent=2)
 
 	def deserialize(config_file):
 		with open(config_file, "r") as file:
 			file_contents = file.read()
-			return jsonpickle.decode(file_contents)
+			persisted_config: Config = jsonpickle.decode(file_contents)
+			
+			return persisted_config
 			
 
 class AlarmClockState(Observable):

@@ -5,7 +5,9 @@ import subprocess
 import threading
 import re
 
-from domain import AudioDefinition, AudioEffect, InternetRadio, Observation, Observer, Spotify
+from domain import AudioDefinition, AudioEffect, Config, InternetRadio, Observation, Observer, Spotify
+from utils.network import is_internet_available
+from resources.resources import alarms_dir
 
 class MediaPlayer:
 
@@ -18,7 +20,7 @@ class MediaPlayer:
 class SpotifyPlayer(MediaPlayer):
 	pass
 
-class InternetRadioPlayer(MediaPlayer):
+class MediaListPlayer(MediaPlayer):
 	vlc_player: vlc.MediaListPlayer = None
 	url: str
 
@@ -43,6 +45,7 @@ class InternetRadioPlayer(MediaPlayer):
 		media = player.media_new(self.url) 
 		media_list.add_media(media) 
 		self.vlc_player.set_media_list(media_list) 
+		self.vlc_player.set_playback_mode(vlc.PlaybackMode.loop)
 		self.vlc_player.play()
 		logging.info('started audio %s', self.url)
 
@@ -59,8 +62,9 @@ class Speaker(Observer):
 	audio_effect: AudioEffect = None
 	media_player: MediaPlayer = None
 
-	def __init__(self) -> None:
+	def __init__(self, config: Config) -> None:
 		self.threadLock = threading.Lock()
+		self.config = config
 
 	def update(self, observation: Observation):
 		super().update(observation)
@@ -99,13 +103,20 @@ class Speaker(Observer):
 
 		self.threadLock.release()
 	
-	def startStreaming(self, audio_effect: AudioEffect):
-		if isinstance(audio_effect, InternetRadio):
-			self.media_player = InternetRadioPlayer(audio_effect.stream_definition.stream_url)
-
-		elif isinstance(audio_effect, Spotify):
-			self.media_player = SpotifyPlayer(audio_effect.play_id)
+	def get_player(self, audio_effect: AudioEffect) -> MediaPlayer:
+		if not is_internet_available() and audio_effect.guaranteed:
+			return MediaListPlayer(self.config.offline_alarm.stream_url)
 		
+		if isinstance(audio_effect, InternetRadio):
+			return MediaListPlayer(audio_effect.stream_definition.stream_url)
+
+		if isinstance(audio_effect, Spotify):
+			return SpotifyPlayer(audio_effect.play_id)
+
+		raise ValueError('unknown audio effect type')
+	
+	def startStreaming(self, audio_effect: AudioEffect):
+		self.media_player = self.get_player(audio_effect)
 		self.media_player.play()
 
 	def stopStreaming(self):

@@ -8,10 +8,10 @@ from urllib.request import urlopen
 from gpiozero import Button
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
-from apscheduler.triggers.cron import CronTrigger
 from apscheduler.job import Job
 from domain import AlarmClockState, AlarmDefinition, AudioDefinition, DisplayContent, InternetRadio, Observation, Observer, Config
 from utils.geolocation import GeoLocation, SunEvent
+from utils.network import is_internet_available
 
 button1Id = 0
 button2Id = 5
@@ -183,16 +183,8 @@ class Controls(Observer):
 
 
 	def update_wifi_status(self):
-
-		def is_ping_successful(hostname):
-			result = subprocess.run(
-				["ping", "-c", "1", hostname], 
-				stdout=subprocess.DEVNULL, 
-				stderr=subprocess.DEVNULL)
-			return result.returncode == 0
-
 		try:
-			self.state.is_wifi_available = is_ping_successful("google.com")
+			self.state.is_wifi_available = is_internet_available()
 			logging.info ("update wifi, is available: %s", self.state.is_wifi_available)
 		except:
 			logging.error("%s", traceback.format_exc())
