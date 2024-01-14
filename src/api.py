@@ -98,12 +98,15 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 				self.config.remove_alarm_definition(id)
 				self.config.add_alarm_definition(alarmDef)
 				return
-			
-			form_arguments = tornado.escape.json_decode(self.request.body)
+
+			body = '{}' if self.request.body is None or len(self.request.body) == 0 else self.request.body
+			form_arguments = tornado.escape.json_decode(body)
 			if type == 'alarm':
 					self.config.add_alarm_definition ( self.parse_alarm_definition(form_arguments) )
 			elif type == 'stream':
 				self.config.add_audio_stream ( self.parse_stream_definition(form_arguments) )
+			elif type == 'start_powernap':
+				self.config.add_alarm_definition_for_powernap ()
 		except:
 			logging.warning("%s", traceback.format_exc())
 

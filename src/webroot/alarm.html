@@ -64,6 +64,11 @@
 			return jsonData;
 		}
 
+		function onClickAddPowernap(event) {
+			sendToBackend('/api/config/' + 'start_powernap', 'POST', null);
+			location.reload();
+		}
+
 		function onClickDelete(type, event) {
 			sendToBackend('/api/config/' + type + '/' + event.target.value, 'DELETE', null);
 			location.reload();
@@ -151,6 +156,14 @@
 					</td>
 				</tr>
 				{% end %}
+				<tr>
+					<td colspan="5">
+					</td>
+					<td>
+						<button type="submit" class="btn btn-primary btn-row-action" onclick="onClickAddPowernap(event)"
+							style="width: 100%;">Powernap</button>
+					</td>
+				</tr>
 				<tr>
 					<td colspan="5">
 						<div id="add-alarm-container" style="margin: 20px; display:none;">
@@ -264,6 +277,15 @@
 					<th class="btn-column"></th>
 				</tr>
 				<tr>
+					<td>Powernap Duration (min)</td>
+					<td><input type="text" id="powernap_duration_in_mins"
+							value="{{ config.powernap_duration_in_mins if config.powernap_duration_in_mins is not None else '' }}" />
+					</td>
+					<td><button type="submit" class="btn btn-primary btn-row-action"
+							onclick="onClickSave(document.getElementById('powernap_duration_in_mins').value, 'powernap_duration_in_mins')">Save</button>
+					</td>
+				</tr>
+				<tr><!-- string value -->
 					<td>Local Alarm File</td>
 					<td><input type="text" id="local_alarm_file"
 							value="{{ escape( config.local_alarm_file ) if config.local_alarm_file is not None else '' }}" /></td>

@@ -153,7 +153,7 @@ class Controls(Observer):
 					first_stream = self.state.configuration.audio_streams[0]
 					ir = InternetRadio()
 					ir.stream_definition=first_stream
-					ir.volume = 0.9
+					ir.volume = self.state.configuration.default_volume
 					audio_state.audio_effect = ir
 
 			self.state.audio_state.toggle_stream()

@@ -100,12 +100,13 @@ class AlarmDefinition:
 		elif (self.date is not None):
 			return self.date.strftime("%Y-%m-%d")
 
-	def set_future_date(self, hour, minute):
+	def set_future_date(self, hour: int, minute: int):
 		now = GeoLocation().now()
 		target = now.replace(hour=hour, minute=minute)
 		if target < now:
 				target = target + timedelta(days=1)
 		self.date = target.date()
+		self.weekdays = None
 
 	def is_one_time(self) -> bool:
 		return self.date is not None
@@ -172,6 +173,8 @@ class Config(Observable):
 	offline_alarm: AudioStream
 	alarm_duration_in_mins: int
 	refresh_timeout_in_secs: int
+	powernap_duration_in_mins: int
+	default_volume: float = 0.9
 
 	_alarm_definitions: [] = []
 	_audio_streams: [] = []
@@ -191,6 +194,23 @@ class Config(Observable):
 
 	def get_next_id(array_with_ids: []) -> int:
 		return sorted(array_with_ids, key=lambda x: x.id, reverse=True)[0].id+1 if len(array_with_ids) > 0 else 1
+
+	def add_alarm_definition_for_powernap(self):
+
+		duration = GeoLocation().now() + timedelta(minutes=self.powernap_duration_in_mins)
+		audio_effect = InternetRadio()
+		audio_effect.guaranteed = True
+		audio_effect.volume = self.default_volume
+		audio_effect.stream_definition = self.audio_streams[0]
+
+		powernap_alarm_def = AlarmDefinition()
+		powernap_alarm_def.alarm_name = "Powernap"
+		powernap_alarm_def.hour = duration.hour
+		powernap_alarm_def.min = duration.minute
+		powernap_alarm_def.is_active = True
+		powernap_alarm_def.set_future_date(duration.hour, duration.minute)
+		powernap_alarm_def.audio_effect = audio_effect
+		self.add_alarm_definition(powernap_alarm_def)
 
 	def add_alarm_definition(self, value: AlarmDefinition):
 		self._alarm_definitions = Config.append_item_with_id(value, self._alarm_definitions)
@@ -233,6 +253,7 @@ class Config(Observable):
 		self.clock_format_string = "%-H<blinkSegment>%M"
 		self.blink_segment = ":"
 		self.refresh_timeout_in_secs = 1
+		self.powernap_duration_in_mins = 18
 	
 	def serialize(self):
 		return jsonpickle.encode(self, indent=2)

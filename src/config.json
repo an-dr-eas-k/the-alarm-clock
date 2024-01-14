@@ -76,6 +76,7 @@
       "stream_name": "Offline Alarm",
       "stream_url": "Timer.ogg",
       "id": -1
-    }
+    },
+    "powernap_duration_in_mins": 18
   }
 }
