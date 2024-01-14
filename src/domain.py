@@ -128,7 +128,7 @@ class AudioDefinition(Observable):
 	@audio_effect.setter
 	def audio_effect(self, value: AudioEffect):
 		self._audio_effect = value
-		if value is not None:
+		if value is not None and value.volume != self.volume:
 			self.volume = value.volume
 		self.notify(property='audio_effect')
 

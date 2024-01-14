@@ -151,8 +151,10 @@ class Controls(Observer):
 			audio_state = self.state.audio_state
 			if not audio_state.audio_effect:
 					first_stream = self.state.configuration.audio_streams[0]
-					audio_state.audio_effect = InternetRadio(stream_definition=first_stream)
-					audio_state.audio_effect.volume = 0.9
+					ir = InternetRadio()
+					ir.stream_definition=first_stream
+					ir.volume = 0.9
+					audio_state.audio_effect = ir
 
 			self.state.audio_state.toggle_stream()
 		
@@ -174,7 +176,7 @@ class Controls(Observer):
 
 	def update_clock(self):
 		try:
-			logging.info ("update show blink segment: %s", self.state.show_blink_segment)
+			logging.debug ("update show blink segment: %s", self.state.show_blink_segment)
 			self.state.show_blink_segment = not self.state.show_blink_segment
 		except:
 			logging.error("%s", traceback.format_exc())
@@ -236,7 +238,7 @@ class SoftwareControls(Controls):
 
 	def configure(self):
 		def key_pressed_action(key):
-			logging.info ("pressed %s", key)
+			logging.debug ("pressed %s", key)
 			if not hasattr(key, 'char'):
 				return
 			try:

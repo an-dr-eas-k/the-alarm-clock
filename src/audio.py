@@ -82,7 +82,7 @@ class Speaker(Observer):
 	def adjust_volume(self, newVolume: float):
 		control_name = self.get_first_control_name()
 		subprocess.call(["amixer", "sset", control_name, f"{newVolume * 100}%"], stdout=subprocess.DEVNULL)
-		logging.debug(f"set volume to {newVolume}")
+		logging.info(f"set volume to {newVolume}")
 		pass
 
 	def get_first_control_name(self):
@@ -104,10 +104,13 @@ class Speaker(Observer):
 
 		self.threadLock.release()
 	
+	def get_fallback_player(self) -> MediaPlayer:
+		full_file_path = os.path.join(alarms_dir, self.config.offline_alarm.stream_url)
+		return MediaListPlayer(full_file_path)
+	
 	def get_player(self, audio_effect: AudioEffect) -> MediaPlayer:
 		if not is_internet_available() and audio_effect.guaranteed:
-			full_file_path = os.path.join(alarms_dir, self.config.offline_alarm.stream_url)
-			return MediaListPlayer(full_file_path)
+			return self.get_fallback_player()
 		
 		if isinstance(audio_effect, InternetRadio):
 			return MediaListPlayer(audio_effect.stream_definition.stream_url)
@@ -118,8 +121,14 @@ class Speaker(Observer):
 		raise ValueError('unknown audio effect type')
 	
 	def startStreaming(self, audio_effect: AudioEffect):
-		self.media_player = self.get_player(audio_effect)
-		self.media_player.play()
+		try:
+			self.media_player = self.get_player(audio_effect)
+			self.media_player.play()
+		except Exception as e:
+			logging.error("playback error: %s", str(e))
+			if audio_effect.guaranteed and audio_effect != self.config.offline_alarm:
+				logging.info("starting offline fallback playback")
+				self.startStreaming(self.config.offline_alarm)
 
 	def stopStreaming(self):
 		if self.media_player is not None:
