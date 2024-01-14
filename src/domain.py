@@ -162,18 +162,19 @@ class AudioDefinition(Observable):
 	def decrease_volume(self):
 		self.volume = max(self.volume - 0.05, 0.0)
 
-	def toggle_stream(self):
-		self.is_streaming = not self.is_streaming
+	def toggle_stream(self, new_value: bool = None):
+		self.is_streaming = new_value if new_value is not None else not self.is_streaming
 	
 class Config(Observable):
 
-	_clock_format_string = "%-H<blinkSegment>%M"
-	_blink_segment = ":"
-	_refresh_timeout_in_secs = 1
+	clock_format_string: str
+	blink_segment: str
+	offline_alarm: AudioStream
+	alarm_duration_in_mins: int
+	refresh_timeout_in_secs: int
 
 	_alarm_definitions: [] = []
 	_audio_streams: [] = []
-	offline_alarm: AudioStream = AudioStream(stream_name='Offline Alarm', stream_url=os.path.join(alarms_dir, 'Timer.ogg'))
 
 	@property
 	def alarm_definitions(self) -> []:
@@ -218,41 +219,20 @@ class Config(Observable):
 		self.notify(property='audio_streams')
 
 	@property
-	def refresh_timeout_in_secs(self) -> int:
-		return self._refresh_timeout_in_secs
-
-	@refresh_timeout_in_secs.setter
-	def refresh_timeout_in_secs(self, value: int):
-		self._refresh_timeout_in_secs = value
-		self.notify(property='refresh_timeout_in_secs')
-
-	@property
-	def clock_format_string(self) -> str:
-		return self._clock_format_string
-
-	@clock_format_string.setter
-	def clock_format_string(self, value: str):
-		self._clock_format_string = value
-		self.notify(property='clock_format_string')
-
-	@property
-	def blink_segment(self) -> str:
-		return self._blink_segment
-
-	@blink_segment.setter
-	def blink_segment(self, value: str):
-		self._blink_segment = value
-		self.notify(property='blink_segment')
-
-	@property
 	def local_alarm_file(self) -> str:
-		return os.path.basename(self.offline_alarm.stream_url)
+		return self.offline_alarm.stream_url
 
 	@local_alarm_file.setter
 	def local_alarm_file(self, value: str):
-		full_file_path = os.path.join(alarms_dir, value)
-		self.offline_alarm = AudioStream(stream_name='Offline Alarm', stream_url=full_file_path)
+		self.offline_alarm = AudioStream(stream_name='Offline Alarm', stream_url=value)
 		self.notify(property='blink_segment')
+
+	def	ensure_valid_config(self):
+		self.alarm_duration_in_mins = 60
+		self.offline_alarm = AudioStream(stream_name='Offline Alarm', stream_url='Timer.ogg')
+		self.clock_format_string = "%-H<blinkSegment>%M"
+		self.blink_segment = ":"
+		self.refresh_timeout_in_secs = 1
 	
 	def serialize(self):
 		return jsonpickle.encode(self, indent=2)
@@ -261,7 +241,7 @@ class Config(Observable):
 		with open(config_file, "r") as file:
 			file_contents = file.read()
 			persisted_config: Config = jsonpickle.decode(file_contents)
-			
+			persisted_config.ensure_valid_config()
 			return persisted_config
 			
 

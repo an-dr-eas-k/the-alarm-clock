@@ -80,15 +80,20 @@ class Controls(Observer):
 			self.start_hide_volume_meter_trigger()
 
 	def start_hide_volume_meter_trigger(self):
-		job_id = 'hide_volume_meter_trigger'
-		trigger = DateTrigger(run_date=GeoLocation().now() + datetime.timedelta(seconds=5))
+		self.start_generic_trigger(
+			'hide_volume_meter_trigger', 
+			datetime.timedelta(seconds=5), 
+			func=self.display_content.hide_volume_meter
+		)
+
+	def start_generic_trigger(self, job_id: str, duration: datetime.timedelta, func):
+		trigger = DateTrigger(run_date=GeoLocation().now() + duration)
 
 		existing_job = self.scheduler.get_job(job_id=job_id)
 		if existing_job:
 			self.scheduler.reschedule_job(job_id=job_id, trigger=trigger)
 		else:
-			self.scheduler.add_job(id=job_id, trigger=trigger,
-				func=self.display_content.hide_volume_meter)
+			self.scheduler.add_job(id=job_id, trigger=trigger, func=func)
 
 	def update_from_config(self, observation: Observation, config: Config):
 		if observation.property_name == 'alarm_definitions':
@@ -208,10 +213,16 @@ class Controls(Observer):
 			logging.error("%s", traceback.format_exc())
 
 	def after_ring_alarm(self, alarmDefinition: AlarmDefinition):
+
+		self.start_generic_trigger(
+			'stop_alarm_trigger', 
+			datetime.timedelta(minutes=self.state.configuration.alarm_duration_in_mins), 
+			func=lambda: self.state.audio_state.toggle_stream(new_value=False)
+		)
+
 		self.display_content.next_alarm_job = self.get_next_alarm_job()
 		if alarmDefinition.is_one_time():
 			self.state.configuration.remove_alarm_definition(alarmDefinition.id)
-
 
 	def cleanup_alarms(self):
 		job: Job

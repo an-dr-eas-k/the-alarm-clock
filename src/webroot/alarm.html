@@ -271,6 +271,15 @@
 							onclick="onClickSave(document.getElementById('local_alarm_file').value, 'local_alarm_file')">Save</button>
 					</td>
 				</tr>
+				<tr>
+					<td>Alarm Duration (min)</td>
+					<td><input type="text" id="alarm_duration_in_mins"
+							value="{{ config.alarm_duration_in_mins if config.alarm_duration_in_mins is not None else '' }}" />
+					</td>
+					<td><button type="submit" class="btn btn-primary btn-row-action"
+							onclick="onClickSave(document.getElementById('alarm_duration_in_mins').value, 'alarm_duration_in_mins')">Save</button>
+					</td>
+				</tr>
 			</table>
 		</div>
 		<div id="general-actions" class="row">

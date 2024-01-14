@@ -1,9 +1,6 @@
 {
   "py/object": "domain.Config",
   "py/state": {
-    "_clock_format_string": "%-H<blinkSegment>%M",
-    "_blink_segment": ":",
-    "_refresh_timeout_in_secs": 1,
     "_alarm_definitions": [
       {
         "py/object": "domain.AlarmDefinition",
@@ -70,6 +67,15 @@
         "py/id": 10
       }
     ],
-    "dwd_station_id": "10865"
+    "alarm_duration_in_mins": 60,
+    "refresh_timeout_in_secs": 1,
+    "clock_format_string": "%-H<blinkSegment>%M",
+    "blink_segment": ":",
+    "offline_alarm": {
+      "py/object": "domain.AudioStream",
+      "stream_name": "Offline Alarm",
+      "stream_url": "Timer.ogg",
+      "id": -1
+    }
   }
 }

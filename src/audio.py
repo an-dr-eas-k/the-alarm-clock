@@ -1,4 +1,5 @@
 import logging
+import os
 import vlc
 import time
 import subprocess 
@@ -105,7 +106,8 @@ class Speaker(Observer):
 	
 	def get_player(self, audio_effect: AudioEffect) -> MediaPlayer:
 		if not is_internet_available() and audio_effect.guaranteed:
-			return MediaListPlayer(self.config.offline_alarm.stream_url)
+			full_file_path = os.path.join(alarms_dir, self.config.offline_alarm.stream_url)
+			return MediaListPlayer(full_file_path)
 		
 		if isinstance(audio_effect, InternetRadio):
 			return MediaListPlayer(audio_effect.stream_definition.stream_url)
