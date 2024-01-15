@@ -254,12 +254,18 @@ class Config(Observable):
 		super().__init__()
 
 	def	ensure_valid_config(self):
-		self.alarm_duration_in_mins = 60
-		self.offline_alarm = AudioStream(stream_name='Offline Alarm', stream_url='Timer.ogg')
-		self.clock_format_string = "%-H<blinkSegment>%M"
-		self.blink_segment = ":"
-		self.refresh_timeout_in_secs = 1
-		self.powernap_duration_in_mins = 18
+		for conf_prop in ([
+			dict(key='alarm_duration_in_mins', value=60), 
+			dict(key='offline_alarm', value = AudioStream(stream_name='Offline Alarm', stream_url='Timer.ogg')),
+			dict(key='clock_format_string', value='%-H<blinkSegment>%M'),
+			dict(key='blink_segment', value=':'),
+			dict(key='refresh_timeout_in_secs', value=1),
+			dict(key='powernap_duration_in_mins', value=18),
+			dict(key='default_volume', value=0.9)
+			]):
+			if not hasattr(self, conf_prop['key']):
+				logging.debug("key not found: %s, adding default value: %s", conf_prop['key'], conf_prop['value'])
+				setattr(self, conf_prop['key'], conf_prop['value'])
 	
 	def serialize(self):
 		return jsonpickle.encode(self, indent=2)
