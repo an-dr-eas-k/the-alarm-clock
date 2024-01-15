@@ -82,35 +82,6 @@
         },
         "is_active": true,
         "id": 2
-      },
-      {
-        "py/object": "domain.AlarmDefinition",
-        "alarm_name": "Powernap",
-        "hour": 8,
-        "min": 52,
-        "is_active": true,
-        "date": {
-          "py/object": "datetime.date",
-          "__reduce__": [
-            {
-              "py/type": "datetime.date"
-            },
-            [
-              "B+gBDw=="
-            ]
-          ]
-        },
-        "weekdays": null,
-        "_audio_effect": {
-          "py/object": "domain.InternetRadio",
-          "stream_definition": {
-            "py/id": 4
-          },
-          "guaranteed": true,
-          "volume": 0.9
-        },
-        "visual_effect": null,
-        "id": 3
       }
     ],
     "default_volume": 0.9
