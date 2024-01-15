@@ -1,17 +1,16 @@
 from dataclasses import dataclass
 from datetime import date, time, timedelta
 import datetime
-import os
 from apscheduler.job import Job
 from enum import Enum
 import logging
 
 import jsonpickle
 from apscheduler.triggers.cron import CronTrigger
+from utils.extensions import get_timedelta_to_alarm
 
 from utils.observer import Observable, Observation, Observer
 from utils.geolocation import GeoLocation, Weather
-from resources.resources import alarms_dir
 
 def try_update(object, property_name: str, value: str) -> bool:
 	if hasattr(object, property_name):
@@ -42,7 +41,6 @@ class Weekday(Enum):
 	FRIDAY = 5
 	SATURDAY = 6
 	SUNDAY = 7
-
 
 class VisualEffect:
 	pass
@@ -197,7 +195,7 @@ class Config(Observable):
 
 	def add_alarm_definition_for_powernap(self):
 
-		duration = GeoLocation().now() + timedelta(minutes=self.powernap_duration_in_mins)
+		duration = GeoLocation().now() + timedelta(minutes=(1+self.powernap_duration_in_mins))
 		audio_effect = InternetRadio()
 		audio_effect.guaranteed = True
 		audio_effect.volume = self.default_volume
@@ -210,7 +208,10 @@ class Config(Observable):
 		powernap_alarm_def.is_active = True
 		powernap_alarm_def.set_future_date(duration.hour, duration.minute)
 		powernap_alarm_def.audio_effect = audio_effect
+		powernap_alarm_def.visual_effect = None
+
 		self.add_alarm_definition(powernap_alarm_def)
+
 
 	def add_alarm_definition(self, value: AlarmDefinition):
 		self._alarm_definitions = Config.append_item_with_id(value, self._alarm_definitions)
@@ -247,6 +248,11 @@ class Config(Observable):
 		self.offline_alarm = AudioStream(stream_name='Offline Alarm', stream_url=value)
 		self.notify(property='blink_segment')
 
+	def __init__(self):
+		logging.debug("initializing default config")
+		self.ensure_valid_config()
+		super().__init__()
+
 	def	ensure_valid_config(self):
 		self.alarm_duration_in_mins = 60
 		self.offline_alarm = AudioStream(stream_name='Offline Alarm', stream_url='Timer.ogg')
@@ -259,6 +265,7 @@ class Config(Observable):
 		return jsonpickle.encode(self, indent=2)
 
 	def deserialize(config_file):
+		logging.debug("initializing config from file: %s", config_file)
 		with open(config_file, "r") as file:
 			file_contents = file.read()
 			persisted_config: Config = jsonpickle.decode(file_contents)
@@ -353,14 +360,10 @@ class DisplayContent(Observable, Observer):
 		self.notify()
 
 	def get_timedelta_to_alarm(self) -> timedelta:
-		# positive if before alarm
-		next_alarm = self.get_next_alarm()
-		if next_alarm is None:
+		if self.next_alarm_job is None:
 			return timedelta.max
-		diff = next_alarm - GeoLocation().now()
-		return diff
+		return get_timedelta_to_alarm(self.next_alarm_job)
 	
 	def get_next_alarm(self) -> datetime:
-		next_alarm_job = self.next_alarm_job
-		return None if next_alarm_job is None else next_alarm_job.next_run_time
+		return None if self.next_alarm_job is None else self.next_alarm_job.next_run_time
 

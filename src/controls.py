@@ -1,8 +1,6 @@
 import datetime
-import json
 import logging
 import os
-import subprocess
 import traceback
 from urllib.request import urlopen
 from gpiozero import Button

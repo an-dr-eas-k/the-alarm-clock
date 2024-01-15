@@ -8,14 +8,17 @@ from luma.core.device import dummy as luma_dummy
 from luma.core.render import canvas
 from PIL import ImageFont, Image
 
-from domain import Config, DisplayContent, Observation, Observer
+from domain import AlarmDefinition, Config, DisplayContent, Observation, Observer, VisualEffect
 from gpi import get_room_brightness
 from utils.drawing import get_concat_h_multi_blank, grayscale_to_color, text_to_image
+from utils.extensions import get_job_arg, get_timedelta_to_alarm
 from utils.geolocation import GeoLocation
 
 from resources.resources import fonts_dir, weather_icons_dir
 
 class DisplayFormatter:
+	bold_clock_font = ImageFont.truetype(f"{fonts_dir}/DSEG7Classic-Regular.ttf", 50)
+	light_clock_font = ImageFont.truetype(f"{fonts_dir}/DSEG7ClassicMini-Light.ttf", 40)
 
 	foreground_grayscale_16: int
 	background_grayscale_16: int
@@ -46,18 +49,22 @@ class DisplayFormatter:
 		return DisplayFormatter.respect_ranges( 32/(1+math.exp(-0.25*room_brightness))-16, min_value, max_value)
 
 	def adjust_display(self, room_brightness: float):
-		time_delta_to_alarm = self.display_content.get_timedelta_to_alarm()
-		self.adjust_display_internal(room_brightness, time_delta_to_alarm)
+		self.adjust_display_by_room_brightness(room_brightness)
+		next_alarm_job = self.display_content.next_alarm_job
+		if next_alarm_job is None:
+			return
+		
+		visual_effect: VisualEffect = get_job_arg(next_alarm_job, AlarmDefinition).visual_effect
+		if visual_effect is not None:
+			self.adjust_display_by_alarm_visual_effect(get_timedelta_to_alarm(next_alarm_job), visual_effect)
 
-	def adjust_display_internal(self, room_brightness: float, time_delta_to_alarm: datetime.timedelta):
-		bold_clock_font = ImageFont.truetype(f"{fonts_dir}/DSEG7Classic-Regular.ttf", 50)
-		light_clock_font = ImageFont.truetype(f"{fonts_dir}/DSEG7ClassicMini-Light.ttf", 40)
-
-		alarm_in_minutes = time_delta_to_alarm.total_seconds() / 60
-
+	def adjust_display_by_room_brightness(self, room_brightness: float):
 		self.background_grayscale_16=0
 		self.foreground_grayscale_16=self.get_grayscale_value(room_brightness)
-		self.clock_font = bold_clock_font if room_brightness >= 0.01 else light_clock_font
+		self.clock_font = self.bold_clock_font if room_brightness >= 0.01 else self.light_clock_font
+
+	def adjust_display_by_alarm_visual_effect(self,time_delta_to_alarm: datetime.timedelta, visual_effect: VisualEffect):
+		alarm_in_minutes = time_delta_to_alarm.total_seconds() / 60
 
 		if alarm_in_minutes > 8:
 			return 
@@ -65,19 +72,19 @@ class DisplayFormatter:
 		if alarm_in_minutes > 4:
 			self.background_grayscale_16=0
 			self.foreground_grayscale_16=15
-			self.clock_font=bold_clock_font
+			self.clock_font=self.bold_clock_font
 			return
 
 		if alarm_in_minutes > 2:
 			self.background_grayscale_16=7
 			self.foreground_grayscale_16=0
-			self.clock_font=bold_clock_font
+			self.clock_font=self.bold_clock_font
 			return
 
 		if alarm_in_minutes > -2:
 			self.background_grayscale_16=15
 			self.foreground_grayscale_16=0
-			self.clock_font=bold_clock_font
+			self.clock_font=self.bold_clock_font
 			return
 
 	def format_clock_string(self, clock: datetime, show_blink_segment: bool = True) -> str:

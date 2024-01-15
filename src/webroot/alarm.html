@@ -143,7 +143,8 @@
 					<td>{{ escape(f"{alarm_definition.to_time_string()}") }}</td>
 					<td>{{ escape(alarm_definition.to_weekdays_string()) }}</td>
 					<td>stream: {{ escape(alarm_definition.audio_effect.stream_definition.stream_name ) }},
-						vol: {{ alarm_definition.audio_effect.volume }}</td>
+						vol: {{ alarm_definition.audio_effect.volume }},
+						{{ 'visuals' if alarm_definition.visual_effect is not None else 'no visuals' }}</td>
 					<td>
 						<button type="submit" class="btn btn-primary btn-row-action"
 							onclick="onClickSave('{{ not alarm_definition.is_active }}', 'alarm', '{{ alarm_definition.id }}', 'is_active' )">
@@ -208,10 +209,17 @@
 									<span id="volumeValue"></span>
 								</div>
 								<div class="form-group">
+									<label for="visualeffectpicker">Visual Effects:</label>
+									<input type="checkbox" checked name="visualEffectActive" id="visualeffectpicker" />
+								</div>
+								<div class="form-group">
 									<label for="activepicker">Active:</label>
 									<input type="checkbox" checked name="isActive" id="activepicker" />
 								</div>
-								<button type="submit" class="btn btn-primary">Add Alarm</button>
+								<div style="display: block; text-align: right;">
+									<button type="submit" class="btn btn-primary">Add
+										Alarm</button>
+								</div>
 							</form>
 						</div>
 					</td>

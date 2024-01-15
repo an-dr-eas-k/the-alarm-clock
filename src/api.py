@@ -7,7 +7,7 @@ import tornado
 import tornado.web
 from PIL.Image import Image
 
-from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, Config, InternetRadio, Weekday, try_update
+from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, Config, InternetRadio, VisualEffect, Weekday, try_update
 
 def split_path_arguments(path) -> tuple[str, int, str]:
 	path_args = path[0].split('/')
@@ -111,17 +111,22 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 			logging.warning("%s", traceback.format_exc())
 
 	def parse_stream_definition(self, form_arguments) -> AlarmDefinition:
-		auSt = AudioStream()
-		auSt.stream_name = form_arguments['streamName']
-		auSt.stream_url = form_arguments['streamUrl']
-		return auSt
+		stream_name = form_arguments['streamName']
+		stream_url = form_arguments['streamUrl']
+		return AudioStream(stream_name=stream_name, stream_url=stream_url)
 
-	def parse_audio_effect(self, form_arguments) -> AudioStream:
+	def parse_visual_effect(self, form_arguments) -> VisualEffect:
+		use_visual_effect = form_arguments.get('visualEffectActive') is not None and form_arguments['visualEffectActive'] == 'on'
+		if use_visual_effect:
+			return VisualEffect()
+		return None
+		
+	def parse_audio_effect(self, form_arguments) -> AudioEffect:
 		stream_id = int(form_arguments['streamId'])
-		auSt = InternetRadio()
-		auSt.stream_definition = self.config.get_audio_stream(stream_id)
-		auSt.volume = float(form_arguments['volume'])
-		return auSt
+		au_effekt = InternetRadio()
+		au_effekt.stream_definition = self.config.get_audio_stream(stream_id)
+		au_effekt.volume = float(form_arguments['volume'])
+		return au_effekt
 
 	def parse_alarm_definition(self, form_arguments) -> AlarmDefinition:
 		ala = AlarmDefinition()
@@ -140,6 +145,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 			ala.set_future_date(ala.hour, ala.min)
 
 		ala.audio_effect = self.parse_audio_effect(form_arguments)
+		ala.visual_effect = self.parse_visual_effect(form_arguments)
 		ala.is_active = form_arguments.get('isActive') is not None and form_arguments['isActive'] == 'on'
 		return ala
 

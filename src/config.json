@@ -1,6 +1,31 @@
 {
   "py/object": "domain.Config",
   "py/state": {
+    "alarm_duration_in_mins": 60,
+    "offline_alarm": {
+      "py/object": "domain.AudioStream",
+      "stream_name": "Offline Alarm",
+      "stream_url": "Timer.ogg",
+      "id": -1
+    },
+    "clock_format_string": "%-H<blinkSegment>%M",
+    "blink_segment": ":",
+    "refresh_timeout_in_secs": 1,
+    "powernap_duration_in_mins": 18,
+    "_audio_streams": [
+      {
+        "py/object": "domain.AudioStream",
+        "stream_name": "br2",
+        "stream_url": "https://streams.br.de/bayern2sued_2.m3u",
+        "id": -1
+      },
+      {
+        "py/object": "domain.AudioStream",
+        "stream_name": "puls",
+        "stream_url": "https://streams.br.de/puls_2.m3u",
+        "id": -1
+      }
+    ],
     "_alarm_definitions": [
       {
         "py/object": "domain.AlarmDefinition",
@@ -18,13 +43,13 @@
         "_audio_effect": {
           "py/object": "domain.InternetRadio",
           "stream_definition": {
-            "py/object": "domain.AudioStream",
-            "stream_name": "br2",
-            "stream_url": "https://streams.br.de/bayern2sued_2.m3u",
-            "id": 1
+            "py/id": 4
           },
-          "volume": 1.0,
+          "volume": 0.9,
           "guaranteed": true
+        },
+        "visual_effect": {
+          "py/object": "domain.VisualEffect"
         },
         "is_active": true,
         "id": 1
@@ -47,36 +72,47 @@
         "_audio_effect": {
           "py/object": "domain.InternetRadio",
           "stream_definition": {
-            "py/object": "domain.AudioStream",
-            "stream_name": "puls",
-            "stream_url": "https://streams.br.de/puls_2.m3u",
-            "id": 2
+            "py/id": 4
           },
-          "volume": 0.9,
+          "volume": 1.0,
           "guaranteed": true
+        },
+        "visual_effect": {
+          "py/object": "domain.VisualEffect"
         },
         "is_active": true,
         "id": 2
-      }
-    ],
-    "_audio_streams": [
-      {
-        "py/id": 6
       },
       {
-        "py/id": 10
+        "py/object": "domain.AlarmDefinition",
+        "alarm_name": "Powernap",
+        "hour": 8,
+        "min": 52,
+        "is_active": true,
+        "date": {
+          "py/object": "datetime.date",
+          "__reduce__": [
+            {
+              "py/type": "datetime.date"
+            },
+            [
+              "B+gBDw=="
+            ]
+          ]
+        },
+        "weekdays": null,
+        "_audio_effect": {
+          "py/object": "domain.InternetRadio",
+          "stream_definition": {
+            "py/id": 4
+          },
+          "guaranteed": true,
+          "volume": 0.9
+        },
+        "visual_effect": null,
+        "id": 3
       }
     ],
-    "alarm_duration_in_mins": 60,
-    "refresh_timeout_in_secs": 1,
-    "clock_format_string": "%-H<blinkSegment>%M",
-    "blink_segment": ":",
-    "offline_alarm": {
-      "py/object": "domain.AudioStream",
-      "stream_name": "Offline Alarm",
-      "stream_url": "Timer.ogg",
-      "id": -1
-    },
-    "powernap_duration_in_mins": 18
+    "default_volume": 0.9
   }
 }
