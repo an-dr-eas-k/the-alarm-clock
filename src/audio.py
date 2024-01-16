@@ -129,6 +129,12 @@ class Speaker(Observer):
 			if audio_effect.guaranteed and audio_effect != self.config.offline_alarm:
 				logging.info("starting offline fallback playback")
 				self.startStreaming(self.config.offline_alarm)
+			if audio_effect.guaranteed and audio_effect == self.config.offline_alarm:
+				logging.info("starting system beep fallback")
+				Speaker.system_beep()
+	
+	def system_beep():
+		os.system("speaker-test -t sine -c 2 -f1000 -l 0 -p 23 -S 80")
 
 	def stopStreaming(self):
 		if self.media_player is not None:
