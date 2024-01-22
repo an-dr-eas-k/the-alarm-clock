@@ -259,7 +259,7 @@ class Config(Observable):
 		self.ensure_valid_config()
 		super().__init__()
 
-	def get_offline_alarm_effect(self, volume: float = default_volume):
+	def get_offline_alarm_effect(self, volume: float = default_volume) -> OfflineAlarmEffect:
 		full_path = os.path.join(alarms_dir, self.offline_alarm.stream_url)
 		return OfflineAlarmEffect(
 			guaranteed=True, 

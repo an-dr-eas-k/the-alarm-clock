@@ -59,7 +59,7 @@ class ClockApp:
 		self.state.configuration.attach(
 			Persistence( self.configFile))
 
-		self.state.audio_state.attach(Speaker(self.state.configuration))
+		self.speaker = Speaker(self.state.audio_state, self.state.configuration)
 		self.state.configuration.attach(self.controls)
 		self.state.audio_state.attach(self.controls)
 		self.controls.configure()
