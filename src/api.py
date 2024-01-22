@@ -7,7 +7,7 @@ import tornado
 import tornado.web
 from PIL.Image import Image
 
-from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, Config, InternetRadio, VisualEffect, Weekday, try_update
+from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, Config, StreamAudioEffect, VisualEffect, Weekday, try_update
 
 def split_path_arguments(path) -> tuple[str, int, str]:
 	path_args = path[0].split('/')
@@ -123,7 +123,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 		
 	def parse_audio_effect(self, form_arguments) -> AudioEffect:
 		stream_id = int(form_arguments['streamId'])
-		au_effekt = InternetRadio()
+		au_effekt = StreamAudioEffect()
 		au_effekt.stream_definition = self.config.get_audio_stream(stream_id)
 		au_effekt.volume = float(form_arguments['volume'])
 		return au_effekt

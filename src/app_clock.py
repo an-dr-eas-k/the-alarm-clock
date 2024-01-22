@@ -17,13 +17,14 @@ from display import Display
 from domain import AlarmClockState, Config, DisplayContent
 from gpo import GeneralPurposeOutput
 from persistence import Persistence
+from resources.resources import init_logging
 
 
 class ClockApp:
 	configFile = f"{os.path.dirname(os.path.realpath(__file__))}/config.json"
 
 	def __init__(self) -> None:
-		logging.config.fileConfig(os.path.join(os.path.dirname(os.path.relpath(__file__)), 'logging.conf'))
+		init_logging()
 		parser = argparse.ArgumentParser("ClockApp")
 		parser.add_argument("-s", '--software', action='store_true')
 		self.args = parser.parse_args()

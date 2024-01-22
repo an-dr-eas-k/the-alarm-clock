@@ -7,7 +7,7 @@ from gpiozero import Button
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
-from domain import AlarmClockState, AlarmDefinition, AudioDefinition, DisplayContent, InternetRadio, Observation, Observer, Config
+from domain import AlarmClockState, AlarmDefinition, AudioDefinition, DisplayContent, StreamAudioEffect, Observation, Observer, Config
 from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
 
@@ -149,7 +149,7 @@ class Controls(Observer):
 			audio_state = self.state.audio_state
 			if not audio_state.audio_effect:
 					first_stream = self.state.configuration.audio_streams[0]
-					ir = InternetRadio()
+					ir = StreamAudioEffect()
 					ir.stream_definition=first_stream
 					ir.volume = self.state.configuration.default_volume
 					audio_state.audio_effect = ir

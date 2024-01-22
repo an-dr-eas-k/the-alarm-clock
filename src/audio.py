@@ -6,9 +6,9 @@ import subprocess
 import threading
 import re
 
-from domain import AudioDefinition, AudioEffect, Config, InternetRadio, Observation, Observer, Spotify
+from domain import AudioDefinition, AudioEffect, AudioStream, Config, StreamAudioEffect, Observation, Observer, SpotifyAudioEffect
 from utils.network import is_internet_available
-from resources.resources import alarms_dir
+from resources.resources import alarms_dir, init_logging
 
 class MediaPlayer:
 
@@ -25,16 +25,33 @@ class MediaListPlayer(MediaPlayer):
 	vlc_player: vlc.MediaListPlayer = None
 	url: str
 
-	def __init__(self, url: str):
+	def __init__(self, url: str, error_callback = None):
 		self.url = url
+		self.error_callback = error_callback
+
+	def callback_from_player(self, event: vlc.Event, *args):
+		try:
+			player_state = self.vlc_player.get_state()
+			logging.debug(f'callback called: {event.type}, from {args[0]}, player state: {player_state}')
+			if (player_state == vlc.State.Error):
+				logging.info('vlc player error')
+				self.error_callback()
+		except Exception as e:
+			logging.error(f'callback error: {e}')
+			self.error_callback()
+
+	def register_error_callback(self, event_manager: vlc.EventManager, called_from: str = None):
+		for event_type in vlc.EventType._enum_names_:
+			event_manager.event_attach(vlc.EventType(event_type), self.callback_from_player, called_from)
 
 	def play(self):
 		if (self.vlc_player is not None):
 			return
 
 		self.vlc_player = vlc.MediaListPlayer() 
-	
-		player = vlc.Instance([
+		self.register_error_callback(self.vlc_player.event_manager(), "medialistplayer")
+
+		player: vlc.Instance = vlc.Instance([
 			"--no-video", 
 			"--network-caching=3000",
 			"--live-caching=3000",
@@ -42,8 +59,13 @@ class MediaListPlayer(MediaPlayer):
       # "--logfile=/var/log/the-alarm-clock-vlc.log",
       # "--log-verbose=3"
 		]) 
-		media_list = vlc.MediaList() 
-		media = player.media_new(self.url) 
+		self.register_error_callback(player.vlm_get_event_manager(), "instance")
+		# player.log_set(self.error_callback, "log")
+		media_list: vlc.MediaList = vlc.MediaList() 
+		self.register_error_callback(media_list.event_manager(), "medialist")
+		media: vlc.Media = player.media_new(self.url) 
+		self.register_error_callback(media.event_manager(), "media")
+
 		media_list.add_media(media) 
 		self.vlc_player.set_media_list(media_list) 
 		self.vlc_player.set_playback_mode(vlc.PlaybackMode.loop)
@@ -106,35 +128,38 @@ class Speaker(Observer):
 	
 	def get_fallback_player(self) -> MediaPlayer:
 		full_file_path = os.path.join(alarms_dir, self.config.offline_alarm.stream_url)
-		return MediaListPlayer(full_file_path)
+		return MediaListPlayer(full_file_path, self.handle_player_error)
 	
 	def get_player(self, audio_effect: AudioEffect) -> MediaPlayer:
 		if not is_internet_available() and audio_effect.guaranteed:
 			return self.get_fallback_player()
 		
-		if isinstance(audio_effect, InternetRadio):
-			return MediaListPlayer(audio_effect.stream_definition.stream_url)
+		if isinstance(audio_effect, StreamAudioEffect):
+			return MediaListPlayer(audio_effect.stream_definition.stream_url, self.handle_player_error)
 
-		if isinstance(audio_effect, Spotify):
+		if isinstance(audio_effect, SpotifyAudioEffect):
 			return SpotifyPlayer(audio_effect.play_id)
 
 		raise ValueError('unknown audio effect type')
+
+	def handle_player_error(self):
+		logging.info('handling player error')
+		# if self.audio_effect.guaranteed and self.audio_effect != self.config.get_offline_audio_effect():
+		# 	logging.info("starting offline fallback playback")
+		# 	self.startStreaming(self.config.get_offline_audio_effect())
+		# if self.audio_effect.guaranteed and self.audio_effect == self.config.offline_alarm:
+		# 	logging.info("starting system beep fallback")
+		# 	Speaker.system_beep() 
 	
 	def startStreaming(self, audio_effect: AudioEffect):
 		try:
 			self.media_player = self.get_player(audio_effect)
 			self.media_player.play()
 		except Exception as e:
-			logging.error("playback error: %s", str(e))
-			if audio_effect.guaranteed and audio_effect != self.config.offline_alarm:
-				logging.info("starting offline fallback playback")
-				self.startStreaming(self.config.offline_alarm)
-			if audio_effect.guaranteed and audio_effect == self.config.offline_alarm:
-				logging.info("starting system beep fallback")
-				Speaker.system_beep()
+			self.handle_player_error()
 	
 	def system_beep():
-		os.system("speaker-test -t sine -c 2 -f1000 -l 0 -p 23 -S 80")
+		os.system("speaker-test -t sine -c 2 -f 1000 -l 0 -p 23 -S 80")
 
 	def stopStreaming(self):
 		if self.media_player is not None:
@@ -143,8 +168,27 @@ class Speaker(Observer):
 		self.media_player = None
 
 
-if __name__ == '__main__':
-		s = Speaker()
-		s.audio_effect = InternetRadio(url='https://streams.br.de/bayern2sued_2.m3u')
+def main():
+		s = Speaker(Config())
+		s.audio_effect = StreamAudioEffect(
+			guaranteed=True, 
+			volume=0.5,
+			stream_definition=AudioStream(stream_name="test", stream_url='fahttps://streams.br.de/bayern2sued_2.m3u'))
 		s.adjust_streaming(True)
-		time.sleep(100)
+		time.sleep(10)
+		s.adjust_streaming(False)
+
+def main_mlp():
+	def ecb(event: vlc.Event, *args):
+		try:
+			print(f'callback called: {event.type}, {args}')
+			foo:vlc.MediaListPlayer = args[1]
+			print(foo.get_state())
+		except Exception as e:
+			print(f'callback error: {e}')
+	mlp = MediaListPlayer("foo", ecb)
+	mlp.play()
+
+if __name__ == '__main__':
+	init_logging()
+	main()

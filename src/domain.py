@@ -51,16 +51,17 @@ class AudioStream:
 	stream_url: str
 	id: int = -1
 
+@dataclass
 class AudioEffect:
 	volume: float
 	guaranteed: bool
 
 @dataclass
-class InternetRadio(AudioEffect):
+class StreamAudioEffect(AudioEffect):
 	stream_definition: AudioStream = None
 
 @dataclass
-class Spotify(AudioEffect):
+class SpotifyAudioEffect(AudioEffect):
 	play_id: str
 
 class AlarmDefinition:
@@ -196,7 +197,7 @@ class Config(Observable):
 	def add_alarm_definition_for_powernap(self):
 
 		duration = GeoLocation().now() + timedelta(minutes=(1+self.powernap_duration_in_mins))
-		audio_effect = InternetRadio()
+		audio_effect = StreamAudioEffect()
 		audio_effect.guaranteed = True
 		audio_effect.volume = self.default_volume
 		audio_effect.stream_definition = self.audio_streams[0]
@@ -252,6 +253,9 @@ class Config(Observable):
 		logging.debug("initializing default config")
 		self.ensure_valid_config()
 		super().__init__()
+
+	def get_offline_audio_effect(self, volume: float = default_volume):
+		return StreamAudioEffect(guaranteed=True, volume=volume, stream_definition=self.offline_alarm)
 
 	def	ensure_valid_config(self):
 		for conf_prop in ([
