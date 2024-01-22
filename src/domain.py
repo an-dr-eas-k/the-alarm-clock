@@ -269,7 +269,7 @@ class Config(Observable):
 	def	ensure_valid_config(self):
 		for conf_prop in ([
 			dict(key='alarm_duration_in_mins', value=60), 
-			dict(key='offline_alarm', value = AudioStream(stream_name='Offline Alarm', stream_url='Timer.ogg')),
+			dict(key='offline_alarm', value = AudioStream(stream_name='Offline Alarm', stream_url='Enchantment.ogg')),
 			dict(key='clock_format_string', value='%-H<blinkSegment>%M'),
 			dict(key='blink_segment', value=':'),
 			dict(key='refresh_timeout_in_secs', value=1),

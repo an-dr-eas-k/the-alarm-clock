@@ -57,6 +57,7 @@ class MediaListPlayer(MediaPlayer):
 		self.list_player.set_playback_mode(vlc.PlaybackMode.loop)
 		media_player: vlc.MediaPlayer = self.list_player.get_media_player()
 		media_player.event_manager().event_attach(vlc.EventType.MediaPlayerEncounteredError, self.callback_from_player, "media_player")
+		# media_player.audio_set_volume(10)
 
 		media: vlc.Media = instance.media_new(self.url) 
 
@@ -76,8 +77,8 @@ class MediaListPlayer(MediaPlayer):
 		logging.info(f'stopped audio')
 
 class Speaker(Observer):
-	audio_effect: AudioEffect = None
 	media_player: MediaPlayer = None
+	fallback_player_proc: subprocess.Popen = None
 
 	def __init__(self, audio_state: AudioDefinition, config: Config) -> None:
 		self.threadLock = threading.Lock()
@@ -95,7 +96,12 @@ class Speaker(Observer):
 		elif (observation.property_name == 'is_streaming'):
 			self.adjust_streaming(observation.observable.is_streaming)
 		elif (observation.property_name == 'audio_effect'):
-			self.audio_effect = observation.observable.audio_effect
+			self.adjust_effect()
+
+	def adjust_effect(self):
+			if self.audio_state.is_streaming:
+				self.adjust_streaming(False)
+				self.adjust_streaming(True)
 
 	def adjust_volume(self, newVolume: float):
 		control_name = self.get_first_control_name()
@@ -116,7 +122,7 @@ class Speaker(Observer):
 		self.threadLock.acquire(True)
 
 		if (isStreaming):
-			self.startStreaming(self.audio_effect)
+			self.startStreaming(self.audio_state.audio_effect)
 		else:
 			self.stopStreaming()
 
@@ -139,11 +145,10 @@ class Speaker(Observer):
 
 	def handle_player_error(self):
 		logging.info('handling player error')
-		if not self.audio_effect.guaranteed:
+		if not self.audio_state.audio_effect.guaranteed:
 			return
 
-		if isinstance(self.audio_effect, OfflineAlarmEffect):
-			logging.info("starting system beep fallback")
+		if isinstance(self.audio_state.audio_effect, OfflineAlarmEffect):
 			self.system_beep() 
 			return
 
@@ -162,23 +167,31 @@ class Speaker(Observer):
 	
 	def system_beep(self):
 		self.adjust_streaming(False)
-		os.system("speaker-test -t sine -c 2 -f 1000 -l 0 -p 23 -S 80")
+		logging.info("starting alternative fallback player")
+		# self.fallback_player_proc = subprocess.Popen(['speaker-test', '-t', 'sine', '-c', '2', '-f', '1000', '-l', '0', '-p', '23', '-S', '80'])
+		self.fallback_player_proc = subprocess.Popen(['ogg123', '-r', os.path.join(alarms_dir, 'fallback', 'Timer.ogg')], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 	def stopStreaming(self):
+		if self.fallback_player_proc is not None:
+			self.fallback_player_proc.kill()
+			logging.info('killed fallback player')
+		self.fallback_player_proc = None		
+
 		if self.media_player is not None:
 			self.media_player.stop()
-
 		self.media_player = None
 
 
 def main():
 		c = Config()
-		s = Speaker(AudioDefinition(), c)
-		s.audio_effect = StreamAudioEffect(
+		c.offline_alarm = AudioStream(stream_name='Offline Alarm', stream_url='Enchantment.ogg')
+		a = AudioDefinition()
+		a.audio_effect = StreamAudioEffect(
 			guaranteed=True, 
 			volume=0.5,
 			stream_definition=AudioStream(stream_name="test", stream_url='fahttps://streams.br.de/bayern2sued_2.m3u'))
 			# stream_definition=c.get_offline_alarm_effect().stream_definition)
+		s = Speaker(a, c)
 		s.adjust_streaming(True)
 		time.sleep(8)
 		s.adjust_streaming(False)

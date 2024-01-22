@@ -5,7 +5,7 @@
     "offline_alarm": {
       "py/object": "domain.AudioStream",
       "stream_name": "Offline Alarm",
-      "stream_url": "Timer.ogg",
+      "stream_url": "Enchantment.ogg",
       "id": -1
     },
     "clock_format_string": "%-H<blinkSegment>%M",
