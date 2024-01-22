@@ -47,26 +47,33 @@ class MediaListPlayer(MediaPlayer):
 		if (self.list_player is not None):
 			return
 
-		instance: vlc.Instance = vlc.Instance([
-			"--no-video", 
-			"--network-caching=3000",
-			"--live-caching=3000"
-		]) 
+		try:
+			instance: vlc.Instance = vlc.Instance([
+				"--no-video", 
+				"--network-caching=3000",
+				"--live-caching=3000",
+				# "--waveout-volume=2.0",
+				# "--mmdevice-volume=1.25"
+			]) 
 
-		self.list_player: vlc.MediaListPlayer = instance.media_list_player_new()
-		self.list_player.set_playback_mode(vlc.PlaybackMode.loop)
-		media_player: vlc.MediaPlayer = self.list_player.get_media_player()
-		media_player.event_manager().event_attach(vlc.EventType.MediaPlayerEncounteredError, self.callback_from_player, "media_player")
-		# media_player.audio_set_volume(10)
+			self.list_player: vlc.MediaListPlayer = instance.media_list_player_new()
+			self.list_player.set_playback_mode(vlc.PlaybackMode.loop)
+			media_player: vlc.MediaPlayer = self.list_player.get_media_player()
+			media_player.event_manager().event_attach(vlc.EventType.MediaPlayerEncounteredError, self.callback_from_player, "media_player")
 
-		media: vlc.Media = instance.media_new(self.url) 
+			media: vlc.Media = instance.media_new(self.url) 
 
-		media_list: vlc.MediaList = instance.media_list_new([])
-		self.list_player.set_media_list(media_list)
-		media_list.add_media(media) 
+			media_list: vlc.MediaList = instance.media_list_new([])
+			self.list_player.set_media_list(media_list)
+			media_list.add_media(media) 
 
-		self.list_player.play()
-		logging.info('started audio %s', self.url)
+			self.list_player.play()
+			print(f"volume: {vlc.libvlc_audio_get_volume(media_player)}") # vlc.libvlc_audio_get_volume(media_player)
+			logging.info('started audio %s', self.url)
+
+		except Exception as e:
+			logging.error("error: %s", traceback.format_exc())
+			self.error_callback()
 
 	def stop(self):
 		if (self.list_player is None):
