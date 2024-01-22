@@ -6,7 +6,7 @@ import subprocess
 import threading
 import re
 
-from domain import AudioDefinition, AudioEffect, AudioStream, Config, StreamAudioEffect, Observation, Observer, SpotifyAudioEffect
+from domain import AudioDefinition, AudioEffect, AudioStream, Config, OfflineAlarmEffect, StreamAudioEffect, Observation, Observer, SpotifyAudioEffect
 from utils.network import is_internet_available
 from resources.resources import alarms_dir, init_logging
 
@@ -127,8 +127,7 @@ class Speaker(Observer):
 		self.threadLock.release()
 	
 	def get_fallback_player(self) -> MediaPlayer:
-		full_file_path = os.path.join(alarms_dir, self.config.offline_alarm.stream_url)
-		return MediaListPlayer(full_file_path, self.handle_player_error)
+		return MediaListPlayer(self.config.get_offline_alarm_effect(), self.handle_player_error)
 	
 	def get_player(self, audio_effect: AudioEffect) -> MediaPlayer:
 		if not is_internet_available() and audio_effect.guaranteed:
@@ -144,21 +143,29 @@ class Speaker(Observer):
 
 	def handle_player_error(self):
 		logging.info('handling player error')
-		# if self.audio_effect.guaranteed and self.audio_effect != self.config.get_offline_audio_effect():
-		# 	logging.info("starting offline fallback playback")
-		# 	self.startStreaming(self.config.get_offline_audio_effect())
-		# if self.audio_effect.guaranteed and self.audio_effect == self.config.offline_alarm:
-		# 	logging.info("starting system beep fallback")
-		# 	Speaker.system_beep() 
+		if not self.audio_effect.guaranteed:
+			return
+
+		if isinstance(self.audio_effect.stream_definition, OfflineAlarmEffect):
+			logging.info("starting system beep fallback")
+			self.system_beep() 
+			return
+
+		logging.info("starting offline fallback playback")
+		self.stopStreaming()
+		logging.debug("stopped, restarting...")
+		self.startStreaming(self.config.get_offline_alarm_effect())
 	
 	def startStreaming(self, audio_effect: AudioEffect):
 		try:
+			self.stopStreaming()
 			self.media_player = self.get_player(audio_effect)
 			self.media_player.play()
 		except Exception as e:
 			self.handle_player_error()
 	
-	def system_beep():
+	def system_beep(self):
+		self.adjust_streaming(False)
 		os.system("speaker-test -t sine -c 2 -f 1000 -l 0 -p 23 -S 80")
 
 	def stopStreaming(self):

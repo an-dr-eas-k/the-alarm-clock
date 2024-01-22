@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import date, time, timedelta
 import datetime
+import os
 from apscheduler.job import Job
 from enum import Enum
 import logging
@@ -11,6 +12,7 @@ from utils.extensions import get_timedelta_to_alarm
 
 from utils.observer import Observable, Observation, Observer
 from utils.geolocation import GeoLocation, Weather
+from resources.resources import alarms_dir
 
 def try_update(object, property_name: str, value: str) -> bool:
 	if hasattr(object, property_name):
@@ -59,6 +61,10 @@ class AudioEffect:
 @dataclass
 class StreamAudioEffect(AudioEffect):
 	stream_definition: AudioStream = None
+
+@dataclass
+class OfflineAlarmEffect(StreamAudioEffect):
+	pass
 
 @dataclass
 class SpotifyAudioEffect(AudioEffect):
@@ -254,8 +260,12 @@ class Config(Observable):
 		self.ensure_valid_config()
 		super().__init__()
 
-	def get_offline_audio_effect(self, volume: float = default_volume):
-		return StreamAudioEffect(guaranteed=True, volume=volume, stream_definition=self.offline_alarm)
+	def get_offline_alarm_effect(self, volume: float = default_volume):
+		full_path = os.path.join(alarms_dir, self.offline_alarm.stream_url)
+		return OfflineAlarmEffect(
+			guaranteed=True, 
+			volume=volume, 
+			stream_definition=AudioStream(stream_name='Offline Alarm', stream_url=full_path))
 
 	def	ensure_valid_config(self):
 		for conf_prop in ([
