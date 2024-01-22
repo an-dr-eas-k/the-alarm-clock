@@ -149,10 +149,11 @@ class Controls(Observer):
 			audio_state = self.state.audio_state
 			if not audio_state.audio_effect:
 					first_stream = self.state.configuration.audio_streams[0]
-					ir = StreamAudioEffect()
-					ir.stream_definition=first_stream
-					ir.volume = self.state.configuration.default_volume
-					audio_state.audio_effect = ir
+					audio_state.audio_effect = StreamAudioEffect( \
+						stream_definition=first_stream, \
+						volume=self.state.configuration.default_volume)
+
+			audio_state.audio_effect.guaranteed = False
 
 			self.state.audio_state.toggle_stream()
 		
@@ -205,7 +206,9 @@ class Controls(Observer):
 		try:
 			logging.info ("ring alarm %s", alarmDefinition.alarm_name)
 
-			self.state.audio_state.audio_effect = alarmDefinition.audio_effect
+			audio_effect = alarmDefinition.audio_effect
+			audio_effect.guaranteed = True
+			self.state.audio_state.audio_effect = audio_effect
 			self.state.audio_state.is_streaming = True
 
 			self.after_ring_alarm(alarmDefinition)

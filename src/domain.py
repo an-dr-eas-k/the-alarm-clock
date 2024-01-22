@@ -56,7 +56,7 @@ class AudioStream:
 @dataclass
 class AudioEffect:
 	volume: float
-	guaranteed: bool
+	guaranteed: bool = True
 
 @dataclass
 class StreamAudioEffect(AudioEffect):
@@ -68,7 +68,7 @@ class OfflineAlarmEffect(StreamAudioEffect):
 
 @dataclass
 class SpotifyAudioEffect(AudioEffect):
-	play_id: str
+	play_id: str = None
 
 class AlarmDefinition:
 	id: int
@@ -118,7 +118,6 @@ class AlarmDefinition:
 
 	@property
 	def audio_effect(self) -> AudioEffect:
-		self._audio_effect.guaranteed = True
 		return self._audio_effect
 
 	@audio_effect.setter
