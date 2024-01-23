@@ -128,9 +128,9 @@ class Speaker(Observer):
 		self.threadLock.acquire(True)
 
 		if (isStreaming):
-			self.startStreaming(self.audio_state.audio_effect)
+			self.start_streaming(self.audio_state.audio_effect)
 		else:
-			self.stopStreaming()
+			self.stop_streaming()
 
 		self.threadLock.release()
 	
@@ -155,7 +155,7 @@ class Speaker(Observer):
 			return
 
 		if isinstance(self.audio_state.audio_effect, OfflineAlarmEffect):
-			self.system_beep() 
+			self.start_streaming_alternative() 
 			return
 
 		logging.info("starting offline fallback playback")
@@ -163,21 +163,21 @@ class Speaker(Observer):
 		self.audio_state.audio_effect = self.config.get_offline_alarm_effect()
 		self.audio_state.is_streaming = True
 	
-	def startStreaming(self, audio_effect: AudioEffect):
+	def start_streaming(self, audio_effect: AudioEffect):
 		try:
-			self.stopStreaming()
+			self.stop_streaming()
 			self.media_player = self.get_player(audio_effect)
 			self.media_player.play()
 		except Exception as e:
 			self.handle_player_error()
 	
-	def system_beep(self):
+	def start_streaming_alternative(self):
 		self.adjust_streaming(False)
 		logging.info("starting alternative fallback player")
 		# self.fallback_player_proc = subprocess.Popen(['speaker-test', '-t', 'sine', '-c', '2', '-f', '1000', '-l', '0', '-p', '23', '-S', '80'])
 		self.fallback_player_proc = subprocess.Popen(['ogg123', '-r', os.path.join(alarms_dir, 'fallback', 'Timer.ogg')], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-	def stopStreaming(self):
+	def stop_streaming(self):
 		if self.fallback_player_proc is not None:
 			self.fallback_player_proc.kill()
 			logging.info('killed fallback player')
