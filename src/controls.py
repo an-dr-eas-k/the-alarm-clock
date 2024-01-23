@@ -191,6 +191,12 @@ class Controls(Observer):
 	def update_wifi_status(self):
 		try:
 			self.state.is_wifi_available = is_internet_available()
+
+			if True \
+				and not self.state.is_wifi_available \
+				and self.state.audio_state.is_streaming \
+				and self.state.audio_state.audio_effect.guaranteed:
+				self.state.audio_state.audio_effect = self.state.configuration.get_offline_alarm_effect(self.state.audio_state.volume)
 			logging.info ("update wifi, is available: %s", self.state.is_wifi_available)
 		except:
 			logging.error("%s", traceback.format_exc())
