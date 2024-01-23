@@ -123,10 +123,10 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 		
 	def parse_audio_effect(self, form_arguments) -> AudioEffect:
 		stream_id = int(form_arguments['streamId'])
-		au_effect = StreamAudioEffect()
-		au_effect.stream_definition = self.config.get_audio_stream(stream_id)
-		au_effect.volume = float(form_arguments['volume'])
-		return au_effect
+		return StreamAudioEffect(
+			stream_definition=self.config.get_audio_stream(stream_id), 
+			volume=float(form_arguments['volume']),
+			guaranteed=True)
 
 	def parse_alarm_definition(self, form_arguments) -> AlarmDefinition:
 		ala = AlarmDefinition()

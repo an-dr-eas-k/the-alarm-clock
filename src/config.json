@@ -41,12 +41,12 @@
         ],
         "date": null,
         "_audio_effect": {
-          "py/object": "domain.InternetRadio",
+          "py/object": "domain.StreamAudioEffect",
+          "volume": 0.9,
+          "guaranteed": true,
           "stream_definition": {
             "py/id": 4
-          },
-          "volume": 0.9,
-          "guaranteed": true
+          }
         },
         "visual_effect": {
           "py/object": "domain.VisualEffect"
@@ -70,12 +70,12 @@
         ],
         "date": null,
         "_audio_effect": {
-          "py/object": "domain.InternetRadio",
+          "py/object": "domain.StreamAudioEffect",
+          "volume": 0.9,
+          "guaranteed": true,
           "stream_definition": {
             "py/id": 4
-          },
-          "volume": 1.0,
-          "guaranteed": true
+          }
         },
         "visual_effect": {
           "py/object": "domain.VisualEffect"
@@ -83,7 +83,6 @@
         "is_active": true,
         "id": 2
       }
-    ],
-    "default_volume": 0.9
+    ]
   }
 }

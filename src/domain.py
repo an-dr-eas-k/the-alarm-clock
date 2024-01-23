@@ -202,10 +202,10 @@ class Config(Observable):
 	def add_alarm_definition_for_powernap(self):
 
 		duration = GeoLocation().now() + timedelta(minutes=(1+self.powernap_duration_in_mins))
-		audio_effect = StreamAudioEffect()
-		audio_effect.guaranteed = True
-		audio_effect.volume = self.default_volume
-		audio_effect.stream_definition = self.audio_streams[0]
+		audio_effect = StreamAudioEffect(
+			stream_definition=self.audio_streams[0],
+			volume=self.default_volume,
+			guaranteed=True)
 
 		powernap_alarm_def = AlarmDefinition()
 		powernap_alarm_def.alarm_name = "Powernap"
