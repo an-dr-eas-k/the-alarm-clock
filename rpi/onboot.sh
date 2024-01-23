@@ -26,7 +26,7 @@ cd /srv/the-alarm-clock
 git config pull.ff only
 while true; do
 	echo "update from git"
-	git reset --hard
+	git reset --hard "@{upstream}"
 	git pull
 	echo "git status"
 	git status

@@ -2,7 +2,6 @@ import logging
 import os
 import traceback
 import vlc
-from vlc import EventType
 import time
 import subprocess 
 import threading
@@ -30,16 +29,17 @@ class MediaListPlayer(MediaPlayer):
 	def __init__(self, url: str, error_callback = None):
 		self.url = url
 		self.list_player = None
-
-		self.error_callback = lambda: threading.Thread(target=error_callback).start() if error_callback else None
+		self.error_callback = error_callback
 
 	def callback_from_player(self, event: vlc.Event, *args):
 		try:
 			logging.debug(f'media list player callback called: {event.type}, from {args[0]}')
 
-			if (event.type == vlc.EventType.MediaPlayerEncounteredError):
+			if True \
+				and event.type == vlc.EventType.MediaPlayerEncounteredError \
+				and self.error_callback is not None:
 				logging.info('vlc player error')
-				self.error_callback()
+				threading.Thread(target=self.error_callback).start()
 		except Exception as e:
 			logging.error("callback error: %s", traceback.format_exc())
 
@@ -67,9 +67,8 @@ class MediaListPlayer(MediaPlayer):
 			self.list_player.set_media_list(media_list)
 			media_list.add_media(media) 
 
+			logging.info('starting audio %s', self.url)
 			self.list_player.play()
-			print(f"volume: {vlc.libvlc_audio_get_volume(media_player)}") # vlc.libvlc_audio_get_volume(media_player)
-			logging.info('started audio %s', self.url)
 
 		except Exception as e:
 			logging.error("error: %s", traceback.format_exc())
@@ -136,7 +135,7 @@ class Speaker(Observer):
 		self.threadLock.release()
 	
 	def get_fallback_player(self) -> MediaPlayer:
-		return MediaListPlayer(self.config.get_offline_alarm_effect(), self.handle_player_error)
+		return MediaListPlayer(self.config.get_offline_alarm_effect().stream_definition.stream_url, self.handle_player_error)
 	
 	def get_player(self, audio_effect: AudioEffect) -> MediaPlayer:
 		if not is_internet_available() and audio_effect.guaranteed:
@@ -196,11 +195,11 @@ def main():
 		a.audio_effect = StreamAudioEffect(
 			guaranteed=True, 
 			volume=0.5,
-			stream_definition=AudioStream(stream_name="test", stream_url='fahttps://streams.br.de/bayern2sued_2.m3u'))
+			stream_definition=AudioStream(stream_name="test", stream_url='https://streams.br.de/bayern2sued_2.m3u'))
 			# stream_definition=c.get_offline_alarm_effect().stream_definition)
 		s = Speaker(a, c)
 		s.adjust_streaming(True)
-		time.sleep(8)
+		time.sleep(20)
 		s.adjust_streaming(False)
 
 def main_mlp():
