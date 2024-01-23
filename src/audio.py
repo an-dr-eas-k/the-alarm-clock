@@ -11,6 +11,8 @@ from domain import AudioDefinition, AudioEffect, AudioStream, Config, OfflineAla
 from utils.network import is_internet_available
 from resources.resources import alarms_dir, init_logging
 
+debug_callback: bool = False
+
 class MediaPlayer:
 
 	def play(self):
@@ -33,7 +35,7 @@ class MediaListPlayer(MediaPlayer):
 
 	def callback_from_player(self, event: vlc.Event, *args):
 		try:
-			logging.debug(f'media list player callback called: {event.type}, from {args[0]}')
+			logging.debug('callback called: %s, from %s, player state: %s', event.type, args[0], 'unknown')
 
 			if True \
 				and event.type == vlc.EventType.MediaPlayerEncounteredError \
@@ -42,6 +44,10 @@ class MediaListPlayer(MediaPlayer):
 				threading.Thread(target=self.error_callback).start()
 		except Exception as e:
 			logging.error("callback error: %s", traceback.format_exc())
+
+	def register_error_callback(self, event_manager: vlc.EventManager, called_from: str = None):
+		for event_type in vlc.EventType._enum_names_:
+			event_manager.event_attach(vlc.EventType(event_type), self.callback_from_player, called_from)
 
 	def play(self):
 		if (self.list_player is not None):
@@ -66,6 +72,16 @@ class MediaListPlayer(MediaPlayer):
 			media_list: vlc.MediaList = instance.media_list_new([])
 			self.list_player.set_media_list(media_list)
 			media_list.add_media(media) 
+
+			if debug_callback:
+				for em_struct in [
+					dict(em=instance.vlm_get_event_manager(), name="instance"), 
+					dict(em=self.list_player.event_manager(), name="list_player"), 
+					dict(em=media_player.event_manager(), name="media_player"),
+					dict(em=media_list.event_manager(), name="media_list"), 
+					dict(em=media.event_manager(), name="media")
+				]:
+					self.register_error_callback(em_struct['em'], em_struct['name'])
 
 			logging.info('starting audio %s', self.url)
 			self.list_player.play()
