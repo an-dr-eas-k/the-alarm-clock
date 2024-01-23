@@ -15,11 +15,16 @@ debug_callback: bool = False
 
 class MediaPlayer:
 
+	error_callback: callable
+
 	def play(self):
 		pass
 
 	def stop(self):
 		pass
+
+	def set_error_callback(self, callback: callable):
+		self.error_callback = callback
 
 class SpotifyPlayer(MediaPlayer):
 	pass
@@ -28,10 +33,9 @@ class MediaListPlayer(MediaPlayer):
 	list_player: vlc.MediaListPlayer = None
 	url: str
 
-	def __init__(self, url: str, error_callback = None):
+	def __init__(self, url: str):
 		self.url = url
 		self.list_player = None
-		self.error_callback = error_callback
 
 	def callback_from_player(self, event: vlc.Event, *args):
 		try:
@@ -39,9 +43,9 @@ class MediaListPlayer(MediaPlayer):
 
 			if True \
 				and event.type == vlc.EventType.MediaPlayerEncounteredError \
-				and self.error_callback is not None:
+				and super().error_callback is not None:
 				logging.info('vlc player error')
-				threading.Thread(target=self.error_callback).start()
+				threading.Thread(target=super().error_callback).start()
 		except Exception as e:
 			logging.error("callback error: %s", traceback.format_exc())
 
@@ -88,7 +92,7 @@ class MediaListPlayer(MediaPlayer):
 
 		except Exception as e:
 			logging.error("error: %s", traceback.format_exc())
-			self.error_callback()
+			super().error_callback()
 
 	def stop(self):
 		if (self.list_player is None):
@@ -110,13 +114,14 @@ class Speaker(Observer):
 
 	def update(self, observation: Observation):
 		super().update(observation)
-		if not isinstance(observation.observable, AudioDefinition):
-			return
+		if isinstance(observation.observable, AudioDefinition):
+			self.update_from_audio_definition(observation, observation.observable)
 
+	def update_from_audio_definition(self, observation: Observation, audio_definition: AudioDefinition):
 		if (observation.property_name == 'volume'):
-			self.adjust_volume(observation.observable.volume)
+			self.adjust_volume(audio_definition.volume)
 		elif (observation.property_name == 'is_streaming'):
-			self.adjust_streaming(observation.observable.is_streaming)
+			self.adjust_streaming(audio_definition.is_streaming)
 		elif (observation.property_name == 'audio_effect'):
 			self.adjust_effect()
 
@@ -152,18 +157,23 @@ class Speaker(Observer):
 	
 	def get_fallback_player(self) -> MediaPlayer:
 		return MediaListPlayer(self.config.get_offline_alarm_effect().stream_definition.stream_url, self.handle_player_error)
-	
+
 	def get_player(self, audio_effect: AudioEffect) -> MediaPlayer:
+		player: MediaPlayer
 		if not is_internet_available() and audio_effect.guaranteed:
-			return self.get_fallback_player()
-		
-		if isinstance(audio_effect, StreamAudioEffect):
-			return MediaListPlayer(audio_effect.stream_definition.stream_url, self.handle_player_error)
+			player = self.get_fallback_player()
 
-		if isinstance(audio_effect, SpotifyAudioEffect):
-			return SpotifyPlayer(audio_effect.play_id)
+		if player is None and isinstance(audio_effect, StreamAudioEffect):
+			player = MediaListPlayer(audio_effect.stream_definition.stream_url)
 
-		raise ValueError('unknown audio effect type')
+		if player is None and isinstance(audio_effect, SpotifyAudioEffect):
+			player = SpotifyPlayer(audio_effect.play_id)
+
+		if player is None:
+			raise ValueError('unknown audio effect type')
+
+		player.set_error_callback(self.handle_player_error)
+		return player
 
 	def handle_player_error(self):
 		logging.info('handling player error')

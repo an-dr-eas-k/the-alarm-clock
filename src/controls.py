@@ -237,7 +237,7 @@ class Controls(Observer):
 		job: Job
 		for job in self.scheduler.get_jobs(jobstore=alarm_store):
 			if job.next_run_time is None:
-				self.state.configuration.remove_alarm_definition(job.id)
+				self.state.configuration.remove_alarm_definition(int(job.id))
 
 class SoftwareControls(Controls):
 	def __init__(self, state: AlarmClockState, display_content: DisplayContent) -> None:
