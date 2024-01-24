@@ -159,7 +159,7 @@ class Speaker(Observer):
 		return MediaListPlayer(self.config.get_offline_alarm_effect().stream_definition.stream_url, self.handle_player_error)
 
 	def get_player(self, audio_effect: AudioEffect) -> MediaPlayer:
-		player: MediaPlayer
+		player: MediaPlayer = None
 		if not is_internet_available() and audio_effect.guaranteed:
 			player = self.get_fallback_player()
 
@@ -195,6 +195,7 @@ class Speaker(Observer):
 			self.media_player = self.get_player(audio_effect)
 			self.media_player.play()
 		except Exception as e:
+			logging.error("error: %s", traceback.format_exc())
 			self.handle_player_error()
 	
 	def start_streaming_alternative(self):
