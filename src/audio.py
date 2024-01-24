@@ -41,6 +41,9 @@ class MediaListPlayer(MediaPlayer):
 		try:
 			logging.debug('callback called: %s, from %s, player state: %s', event.type, args[0], 'unknown')
 
+			if event.type == vlc.EventType.MediaPlayerPlaying:
+				pass
+
 			if True \
 				and event.type == vlc.EventType.MediaPlayerEncounteredError \
 				and super().error_callback is not None:
@@ -59,6 +62,7 @@ class MediaListPlayer(MediaPlayer):
 
 		try:
 			instance: vlc.Instance = vlc.Instance([
+				"--gain=6.0",
 				"--no-video", 
 				"--network-caching=3000",
 				"--live-caching=3000",
@@ -70,7 +74,8 @@ class MediaListPlayer(MediaPlayer):
 			self.list_player.set_playback_mode(vlc.PlaybackMode.loop)
 			media_player: vlc.MediaPlayer = self.list_player.get_media_player()
 			media_player.event_manager().event_attach(vlc.EventType.MediaPlayerEncounteredError, self.callback_from_player, "media_player")
-
+			media_player.event_manager().event_attach(vlc.EventType.MediaPlayerPlaying, self.callback_from_player, "media_player")
+			
 			media: vlc.Media = instance.media_new(self.url) 
 
 			media_list: vlc.MediaList = instance.media_list_new([])
@@ -156,7 +161,7 @@ class Speaker(Observer):
 		self.threadLock.release()
 	
 	def get_fallback_player(self) -> MediaPlayer:
-		return MediaListPlayer(self.config.get_offline_alarm_effect().stream_definition.stream_url, self.handle_player_error)
+		return MediaListPlayer(self.config.get_offline_alarm_effect().stream_definition.stream_url)
 
 	def get_player(self, audio_effect: AudioEffect) -> MediaPlayer:
 		player: MediaPlayer = None
