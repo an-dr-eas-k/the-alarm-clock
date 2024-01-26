@@ -62,7 +62,7 @@ class MediaListPlayer(MediaPlayer):
 
 		try:
 			instance: vlc.Instance = vlc.Instance([
-				"--gain=6.0",
+				"--gain=5.0",
 				"--no-video", 
 				"--network-caching=3000",
 				"--live-caching=3000",
