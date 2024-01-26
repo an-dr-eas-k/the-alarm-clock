@@ -38,6 +38,7 @@ class DisplayHandler(tornado.web.RequestHandler):
 class ConfigHandler(tornado.web.RequestHandler):
 
 	root = os.path.join(os.path.dirname(__file__), "webroot")
+	
 	def initialize(self, config: Config, api) -> None:
 		self.config = config
 		self.api = api
@@ -69,9 +70,8 @@ class ActionApiHandler(tornado.web.RequestHandler):
 
 class ConfigApiHandler(tornado.web.RequestHandler):
 
-	def initialize(self, config: Config, api ) -> None:
+	def initialize(self, config: Config) -> None:
 		self.config = config
-		self.api = api
 
 	def get(self):
 		try:
