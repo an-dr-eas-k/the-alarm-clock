@@ -327,6 +327,12 @@
 					onclick="onClickAction('shutdown', event)">Shutdown</button>
 			</div>
 		</div>
+		<div id="general-actions" class="row">
+			<h3>Version</h3>
+			<code>
+				{% raw api.get_git_log().replace('\n', '<br>') %}
+			</code>
+		</div>
 		<div id="footer" class="row">
 			<p>Copyright 2022 - 2023</p>
 		</div>

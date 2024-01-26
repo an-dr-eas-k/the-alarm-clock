@@ -2,6 +2,7 @@ import base64
 import io
 import logging
 import os
+import subprocess
 import traceback
 import tornado
 import tornado.web
@@ -35,12 +36,13 @@ class DisplayHandler(tornado.web.RequestHandler):
 class ConfigHandler(tornado.web.RequestHandler):
 
 	root = os.path.join(os.path.dirname(__file__), "webroot")
-	def initialize(self, config: Config) -> None:
+	def initialize(self, config: Config, api) -> None:
 		self.config = config
+		self.api = api
 
 	def get(self, *args, **kwargs):
 		try:
-			self.render(f'{self.root}/alarm.html', config=self.config)
+			self.render(f'{self.root}/alarm.html', config=self.config, api=self.api)
 		except:
 			logging.warning("%s", traceback.format_exc())
 
@@ -65,8 +67,9 @@ class ActionApiHandler(tornado.web.RequestHandler):
 
 class ConfigApiHandler(tornado.web.RequestHandler):
 
-	def initialize(self, config: Config) -> None:
+	def initialize(self, config: Config, api ) -> None:
 		self.config = config
+		self.api = api
 
 	def get(self):
 		try:
@@ -155,12 +158,10 @@ class Api:
 	app: tornado.web.Application
 
 	def __init__(self, state: AlarmClockState, image_getter):
-		root = os.path.join(os.path.dirname(__file__), "webroot")
 		handlers = [
 			(r"/api/config/?(.*)", ConfigApiHandler, {"config": state.configuration}),
 			(r"/api/action/?(.*)", ActionApiHandler ),
-			(r"/(.*)", ConfigHandler, {"config": state.configuration}),
-			# (r"/(.*)", tornado.web.StaticFileHandler, {"path": root, "default_filename": "alarm.html"}),
+			(r"/(.*)", ConfigHandler, {"config": state.configuration, "api": self})
 		]
 
 		if image_getter is not None:
@@ -168,6 +169,8 @@ class Api:
 
 		self.app = tornado.web.Application(handlers)
 
+	def get_git_log(self) -> str:
+		return subprocess.check_output(['git', 'log', '-1']).decode('utf-8')
 
 	def start(self, port):
 		self.app.listen(port)
