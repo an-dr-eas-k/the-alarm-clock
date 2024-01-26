@@ -90,10 +90,12 @@ class DisplayFormatter:
 	def format_clock_string(self, clock: datetime, show_blink_segment: bool = True) -> str:
 		blink_segment = self.config.blink_segment if show_blink_segment else " "
 		clock_string = clock.strftime(self.config.clock_format_string.replace("<blinkSegment>", blink_segment))
-		clock_string = clock_string.replace("7", "`")
-		desired_length = 5
-		clock_string = "!" * (desired_length - len(clock_string)) + clock_string
-		return clock_string
+		return self.format_dseg7_string(clock_string, desired_length=5)
+
+	def format_dseg7_string(self, dseg7: str, desired_length: int = 5) -> str:
+		dseg7 = dseg7.replace("7", "`")
+		dseg7 = "!" * (desired_length - len(dseg7)) + dseg7
+		return dseg7
 
 class Presenter:
 	empty_image = Image.new("RGBA", (0, 0))
@@ -121,7 +123,7 @@ class ClockPresenter(Presenter):
 			font, 
 			fg_color=self.formatter.foreground_color(), 
 			bg_color=self.formatter.background_color())
-		return clock_image.resize([int(clock_image.width*0.95), clock_image.height])
+		return clock_image.resize([int(clock_image.width*0.95), clock_image.height], resample=Image.NEAREST)
 
 class WifiStatusPresenter(Presenter):
 	def __init__(self, formatter: DisplayFormatter, content: DisplayContent) -> None:
@@ -179,11 +181,19 @@ class WeatherStatusPresenter(Presenter):
 			weather_character, font_weather, 
 			fg_color=self.formatter.foreground_color(min_value=2),
 			bg_color=self.formatter.background_color())
-		formatter = "{: .1f}"
+		formatter = "{:.1f}"
+		desired_length = 4
 		if abs(weather.temperature) >=10:
-			formatter = "{: .0f}"
+			formatter = "{:.0f}"
+			desired_length = 3
+
+		temperature_str = self.formatter.format_dseg7_string(
+				dseg7=formatter.format(weather.temperature), 
+				desired_length=desired_length)
+
 		temperature_image = text_to_image(
-			formatter.format(weather.temperature), font_7segment, 
+			text=temperature_str,
+			font=font_7segment, 
 			fg_color=self.formatter.foreground_color(min_value=2),
 			bg_color=self.formatter.background_color())
 
