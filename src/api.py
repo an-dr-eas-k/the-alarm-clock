@@ -1,7 +1,9 @@
 import base64
 import io
+import json
 import logging
 import os
+import pickle
 import subprocess
 import traceback
 import tornado
@@ -158,6 +160,7 @@ class Api:
 	app: tornado.web.Application
 
 	def __init__(self, state: AlarmClockState, image_getter):
+		self.state = state
 		handlers = [
 			(r"/api/config/?(.*)", ConfigApiHandler, {"config": state.configuration}),
 			(r"/api/action/?(.*)", ActionApiHandler ),
@@ -171,6 +174,10 @@ class Api:
 
 	def get_git_log(self) -> str:
 		return subprocess.check_output(['git', 'log', '-1']).decode('utf-8')
+
+	def get_state_as_json(self) -> str:
+		return ""
+
 
 	def start(self, port):
 		self.app.listen(port)

@@ -327,10 +327,16 @@
 					onclick="onClickAction('shutdown', event)">Shutdown</button>
 			</div>
 		</div>
-		<div id="general-actions" class="row">
+		<div id="version" class="row">
 			<h3>Version</h3>
 			<code>
 				{% raw api.get_git_log().replace('\n', '<br>') %}
+			</code>
+		</div>
+		<div id="state" class="row">
+			<h3>Alarm Clock State</h3>
+			<code>
+				{% raw api.get_state_as_json().replace('\n', '<br>') %}
 			</code>
 		</div>
 		<div id="footer" class="row">
