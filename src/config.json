@@ -43,7 +43,6 @@
         "_audio_effect": {
           "py/object": "domain.StreamAudioEffect",
           "volume": 0.9,
-          "guaranteed": true,
           "stream_definition": {
             "py/id": 4
           }
@@ -72,7 +71,6 @@
         "_audio_effect": {
           "py/object": "domain.StreamAudioEffect",
           "volume": 0.9,
-          "guaranteed": true,
           "stream_definition": {
             "py/id": 4
           }

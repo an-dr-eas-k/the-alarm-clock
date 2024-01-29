@@ -7,7 +7,7 @@ import subprocess
 import threading
 import re
 
-from domain import AudioDefinition, AudioEffect, AudioStream, Config, OfflineAlarmEffect, StreamAudioEffect, Observation, Observer, SpotifyAudioEffect
+from domain import Mode, PlaybackContent, AudioEffect, AudioStream, Config, OfflineAlarmEffect, StreamAudioEffect, Observation, Observer, SpotifyAudioEffect
 from utils.network import is_internet_available
 from resources.resources import alarms_dir, init_logging
 
@@ -111,7 +111,7 @@ class Speaker(Observer):
 	media_player: MediaPlayer = None
 	fallback_player_proc: subprocess.Popen = None
 
-	def __init__(self, audio_state: AudioDefinition, config: Config) -> None:
+	def __init__(self, audio_state: PlaybackContent, config: Config) -> None:
 		self.threadLock = threading.Lock()
 		self.audio_state = audio_state
 		self.config = config
@@ -119,10 +119,10 @@ class Speaker(Observer):
 
 	def update(self, observation: Observation):
 		super().update(observation)
-		if isinstance(observation.observable, AudioDefinition):
+		if isinstance(observation.observable, PlaybackContent):
 			self.update_from_audio_definition(observation, observation.observable)
 
-	def update_from_audio_definition(self, observation: Observation, audio_definition: AudioDefinition):
+	def update_from_audio_definition(self, observation: Observation, audio_definition: PlaybackContent):
 		if (observation.property_name == 'volume'):
 			self.adjust_volume(audio_definition.volume)
 		elif (observation.property_name == 'is_streaming'):
@@ -165,7 +165,7 @@ class Speaker(Observer):
 
 	def get_player(self, audio_effect: AudioEffect) -> MediaPlayer:
 		player: MediaPlayer = None
-		if not is_internet_available() and audio_effect.guaranteed:
+		if not is_internet_available() and self.audio_state.state.mode == Mode.Alarm:
 			player = self.get_fallback_player()
 
 		if player is None and isinstance(audio_effect, StreamAudioEffect):
@@ -182,7 +182,7 @@ class Speaker(Observer):
 
 	def handle_player_error(self):
 		logging.info('handling player error')
-		if not self.audio_state.audio_effect.guaranteed:
+		if self.audio_state.state.mode != Mode.Alarm:
 			return
 
 		if isinstance(self.audio_state.audio_effect, OfflineAlarmEffect):
@@ -223,9 +223,8 @@ class Speaker(Observer):
 def main():
 		c = Config()
 		c.offline_alarm = AudioStream(stream_name='Offline Alarm', stream_url='Enchantment.ogg')
-		a = AudioDefinition()
+		a = PlaybackContent()
 		a.audio_effect = StreamAudioEffect(
-			guaranteed=True, 
 			volume=0.5,
 			stream_definition=AudioStream(stream_name="test", stream_url='https://streams.br.de/bayern2sued_2.m3u'))
 			# stream_definition=c.get_offline_alarm_effect().stream_definition)

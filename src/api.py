@@ -1,9 +1,7 @@
 import base64
 import io
-import json
 import logging
 import os
-import pickle
 import subprocess
 import traceback
 import tornado
@@ -69,9 +67,8 @@ class ActionApiHandler(tornado.web.RequestHandler):
 
 class ConfigApiHandler(tornado.web.RequestHandler):
 
-	def initialize(self, config: Config, api ) -> None:
+	def initialize(self, config: Config) -> None:
 		self.config = config
-		self.api = api
 
 	def get(self):
 		try:
@@ -130,8 +127,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 		stream_id = int(form_arguments['streamId'])
 		return StreamAudioEffect(
 			stream_definition=self.config.get_audio_stream(stream_id), 
-			volume=float(form_arguments['volume']),
-			guaranteed=True)
+			volume=float(form_arguments['volume']))
 
 	def parse_alarm_definition(self, form_arguments) -> AlarmDefinition:
 		ala = AlarmDefinition()

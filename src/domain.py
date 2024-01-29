@@ -31,9 +31,10 @@ def try_update(object, property_name: str, value: str) -> bool:
 
 
 class Mode(Enum):
-	Boot = 1
-	PreAlarm = 2
-	Alarm = 3
+	Boot = 0
+	Idle = 1
+	Alarm = 2
+	Music = 3
 
 class Weekday(Enum):
 	MONDAY = 1
@@ -56,7 +57,6 @@ class AudioStream:
 @dataclass
 class AudioEffect:
 	volume: float
-	guaranteed: bool = True
 
 @dataclass
 class StreamAudioEffect(AudioEffect):
@@ -124,52 +124,6 @@ class AlarmDefinition:
 	def audio_effect(self, value: AudioEffect):
 		self._audio_effect = value
 
-class AudioDefinition(Observable):
-
-	@property
-	def audio_effect(self) -> AudioEffect:
-		return self._audio_effect
-
-	@audio_effect.setter
-	def audio_effect(self, value: AudioEffect):
-		self._audio_effect = value
-		if value is not None and value.volume != self.volume:
-			self.volume = value.volume
-		self.notify(property='audio_effect')
-
-	@property
-	def volume(self) -> float:
-		return self._volume
-
-	@volume.setter
-	def volume(self, value: float):
-		self._volume = value
-		self.notify(property='volume')
-
-	@property
-	def is_streaming(self) -> str:
-		return self._is_streaming
-
-	@is_streaming.setter
-	def is_streaming(self, value: bool):
-		self._is_streaming = value
-		self.notify(property='is_streaming')
-
-	def __init__(self):
-		super().__init__()
-		self.audio_effect = None
-		self.volume = 0.8
-		self.is_streaming = False
-
-	def increase_volume(self):
-		self.volume = min(self.volume + 0.05, 1.0)
-
-	def decrease_volume(self):
-		self.volume = max(self.volume - 0.05, 0.0)
-
-	def toggle_stream(self, new_value: bool = None):
-		self.is_streaming = new_value if new_value is not None else not self.is_streaming
-	
 class Config(Observable):
 
 	clock_format_string: str
@@ -204,8 +158,7 @@ class Config(Observable):
 		duration = GeoLocation().now() + timedelta(minutes=(1+self.powernap_duration_in_mins))
 		audio_effect = StreamAudioEffect(
 			stream_definition=self.audio_streams[0],
-			volume=self.default_volume,
-			guaranteed=True)
+			volume=self.default_volume)
 
 		powernap_alarm_def = AlarmDefinition()
 		powernap_alarm_def.alarm_name = "Powernap"
@@ -262,7 +215,6 @@ class Config(Observable):
 	def get_offline_alarm_effect(self, volume: float = default_volume) -> OfflineAlarmEffect:
 		full_path = os.path.join(alarms_dir, self.offline_alarm.stream_url)
 		return OfflineAlarmEffect(
-			guaranteed=True, 
 			volume=volume, 
 			stream_definition=AudioStream(stream_name='Offline Alarm', stream_url=full_path))
 
@@ -295,7 +247,6 @@ class Config(Observable):
 class AlarmClockState(Observable):
 
 	configuration: Config
-	audio_state: AudioDefinition
 
 	@property
 	def show_blink_segment(self) -> bool:
@@ -336,21 +287,89 @@ class AlarmClockState(Observable):
 	def __init__(self, c: Config) -> None:
 		super().__init__()
 		self.configuration = c
-		self.audio_state = AudioDefinition()
 		self.mode = Mode.Boot
 		self.geo_location = GeoLocation()
 		self.is_wifi_available = True
 		self.show_blink_segment = True
 
-class DisplayContent(Observable, Observer):
+class MediaContent(Observable, Observer):
+
+	def __init__(self, state: AlarmClockState):
+		super().__init__()
+		self.state = state
+
+
+class PlaybackContent(MediaContent):
+
+	desired_audio_effect: AudioEffect
+
+	@property
+	def audio_effect(self) -> AudioEffect:
+		return self._audio_effect
+
+	@audio_effect.setter
+	def audio_effect(self, value: AudioEffect):
+		if True \
+			and isinstance(value, OfflineAlarmEffect) \
+			and not isinstance(self._audio_effect, OfflineAlarmEffect):
+				self.desired_audio_effect = self._audio_effect
+
+		self._audio_effect = value
+		if value is not None and value.volume != self.volume:
+			self.volume = value.volume
+		self.notify(property='audio_effect')
+
+	@property
+	def volume(self) -> float:
+		return self._volume
+
+	@volume.setter
+	def volume(self, value: float):
+		self._volume = value
+		self.notify(property='volume')
+
+	@property
+	def is_streaming(self) -> str:
+		return self._is_streaming
+
+	@is_streaming.setter
+	def is_streaming(self, value: bool):
+		self._is_streaming = value
+		self.notify(property='is_streaming')
+
+	def __init__(self, state: AlarmClockState):
+		super().__init__(state)
+		self.audio_effect = None
+		self.volume = 0.8
+		self.is_streaming = False
+
+	def update(self, observation: Observation):
+		super().update(observation)
+		if isinstance(observation.observable, AlarmClockState):
+			self.update_from_state(observation, observation.observable)
+
+	def update_from_state(self, observation: Observation, state: AlarmClockState):
+		if observation.property_name == 'mode':
+			self.toggle_stream(new_value=state.mode == Mode.Music)
+			# self.notify()
+
+	def increase_volume(self):
+		self.volume = min(self.volume + 0.05, 1.0)
+
+	def decrease_volume(self):
+		self.volume = max(self.volume - 0.05, 0.0)
+
+	def toggle_stream(self, new_value: bool = None):
+		self.is_streaming = new_value if new_value is not None else not self.is_streaming
+	
+class DisplayContent(MediaContent):
 	is_volume_meter_shown: bool=False
 	next_alarm_job: Job
 	current_weather: Weather
 	show_blink_segment: bool
 
 	def __init__(self, state: AlarmClockState):
-		super().__init__()
-		self.state = state
+		super().__init__(state)
 
 	def get_is_wifi_available(self)-> bool:
 		return self.state.is_wifi_available
