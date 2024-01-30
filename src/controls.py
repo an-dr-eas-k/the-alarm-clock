@@ -154,7 +154,7 @@ class Controls(Observer):
 						stream_definition=first_stream, \
 						volume=self.state.configuration.default_volume)
 
-			if self.state.mode == Mode.Alarm:
+			if self.state.mode in (Mode.Alarm, Mode.Music):
 				self.state.mode = Mode.Idle
 			else:
 				self.state.mode = Mode.Music
@@ -183,26 +183,17 @@ class Controls(Observer):
 			logging.error("%s", traceback.format_exc())
 
 	def update_weather_status(self):
-		try:
-			self.display_content.current_weather = GeoLocation().get_current_weather()
-			logging.info ("weather updated: %s", self.display_content.current_weather)
-		except:
-			logging.error("%s", traceback.format_exc())
-
+		if self.state.is_wifi_available:
+			try:
+				self.display_content.current_weather = GeoLocation().get_current_weather()
+				logging.info ("weather updated: %s", self.display_content.current_weather)
+			except:
+				logging.error("%s", traceback.format_exc())
 
 	def update_wifi_status(self):
 		try:
 			self.state.is_wifi_available = is_internet_available()
 
-			if self.state.mode == Mode.Alarm:
-				if True \
-					and not self.state.is_wifi_available \
-					and not isinstance(self.playback_content.audio_effect, OfflineAlarmEffect):
-					self.playback_content.audio_effect = self.state.configuration.get_offline_alarm_effect(self.playback_content.volume)
-				if True \
-					and self.state.is_wifi_available \
-					and isinstance(self.playback_content.audio_effect, OfflineAlarmEffect):
-					self.playback_content.audio_effect = self.playback_content.desired_audio_effect
 			logging.info ("update wifi state, is available: %s", self.state.is_wifi_available)
 		except:
 			logging.error("%s", traceback.format_exc())
@@ -218,7 +209,7 @@ class Controls(Observer):
 		try:
 			logging.info ("ring alarm %s", alarmDefinition.alarm_name)
 
-			self.playback_content.audio_effect = alarmDefinition.audio_effect
+			self.playback_content.desired_audio_effect = self.playback_content.audio_effect = alarmDefinition.audio_effect
 			self.state.mode = Mode.Alarm
 
 			self.after_ring_alarm(alarmDefinition)

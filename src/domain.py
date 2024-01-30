@@ -13,6 +13,7 @@ from utils.extensions import get_timedelta_to_alarm
 from utils.observer import Observable, Observation, Observer
 from utils.geolocation import GeoLocation, Weather
 from resources.resources import alarms_dir
+from utils.singleton import singleton
 
 def try_update(object, property_name: str, value: str) -> bool:
 	if hasattr(object, property_name):
@@ -62,6 +63,7 @@ class AudioEffect:
 class StreamAudioEffect(AudioEffect):
 	stream_definition: AudioStream = None
 
+@singleton
 @dataclass
 class OfflineAlarmEffect(StreamAudioEffect):
 	pass
@@ -309,10 +311,6 @@ class PlaybackContent(MediaContent):
 
 	@audio_effect.setter
 	def audio_effect(self, value: AudioEffect):
-		if True \
-			and isinstance(value, OfflineAlarmEffect) \
-			and not isinstance(self._audio_effect, OfflineAlarmEffect):
-				self.desired_audio_effect = self._audio_effect
 
 		self._audio_effect = value
 		if value is not None and value.volume != self.volume:
@@ -351,7 +349,17 @@ class PlaybackContent(MediaContent):
 	def update_from_state(self, observation: Observation, state: AlarmClockState):
 		if observation.property_name == 'mode':
 			self.toggle_stream(new_value=(state.mode in (Mode.Alarm, Mode.Music)))
-			# self.notify()
+		if observation.property_name == 'is_wifi_available':
+			self.wifi_availability_changed(state.is_wifi_available)
+
+	def wifi_availability_changed(self, wifi_available: bool):
+		if self.state.mode == Mode.Alarm:
+			if not wifi_available:
+				self.audio_effect = self.state.configuration.get_offline_alarm_effect(self.volume)
+			else:
+				self.audio_effect = self.desired_audio_effect
+		else:
+			self.is_streaming = self.is_streaming and wifi_available
 
 	def increase_volume(self):
 		self.volume = min(self.volume + 0.05, 1.0)

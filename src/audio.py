@@ -7,11 +7,11 @@ import subprocess
 import threading
 import re
 
-from domain import Mode, PlaybackContent, AudioEffect, AudioStream, Config, OfflineAlarmEffect, StreamAudioEffect, Observation, Observer, SpotifyAudioEffect
+from domain import AlarmClockState, Mode, PlaybackContent, AudioEffect, AudioStream, Config, OfflineAlarmEffect, StreamAudioEffect, Observation, Observer, SpotifyAudioEffect
 from utils.network import is_internet_available
 from resources.resources import alarms_dir, init_logging
 
-debug_callback: bool = False
+debug_callback: bool = True
 
 class MediaPlayer:
 
@@ -223,12 +223,12 @@ class Speaker(Observer):
 def main():
 		c = Config()
 		c.offline_alarm = AudioStream(stream_name='Offline Alarm', stream_url='Enchantment.ogg')
-		a = PlaybackContent()
-		a.audio_effect = StreamAudioEffect(
+		pc = PlaybackContent(AlarmClockState(c))
+		pc.audio_effect = StreamAudioEffect(
 			volume=0.5,
 			stream_definition=AudioStream(stream_name="test", stream_url='https://streams.br.de/bayern2sued_2.m3u'))
 			# stream_definition=c.get_offline_alarm_effect().stream_definition)
-		s = Speaker(a, c)
+		s = Speaker(pc, c)
 		s.adjust_streaming(True)
 		time.sleep(20)
 		s.adjust_streaming(False)
