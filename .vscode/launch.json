@@ -41,9 +41,9 @@
       "name": "python geolocation.py",
       "type": "python",
       "request": "launch",
-      "program": "geolocation.py",
+      "program": "utils/geolocation.py",
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/src/utils",
+      "cwd": "${workspaceFolder}/src",
       "justMyCode": false,
     }
   ]
