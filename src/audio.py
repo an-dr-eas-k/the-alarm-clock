@@ -120,13 +120,13 @@ class Speaker(Observer):
 	def update(self, observation: Observation):
 		super().update(observation)
 		if isinstance(observation.observable, PlaybackContent):
-			self.update_from_audio_definition(observation, observation.observable)
+			self.update_from_playback_content(observation, observation.observable)
 
-	def update_from_audio_definition(self, observation: Observation, audio_definition: PlaybackContent):
+	def update_from_playback_content(self, observation: Observation, playback_content: PlaybackContent):
 		if (observation.property_name == 'volume'):
-			self.adjust_volume(audio_definition.volume)
+			self.adjust_volume(playback_content.volume)
 		elif (observation.property_name == 'is_streaming'):
-			self.adjust_streaming(audio_definition.is_streaming)
+			self.adjust_streaming(playback_content.is_streaming)
 		elif (observation.property_name == 'audio_effect'):
 			self.adjust_effect()
 

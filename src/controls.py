@@ -71,9 +71,9 @@ class Controls(Observer):
 		if isinstance(observation.observable, Config):
 			self.update_from_config(observation, observation.observable)
 		if isinstance(observation.observable, PlaybackContent):
-			self.update_from_audio_definition(observation, observation.observable)
+			self.update_from_playback_content(observation, observation.observable)
 
-	def update_from_audio_definition(self, observation: Observation, audio_definition: PlaybackContent):
+	def update_from_playback_content(self, observation: Observation, playback_content: PlaybackContent):
 		if observation.property_name == 'volume' and not observation.during_registration:
 			self.display_content.show_volume_meter()
 			self.start_hide_volume_meter_trigger()

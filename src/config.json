@@ -78,7 +78,7 @@
         "visual_effect": {
           "py/object": "domain.VisualEffect"
         },
-        "is_active": true,
+        "is_active": false,
         "id": 2
       }
     ]

@@ -350,7 +350,7 @@ class PlaybackContent(MediaContent):
 
 	def update_from_state(self, observation: Observation, state: AlarmClockState):
 		if observation.property_name == 'mode':
-			self.toggle_stream(new_value=state.mode == Mode.Music)
+			self.toggle_stream(new_value=(state.mode in (Mode.Alarm, Mode.Music)))
 			# self.notify()
 
 	def increase_volume(self):
