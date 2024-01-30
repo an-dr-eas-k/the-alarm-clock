@@ -321,7 +321,7 @@
 		<div id="state" class="row">
 			<h3>Alarm Clock State</h3>
 			<code>
-				{% raw api.get_state_as_json().replace('\n', '<br>') %}
+				{% raw api.get_state_as_json().replace(' ', '&nbsp;').replace('\n', '<br />') %}
 			</code>
 		</div>
 		<div id="general-actions" class="row">

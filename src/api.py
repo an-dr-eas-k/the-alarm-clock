@@ -2,6 +2,7 @@ import base64
 import io
 import logging
 import os
+import json
 import subprocess
 import traceback
 import tornado
@@ -9,6 +10,7 @@ import tornado.web
 from PIL.Image import Image
 
 from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, Config, StreamAudioEffect, VisualEffect, Weekday, try_update
+from gpi import get_room_brightness
 
 def split_path_arguments(path) -> tuple[str, int, str]:
 	path_args = path[0].split('/')
@@ -173,7 +175,14 @@ class Api:
 		return subprocess.check_output(['git', 'log', '-1']).decode('utf-8')
 
 	def get_state_as_json(self) -> str:
-		return ""
+		return json.dumps(
+			obj=dict(
+				room_brightness = get_room_brightness(),
+				is_wifi_available = self.state.is_wifi_available,
+				is_daytime = self.state.is_daytime,
+				geo_location = self.state.geo_location.location_info.__dict__,
+			), 
+			indent=2)
 
 
 	def start(self, port):
@@ -181,4 +190,4 @@ class Api:
 
 
 if __name__ == '__main__':
-				Api(8080).app.run()
+	Api(8080).app.run()
