@@ -1,4 +1,5 @@
 import datetime
+import json
 import logging
 import os
 import traceback
@@ -192,9 +193,11 @@ class Controls(Observer):
 
 	def update_wifi_status(self):
 		try:
+			original_state = self.state.is_wifi_available
 			self.state.is_wifi_available = is_internet_available()
 
-			logging.info ("update wifi state, is available: %s", self.state.is_wifi_available)
+			if original_state != self.state.is_wifi_available:
+				logging.info ("change wifi state, is available: %s", self.state.is_wifi_available)
 		except:
 			logging.error("%s", traceback.format_exc())
 

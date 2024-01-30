@@ -13,6 +13,8 @@ from utils.singleton import singleton
 
 from resources.resources import weather_icons_dir
 
+weather_icons_tree = ET.parse(f"{weather_icons_dir}/weathericons.xml").getroot()
+
 def json_api(url):
 	response = urlopen(url)
 	return json.load(response)
@@ -26,14 +28,14 @@ class WMO_Code:
 		self.code = code
 
 	def to_character(self):
-		tree = ET.parse(f"{weather_icons_dir}/weathericons.xml")
-		root = tree.getroot()
-
-		weather_icon_element = root.find(f".//string[@name='wi_wmo4680_{self.code}']")
+		weather_icon_element = weather_icons_tree.find(f".//string[@name='wi_wmo4680_{self.code}']")
 		if weather_icon_element is not None:
 			return weather_icon_element.text
 		else:
 			return None
+
+	def __str__(self):
+		return f"code: {self.code}, character: {self.to_character()}"
 
 class Weather:
 	code: WMO_Code
@@ -44,9 +46,7 @@ class Weather:
 		self.temperature = temperature
 
 	def __str__(self):
-		return f"code: {self.code} temperature: {self.temperature}"
-
-
+		return f"code: {self.code}, temperature: {self.temperature}"
 
 class SunEvent(Enum):
 	sunrise = 'sunrise'
