@@ -1,5 +1,7 @@
 from enum import Enum
 import json
+import logging
+import traceback
 import xml.etree.ElementTree as ET
 from urllib.request import urlopen
 import datetime
@@ -10,6 +12,13 @@ from apscheduler.triggers.cron import CronTrigger
 from utils.singleton import singleton
 
 from resources.resources import weather_icons_dir
+
+def json_api(url):
+	response = urlopen(url)
+	return json.load(response)
+
+def translate_keys(input_dict, translation_map):
+	return {translation_map.get(k, k): v for k, v in input_dict.items()}
 
 class WMO_Code:
 
@@ -52,28 +61,43 @@ class GeoLocation:
 	def now(self) -> datetime.datetime:
 		return datetime.datetime.now(self.location_info.tzinfo)
 
-	def ip_info(self):
-		url = 'http://ip-api.com/json'
-		response = urlopen(url)
-		return json.load(response)
+	def ip_api(self):
+		location_from_ip = json_api('http://ip-api.com/json')
+		return LocationInfo(
+			location_from_ip['city'], 
+			location_from_ip['region'], 
+			location_from_ip['timezone'], 
+			location_from_ip['lat'], 
+			location_from_ip['lon'])
+
+	def geolocation_db(self):
+		location_from_ip = json_api('https://geolocation-db.com/json/'),
+		return LocationInfo(
+			location_from_ip[0]['city'], 
+			location_from_ip[0]['country_name'], 
+			'Europe/London',
+			location_from_ip[0]['latitude'], 
+			location_from_ip[0]['longitude'])
 
 	def get_location_info(self) -> LocationInfo:
 		try:
-			# ip_info = self.ip_info()
-			ip_info = dict(
-				city='Munich', 
-				region='Bavaria', 
-				timezone='Europe/Berlin', 
-				lat=48.1112, 
-				lon=11.5501)
+			ip_info = self.ip_api()
+			geolocation_db = self.geolocation_db()
 			return LocationInfo(
-				ip_info['city'], 
-				ip_info['region'], 
-				ip_info['timezone'], 
-				ip_info['lat'], 
-				ip_info['lon'])
+				geolocation_db.name, 
+				geolocation_db.region, 
+				ip_info.timezone, 
+				geolocation_db.latitude, 
+				geolocation_db.longitude
+			)
 		except:
-			return LocationInfo()
+			logging.warning("%s", traceback.format_exc())
+			return LocationInfo(
+				'Munich',
+				'Bavaria',
+				'Europe/Berlin',
+				48.1112,
+				11.5501)
 
 	def get_sun_event(self,
 			event: SunEvent, 
@@ -112,7 +136,7 @@ class GeoLocation:
 
 if __name__ == '__main__':
 	gl = GeoLocation()
-	data = GeoLocation.ip_info()
+	data = GeoLocation.ip_api()
 
 	print (data)
 
