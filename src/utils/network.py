@@ -10,4 +10,4 @@ def is_ping_successful(hostname):
 	return result.returncode == 0
 
 def is_internet_available():
-	return is_ping_successful("google.com")
+	return is_ping_successful("8.8.8.8")

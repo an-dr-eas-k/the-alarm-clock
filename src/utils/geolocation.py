@@ -58,13 +58,22 @@ class GeoLocation:
 		return json.load(response)
 
 	def get_location_info(self) -> LocationInfo:
-		ip_info = self.ip_info()
-		return LocationInfo(
-			ip_info['city'], 
-			ip_info['region'], 
-			ip_info['timezone'], 
-			ip_info['lat'], 
-			ip_info['lon'])
+		try:
+			# ip_info = self.ip_info()
+			ip_info = dict(
+				city='Munich', 
+				region='Bavaria', 
+				timezone='Europe/Berlin', 
+				lat=48.1112, 
+				lon=11.5501)
+			return LocationInfo(
+				ip_info['city'], 
+				ip_info['region'], 
+				ip_info['timezone'], 
+				ip_info['lat'], 
+				ip_info['lon'])
+		except:
+			return LocationInfo()
 
 	def get_sun_event(self,
 			event: SunEvent, 
