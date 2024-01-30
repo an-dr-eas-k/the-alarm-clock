@@ -40,10 +40,10 @@ class ClockApp:
 		
 		logging.info("config available")
 
-		display_content = DisplayContent(self.state)
-		self.state.attach(display_content)
 		playback_content = PlaybackContent(self.state)
 		self.state.attach(playback_content)
+		display_content = DisplayContent(self.state, playback_content)
+		self.state.attach(display_content)
 
 		device: luma_device
 
@@ -57,7 +57,7 @@ class ClockApp:
 			device = dummy(height=64, width=256, mode="RGB")
 			port = 8080
 
-		self.display = Display(device, display_content, self.state.configuration)
+		self.display = Display(device, display_content, playback_content, self.state.configuration)
 		self.state.configuration.attach(
 			Persistence( self.configFile))
 

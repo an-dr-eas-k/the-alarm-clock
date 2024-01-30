@@ -368,8 +368,9 @@ class DisplayContent(MediaContent):
 	current_weather: Weather
 	show_blink_segment: bool
 
-	def __init__(self, state: AlarmClockState):
+	def __init__(self, state: AlarmClockState, playback_content: PlaybackContent):
 		super().__init__(state)
+		self.playback_content = playback_content
 
 	def get_is_wifi_available(self)-> bool:
 		return self.state.is_wifi_available

@@ -8,7 +8,7 @@ from luma.core.device import dummy as luma_dummy
 from luma.core.render import canvas
 from PIL import ImageFont, Image
 
-from domain import AlarmDefinition, Config, DisplayContent, Observation, Observer, VisualEffect
+from domain import AlarmDefinition, Config, DisplayContent, Observation, Observer, PlaybackContent, VisualEffect
 from gpi import get_room_brightness
 from utils.drawing import get_concat_h_multi_blank, grayscale_to_color, text_to_image
 from utils.extensions import get_job_arg, get_timedelta_to_alarm
@@ -209,23 +209,28 @@ class WeatherStatusPresenter(Presenter):
 class Display(Observer):
 
 	device: luma_device
-	content: DisplayContent
+	display_content: DisplayContent
 	current_display_image: Image.Image
 
-	def __init__(self, device: luma_device, content: DisplayContent, config: Config) -> None:
+	def __init__(self, device: luma_device, display_content: DisplayContent, playback_content: PlaybackContent, config: Config) -> None:
 		self.device = device
 		logging.info("device mode: %s", self.device.mode)
-		self.content = content
+		self.display_content = display_content
+		self.playback_content = playback_content
 		self.config = config
-		self.content.attach(self)
-		self.formatter = DisplayFormatter(self.content, self.config)
-		self.clock_presenter= ClockPresenter(self.formatter, self.content)
-		self.next_alarm_presenter = NextAlarmPresenter(self.formatter, self.content)
-		self.weather_status_presenter =WeatherStatusPresenter(self.formatter, self.content)
-		self.wifi_status_presenter = WifiStatusPresenter(self.formatter, self.content)
+		self.display_content.attach(self)
+		self.formatter = DisplayFormatter(self.display_content, self.config)
+		self.clock_presenter= ClockPresenter(self.formatter, self.display_content)
+		self.next_alarm_presenter = NextAlarmPresenter(self.formatter, self.display_content)
+		self.weather_status_presenter =WeatherStatusPresenter(self.formatter, self.display_content)
+		self.wifi_status_presenter = WifiStatusPresenter(self.formatter, self.display_content)
 
 	def update(self, observation: Observation):
 		super().update(observation)
+		if isinstance(observation.observable, DisplayContent):
+			self.update_from_display_content(observation, observation.observable)
+
+	def update_from_display_content(self, observation: Observation, display_content: DisplayContent):
 		try:
 			self.adjust_display()
 		except Exception as e:
@@ -252,7 +257,7 @@ class Display(Observer):
 
 		next_alarm_image = self.next_alarm_presenter.draw()
 		im.paste(next_alarm_image, (2,im.height-next_alarm_image.height-2), next_alarm_image)
-		if not self.content.get_is_wifi_available():
+		if not self.display_content.get_is_wifi_available():
 			im.paste(self.wifi_status_presenter.draw(), (2,2))
 		elif (room_brightness >= 0.01):
 			im.paste(self.weather_status_presenter.draw(), (2,4))
