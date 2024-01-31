@@ -178,7 +178,7 @@ class Controls(Observer):
 
 	def update_clock(self):
 		try:
-			logging.debug ("update show blink segment: %s", self.state.show_blink_segment)
+			logging.debug ("update show blink segment: %s", not self.state.show_blink_segment)
 			self.state.show_blink_segment = not self.state.show_blink_segment
 		except:
 			logging.error("%s", traceback.format_exc())
@@ -186,18 +186,18 @@ class Controls(Observer):
 	def update_weather_status(self):
 		if self.state.is_wifi_available:
 			try:
-				self.display_content.current_weather = GeoLocation().get_current_weather()
-				logging.info ("weather updated: %s", self.display_content.current_weather)
+				new_weather = GeoLocation().get_current_weather()
+				logging.info ("weather updating: %s", new_weather)
+				self.display_content.current_weather = new_weather
 			except:
 				logging.error("%s", traceback.format_exc())
 
 	def update_wifi_status(self):
 		try:
-			original_state = self.state.is_wifi_available
-			self.state.is_wifi_available = is_internet_available()
-
-			if original_state != self.state.is_wifi_available:
-				logging.info ("change wifi state, is available: %s", self.state.is_wifi_available)
+			new_state = is_internet_available()
+			if new_state != self.state.is_wifi_available:
+				logging.info ("change wifi state, is available: %s", new_state)
+				self.state.is_wifi_available = new_state
 		except:
 			logging.error("%s", traceback.format_exc())
 
