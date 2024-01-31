@@ -1,9 +1,31 @@
 {
   "py/object": "domain.Config",
   "py/state": {
-    "_clock_format_string": "%-H<blinkSegment>%M",
-    "_blink_segment": ":",
-    "_refresh_timeout_in_secs": 1,
+    "alarm_duration_in_mins": 60,
+    "offline_alarm": {
+      "py/object": "domain.AudioStream",
+      "stream_name": "Offline Alarm",
+      "stream_url": "Enchantment.ogg",
+      "id": -1
+    },
+    "clock_format_string": "%-H<blinkSegment>%M",
+    "blink_segment": ":",
+    "refresh_timeout_in_secs": 1,
+    "powernap_duration_in_mins": 18,
+    "_audio_streams": [
+      {
+        "py/object": "domain.AudioStream",
+        "stream_name": "br2",
+        "stream_url": "https://streams.br.de/bayern2sued_2.m3u",
+        "id": -1
+      },
+      {
+        "py/object": "domain.AudioStream",
+        "stream_name": "puls",
+        "stream_url": "https://streams.br.de/puls_2.m3u",
+        "id": -1
+      }
+    ],
     "_alarm_definitions": [
       {
         "py/object": "domain.AlarmDefinition",
@@ -18,15 +40,15 @@
           "FRIDAY"
         ],
         "date": null,
-        "audio_effect": {
-          "py/object": "domain.InternetRadio",
+        "_audio_effect": {
+          "py/object": "domain.StreamAudioEffect",
+          "volume": 0.9,
           "stream_definition": {
-            "py/object": "domain.AudioStream",
-            "stream_name": "br2",
-            "stream_url": "https://streams.br.de/bayern2sued_2.m3u",
-            "id": 1
-          },
-          "volume": 1.0
+            "py/id": 4
+          }
+        },
+        "visual_effect": {
+          "py/object": "domain.VisualEffect"
         },
         "is_active": true,
         "id": 1
@@ -46,28 +68,19 @@
           "SUNDAY"
         ],
         "date": null,
-        "audio_effect": {
-          "py/object": "domain.InternetRadio",
+        "_audio_effect": {
+          "py/object": "domain.StreamAudioEffect",
+          "volume": 0.9,
           "stream_definition": {
-            "py/object": "domain.AudioStream",
-            "stream_name": "puls",
-            "stream_url": "https://streams.br.de/puls_2.m3u",
-            "id": 2
-          },
-          "volume": 0.9
+            "py/id": 4
+          }
         },
-        "is_active": true,
+        "visual_effect": {
+          "py/object": "domain.VisualEffect"
+        },
+        "is_active": false,
         "id": 2
       }
-    ],
-    "_audio_streams": [
-      {
-        "py/id": 6
-      },
-      {
-        "py/id": 10
-      }
-    ],
-    "dwd_station_id": "10865"
+    ]
   }
 }

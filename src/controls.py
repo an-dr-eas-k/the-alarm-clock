@@ -2,16 +2,15 @@ import datetime
 import json
 import logging
 import os
-import subprocess
 import traceback
 from urllib.request import urlopen
 from gpiozero import Button
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
-from apscheduler.triggers.cron import CronTrigger
 from apscheduler.job import Job
-from domain import AlarmClockState, AlarmDefinition, AudioDefinition, DisplayContent, InternetRadio, Observation, Observer, Config
+from domain import AlarmClockState, AlarmDefinition, PlaybackContent, DisplayContent, Mode, OfflineAlarmEffect, StreamAudioEffect, Observation, Observer, Config
 from utils.geolocation import GeoLocation, SunEvent
+from utils.network import is_internet_available
 
 button1Id = 0
 button2Id = 5
@@ -29,9 +28,10 @@ class Controls(Observer):
 	buttons = []
 	state: AlarmClockState
 
-	def __init__(self, state: AlarmClockState, display_content: DisplayContent) -> None:
+	def __init__(self, state: AlarmClockState, display_content: DisplayContent, playback_content: PlaybackContent) -> None:
 		self.state = state
 		self.display_content = display_content
+		self.playback_content = playback_content
 		self.sun_event_occured(state.geo_location.last_sun_event())
 		self.update_weather_status()
 		self.add_scheduler_jobs()
@@ -71,24 +71,29 @@ class Controls(Observer):
 		super().update(observation)
 		if isinstance(observation.observable, Config):
 			self.update_from_config(observation, observation.observable)
-		if isinstance(observation.observable, AudioDefinition):
-			self.update_from_audio_definition(observation, observation.observable)
+		if isinstance(observation.observable, PlaybackContent):
+			self.update_from_playback_content(observation, observation.observable)
 
-	def update_from_audio_definition(self, observation: Observation, audio_definition: AudioDefinition):
+	def update_from_playback_content(self, observation: Observation, playback_content: PlaybackContent):
 		if observation.property_name == 'volume' and not observation.during_registration:
 			self.display_content.show_volume_meter()
 			self.start_hide_volume_meter_trigger()
 
 	def start_hide_volume_meter_trigger(self):
-		job_id = 'hide_volume_meter_trigger'
-		trigger = DateTrigger(run_date=GeoLocation().now() + datetime.timedelta(seconds=5))
+		self.start_generic_trigger(
+			'hide_volume_meter_trigger', 
+			datetime.timedelta(seconds=5), 
+			func=self.display_content.hide_volume_meter
+		)
+
+	def start_generic_trigger(self, job_id: str, duration: datetime.timedelta, func):
+		trigger = DateTrigger(run_date=GeoLocation().now() + duration)
 
 		existing_job = self.scheduler.get_job(job_id=job_id)
 		if existing_job:
 			self.scheduler.reschedule_job(job_id=job_id, trigger=trigger)
 		else:
-			self.scheduler.add_job(id=job_id, trigger=trigger,
-				func=self.display_content.hide_volume_meter)
+			self.scheduler.add_job(id=job_id, trigger=trigger, func=func)
 
 	def update_from_config(self, observation: Observation, config: Config):
 		if observation.property_name == 'alarm_definitions':
@@ -127,10 +132,10 @@ class Controls(Observer):
 		
 
 	def button1_action(self):
-		Controls.button_action(self.state.audio_state.decrease_volume, 1)
+		Controls.button_action(self.playback_content.decrease_volume, 1)
 
 	def button2_action(self):
-		Controls.button_action(self.state.audio_state.increase_volume, 2)
+		Controls.button_action(self.playback_content.increase_volume, 2)
 
 	def button3_action(self):
 
@@ -143,13 +148,17 @@ class Controls(Observer):
 	def button4_action(self):
 
 		def toggle_stream():
-			audio_state = self.state.audio_state
+			audio_state = self.playback_content
 			if not audio_state.audio_effect:
 					first_stream = self.state.configuration.audio_streams[0]
-					audio_state.audio_effect = InternetRadio(stream_definition=first_stream)
-					audio_state.audio_effect.volume = 0.9
+					audio_state.audio_effect = StreamAudioEffect( \
+						stream_definition=first_stream, \
+						volume=self.state.configuration.default_volume)
 
-			self.state.audio_state.toggle_stream()
+			if self.state.mode in (Mode.Alarm, Mode.Music):
+				self.state.mode = Mode.Idle
+			else:
+				self.state.mode = Mode.Music
 		
 		Controls.button_action(toggle_stream, 4)
 
@@ -169,31 +178,26 @@ class Controls(Observer):
 
 	def update_clock(self):
 		try:
-			logging.info ("update show blink segment: %s", self.state.show_blink_segment)
+			logging.debug ("update show blink segment: %s", not self.state.show_blink_segment)
 			self.state.show_blink_segment = not self.state.show_blink_segment
 		except:
 			logging.error("%s", traceback.format_exc())
 
 	def update_weather_status(self):
-		try:
-			self.display_content.current_weather = GeoLocation().get_current_weather()
-			logging.info ("weather updated: %s", self.display_content.current_weather)
-		except:
-			logging.error("%s", traceback.format_exc())
-
+		if self.state.is_wifi_available:
+			try:
+				new_weather = GeoLocation().get_current_weather()
+				logging.info ("weather updating: %s", new_weather)
+				self.display_content.current_weather = new_weather
+			except:
+				logging.error("%s", traceback.format_exc())
 
 	def update_wifi_status(self):
-
-		def is_ping_successful(hostname):
-			result = subprocess.run(
-				["ping", "-c", "1", hostname], 
-				stdout=subprocess.DEVNULL, 
-				stderr=subprocess.DEVNULL)
-			return result.returncode == 0
-
 		try:
-			self.state.is_wifi_available = is_ping_successful("google.com")
-			logging.info ("update wifi, is available: %s", self.state.is_wifi_available)
+			new_state = is_internet_available()
+			if new_state != self.state.is_wifi_available:
+				logging.info ("change wifi state, is available: %s", new_state)
+				self.state.is_wifi_available = new_state
 		except:
 			logging.error("%s", traceback.format_exc())
 
@@ -208,32 +212,38 @@ class Controls(Observer):
 		try:
 			logging.info ("ring alarm %s", alarmDefinition.alarm_name)
 
-			self.state.audio_state.audio_effect = alarmDefinition.audio_effect
-			self.state.audio_state.is_streaming = True
+			self.playback_content.desired_audio_effect = self.playback_content.audio_effect = alarmDefinition.audio_effect
+			self.state.mode = Mode.Alarm
 
 			self.after_ring_alarm(alarmDefinition)
 		except:
 			logging.error("%s", traceback.format_exc())
 
 	def after_ring_alarm(self, alarmDefinition: AlarmDefinition):
+
+		self.start_generic_trigger(
+			'stop_alarm_trigger', 
+			datetime.timedelta(minutes=self.state.configuration.alarm_duration_in_mins), 
+			func=lambda: self.playback_content.toggle_stream(new_value=False)
+		)
+
 		self.display_content.next_alarm_job = self.get_next_alarm_job()
 		if alarmDefinition.is_one_time():
 			self.state.configuration.remove_alarm_definition(alarmDefinition.id)
-
 
 	def cleanup_alarms(self):
 		job: Job
 		for job in self.scheduler.get_jobs(jobstore=alarm_store):
 			if job.next_run_time is None:
-				self.state.configuration.remove_alarm_definition(job.id)
+				self.state.configuration.remove_alarm_definition(int(job.id))
 
 class SoftwareControls(Controls):
-	def __init__(self, state: AlarmClockState, display_content: DisplayContent) -> None:
-		super().__init__(state, display_content)
+	def __init__(self, state: AlarmClockState, display_content: DisplayContent, playback_content: PlaybackContent) -> None:
+		super().__init__(state, display_content, playback_content)
 
 	def configure(self):
 		def key_pressed_action(key):
-			logging.info ("pressed %s", key)
+			logging.debug ("pressed %s", key)
 			if not hasattr(key, 'char'):
 				return
 			try:

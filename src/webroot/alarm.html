@@ -64,6 +64,11 @@
 			return jsonData;
 		}
 
+		function onClickAddPowernap(event) {
+			sendToBackend('/api/config/' + 'start_powernap', 'POST', null);
+			location.reload();
+		}
+
 		function onClickDelete(type, event) {
 			sendToBackend('/api/config/' + type + '/' + event.target.value, 'DELETE', null);
 			location.reload();
@@ -138,7 +143,8 @@
 					<td>{{ escape(f"{alarm_definition.to_time_string()}") }}</td>
 					<td>{{ escape(alarm_definition.to_weekdays_string()) }}</td>
 					<td>stream: {{ escape(alarm_definition.audio_effect.stream_definition.stream_name ) }},
-						vol: {{ alarm_definition.audio_effect.volume }}</td>
+						vol: {{ alarm_definition.audio_effect.volume }},
+						{{ 'visuals' if alarm_definition.visual_effect is not None else 'no visuals' }}</td>
 					<td>
 						<button type="submit" class="btn btn-primary btn-row-action"
 							onclick="onClickSave('{{ not alarm_definition.is_active }}', 'alarm', '{{ alarm_definition.id }}', 'is_active' )">
@@ -152,7 +158,15 @@
 				</tr>
 				{% end %}
 				<tr>
-					<td colspan="5">
+					<td colspan="4">
+					</td>
+					<td colspan="2">
+						<button type="submit" class="btn btn-primary btn-row-action" onclick="onClickAddPowernap(event)"
+							style="width: 100%;">Powernap</button>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="4">
 						<div id="add-alarm-container" style="margin: 20px; display:none;">
 							<h3>Add Alarm</h3>
 							<form id="alarm-form" action="/api/config/alarm" method="post" onsubmit="onSubmitNew(event)">
@@ -195,14 +209,21 @@
 									<span id="volumeValue"></span>
 								</div>
 								<div class="form-group">
+									<label for="visualeffectpicker">Visual Effects:</label>
+									<input type="checkbox" checked name="visualEffectActive" id="visualeffectpicker" />
+								</div>
+								<div class="form-group">
 									<label for="activepicker">Active:</label>
 									<input type="checkbox" checked name="isActive" id="activepicker" />
 								</div>
-								<button type="submit" class="btn btn-primary">Add Alarm</button>
+								<div style="display: block; text-align: right;">
+									<button type="submit" class="btn btn-primary">Add
+										Alarm</button>
+								</div>
 							</form>
 						</div>
 					</td>
-					<td>
+					<td colspan="2">
 						<button type="submit" class="btn btn-primary btn-row-action"
 							onclick="onClickToggleAddForm('add-alarm-container')" style="width: 100%;">+</button>
 					</td>
@@ -264,14 +285,44 @@
 					<th class="btn-column"></th>
 				</tr>
 				<tr>
-					<td>DWD StationId</td>
-					<td><input type="text" id="dwd_station_id"
-							value="{{ escape( config.dwd_station_id ) if config.dwd_station_id is not None else '' }}" /></td>
+					<td>Powernap Duration (min)</td>
+					<td><input type="text" id="powernap_duration_in_mins"
+							value="{{ config.powernap_duration_in_mins if config.powernap_duration_in_mins is not None else '' }}" />
+					</td>
 					<td><button type="submit" class="btn btn-primary btn-row-action"
-							onclick="onClickSave(document.getElementById('dwd_station_id').value, 'dwd_station_id')">Save</button>
+							onclick="onClickSave(document.getElementById('powernap_duration_in_mins').value, 'powernap_duration_in_mins')">Save</button>
+					</td>
+				</tr>
+				<tr><!-- string value -->
+					<td>Local Alarm File</td>
+					<td><input type="text" id="local_alarm_file"
+							value="{{ escape( config.local_alarm_file ) if config.local_alarm_file is not None else '' }}" /></td>
+					<td><button type="submit" class="btn btn-primary btn-row-action"
+							onclick="onClickSave(document.getElementById('local_alarm_file').value, 'local_alarm_file')">Save</button>
+					</td>
+				</tr>
+				<tr>
+					<td>Alarm Duration (min)</td>
+					<td><input type="text" id="alarm_duration_in_mins"
+							value="{{ config.alarm_duration_in_mins if config.alarm_duration_in_mins is not None else '' }}" />
+					</td>
+					<td><button type="submit" class="btn btn-primary btn-row-action"
+							onclick="onClickSave(document.getElementById('alarm_duration_in_mins').value, 'alarm_duration_in_mins')">Save</button>
 					</td>
 				</tr>
 			</table>
+		</div>
+		<div id="version" class="row">
+			<h3>Version</h3>
+			<code>
+				{% raw api.get_git_log().replace('\n', '<br>') %}
+			</code>
+		</div>
+		<div id="state" class="row">
+			<h3>Alarm Clock State</h3>
+			<code>
+				{% raw api.get_state_as_json().replace(' ', '&nbsp;').replace('\n', '<br />') %}
+			</code>
 		</div>
 		<div id="general-actions" class="row">
 			<h3>Actions</h3>
@@ -289,7 +340,8 @@
 			</div>
 		</div>
 		<div id="footer" class="row">
-			<p>Copyright 2022 - 2023</p>
+			<p>Copyright 2023 - 2024</p>
+			<br />&nbsp;<br />&nbsp;<br />&nbsp;<br />
 		</div>
 	</div>
 </body>

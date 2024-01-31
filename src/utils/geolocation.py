@@ -1,6 +1,7 @@
 from enum import Enum
 import json
-import os
+import logging
+import traceback
 import xml.etree.ElementTree as ET
 from urllib.request import urlopen
 import datetime
@@ -10,8 +11,16 @@ from apscheduler.triggers.cron import CronTrigger
 
 from utils.singleton import singleton
 
+from resources.resources import weather_icons_dir
 
-weather_icons_dir = f"{os.path.dirname(os.path.realpath(__file__))}/../resources/weather-icons"
+weather_icons_tree = ET.parse(f"{weather_icons_dir}/weathericons.xml").getroot()
+
+def json_api(url):
+	response = urlopen(url)
+	return json.load(response)
+
+def translate_keys(input_dict, translation_map):
+	return {translation_map.get(k, k): v for k, v in input_dict.items()}
 
 class WMO_Code:
 
@@ -19,14 +28,14 @@ class WMO_Code:
 		self.code = code
 
 	def to_character(self):
-		tree = ET.parse(f"{weather_icons_dir}/weathericons.xml")
-		root = tree.getroot()
-
-		weather_icon_element = root.find(f".//string[@name='wi_wmo4680_{self.code}']")
+		weather_icon_element = weather_icons_tree.find(f".//string[@name='wi_wmo4680_{self.code}']")
 		if weather_icon_element is not None:
 			return weather_icon_element.text
 		else:
 			return None
+
+	def __str__(self):
+		return f"code: {self.code}, character: {self.to_character()}"
 
 class Weather:
 	code: WMO_Code
@@ -37,9 +46,7 @@ class Weather:
 		self.temperature = temperature
 
 	def __str__(self):
-		return f"code: {self.code} temperature: {self.temperature}"
-
-
+		return f"code: {self.code}, temperature: {self.temperature}"
 
 class SunEvent(Enum):
 	sunrise = 'sunrise'
@@ -54,19 +61,43 @@ class GeoLocation:
 	def now(self) -> datetime.datetime:
 		return datetime.datetime.now(self.location_info.tzinfo)
 
-	def ip_info(self):
-		url = 'http://ip-api.com/json'
-		response = urlopen(url)
-		return json.load(response)
+	def ip_api(self):
+		location_from_ip = json_api('http://ip-api.com/json')
+		return LocationInfo(
+			location_from_ip['city'], 
+			location_from_ip['region'], 
+			location_from_ip['timezone'], 
+			location_from_ip['lat'], 
+			location_from_ip['lon'])
+
+	def geolocation_db(self):
+		location_from_ip = json_api('https://geolocation-db.com/json/'),
+		return LocationInfo(
+			location_from_ip[0]['city'], 
+			location_from_ip[0]['country_name'], 
+			'Europe/London',
+			location_from_ip[0]['latitude'], 
+			location_from_ip[0]['longitude'])
 
 	def get_location_info(self) -> LocationInfo:
-		ip_info = self.ip_info()
-		return LocationInfo(
-			ip_info['city'], 
-			ip_info['region'], 
-			ip_info['timezone'], 
-			ip_info['lat'], 
-			ip_info['lon'])
+		try:
+			ip_info = self.ip_api()
+			geolocation_db = self.geolocation_db()
+			return LocationInfo(
+				geolocation_db.name, 
+				geolocation_db.region, 
+				ip_info.timezone, 
+				geolocation_db.latitude, 
+				geolocation_db.longitude
+			)
+		except:
+			logging.warning("%s", traceback.format_exc())
+			return LocationInfo(
+				'Munich',
+				'Bavaria',
+				'Europe/Berlin',
+				48.1112,
+				11.5501)
 
 	def get_sun_event(self,
 			event: SunEvent, 
@@ -105,7 +136,7 @@ class GeoLocation:
 
 if __name__ == '__main__':
 	gl = GeoLocation()
-	data = GeoLocation.ip_info()
+	data = GeoLocation.ip_api()
 
 	print (data)
 

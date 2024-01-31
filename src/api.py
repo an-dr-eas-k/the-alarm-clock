@@ -2,12 +2,15 @@ import base64
 import io
 import logging
 import os
+import json
+import subprocess
 import traceback
 import tornado
 import tornado.web
 from PIL.Image import Image
 
-from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, Config, InternetRadio, Weekday, try_update
+from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, Config, StreamAudioEffect, VisualEffect, Weekday, try_update
+from gpi import get_room_brightness
 
 def split_path_arguments(path) -> tuple[str, int, str]:
 	path_args = path[0].split('/')
@@ -35,12 +38,14 @@ class DisplayHandler(tornado.web.RequestHandler):
 class ConfigHandler(tornado.web.RequestHandler):
 
 	root = os.path.join(os.path.dirname(__file__), "webroot")
-	def initialize(self, config: Config) -> None:
+	
+	def initialize(self, config: Config, api) -> None:
 		self.config = config
+		self.api = api
 
 	def get(self, *args, **kwargs):
 		try:
-			self.render(f'{self.root}/alarm.html', config=self.config)
+			self.render(f'{self.root}/alarm.html', config=self.config, api=self.api)
 		except:
 			logging.warning("%s", traceback.format_exc())
 
@@ -98,27 +103,34 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 				self.config.remove_alarm_definition(id)
 				self.config.add_alarm_definition(alarmDef)
 				return
-			
-			form_arguments = tornado.escape.json_decode(self.request.body)
+
+			body = '{}' if self.request.body is None or len(self.request.body) == 0 else self.request.body
+			form_arguments = tornado.escape.json_decode(body)
 			if type == 'alarm':
 					self.config.add_alarm_definition ( self.parse_alarm_definition(form_arguments) )
 			elif type == 'stream':
 				self.config.add_audio_stream ( self.parse_stream_definition(form_arguments) )
+			elif type == 'start_powernap':
+				self.config.add_alarm_definition_for_powernap ()
 		except:
 			logging.warning("%s", traceback.format_exc())
 
 	def parse_stream_definition(self, form_arguments) -> AlarmDefinition:
-		auSt = AudioStream()
-		auSt.stream_name = form_arguments['streamName']
-		auSt.stream_url = form_arguments['streamUrl']
-		return auSt
+		stream_name = form_arguments['streamName']
+		stream_url = form_arguments['streamUrl']
+		return AudioStream(stream_name=stream_name, stream_url=stream_url)
 
-	def parse_audio_effect(self, form_arguments) -> AudioStream:
+	def parse_visual_effect(self, form_arguments) -> VisualEffect:
+		use_visual_effect = form_arguments.get('visualEffectActive') is not None and form_arguments['visualEffectActive'] == 'on'
+		if use_visual_effect:
+			return VisualEffect()
+		return None
+		
+	def parse_audio_effect(self, form_arguments) -> AudioEffect:
 		stream_id = int(form_arguments['streamId'])
-		auSt = InternetRadio()
-		auSt.stream_definition = self.config.get_audio_stream(stream_id)
-		auSt.volume = float(form_arguments['volume'])
-		return auSt
+		return StreamAudioEffect(
+			stream_definition=self.config.get_audio_stream(stream_id), 
+			volume=float(form_arguments['volume']))
 
 	def parse_alarm_definition(self, form_arguments) -> AlarmDefinition:
 		ala = AlarmDefinition()
@@ -137,6 +149,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 			ala.set_future_date(ala.hour, ala.min)
 
 		ala.audio_effect = self.parse_audio_effect(form_arguments)
+		ala.visual_effect = self.parse_visual_effect(form_arguments)
 		ala.is_active = form_arguments.get('isActive') is not None and form_arguments['isActive'] == 'on'
 		return ala
 
@@ -146,12 +159,11 @@ class Api:
 	app: tornado.web.Application
 
 	def __init__(self, state: AlarmClockState, image_getter):
-		root = os.path.join(os.path.dirname(__file__), "webroot")
+		self.state = state
 		handlers = [
 			(r"/api/config/?(.*)", ConfigApiHandler, {"config": state.configuration}),
 			(r"/api/action/?(.*)", ActionApiHandler ),
-			(r"/(.*)", ConfigHandler, {"config": state.configuration}),
-			# (r"/(.*)", tornado.web.StaticFileHandler, {"path": root, "default_filename": "alarm.html"}),
+			(r"/(.*)", ConfigHandler, {"config": state.configuration, "api": self})
 		]
 
 		if image_getter is not None:
@@ -159,10 +171,23 @@ class Api:
 
 		self.app = tornado.web.Application(handlers)
 
+	def get_git_log(self) -> str:
+		return subprocess.check_output(['git', 'log', '-1']).decode('utf-8')
+
+	def get_state_as_json(self) -> str:
+		return json.dumps(
+			obj=dict(
+				room_brightness = get_room_brightness(),
+				is_wifi_available = self.state.is_wifi_available,
+				is_daytime = self.state.is_daytime,
+				geo_location = self.state.geo_location.location_info.__dict__,
+			), 
+			indent=2)
+
 
 	def start(self, port):
 		self.app.listen(port)
 
 
 if __name__ == '__main__':
-				Api(8080).app.run()
+	Api(8080).app.run()

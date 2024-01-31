@@ -8,14 +8,17 @@ from luma.core.device import dummy as luma_dummy
 from luma.core.render import canvas
 from PIL import ImageFont, Image
 
-from domain import Config, DisplayContent, Observation, Observer
+from domain import AlarmDefinition, Config, DisplayContent, Observation, Observer, PlaybackContent, VisualEffect
 from gpi import get_room_brightness
 from utils.drawing import get_concat_h_multi_blank, grayscale_to_color, text_to_image
+from utils.extensions import get_job_arg, get_timedelta_to_alarm
 from utils.geolocation import GeoLocation
 
-resources_dir = f"{os.path.dirname(os.path.realpath(__file__))}/resources"
+from resources.resources import fonts_dir, weather_icons_dir
 
 class DisplayFormatter:
+	bold_clock_font = ImageFont.truetype(f"{fonts_dir}/DSEG7Classic-Regular.ttf", 50)
+	light_clock_font = ImageFont.truetype(f"{fonts_dir}/DSEG7ClassicMini-Light.ttf", 40)
 
 	foreground_grayscale_16: int
 	background_grayscale_16: int
@@ -46,18 +49,22 @@ class DisplayFormatter:
 		return DisplayFormatter.respect_ranges( 32/(1+math.exp(-0.25*room_brightness))-16, min_value, max_value)
 
 	def adjust_display(self, room_brightness: float):
-		time_delta_to_alarm = self.display_content.get_timedelta_to_alarm()
-		self.adjust_display_internal(room_brightness, time_delta_to_alarm)
+		self.adjust_display_by_room_brightness(room_brightness)
+		next_alarm_job = self.display_content.next_alarm_job
+		if next_alarm_job is None:
+			return
+		
+		visual_effect: VisualEffect = get_job_arg(next_alarm_job, AlarmDefinition).visual_effect
+		if visual_effect is not None:
+			self.adjust_display_by_alarm_visual_effect(get_timedelta_to_alarm(next_alarm_job), visual_effect)
 
-	def adjust_display_internal(self, room_brightness: float, time_delta_to_alarm: datetime.timedelta):
-		bold_clock_font = ImageFont.truetype(f"{resources_dir}/DSEG7Classic-Regular.ttf", 50)
-		light_clock_font = ImageFont.truetype(f"{resources_dir}/DSEG7ClassicMini-Light.ttf", 40)
-
-		alarm_in_minutes = time_delta_to_alarm.total_seconds() / 60
-
+	def adjust_display_by_room_brightness(self, room_brightness: float):
 		self.background_grayscale_16=0
 		self.foreground_grayscale_16=self.get_grayscale_value(room_brightness)
-		self.clock_font = bold_clock_font if room_brightness >= 0.01 else light_clock_font
+		self.clock_font = self.bold_clock_font if room_brightness >= 0.01 else self.light_clock_font
+
+	def adjust_display_by_alarm_visual_effect(self,time_delta_to_alarm: datetime.timedelta, visual_effect: VisualEffect):
+		alarm_in_minutes = time_delta_to_alarm.total_seconds() / 60
 
 		if alarm_in_minutes > 8:
 			return 
@@ -65,33 +72,35 @@ class DisplayFormatter:
 		if alarm_in_minutes > 4:
 			self.background_grayscale_16=0
 			self.foreground_grayscale_16=15
-			self.clock_font=bold_clock_font
+			self.clock_font=self.bold_clock_font
 			return
 
 		if alarm_in_minutes > 2:
 			self.background_grayscale_16=7
 			self.foreground_grayscale_16=0
-			self.clock_font=bold_clock_font
+			self.clock_font=self.bold_clock_font
 			return
 
 		if alarm_in_minutes > -2:
 			self.background_grayscale_16=15
 			self.foreground_grayscale_16=0
-			self.clock_font=bold_clock_font
+			self.clock_font=self.bold_clock_font
 			return
 
 	def format_clock_string(self, clock: datetime, show_blink_segment: bool = True) -> str:
 		blink_segment = self.config.blink_segment if show_blink_segment else " "
 		clock_string = clock.strftime(self.config.clock_format_string.replace("<blinkSegment>", blink_segment))
-		clock_string = clock_string.replace("7", "`")
-		desired_length = 5
-		clock_string = "!" * (desired_length - len(clock_string)) + clock_string
-		return clock_string
+		return self.format_dseg7_string(clock_string, desired_length=5)
+
+	def format_dseg7_string(self, dseg7: str, desired_length: int = 5) -> str:
+		dseg7 = dseg7.replace("7", "`")
+		dseg7 = "!" * (desired_length - len(dseg7)) + dseg7
+		return dseg7
 
 class Presenter:
 	empty_image = Image.new("RGBA", (0, 0))
-	font_file_7segment = f"{resources_dir}/DSEG7Classic-Regular.ttf"
-	font_file_nerd = f"{resources_dir}/CousineNerdFontMono-Regular.ttf"
+	font_file_7segment = f"{fonts_dir}/DSEG7Classic-Regular.ttf"
+	font_file_nerd = f"{fonts_dir}/CousineNerdFontMono-Regular.ttf"
 
 	content: DisplayContent
 
@@ -114,7 +123,7 @@ class ClockPresenter(Presenter):
 			font, 
 			fg_color=self.formatter.foreground_color(), 
 			bg_color=self.formatter.background_color())
-		return clock_image.resize([int(clock_image.width*0.95), clock_image.height])
+		return clock_image.resize([int(clock_image.width*0.95), clock_image.height], resample=Image.NEAREST)
 
 class WifiStatusPresenter(Presenter):
 	def __init__(self, formatter: DisplayFormatter, content: DisplayContent) -> None:
@@ -158,7 +167,7 @@ class NextAlarmPresenter(Presenter):
 class WeatherStatusPresenter(Presenter):
 	def __init__(self, formatter: DisplayFormatter, content: DisplayContent) -> None:
 		super().__init__(formatter, content)
-		self.font_file_weather = f"{resources_dir}/weather-icons/weathericons-regular-webfont.ttf"
+		self.font_file_weather = f"{weather_icons_dir}/weathericons-regular-webfont.ttf"
 
 	def draw(self) -> Image.Image:
 		weather = self.content.current_weather
@@ -172,11 +181,19 @@ class WeatherStatusPresenter(Presenter):
 			weather_character, font_weather, 
 			fg_color=self.formatter.foreground_color(min_value=2),
 			bg_color=self.formatter.background_color())
-		formatter = "{: .1f}"
+		formatter = "{:.1f}"
+		desired_length = 4
 		if abs(weather.temperature) >=10:
-			formatter = "{: .0f}"
+			formatter = "{:.0f}"
+			desired_length = 3
+
+		temperature_str = self.formatter.format_dseg7_string(
+				dseg7=formatter.format(weather.temperature), 
+				desired_length=desired_length)
+
 		temperature_image = text_to_image(
-			formatter.format(weather.temperature), font_7segment, 
+			text=temperature_str,
+			font=font_7segment, 
 			fg_color=self.formatter.foreground_color(min_value=2),
 			bg_color=self.formatter.background_color())
 
@@ -192,23 +209,28 @@ class WeatherStatusPresenter(Presenter):
 class Display(Observer):
 
 	device: luma_device
-	content: DisplayContent
+	display_content: DisplayContent
 	current_display_image: Image.Image
 
-	def __init__(self, device: luma_device, content: DisplayContent, config: Config) -> None:
+	def __init__(self, device: luma_device, display_content: DisplayContent, playback_content: PlaybackContent, config: Config) -> None:
 		self.device = device
 		logging.info("device mode: %s", self.device.mode)
-		self.content = content
+		self.display_content = display_content
+		self.playback_content = playback_content
 		self.config = config
-		self.content.attach(self)
-		self.formatter = DisplayFormatter(self.content, self.config)
-		self.clock_presenter= ClockPresenter(self.formatter, self.content)
-		self.next_alarm_presenter = NextAlarmPresenter(self.formatter, self.content)
-		self.weather_status_presenter =WeatherStatusPresenter(self.formatter, self.content)
-		self.wifi_status_presenter = WifiStatusPresenter(self.formatter, self.content)
+		self.display_content.attach(self)
+		self.formatter = DisplayFormatter(self.display_content, self.config)
+		self.clock_presenter= ClockPresenter(self.formatter, self.display_content)
+		self.next_alarm_presenter = NextAlarmPresenter(self.formatter, self.display_content)
+		self.weather_status_presenter =WeatherStatusPresenter(self.formatter, self.display_content)
+		self.wifi_status_presenter = WifiStatusPresenter(self.formatter, self.display_content)
 
 	def update(self, observation: Observation):
 		super().update(observation)
+		if isinstance(observation.observable, DisplayContent):
+			self.update_from_display_content(observation, observation.observable)
+
+	def update_from_display_content(self, observation: Observation, display_content: DisplayContent):
 		try:
 			self.adjust_display()
 		except Exception as e:
@@ -235,7 +257,7 @@ class Display(Observer):
 
 		next_alarm_image = self.next_alarm_presenter.draw()
 		im.paste(next_alarm_image, (2,im.height-next_alarm_image.height-2), next_alarm_image)
-		if not self.content.get_is_wifi_available():
+		if not self.display_content.get_is_wifi_available():
 			im.paste(self.wifi_status_presenter.draw(), (2,2))
 		elif (room_brightness >= 0.01):
 			im.paste(self.weather_status_presenter.draw(), (2,4))
