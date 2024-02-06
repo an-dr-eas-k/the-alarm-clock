@@ -147,6 +147,7 @@ class Speaker(Observer):
 		first_control_line = next(line for line in lines if line.startswith("Simple"))
 		pattern = r"^Simple.+'(\S+)',\d+$"
 		first_control_name = re.match(pattern, first_control_line).group(1)
+		logging.debug(f"volume mixer control name: {first_control_name}")
 		return first_control_name
 
 
