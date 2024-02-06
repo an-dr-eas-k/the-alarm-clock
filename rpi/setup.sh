@@ -1,9 +1,11 @@
+# install dependencies
 apt-get -y update
 apt-get -y install git python3 vlc python3-pip curl 
 curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
-ln -s /usr/bin/python3 /usr/bin/python
-setcap CAP_NET_BIND_SERVICE=+eip $(readlink /usr/bin/python -f)
-uid=1010
+
+# update system
+systemctl disable pigpiod
+systemctl disable aplay.service
 addgroup --system --gid $uid the-alarm-clock
 adduser --system --home /srv/the-alarm-clock/ --uid $uid --gid $uid --disabled-password the-alarm-clock
 adduser the-alarm-clock gpio
