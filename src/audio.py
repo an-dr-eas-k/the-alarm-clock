@@ -62,12 +62,9 @@ class MediaListPlayer(MediaPlayer):
 
 		try:
 			instance: vlc.Instance = vlc.Instance([
-				"--gain=2.0",
 				"--no-video", 
 				"--network-caching=3000",
-				"--live-caching=3000",
-				# "--waveout-volume=2.0",
-				# "--mmdevice-volume=1.25"
+				"--live-caching=3000"
 			]) 
 
 			self.list_player: vlc.MediaListPlayer = instance.media_list_player_new()
@@ -226,7 +223,7 @@ def main():
 		c.offline_alarm = AudioStream(stream_name='Offline Alarm', stream_url='Enchantment.ogg')
 		pc = PlaybackContent(AlarmClockState(c))
 		pc.audio_effect = StreamAudioEffect(
-			volume=0.5,
+			volume=0.3,
 			stream_definition=AudioStream(stream_name="test", stream_url='https://streams.br.de/bayern2sued_2.m3u'))
 			# stream_definition=c.get_offline_alarm_effect().stream_definition)
 		s = Speaker(pc, c)
