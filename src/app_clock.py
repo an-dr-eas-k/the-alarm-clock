@@ -24,7 +24,6 @@ class ClockApp:
 	configFile = f"{os.path.dirname(os.path.realpath(__file__))}/config.json"
 
 	def __init__(self) -> None:
-		init_logging()
 		parser = argparse.ArgumentParser("ClockApp")
 		parser.add_argument("-s", '--software', action='store_true')
 		self.args = parser.parse_args()
@@ -73,5 +72,6 @@ class ClockApp:
 		tornado.ioloop.IOLoop.current().start()
 		
 if __name__ == '__main__':
+	init_logging()
 	logging.info ("start")
 	ClockApp().go()

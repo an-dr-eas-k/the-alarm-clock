@@ -45,6 +45,18 @@
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/src",
       "justMyCode": false,
+    },
+    {
+      "name": "python app_librespotify_event_listener.py",
+      "type": "python",
+      "request": "launch",
+      "program": "app_librespotify_event_listener.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/src",
+      "args": [
+        "--software"
+      ],
+      "justMyCode": false,
     }
   ]
 }
