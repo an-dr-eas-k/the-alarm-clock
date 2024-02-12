@@ -9,7 +9,7 @@ import tornado
 import tornado.web
 from PIL.Image import Image
 
-from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, Config, StreamAudioEffect, VisualEffect, Weekday, try_update
+from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, Config, LibreSpotifyEvent, PlaybackContent, SpotifyAudioEffect, SpotifyStreamContent, StreamAudioEffect, VisualEffect, Weekday, try_update
 from gpi import get_room_brightness
 
 def split_path_arguments(path) -> tuple[str, int, str]:
@@ -19,6 +19,26 @@ def split_path_arguments(path) -> tuple[str, int, str]:
 		int(path_args[1]) if len(path_args) > 1 else None,
 		path_args[2] if len(path_args) > 2 else None
 	)
+
+class LibreSpotifyEventHandler(tornado.web.RequestHandler):
+
+	def initialize(self, playback_content: PlaybackContent) -> None:
+		self.playback_content = playback_content
+
+	def post(self):
+		body = '{}' if self.request.body is None or len(self.request.body) == 0 else self.request.body
+		spotify_event_payload: dict[str, str] = tornado.escape.json_decode(body)
+
+		spotify_event_dict = {key: value for key, value in spotify_event_payload.items()}
+
+		spotify_event = LibreSpotifyEvent(spotify_event_dict)
+		if spotify_event.is_playback_changed():
+			if not isinstance(self.playback_content.audio_effect, SpotifyAudioEffect):
+				self.playback_content.audio_effect = SpotifyAudioEffect(volume=spotify_event.volume)
+
+			self.playback_content.audio_effect.spotify_event=spotify_event
+			
+		self.playback_content.is_streaming = spotify_event.is_playback_active()
 
 class DisplayHandler(tornado.web.RequestHandler):
 
@@ -158,11 +178,12 @@ class Api:
 
 	app: tornado.web.Application
 
-	def __init__(self, state: AlarmClockState, image_getter):
+	def __init__(self, state: AlarmClockState, playback_content: PlaybackContent, image_getter):
 		self.state = state
 		handlers = [
 			(r"/api/config/?(.*)", ConfigApiHandler, {"config": state.configuration}),
 			(r"/api/action/?(.*)", ActionApiHandler ),
+			(r"/api/librespotify/?(.*)", LibreSpotifyEventHandler, {"playback_content": playback_content} ),
 			(r"/(.*)", ConfigHandler, {"config": state.configuration, "api": self})
 		]
 
