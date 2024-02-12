@@ -8,16 +8,13 @@ import datetime
 from astral import LocationInfo
 from astral.sun import sun
 from apscheduler.triggers.cron import CronTrigger
+from utils.network import json_api
 
 from utils.singleton import singleton
 
 from resources.resources import weather_icons_dir
 
 weather_icons_tree = ET.parse(f"{weather_icons_dir}/weathericons.xml").getroot()
-
-def json_api(url):
-	response = urlopen(url)
-	return json.load(response)
 
 def translate_keys(input_dict, translation_map):
 	return {translation_map.get(k, k): v for k, v in input_dict.items()}
