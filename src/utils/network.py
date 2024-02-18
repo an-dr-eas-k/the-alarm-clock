@@ -28,4 +28,4 @@ def json_api(url, headers = {'Content-Type': 'application/json'}, data_bytes = N
 		logging.error("Error calling url %s. status code: %s, response: %s", url, return_code, response.read())
 		return False
 
-	json.load(response)
+	return json.load(response)
