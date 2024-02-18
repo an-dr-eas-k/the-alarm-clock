@@ -202,6 +202,7 @@ class Api:
 				is_wifi_available = self.state.is_wifi_available,
 				is_daytime = self.state.is_daytime,
 				geo_location = self.state.geo_location.location_info.__dict__,
+				uptime = subprocess.check_output(['uptime']).decode('utf-8'),
 			), 
 			indent=2)
 
