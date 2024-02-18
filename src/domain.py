@@ -285,6 +285,8 @@ class Config(Observable):
 			dict(key='blink_segment', value=':'),
 			dict(key='refresh_timeout_in_secs', value=1),
 			dict(key='powernap_duration_in_mins', value=18),
+			dict(key='spotify_client_id', value=''),
+			dict(key='spotify_client_secret', value=''),
 			dict(key='default_volume', value=0.3)
 			]):
 			if not hasattr(self, conf_prop['key']):
@@ -441,6 +443,8 @@ class DisplayContent(MediaContent):
 	next_alarm_job: Job
 	current_weather: Weather
 	show_blink_segment: bool
+	current_playback_title: str
+
 
 	def __init__(self, state: AlarmClockState, playback_content: PlaybackContent):
 		super().__init__(state)
@@ -461,7 +465,7 @@ class DisplayContent(MediaContent):
 
 	def update_from_playback_content(self, observation: Observation, playback_content: PlaybackContent):
 		if observation.property_name == 'audio_effect':
-			if playback_content.audio_effect
+			self.current_playback_title = playback_content.audio_effect.display_content
 
 
 	def update_from_state(self, observation: Observation, state: AlarmClockState):
