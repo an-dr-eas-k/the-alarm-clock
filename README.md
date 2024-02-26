@@ -21,7 +21,7 @@ weather symbols are included from https://github.com/erikflowers/weather-icons
 |         |               | GPIO17       | 11 |   | 12 | GPIO18  |  i2s   (bclk)   |  purple |
 |         |               | GPIO27       | 13 |   | 14 |    GND  |                 |         |
 |         | mute (future) | GPIO22       | 15 |   | 16 | GPIO23  |                 |         |
-| red     | spi (vbat, 2) |    3V3       | 17 |   | 18 | GPIO24  | spi (   dc, 14) |  white  |
+| red     | spi (vbat, 2) |    3V3       | 17 |   | 18 | GPIO24  | spi (   dc, 14) |   gray  |
 | white   | spi ( sdi, 5) | GPIO10       | 19 |   | 20 |    GND  | spi (  vss,  1) |  black  |
 |         |               | GPIO09       | 21 |   | 22 | GPIO25  | spi (reset, 15) |   pink  |
 | brown   | spi (sclk, 4) | GPIO11       | 23 |   | 24 | GPIO08  | spi (   cs, 16) |   blue  |
