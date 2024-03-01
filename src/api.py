@@ -203,7 +203,10 @@ class Api:
 				is_wifi_available = self.state.is_wifi_available,
 				is_daytime = self.state.is_daytime,
 				geo_location = self.state.geo_location.location_info.__dict__,
-				playback_content = self.playback_content.__dict__,
+				playback_content = dict(
+					audio_effect = self.playback_content.audio_effect, 
+					volume = self.playback_content.volume, 
+					is_streaming = self.playback_content.is_streaming),
 				uptime = subprocess.check_output(['uptime']).strip().decode('utf-8'),
 			), 
 			indent=2)
