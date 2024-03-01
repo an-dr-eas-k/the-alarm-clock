@@ -28,4 +28,7 @@ def json_api(url, headers = {'Content-Type': 'application/json'}, data_bytes = N
 		logging.error("Error calling url %s. status code: %s, response: %s", url, return_code, response.read())
 		return False
 
-	return json.load(response)
+	if 'Content-Length' in response.headers and int(response.headers['Content-Length']) > 0:
+		return json.load(response)
+	else:
+		return None

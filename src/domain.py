@@ -36,8 +36,8 @@ class StreamContent:
 
 	name: str
 
-	def __init__(self, **kwargs):
-		for key, value in kwargs.items():
+	def __init__(self, dict: dict):
+		for key, value in dict.items():
 			setattr(self, key, value)
 
 class SpotifyAlbum(StreamContent):
@@ -53,7 +53,7 @@ class SpotifyTrack(StreamContent):
 
 class LibreSpotifyEvent(StreamContent):
 
-	player_event: str
+	player_event: str = None
 	track_id: str
 	old_track_id: str
 	duration_ms: str

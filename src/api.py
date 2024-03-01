@@ -26,19 +26,23 @@ class LibreSpotifyEventHandler(tornado.web.RequestHandler):
 		self.playback_content = playback_content
 
 	def post(self):
-		body = '{}' if self.request.body is None or len(self.request.body) == 0 else self.request.body
-		spotify_event_payload: dict[str, str] = tornado.escape.json_decode(body)
+		try:
+			logging.debug("received librespotify event")
+			body = '{}' if self.request.body is None or len(self.request.body) == 0 else self.request.body
+			spotify_event_payload: dict[str, str] = tornado.escape.json_decode(body)
 
-		spotify_event_dict = {key: value for key, value in spotify_event_payload.items()}
+			spotify_event_dict = {key: value for key, value in spotify_event_payload.items()}
 
-		spotify_event = LibreSpotifyEvent(spotify_event_dict)
-		if spotify_event.is_playback_changed():
-			if not isinstance(self.playback_content.audio_effect, SpotifyAudioEffect):
-				self.playback_content.audio_effect = SpotifyAudioEffect(volume=spotify_event.volume)
+			spotify_event = LibreSpotifyEvent(spotify_event_dict)
+			if spotify_event.is_playback_changed():
+				if not isinstance(self.playback_content.audio_effect, SpotifyAudioEffect):
+					self.playback_content.audio_effect = SpotifyAudioEffect(volume=spotify_event.volume)
 
-			self.playback_content.audio_effect.spotify_event=spotify_event
-			
-		self.playback_content.is_streaming = spotify_event.is_playback_active()
+				self.playback_content.audio_effect.spotify_event=spotify_event
+				
+			self.playback_content.is_streaming = spotify_event.is_playback_active()
+		except:
+			logging.warning("%s", traceback.format_exc())
 
 class DisplayHandler(tornado.web.RequestHandler):
 
@@ -184,7 +188,7 @@ class Api:
 		handlers = [
 			(r"/api/config/?(.*)", ConfigApiHandler, {"config": state.configuration}),
 			(r"/api/action/?(.*)", ActionApiHandler ),
-			(r"/api/librespotify/?(.*)", LibreSpotifyEventHandler, {"playback_content": playback_content} ),
+			(r"/api/librespotify", LibreSpotifyEventHandler, {"playback_content": playback_content} ),
 			(r"/(.*)", ConfigHandler, {"config": state.configuration, "api": self})
 		]
 
