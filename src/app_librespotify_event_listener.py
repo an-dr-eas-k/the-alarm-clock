@@ -6,7 +6,7 @@ import json
 import traceback
 from urllib.request import Request, urlopen
 from http.client import HTTPResponse
-from resources.resources import librespotify_env_vars
+from resources.resources import init_logging, librespotify_env_vars
 from utils.network import json_api
 
 class LibreSpotifyEventListenerApp:
@@ -43,5 +43,6 @@ class LibreSpotifyEventListenerApp:
 		return os.environ.copy()
 
 if __name__ == '__main__':
+	init_logging()
 	logging.info ("event occured")
 	LibreSpotifyEventListenerApp().go()
