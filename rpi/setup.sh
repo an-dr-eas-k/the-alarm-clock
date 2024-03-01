@@ -1,6 +1,6 @@
 # install dependencies
 apt-get -y update
-apt-get -y install git python3 vlc python3-pip curl 
+apt-get -y install git python3 vlc python3-pip curl libasound2-plugin-equal
 curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
 
 # update system
@@ -30,6 +30,31 @@ chown $uid:$uid -R /srv/the-alarm-clock
 EOF
 
 # setup raspotify
+
+	cat >> /srv/the-alarm-clock/.asoundrc << "EOF"
+cm.!default {
+ type plug
+ slave.pcm plugequal;
+}
+ 
+ctl.equal {
+ type equal
+}
+ 
+pcm.plugequal {
+ type equal
+ slave.pcm "plughw:ALSA,0"
+}
+ 
+pcm.equal {
+ type plug
+ slave.pcm plugequal
+}
+EOF
+
+	cat >> /etc/raspotify/conf << "EOF"
+LIBRESPOT_ONEVENT="/srv/the-alarm-clock/rpi/onspotifyevent.sh"
+EOF
 
 
 # setup the-alarm-clock app
