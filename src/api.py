@@ -180,6 +180,7 @@ class Api:
 
 	def __init__(self, state: AlarmClockState, playback_content: PlaybackContent, image_getter):
 		self.state = state
+		self.playback_content = playback_content
 		handlers = [
 			(r"/api/config/?(.*)", ConfigApiHandler, {"config": state.configuration}),
 			(r"/api/action/?(.*)", ActionApiHandler ),
@@ -202,6 +203,7 @@ class Api:
 				is_wifi_available = self.state.is_wifi_available,
 				is_daytime = self.state.is_daytime,
 				geo_location = self.state.geo_location.location_info.__dict__,
+				playback_content = self.playback_content.__dict__,
 				uptime = subprocess.check_output(['uptime']).strip().decode('utf-8'),
 			), 
 			indent=2)
