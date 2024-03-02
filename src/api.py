@@ -37,6 +37,7 @@ class LibreSpotifyEventHandler(tornado.web.RequestHandler):
 			self.playback_content.set_spotify_event(spotify_event)
 		except:
 			logging.warning("%s", traceback.format_exc())
+		self.write('OK')
 
 class DisplayHandler(tornado.web.RequestHandler):
 
