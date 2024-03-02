@@ -64,7 +64,7 @@ class LibreSpotifyEvent(StreamContent):
 	home: str
 
 	def is_playback_changed(self) -> bool:
-		return self.player_event in ['preloading', 'started', 'changed', 'volume_set', 'stopped', 'paused']
+		return self.player_event in ['preloading', 'started', 'changed', 'stopped', 'paused']
 
 	def is_playback_active(self) -> bool:
 		return self.player_event in ['preloading', 'started', 'changed', 'volume_set']
@@ -125,12 +125,13 @@ class OfflineAlarmEffect(StreamAudioEffect):
 @dataclass
 class SpotifyAudioEffect(AudioEffect):
 	spotify_event: LibreSpotifyEvent = None
+	track_id: str
 
 	def __init__(self):
-		super().__init__(1.0)
+		super().__init__(0.3)
 
 	def __str__(self):
-		return f"spotify_event: {self.spotify_event} {super().__str__()}"
+		return f"track_id: {self.track_id}, spotify_event: {self.spotify_event} {super().__str__()}"
 
 
 
@@ -460,6 +461,7 @@ class PlaybackContent(MediaContent):
 				self.audio_effect = SpotifyAudioEffect()
 
 			self.audio_effect.spotify_event=spotify_event
+			self.audio_effect.track_id = spotify_event.track_id
 			
 		self.is_streaming = spotify_event.is_playback_active()
 	

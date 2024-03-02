@@ -21,9 +21,8 @@ class SpotifyApi (Observer):
 		if observation.property_name == 'audio_effect':
 			if True \
 				and isinstance(playback_content.audio_effect, SpotifyAudioEffect) \
-				and playback_content.audio_effect.spotify_event \
-				and playback_content.audio_effect.spotify_event.track_id:
-				playback_content.title = self.to_title(playback_content.audio_effect.spotify_event.track_id)
+				and playback_content.audio_effect.track_id:
+				playback_content.title = self.to_title(playback_content.audio_effect.track_id)
 
 	def to_title(self, track_id) -> str:
 		if not self.client_id:
