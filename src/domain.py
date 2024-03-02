@@ -95,14 +95,23 @@ class AudioStream:
 	stream_url: str
 	id: int = -1
 
+	def __str__(self):
+		return f"stream_name: {self.stream_name}, stream_url: {self.stream_url}"
+
 @dataclass
 class AudioEffect:
 	volume: float
 	display_content: str = None
 
+	def __str__(self):
+		return f"volume: {self.volume}, display_content: {self.display_content}"
+
 @dataclass
 class StreamAudioEffect(AudioEffect):
 	stream_definition: AudioStream = None
+
+	def __str__(self):
+		return f"stream_definition: {self.stream_definition} {super().__str__()}"
 
 @singleton
 @dataclass
@@ -124,6 +133,9 @@ class SpotifyAudioEffect(AudioEffect, Observable):
 
 	def get_display_content(self) -> str:
 		return self.display_content
+
+	def __str__(self):
+		return f"spotify_event: {self.spotify_event} {super().__str__()}"
 
 
 
