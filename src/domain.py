@@ -456,8 +456,7 @@ class PlaybackContent(MediaContent):
 	def set_spotify_event(self, spotify_event: LibreSpotifyEvent):
 		if spotify_event.is_playback_changed():
 			if not isinstance(self.audio_effect, SpotifyAudioEffect):
-				audio_effect = SpotifyAudioEffect()
-				self.audio_effect = audio_effect
+				self.audio_effect = SpotifyAudioEffect()
 
 			self.audio_effect.spotify_event=spotify_event
 			
