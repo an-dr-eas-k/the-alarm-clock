@@ -172,7 +172,7 @@ class Speaker(Observer):
 			player = MediaListPlayer(audio_effect.stream_definition.stream_url)
 
 		if player is None and isinstance(audio_effect, SpotifyAudioEffect):
-			player = SpotifyPlayer(audio_effect.spotify_event.track_id)
+			player = SpotifyPlayer(audio_effect.track_id)
 
 		if player is None:
 			raise ValueError('unknown audio effect type')

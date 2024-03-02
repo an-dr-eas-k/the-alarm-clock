@@ -125,7 +125,7 @@ class OfflineAlarmEffect(StreamAudioEffect):
 @dataclass
 class SpotifyAudioEffect(AudioEffect):
 	spotify_event: LibreSpotifyEvent = None
-	track_id: str
+	track_id: str = None
 
 	def __init__(self):
 		super().__init__(0.3)
