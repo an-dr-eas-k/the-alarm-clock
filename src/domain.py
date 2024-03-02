@@ -80,6 +80,7 @@ class Mode(Enum):
 	Idle = 1
 	Alarm = 2
 	Music = 3
+	Spotify = 4
 
 class Weekday(Enum):
 	MONDAY = 1

@@ -149,13 +149,13 @@ class Controls(Observer):
 
 		def toggle_stream():
 			audio_state = self.playback_content
-			if not audio_state.audio_effect:
+			if not audio_state.audio_effect or not isinstance(audio_state.audio_effect, StreamAudioEffect):
 					first_stream = self.state.configuration.audio_streams[0]
 					audio_state.audio_effect = StreamAudioEffect( \
 						stream_definition=first_stream, \
 						volume=self.state.configuration.default_volume)
 
-			if self.state.mode in (Mode.Alarm, Mode.Music):
+			if self.state.mode in (Mode.Alarm, Mode.Music, Mode.Spotify):
 				self.state.mode = Mode.Idle
 			else:
 				self.state.mode = Mode.Music
