@@ -20,8 +20,9 @@ class SpotifyApi (Observer):
 	def update_from_playback_content(self, observation: Observation, playback_content: PlaybackContent):
 		if observation.property_name == 'audio_effect':
 			if isinstance(playback_content.audio_effect, SpotifyAudioEffect):
+				playback_content.title = self.to_title(playback_content.audio_effect.spotify_event.track_id)
 
-	def to_display_content(self, track_id) -> str:
+	def to_title(self, track_id) -> str:
 		if not self.client_id:
 			return "spotify not configured"
 		track: Track = Client(self.client_id, self.client_secret).get_track(track_id)

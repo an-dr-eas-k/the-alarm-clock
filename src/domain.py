@@ -105,10 +105,9 @@ class AudioStream:
 @dataclass
 class AudioEffect:
 	volume: float
-	display_content: str = None
 
 	def __str__(self):
-		return f"volume: {self.volume}, display_content: {self.display_content}"
+		return f"volume: {self.volume}"
 
 @dataclass
 class StreamAudioEffect(AudioEffect):
@@ -128,10 +127,6 @@ class SpotifyAudioEffect(AudioEffect):
 	def __init__(self):
 		super().__init__()
 		self.volume = 1.0
-		self.display_content = ""
-
-	def get_display_content(self) -> str:
-		return self.display_content
 
 	def __str__(self):
 		return f"spotify_event: {self.spotify_event} {super().__str__()}"
@@ -383,6 +378,15 @@ class MediaContent(Observable, Observer):
 class PlaybackContent(MediaContent):
 
 	desired_audio_effect: AudioEffect
+	
+	@property
+	def title(self) -> str:
+		return self._title
+
+	@title.setter
+	def title(self, value: str):
+		self._title = value
+		self.notify(property='title')
 
 	@property
 	def audio_effect(self) -> AudioEffect:
@@ -485,8 +489,8 @@ class DisplayContent(MediaContent):
 			self.update_from_playback_content(observation, observation.observable)
 
 	def update_from_playback_content(self, observation: Observation, playback_content: PlaybackContent):
-		if observation.property_name == 'audio_effect':
-			self.current_playback_title = playback_content.audio_effect.display_content
+		if observation.property_name == 'title':
+			self.current_playback_title = playback_content.title
 
 
 	def update_from_state(self, observation: Observation, state: AlarmClockState):
