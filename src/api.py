@@ -27,13 +27,13 @@ class LibreSpotifyEventHandler(tornado.web.RequestHandler):
 
 	def post(self):
 		try:
-			logging.debug("received librespotify event")
 			body = '{}' if self.request.body is None or len(self.request.body) == 0 else self.request.body
 			spotify_event_payload: dict[str, str] = tornado.escape.json_decode(body)
 
 			spotify_event_dict = {key: value for key, value in spotify_event_payload.items()}
 
 			spotify_event = LibreSpotifyEvent(spotify_event_dict)
+			logging.info("received librespotify event %s", spotify_event)
 			if spotify_event.is_playback_changed():
 				if not isinstance(self.playback_content.audio_effect, SpotifyAudioEffect):
 					self.playback_content.audio_effect = SpotifyAudioEffect(volume=spotify_event.volume)

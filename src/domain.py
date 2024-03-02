@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import date, time, timedelta
 import datetime
+import json
 import os
 from typing import List
 from apscheduler.job import Job
@@ -70,6 +71,9 @@ class LibreSpotifyEvent(StreamContent):
 
 	def is_playback_stopped(self) -> bool:
 		return self.player_event in ['stopped', 'paused']
+
+	def __str__(self):
+		return json.dumps(self.__dict__)
 
 class Mode(Enum):
 	Boot = 0
