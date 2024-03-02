@@ -122,8 +122,7 @@ class StreamAudioEffect(AudioEffect):
 class OfflineAlarmEffect(StreamAudioEffect):
 	pass
 
-@dataclass
-class SpotifyAudioEffect(AudioEffect, Observable):
+class SpotifyAudioEffect(Observable, AudioEffect):
 	_spotify_event = None
 
 	@property
@@ -134,6 +133,11 @@ class SpotifyAudioEffect(AudioEffect, Observable):
 	def spotify_event(self, value: LibreSpotifyEvent):
 		self._spotify_event = value
 		self.notify(property='spotify_event')
+
+	def __init__(self, volume: float, display_content: str = None):
+		super().__init__()
+		self.volume = volume
+		self.display_content = display_content
 
 	def get_display_content(self) -> str:
 		return self.display_content
