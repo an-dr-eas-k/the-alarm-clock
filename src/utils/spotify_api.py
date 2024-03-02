@@ -3,7 +3,9 @@ from spotify.models.track import Track
 
 from domain import SpotifyAudioEffect
 from utils.observer import Observation, Observer
+from utils.singleton import singleton
 
+@singleton
 class SpotifyApi (Observer):
 	
 	def __init__(self, client_id: str, client_secret: str):
@@ -20,6 +22,8 @@ class SpotifyApi (Observer):
 			audio_effect.display_content = self.to_display_content(audio_effect.spotify_event.track_id)
 
 	def to_display_content(self, track_id) -> str:
+		if not self.client_id:
+			return "spotify not configured"
 		track: Track = Client(self.client_id, self.client_secret).get_track(track_id)
 		return "%s - %s" % (track.name,",".join([a.name for a in track.artists]))
 
