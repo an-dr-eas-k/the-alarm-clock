@@ -31,26 +31,8 @@ EOF
 
 # setup raspotify
 
-	cat >> /srv/the-alarm-clock/.asoundrc << "EOF"
-cm.!default {
- type plug
- slave.pcm plugequal;
-}
- 
-ctl.equal {
- type equal
-}
- 
-pcm.plugequal {
- type equal
- slave.pcm "plughw:ALSA,0"
-}
- 
-pcm.equal {
- type plug
- slave.pcm plugequal
-}
-EOF
+	cp resources/raspotify.service /lib/systemd/system/raspotify.service
+	cp resources/asoundrc /srv/the-alarm-clock/.asoundrc
 
 	cat >> /etc/raspotify/conf << "EOF"
 LIBRESPOT_ONEVENT="/srv/the-alarm-clock/rpi/onspotifyevent.sh"
