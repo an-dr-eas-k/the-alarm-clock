@@ -65,7 +65,7 @@ uid=1010
 if [ -z "$( grep the-alarm-clock /etc/rc.local )" ]; then
 	sed -i '/exit/d' /etc/rc.local
 	cat >> /etc/rc.local << "EOF"
-sudo -u the-alarm-clock -- bash /srv/the-alarm-clock/rpi/onboot.sh 2> /var/log/the-alarm-clock.errout > /var/log/the-alarm-clock.stdout &
+sudo -u the-alarm-clock -- bash /srv/the-alarm-clock/rpi/onboot.sh 2> /var/log/the-alarm-clock.errout 1> /var/log/the-alarm-clock.stdout &
 exit 0
 EOF
 fi
