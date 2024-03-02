@@ -121,12 +121,12 @@ class StreamAudioEffect(AudioEffect):
 class OfflineAlarmEffect(StreamAudioEffect):
 	pass
 
+@dataclass
 class SpotifyAudioEffect(AudioEffect):
 	spotify_event: LibreSpotifyEvent = None
 
 	def __init__(self):
-		super().__init__()
-		self.volume = 1.0
+		super().__init__(1.0)
 
 	def __str__(self):
 		return f"spotify_event: {self.spotify_event} {super().__str__()}"
