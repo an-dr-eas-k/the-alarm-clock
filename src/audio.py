@@ -27,7 +27,9 @@ class MediaPlayer:
 		self.error_callback = callback
 
 class SpotifyPlayer(MediaPlayer):
-	pass
+
+	def __init__(self, track_id: str):
+		self.track_id = track_id
 
 class MediaListPlayer(MediaPlayer):
 	list_player: vlc.MediaListPlayer = None
@@ -170,7 +172,7 @@ class Speaker(Observer):
 			player = MediaListPlayer(audio_effect.stream_definition.stream_url)
 
 		if player is None and isinstance(audio_effect, SpotifyAudioEffect):
-			player = SpotifyPlayer(audio_effect.play_id)
+			player = SpotifyPlayer(audio_effect.spotify_event.track_id)
 
 		if player is None:
 			raise ValueError('unknown audio effect type')
