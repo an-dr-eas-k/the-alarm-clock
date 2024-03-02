@@ -16,7 +16,6 @@ from utils.observer import Observable, Observation, Observer
 from utils.geolocation import GeoLocation, Weather
 from resources.resources import alarms_dir
 from utils.singleton import singleton
-from utils.spotify_api import SpotifyApi
 
 def try_update(object, property_name: str, value: str) -> bool:
 	if hasattr(object, property_name):
@@ -123,17 +122,8 @@ class StreamAudioEffect(AudioEffect):
 class OfflineAlarmEffect(StreamAudioEffect):
 	pass
 
-class SpotifyAudioEffect(Observable, AudioEffect):
-	_spotify_event = None
-
-	@property
-	def spotify_event(self) -> LibreSpotifyEvent:
-		return self._spotify_event
-
-	@spotify_event.setter
-	def spotify_event(self, value: LibreSpotifyEvent):
-		self._spotify_event = value
-		self.notify(property='spotify_event')
+class SpotifyAudioEffect(AudioEffect):
+	spotify_event: LibreSpotifyEvent = None
 
 	def __init__(self):
 		super().__init__()
@@ -383,9 +373,6 @@ class AlarmClockState(Observable):
 		self.is_wifi_available = True
 		self.show_blink_segment = True
 
-	def get_spotify_api(self) -> SpotifyApi:
-		return SpotifyApi(self.configuration.spotify_client_id, self.configuration.spotify_client_secret)
-
 class MediaContent(Observable, Observer):
 
 	def __init__(self, state: AlarmClockState):
@@ -466,7 +453,6 @@ class PlaybackContent(MediaContent):
 		if spotify_event.is_playback_changed():
 			if not isinstance(self.audio_effect, SpotifyAudioEffect):
 				audio_effect = SpotifyAudioEffect()
-				audio_effect.attach(self.state.get_spotify_api())
 				self.audio_effect = audio_effect
 
 			self.audio_effect.spotify_event=spotify_event

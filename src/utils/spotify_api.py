@@ -1,7 +1,7 @@
 from spotify.sync import Client
 from spotify.models.track import Track
 
-from domain import SpotifyAudioEffect
+from domain import PlaybackContent, SpotifyAudioEffect
 from utils.observer import Observation, Observer
 from utils.singleton import singleton
 
@@ -14,12 +14,12 @@ class SpotifyApi (Observer):
 
 	def update(self, observation: Observation):
 		super().update(observation)
-		if isinstance(observation.observable, SpotifyAudioEffect):
-			self.update_from_spotify_audio_effect(observation, observation.observable)
+		if isinstance(observation.observable, PlaybackContent):
+			self.update_from_playback_content(observation, observation.observable)
 
-	def update_from_spotify_audio_effect(self, observation: Observation, audio_effect: SpotifyAudioEffect):
-		if observation.property_name == 'spotify_event':
-			audio_effect.display_content = self.to_display_content(audio_effect.spotify_event.track_id)
+	def update_from_playback_content(self, observation: Observation, playback_content: PlaybackContent):
+		if observation.property_name == 'audio_effect':
+			if isinstance(playback_content.audio_effect, SpotifyAudioEffect):
 
 	def to_display_content(self, track_id) -> str:
 		if not self.client_id:
