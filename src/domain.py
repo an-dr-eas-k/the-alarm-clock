@@ -453,6 +453,15 @@ class PlaybackContent(MediaContent):
 
 	def toggle_stream(self, new_value: bool = None):
 		self.is_streaming = new_value if new_value is not None else not self.is_streaming
+
+	def set_spotify_event(self, spotify_event: LibreSpotifyEvent):
+		if spotify_event.is_playback_changed():
+			if not isinstance(self.audio_effect, SpotifyAudioEffect):
+				self.audio_effect = SpotifyAudioEffect(volume=spotify_event.volume)
+
+			self.audio_effect.spotify_event=spotify_event
+			
+		self.is_streaming = spotify_event.is_playback_active()
 	
 class DisplayContent(MediaContent):
 	is_volume_meter_shown: bool=False

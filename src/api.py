@@ -34,13 +34,7 @@ class LibreSpotifyEventHandler(tornado.web.RequestHandler):
 
 			spotify_event = LibreSpotifyEvent(spotify_event_dict)
 			logging.info("received librespotify event %s", spotify_event)
-			if spotify_event.is_playback_changed():
-				if not isinstance(self.playback_content.audio_effect, SpotifyAudioEffect):
-					self.playback_content.audio_effect = SpotifyAudioEffect(volume=spotify_event.volume)
-
-				self.playback_content.audio_effect.spotify_event=spotify_event
-				
-			self.playback_content.is_streaming = spotify_event.is_playback_active()
+			self.playback_content.set_spotify_event(spotify_event)
 		except:
 			logging.warning("%s", traceback.format_exc())
 
