@@ -22,52 +22,52 @@ SupplementaryGroups=audio
 #RestartSec=10
 
 # Some of these may be implied by DynamicUser=yes
-RestrictRealtime=true
-RestrictSUIDSGID=true
-RestrictNamespaces=true
-RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
-
-ProtectHostname=true
-ProtectControlGroups=true
-ProtectKernelLogs=true
-ProtectKernelModules=true
-ProtectKernelTunables=true
-ProtectProc=invisible
-ProtectHome=true
-ProtectSystem=strict
-ProtectClock=yes
-
-DevicePolicy=strict
-DeviceAllow=char-alsa rw
-DeviceAllow=/dev/null rw
-DeviceAllow=/dev/random r
-DeviceAllow=/dev/urandom r
-
-UMask=077
-CacheDirectoryMode=0700
-CacheDirectory=%N
-StateDirectoryMode=0700
-StateDirectory=%N
-ConfigurationDirectoryMode=0600
-ConfigurationDirectory=%N
-RuntimeDirectory=%N
-
-PrivateTmp=true
-PrivateUsers=true
-
-ProcSubset=pid
-NoNewPrivileges=true
-PermissionsStartOnly=true
-LockPersonality=true
-MemoryDenyWriteExecute=true
-RemoveIPC=true
-
-CapabilityBoundingSet=
-
-SystemCallArchitectures=native
-SystemCallFilter=@system-service
-SystemCallFilter=~@privileged @resources
-SystemCallErrorNumber=EPERM
+# RestrictRealtime=true
+# RestrictSUIDSGID=true
+# RestrictNamespaces=true
+# RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+# 
+# ProtectHostname=true
+# ProtectControlGroups=true
+# ProtectKernelLogs=true
+# ProtectKernelModules=true
+# ProtectKernelTunables=true
+# ProtectProc=invisible
+# ProtectHome=true
+# ProtectSystem=strict
+# ProtectClock=yes
+# 
+# DevicePolicy=strict
+# DeviceAllow=char-alsa rw
+# DeviceAllow=/dev/null rw
+# DeviceAllow=/dev/random r
+# DeviceAllow=/dev/urandom r
+# 
+# UMask=077
+# CacheDirectoryMode=0700
+# CacheDirectory=%N
+# StateDirectoryMode=0700
+# StateDirectory=%N
+# ConfigurationDirectoryMode=0600
+# ConfigurationDirectory=%N
+# RuntimeDirectory=%N
+# 
+# PrivateTmp=true
+# PrivateUsers=true
+# 
+# ProcSubset=pid
+# NoNewPrivileges=true
+# PermissionsStartOnly=true
+# LockPersonality=true
+# MemoryDenyWriteExecute=true
+# RemoveIPC=true
+# 
+# CapabilityBoundingSet=
+# 
+# SystemCallArchitectures=native
+# SystemCallFilter=@system-service
+# SystemCallFilter=~@privileged @resources
+# SystemCallErrorNumber=EPERM
 
 Environment=LIBRESPOT_NAME="%N (%H)"
 Environment=LIBRESPOT_BACKEND="alsa"
