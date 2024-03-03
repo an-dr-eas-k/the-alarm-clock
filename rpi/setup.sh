@@ -31,10 +31,11 @@ EOF
 
 # setup raspotify
 
-	cp resources/raspotify.service /lib/systemd/system/raspotify.service
-	cp resources/asoundrc /srv/the-alarm-clock/.asoundrc
+ln -s ~+/resources/raspotify.service /lib/systemd/system/raspotify.service
+ln -s ~+/resources/asoundrc /srv/the-alarm-clock/.asoundrc
+ln -s ~+/resources/raspotify.conf /etc/raspotify/conf
 
-	cat >> /etc/raspotify/conf << "EOF"
+cat >> /etc/raspotify/conf << "EOF"
 LIBRESPOT_ONEVENT="/srv/the-alarm-clock/rpi/onspotifyevent.sh"
 EOF
 
