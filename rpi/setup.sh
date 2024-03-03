@@ -25,9 +25,8 @@ adduser the-alarm-clock i2c
 adduser the-alarm-clock spi
 mkdir -p /srv/the-alarm-clock
 chown $uid:$uid -R /srv/the-alarm-clock
-	cat >> /etc/sudoers.d/the-alarm-clock << "EOF"
-%the-alarm-clock	ALL=(ALL:ALL) NOPASSWD: /usr/sbin/shutdown, /usr/sbin/reboot
-EOF
+
+ln -s ~+/resources/sudoers /etc/sudoers.d/the-alarm-clock
 
 # setup raspotify
 
