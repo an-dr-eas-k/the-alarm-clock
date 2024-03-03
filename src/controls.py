@@ -156,6 +156,8 @@ class Controls(Observer):
 						volume=self.state.configuration.default_volume)
 
 			if self.state.mode in (Mode.Alarm, Mode.Music, Mode.Spotify):
+				if self.state.mode == Mode.Spotify:
+					os.system('sudo systemctl restart raspotify.service')
 				self.state.mode = Mode.Idle
 			else:
 				self.state.mode = Mode.Music

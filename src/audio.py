@@ -134,6 +134,16 @@ class Speaker(Observer):
 				self.adjust_streaming(False)
 				self.adjust_streaming(True)
 
+	def read_volume(self) -> float:
+		control_name = self.get_first_control_name()
+		output = subprocess.check_output(["amixer", "sget", control_name])
+		lines = output.decode().splitlines()
+		pattern = r"\[(\d+)%\]"
+		volumes = [ float(re.match(pattern, line).group(1)) for line in lines if re.match(pattern, line)]
+		volume = sum(volumes) / len(volumes) if len(volumes) > 0 else 0
+		logging.debug(f"volume is %s", volume)
+		return volume
+
 	def adjust_volume(self, newVolume: float):
 		control_name = self.get_first_control_name()
 		subprocess.call(["amixer", "sset", control_name, f"{newVolume * 100}%"], stdout=subprocess.DEVNULL)

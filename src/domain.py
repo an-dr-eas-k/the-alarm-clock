@@ -63,14 +63,14 @@ class LibreSpotifyEvent(StreamContent):
 	sink_status: str
 	home: str
 
-	def is_playback_changed(self) -> bool:
-		return self.player_event in ['preloading', 'started', 'changed', 'stopped', 'paused']
-
-	def is_playback_active(self) -> bool:
-		return self.player_event in ['preloading', 'started', 'changed', 'volume_set']
+	def is_playback_started(self) -> bool:
+		return self.player_event in ['preloading', 'started', 'changed']
 
 	def is_playback_stopped(self) -> bool:
 		return self.player_event in ['stopped', 'paused']
+
+	def is_volume_changed(self) -> bool:
+		return self.player_event in ['volume_set']
 
 	def __str__(self):
 		return json.dumps(self.__dict__)
@@ -456,15 +456,22 @@ class PlaybackContent(MediaContent):
 		self.is_streaming = new_value if new_value is not None else not self.is_streaming
 
 	def set_spotify_event(self, spotify_event: LibreSpotifyEvent):
-		if spotify_event.is_playback_changed():
-			if not isinstance(self.audio_effect, SpotifyAudioEffect):
-				self.audio_effect = SpotifyAudioEffect()
+		if not isinstance(self.audio_effect, SpotifyAudioEffect):
+			self.audio_effect = SpotifyAudioEffect()
 
-			self.audio_effect.spotify_event=spotify_event
+		self.audio_effect.spotify_event=spotify_event
+
+		if spotify_event.track_id:
 			self.audio_effect.track_id = spotify_event.track_id
 			
-		self.is_streaming = spotify_event.is_playback_active()
-	
+		if spotify_event.is_playback_started():
+			self.state.mode = Mode.Spotify
+			self.is_streaming = True
+
+		if spotify_event.is_playback_stopped():
+			self.state.mode = Mode.Idle
+			self.is_streaming = False
+
 class DisplayContent(MediaContent):
 	is_volume_meter_shown: bool=False
 	next_alarm_job: Job
