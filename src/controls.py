@@ -152,14 +152,14 @@ class Controls(Observer):
 	def button4_action(self):
 
 		def toggle_stream():
-			audio_state = self.playback_content
-			if not audio_state.audio_effect or not isinstance(audio_state.audio_effect, StreamAudioEffect):
+			playback_content = self.playback_content
+			if not playback_content.audio_effect or not isinstance(playback_content.audio_effect, StreamAudioEffect):
 					first_stream = self.state.configuration.audio_streams[0]
-					audio_state.audio_effect = StreamAudioEffect( \
+					playback_content.audio_effect = StreamAudioEffect( \
 						stream_definition=first_stream, \
 						volume=self.state.configuration.default_volume)
 
-			if self.state.mode in (Mode.Alarm, Mode.Music, Mode.Spotify):
+			if self.state.mode in [Mode.Alarm, Mode.Music, Mode.Spotify]:
 				if self.state.mode == Mode.Spotify:
 					restart_spotify_daemon()
 				self.state.mode = Mode.Idle

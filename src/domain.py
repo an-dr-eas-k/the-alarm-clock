@@ -22,7 +22,7 @@ def try_update(object, property_name: str, value: str) -> bool:
 		attr_value = getattr(object, property_name)
 		attr_type = type(attr_value)
 		if attr_type == bool:
-			value = value.lower() in ("yes", "true", "t", "1")
+			value = value.lower() in ["yes", "true", "t", "1"]
 		else:
 			value = attr_type(value) if len(value) > 0 else None
 		if value != attr_value:
@@ -432,7 +432,7 @@ class PlaybackContent(MediaContent):
 
 	def update_from_state(self, observation: Observation, state: AlarmClockState):
 		if observation.property_name == 'mode':
-			self.toggle_stream(new_value=(state.mode in (Mode.Alarm, Mode.Music, Mode.Spotify)))
+			self.toggle_stream(new_value=(state.mode in [Mode.Alarm, Mode.Music, Mode.Spotify]))
 		if observation.property_name == 'is_wifi_available':
 			self.wifi_availability_changed(state.is_wifi_available)
 
