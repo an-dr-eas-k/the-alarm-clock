@@ -12,11 +12,9 @@ def is_ping_successful(hostname):
 		stderr=subprocess.DEVNULL)
 	return result.returncode == 0
 
-def stop_spotify_daemon():
-	logging.info("stopping spotify daemon")
-	os.system('sudo systemctl stop raspotify.service')
-	# time.sleep(10)
-	# os.system('sudo systemctl start raspotify.service')
+def restart_spotify_daemon():
+	logging.info("restarting spotify daemon")
+	os.system('sudo systemctl restart raspotify.service')
 
 def reboot_system():
 	logging.info("rebooting system")

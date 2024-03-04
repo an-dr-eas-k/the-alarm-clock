@@ -11,7 +11,7 @@ from apscheduler.job import Job
 from domain import AlarmClockState, AlarmDefinition, PlaybackContent, DisplayContent, Mode, OfflineAlarmEffect, StreamAudioEffect, Observation, Observer, Config
 from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
-from utils.os import stop_spotify_daemon
+from utils.os import restart_spotify_daemon
 
 button1Id = 0
 button2Id = 5
@@ -155,7 +155,7 @@ class Controls(Observer):
 
 			if self.state.mode in [Mode.Alarm, Mode.Music, Mode.Spotify]:
 				if self.state.mode == Mode.Spotify:
-					stop_spotify_daemon()
+					restart_spotify_daemon()
 				self.state.mode = Mode.Idle
 			else:
 				playback_content = self.playback_content

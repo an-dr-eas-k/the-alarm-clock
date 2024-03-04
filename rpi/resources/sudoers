@@ -1,3 +1,2 @@
 %the-alarm-clock ALL=(ALL) NOPASSWD: /usr/sbin/shutdown, /usr/sbin/reboot
-%the-alarm-clock ALL= NOPASSWD: /bin/systemctl stop raspotify.service
-%the-alarm-clock ALL= NOPASSWD: /bin/systemctl start raspotify.service
+%the-alarm-clock ALL= NOPASSWD: /bin/systemctl restart raspotify.service
