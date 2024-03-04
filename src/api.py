@@ -207,7 +207,7 @@ class Api:
 					audio_effect = self.playback_content.audio_effect.__str__(), 
 					volume = self.playback_content.volume, 
 					is_streaming = self.playback_content.is_streaming,
-					mode = self.state.mode.value),
+					mode = self.state.mode.name),
 				uptime = subprocess.check_output(['uptime']).strip().decode('utf-8'),
 			), 
 			indent=2)
