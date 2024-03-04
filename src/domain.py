@@ -81,9 +81,6 @@ class Mode(Enum):
 	Music = 3
 	Spotify = 4
 
-	def __str__(self):
-		return '%s' % self.value
-
 class Weekday(Enum):
 	MONDAY = 1
 	TUESDAY = 2
