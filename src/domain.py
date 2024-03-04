@@ -460,7 +460,7 @@ class PlaybackContent(MediaContent):
 		spotify_audio_effect = self.audio_effect if isinstance(self.audio_effect, SpotifyAudioEffect) else SpotifyAudioEffect()
 
 		spotify_audio_effect.spotify_event = spotify_event
-		if spotify_event.track_id:
+		if hasattr(spotify_event, 'track_id'):
 			spotify_audio_effect.track_id = spotify_event.track_id
 			
 		if spotify_event.is_playback_started():
