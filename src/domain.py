@@ -61,7 +61,6 @@ class LibreSpotifyEvent(StreamContent):
 	position_ms: str
 	volume: str
 	sink_status: str
-	home: str
 
 	def is_playback_started(self) -> bool:
 		return self.player_event in ['playing', 'started', 'changed']

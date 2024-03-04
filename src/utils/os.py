@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import subprocess
+import time
 
 def is_ping_successful(hostname):
 	result = subprocess.run(
@@ -14,6 +15,7 @@ def is_ping_successful(hostname):
 def restart_spotify_daemon():
 	logging.info("restarting spotify daemon")
 	os.system('sudo systemctl stop raspotify.service')
+	time.sleep(10)
 	os.system('sudo systemctl start raspotify.service')
 
 def reboot_system():
