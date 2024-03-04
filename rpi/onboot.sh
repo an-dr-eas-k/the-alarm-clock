@@ -34,5 +34,5 @@ while true; do
 	echo "installing requirements"
 	pip3 install -r requirements.txt
 	echo "invoking app_clock.py"
-	python3 -u src/app_clock.py
+	python -u src/app_clock.py
 done

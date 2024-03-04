@@ -1,0 +1,86 @@
+[Unit]
+Description=Raspotify (Spotify Connect Client)
+Documentation=https://github.com/dtcooper/raspotify
+Documentation=https://github.com/librespot-org/librespot
+Documentation=https://github.com/dtcooper/raspotify/wiki
+Documentation=https://github.com/librespot-org/librespot/wiki/Options
+Wants=network.target sound.target
+After=network.target sound.target
+
+OnFailure=raspotify-crash-report-generator.service
+
+[Service]
+User=the-alarm-clock
+Group=the-alarm-clock
+SupplementaryGroups=audio
+
+# /usr/bin/raspotify-crash-report-generator.sh run by
+# raspotify-crash-report-generator.service handles
+# restart logic.
+ 
+#Restart=on-failure
+#RestartSec=10
+
+# Some of these may be implied by DynamicUser=yes
+# RestrictRealtime=true
+# RestrictSUIDSGID=true
+# RestrictNamespaces=true
+# RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+# 
+# ProtectHostname=true
+# ProtectControlGroups=true
+# ProtectKernelLogs=true
+# ProtectKernelModules=true
+# ProtectKernelTunables=true
+# ProtectProc=invisible
+# ProtectHome=true
+# ProtectSystem=strict
+# ProtectClock=yes
+# 
+# DevicePolicy=strict
+# DeviceAllow=char-alsa rw
+# DeviceAllow=/dev/null rw
+# DeviceAllow=/dev/random r
+# DeviceAllow=/dev/urandom r
+# 
+# UMask=077
+# CacheDirectoryMode=0700
+# CacheDirectory=%N
+# StateDirectoryMode=0700
+# StateDirectory=%N
+# ConfigurationDirectoryMode=0600
+# ConfigurationDirectory=%N
+# RuntimeDirectory=%N
+# 
+# PrivateTmp=true
+# PrivateUsers=true
+# 
+# ProcSubset=pid
+# NoNewPrivileges=true
+# PermissionsStartOnly=true
+# LockPersonality=true
+# MemoryDenyWriteExecute=true
+# RemoveIPC=true
+# 
+# CapabilityBoundingSet=
+# 
+# SystemCallArchitectures=native
+# SystemCallFilter=@system-service
+# SystemCallFilter=~@privileged @resources
+# SystemCallErrorNumber=EPERM
+
+Environment=LIBRESPOT_NAME="%N (%H)"
+Environment=LIBRESPOT_BACKEND="alsa"
+Environment=LIBRESPOT_CACHE=%C/%N
+Environment=LIBRESPOT_SYSTEM_CACHE=%S/%N
+
+# This Moves librespot's /tmp to RAM
+# It is overridden in the config.
+# See the config for details.
+Environment=TMPDIR=%t/%N
+EnvironmentFile=-%E/%N/conf
+
+ExecStart=/usr/bin/librespot
+
+[Install]
+WantedBy=multi-user.target

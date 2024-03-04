@@ -9,8 +9,9 @@ import tornado
 import tornado.web
 from PIL.Image import Image
 
-from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, Config, StreamAudioEffect, VisualEffect, Weekday, try_update
+from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, Config, LibreSpotifyEvent, PlaybackContent, StreamAudioEffect, VisualEffect, Weekday, try_update
 from gpi import get_room_brightness
+from utils.os import reboot_system, shutdown_system
 
 def split_path_arguments(path) -> tuple[str, int, str]:
 	path_args = path[0].split('/')
@@ -19,6 +20,25 @@ def split_path_arguments(path) -> tuple[str, int, str]:
 		int(path_args[1]) if len(path_args) > 1 else None,
 		path_args[2] if len(path_args) > 2 else None
 	)
+
+class LibreSpotifyEventHandler(tornado.web.RequestHandler):
+
+	def initialize(self, playback_content: PlaybackContent) -> None:
+		self.playback_content = playback_content
+
+	def post(self):
+		try:
+			body = '{}' if self.request.body is None or len(self.request.body) == 0 else self.request.body
+			spotify_event_payload: dict[str, str] = tornado.escape.json_decode(body)
+
+			spotify_event_dict = {key: value for key, value in spotify_event_payload.items()}
+
+			spotify_event = LibreSpotifyEvent(spotify_event_dict)
+			logging.info("received librespotify event %s", spotify_event)
+			self.playback_content.set_spotify_event(spotify_event)
+		except:
+			logging.warning("%s", traceback.format_exc())
+		self.finish()
 
 class DisplayHandler(tornado.web.RequestHandler):
 
@@ -58,9 +78,9 @@ class ActionApiHandler(tornado.web.RequestHandler):
 			if(type == 'update'):
 				os._exit(0)
 			elif (type == 'reboot'):
-				os.system('sudo reboot')
+				reboot_system()
 			elif (type == 'shutdown'):
-				os.system('sudo shutdown -h now')
+				shutdown_system()
 			else:
 				logging.warning("Unknown action: %s", type)
 
@@ -158,11 +178,13 @@ class Api:
 
 	app: tornado.web.Application
 
-	def __init__(self, state: AlarmClockState, image_getter):
+	def __init__(self, state: AlarmClockState, playback_content: PlaybackContent, image_getter):
 		self.state = state
+		self.playback_content = playback_content
 		handlers = [
 			(r"/api/config/?(.*)", ConfigApiHandler, {"config": state.configuration}),
 			(r"/api/action/?(.*)", ActionApiHandler ),
+			(r"/api/librespotify", LibreSpotifyEventHandler, {"playback_content": playback_content} ),
 			(r"/(.*)", ConfigHandler, {"config": state.configuration, "api": self})
 		]
 
@@ -181,6 +203,12 @@ class Api:
 				is_wifi_available = self.state.is_wifi_available,
 				is_daytime = self.state.is_daytime,
 				geo_location = self.state.geo_location.location_info.__dict__,
+				playback_content = dict(
+					audio_effect = self.playback_content.audio_effect.__str__(), 
+					volume = self.playback_content.volume, 
+					is_streaming = self.playback_content.is_streaming,
+					mode = self.state.mode.name),
+				uptime = subprocess.check_output(['uptime']).strip().decode('utf-8'),
 			), 
 			indent=2)
 

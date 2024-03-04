@@ -179,7 +179,7 @@ class WeatherStatusPresenter(Presenter):
 		
 		weather_image = text_to_image(
 			weather_character, font_weather, 
-			fg_color=self.formatter.foreground_color(min_value=2),
+			fg_color=self.formatter.foreground_color(),
 			bg_color=self.formatter.background_color())
 		formatter = "{:.1f}"
 		desired_length = 4
@@ -194,7 +194,7 @@ class WeatherStatusPresenter(Presenter):
 		temperature_image = text_to_image(
 			text=temperature_str,
 			font=font_7segment, 
-			fg_color=self.formatter.foreground_color(min_value=2),
+			fg_color=self.formatter.foreground_color(),
 			bg_color=self.formatter.background_color())
 
 		width = int(0.6*weather_image.width) +temperature_image.width

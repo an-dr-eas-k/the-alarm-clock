@@ -6,7 +6,7 @@
   "configurations": [
     {
       "name": "python app_clock.py",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "app_clock.py",
       "args": [
@@ -17,8 +17,17 @@
       "justMyCode": false,
     },
     {
+      "name": "python test.py",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "test.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/src",
+      "justMyCode": false,
+    },
+    {
       "name": "python audio.py",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "audio.py",
       "console": "integratedTerminal",
@@ -27,7 +36,7 @@
     },
     {
       "name": "python display.py",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "display.py",
       "args": [
@@ -39,11 +48,23 @@
     },
     {
       "name": "python geolocation.py",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "utils/geolocation.py",
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/src",
+      "justMyCode": false,
+    },
+    {
+      "name": "python app_librespotify_event_listener.py",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "app_librespotify_event_listener.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/src",
+      "args": [
+        "--software"
+      ],
       "justMyCode": false,
     }
   ]

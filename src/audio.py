@@ -5,7 +5,6 @@ import vlc
 import time
 import subprocess 
 import threading
-import re
 
 from domain import AlarmClockState, Mode, PlaybackContent, AudioEffect, AudioStream, Config, OfflineAlarmEffect, StreamAudioEffect, Observation, Observer, SpotifyAudioEffect
 from utils.network import is_internet_available
@@ -27,7 +26,9 @@ class MediaPlayer:
 		self.error_callback = callback
 
 class SpotifyPlayer(MediaPlayer):
-	pass
+
+	def __init__(self, track_id: str):
+		self.track_id = track_id
 
 class MediaListPlayer(MediaPlayer):
 	list_player: vlc.MediaListPlayer = None
@@ -62,12 +63,9 @@ class MediaListPlayer(MediaPlayer):
 
 		try:
 			instance: vlc.Instance = vlc.Instance([
-				"--gain=5.0",
 				"--no-video", 
 				"--network-caching=3000",
-				"--live-caching=3000",
-				# "--waveout-volume=2.0",
-				# "--mmdevice-volume=1.25"
+				"--live-caching=3000"
 			]) 
 
 			self.list_player: vlc.MediaListPlayer = instance.media_list_player_new()
@@ -111,11 +109,11 @@ class Speaker(Observer):
 	media_player: MediaPlayer = None
 	fallback_player_proc: subprocess.Popen = None
 
-	def __init__(self, audio_state: PlaybackContent, config: Config) -> None:
+	def __init__(self, playback_content: PlaybackContent, config: Config) -> None:
 		self.threadLock = threading.Lock()
-		self.audio_state = audio_state
+		self.playback_content = playback_content
 		self.config = config
-		self.audio_state.attach(self)
+		self.playback_content.attach(self)
 
 	def update(self, observation: Observation):
 		super().update(observation)
@@ -123,38 +121,21 @@ class Speaker(Observer):
 			self.update_from_playback_content(observation, observation.observable)
 
 	def update_from_playback_content(self, observation: Observation, playback_content: PlaybackContent):
-		if (observation.property_name == 'volume'):
-			self.adjust_volume(playback_content.volume)
-		elif (observation.property_name == 'is_streaming'):
+		if (observation.property_name == 'is_streaming'):
 			self.adjust_streaming(playback_content.is_streaming)
 		elif (observation.property_name == 'audio_effect'):
 			self.adjust_effect()
 
 	def adjust_effect(self):
-			if self.audio_state.is_streaming:
+			if self.playback_content.is_streaming:
 				self.adjust_streaming(False)
 				self.adjust_streaming(True)
-
-	def adjust_volume(self, newVolume: float):
-		control_name = self.get_first_control_name()
-		subprocess.call(["amixer", "sset", control_name, f"{newVolume * 100}%"], stdout=subprocess.DEVNULL)
-		logging.info(f"set volume to {newVolume}")
-		pass
-
-	def get_first_control_name(self):
-		output = subprocess.check_output(["amixer", "scontrols"])
-		lines = output.decode().splitlines()
-		first_control_line = next(line for line in lines if line.startswith("Simple"))
-		pattern = r"^Simple.+'(\S+)',\d+$"
-		first_control_name = re.match(pattern, first_control_line).group(1)
-		return first_control_name
-
 
 	def adjust_streaming(self, isStreaming: bool):
 		self.threadLock.acquire(True)
 
 		if (isStreaming):
-			self.start_streaming(self.audio_state.audio_effect)
+			self.start_streaming(self.playback_content.audio_effect)
 		else:
 			self.stop_streaming()
 
@@ -165,14 +146,14 @@ class Speaker(Observer):
 
 	def get_player(self, audio_effect: AudioEffect) -> MediaPlayer:
 		player: MediaPlayer = None
-		if not is_internet_available() and self.audio_state.state.mode == Mode.Alarm:
+		if not is_internet_available() and self.playback_content.state.mode == Mode.Alarm:
 			player = self.get_fallback_player()
 
 		if player is None and isinstance(audio_effect, StreamAudioEffect):
 			player = MediaListPlayer(audio_effect.stream_definition.stream_url)
 
 		if player is None and isinstance(audio_effect, SpotifyAudioEffect):
-			player = SpotifyPlayer(audio_effect.play_id)
+			player = SpotifyPlayer(audio_effect.track_id)
 
 		if player is None:
 			raise ValueError('unknown audio effect type')
@@ -182,17 +163,17 @@ class Speaker(Observer):
 
 	def handle_player_error(self):
 		logging.info('handling player error')
-		if self.audio_state.state.mode != Mode.Alarm:
+		if self.playback_content.state.mode != Mode.Alarm:
 			return
 
-		if isinstance(self.audio_state.audio_effect, OfflineAlarmEffect):
+		if isinstance(self.playback_content.audio_effect, OfflineAlarmEffect):
 			self.start_streaming_alternative() 
 			return
 
 		logging.info("starting offline fallback playback")
-		self.audio_state.is_streaming = False
-		self.audio_state.audio_effect = self.config.get_offline_alarm_effect()
-		self.audio_state.is_streaming = True
+		self.playback_content.is_streaming = False
+		self.playback_content.audio_effect = self.config.get_offline_alarm_effect()
+		self.playback_content.is_streaming = True
 	
 	def start_streaming(self, audio_effect: AudioEffect):
 		try:
@@ -225,7 +206,7 @@ def main():
 		c.offline_alarm = AudioStream(stream_name='Offline Alarm', stream_url='Enchantment.ogg')
 		pc = PlaybackContent(AlarmClockState(c))
 		pc.audio_effect = StreamAudioEffect(
-			volume=0.5,
+			volume=0.3,
 			stream_definition=AudioStream(stream_name="test", stream_url='https://streams.br.de/bayern2sued_2.m3u'))
 			# stream_definition=c.get_offline_alarm_effect().stream_definition)
 		s = Speaker(pc, c)

@@ -42,7 +42,7 @@
         "date": null,
         "_audio_effect": {
           "py/object": "domain.StreamAudioEffect",
-          "volume": 0.9,
+          "volume": 0.3,
           "stream_definition": {
             "py/id": 4
           }
@@ -70,7 +70,7 @@
         "date": null,
         "_audio_effect": {
           "py/object": "domain.StreamAudioEffect",
-          "volume": 0.9,
+          "volume": 0.3,
           "stream_definition": {
             "py/id": 4
           }

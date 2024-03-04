@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 from datetime import date, time, timedelta
 import datetime
+import json
 import os
+from typing import List
 from apscheduler.job import Job
 from enum import Enum
 import logging
@@ -14,13 +16,14 @@ from utils.observer import Observable, Observation, Observer
 from utils.geolocation import GeoLocation, Weather
 from resources.resources import alarms_dir
 from utils.singleton import singleton
+from utils.os import get_system_volume, set_system_volume
 
 def try_update(object, property_name: str, value: str) -> bool:
 	if hasattr(object, property_name):
 		attr_value = getattr(object, property_name)
 		attr_type = type(attr_value)
 		if attr_type == bool:
-			value = value.lower() in ("yes", "true", "t", "1")
+			value = value.lower() in ["yes", "true", "t", "1"]
 		else:
 			value = attr_type(value) if len(value) > 0 else None
 		if value != attr_value:
@@ -31,11 +34,53 @@ def try_update(object, property_name: str, value: str) -> bool:
 	return False
 
 
+class StreamContent:
+
+	name: str
+
+	def __init__(self, dict: dict):
+		for key, value in dict.items():
+			setattr(self, key, value)
+
+class SpotifyAlbum(StreamContent):
+	pass
+
+class SpotifyArtist(StreamContent):
+	pass
+
+class SpotifyTrack(StreamContent):
+
+	album: SpotifyAlbum
+	artists: List[SpotifyArtist]
+
+class LibreSpotifyEvent(StreamContent):
+
+	player_event: str = None
+	track_id: str
+	old_track_id: str
+	duration_ms: str
+	position_ms: str
+	volume: str
+	sink_status: str
+
+	def is_playback_started(self) -> bool:
+		return self.player_event in ['playing', 'started', 'changed']
+
+	def is_playback_stopped(self) -> bool:
+		return self.player_event in ['stopped', 'paused']
+
+	def is_volume_changed(self) -> bool:
+		return self.player_event in ['volume_set']
+
+	def __str__(self):
+		return json.dumps(self.__dict__)
+
 class Mode(Enum):
 	Boot = 0
 	Idle = 1
 	Alarm = 2
 	Music = 3
+	Spotify = 4
 
 class Weekday(Enum):
 	MONDAY = 1
@@ -55,13 +100,22 @@ class AudioStream:
 	stream_url: str
 	id: int = -1
 
+	def __str__(self):
+		return f"stream_name: {self.stream_name}, stream_url: {self.stream_url}"
+
 @dataclass
 class AudioEffect:
 	volume: float
 
+	def __str__(self):
+		return f"volume: {self.volume}"
+
 @dataclass
 class StreamAudioEffect(AudioEffect):
 	stream_definition: AudioStream = None
+
+	def __str__(self):
+		return f"stream_definition: {self.stream_definition} {super().__str__()}"
 
 @singleton
 @dataclass
@@ -70,14 +124,23 @@ class OfflineAlarmEffect(StreamAudioEffect):
 
 @dataclass
 class SpotifyAudioEffect(AudioEffect):
-	play_id: str = None
+	spotify_event: LibreSpotifyEvent = None
+	track_id: str = None
+
+	def __init__(self):
+		super().__init__(0.3)
+
+	def __str__(self):
+		return f"track_id: {self.track_id}, spotify_event: {self.spotify_event} {super().__str__()}"
+
+
 
 class AlarmDefinition:
 	id: int
 	hour: int
 	min: int
-	weekdays: []
-	date: date
+	weekdays: List[Weekday]
+	date: datetime
 	alarm_name: str
 	is_active: bool
 	visual_effect: VisualEffect
@@ -134,16 +197,18 @@ class Config(Observable):
 	alarm_duration_in_mins: int
 	refresh_timeout_in_secs: int
 	powernap_duration_in_mins: int
-	default_volume: float = 0.9
+	default_volume: float = 0.3
+	spotify_client_id: str
+	spotify_client_secret: str
 
-	_alarm_definitions: [] = []
-	_audio_streams: [] = []
+	_alarm_definitions: List[AlarmDefinition] = []
+	_audio_streams: List[AudioStream] = []
 
 	@property
-	def alarm_definitions(self) -> []:
+	def alarm_definitions(self) -> List[AlarmDefinition]:
 		return self._alarm_definitions
 
-	def append_item_with_id(item_with_id, list) -> []:
+	def append_item_with_id(item_with_id, list) -> List[object]:
 		Config.assure_item_id(item_with_id, list)
 		list.append(item_with_id)
 		return sorted(list, key=lambda x: x.id)
@@ -152,7 +217,7 @@ class Config(Observable):
 		if not hasattr(item_with_id, 'id') or item_with_id.id is None:
 			item_with_id.id = Config.get_next_id(list)
 
-	def get_next_id(array_with_ids: []) -> int:
+	def get_next_id(array_with_ids: List[object]) -> int:
 		return sorted(array_with_ids, key=lambda x: x.id, reverse=True)[0].id+1 if len(array_with_ids) > 0 else 1
 
 	def add_alarm_definition_for_powernap(self):
@@ -186,7 +251,7 @@ class Config(Observable):
 		return next((alarm for alarm in self._alarm_definitions if alarm.id == id), None)
 
 	@property
-	def audio_streams(self) -> []:
+	def audio_streams(self) -> List[AudioStream]:
 		return self._audio_streams
 
 	def add_audio_stream(self, value: AudioStream):
@@ -228,7 +293,9 @@ class Config(Observable):
 			dict(key='blink_segment', value=':'),
 			dict(key='refresh_timeout_in_secs', value=1),
 			dict(key='powernap_duration_in_mins', value=18),
-			dict(key='default_volume', value=0.9)
+			dict(key='spotify_client_id', value=''),
+			dict(key='spotify_client_secret', value=''),
+			dict(key='default_volume', value=0.3)
 			]):
 			if not hasattr(self, conf_prop['key']):
 				logging.debug("key not found: %s, adding default value: %s", conf_prop['key'], conf_prop['value'])
@@ -284,7 +351,17 @@ class AlarmClockState(Observable):
 	@mode.setter
 	def mode(self, value: Mode):
 		self._mode = value
+		logging.info("new mode: %s", self.mode.name)
 		self.notify(property='mode')
+
+	@property
+	def spotify_event(self) -> LibreSpotifyEvent:
+		return self._spotify_event
+
+	@spotify_event.setter
+	def spotify_event(self, value: LibreSpotifyEvent):
+		self._spotify_event = value
+		self.notify(property='spotify_event')
 
 	def __init__(self, c: Config) -> None:
 		super().__init__()
@@ -304,6 +381,15 @@ class MediaContent(Observable, Observer):
 class PlaybackContent(MediaContent):
 
 	desired_audio_effect: AudioEffect
+	
+	@property
+	def title(self) -> str:
+		return self._title
+
+	@title.setter
+	def title(self, value: str):
+		self._title = value
+		self.notify(property='title')
 
 	@property
 	def audio_effect(self) -> AudioEffect:
@@ -319,11 +405,11 @@ class PlaybackContent(MediaContent):
 
 	@property
 	def volume(self) -> float:
-		return self._volume
+		return get_system_volume()
 
 	@volume.setter
 	def volume(self, value: float):
-		self._volume = value
+		set_system_volume(value)
 		self.notify(property='volume')
 
 	@property
@@ -338,7 +424,7 @@ class PlaybackContent(MediaContent):
 	def __init__(self, state: AlarmClockState):
 		super().__init__(state)
 		self.audio_effect = None
-		self.volume = 0.8
+		self.volume = 0.3
 		self.is_streaming = False
 
 	def update(self, observation: Observation):
@@ -348,7 +434,7 @@ class PlaybackContent(MediaContent):
 
 	def update_from_state(self, observation: Observation, state: AlarmClockState):
 		if observation.property_name == 'mode':
-			self.toggle_stream(new_value=(state.mode in (Mode.Alarm, Mode.Music)))
+			self.toggle_stream(new_value=(state.mode in [Mode.Alarm, Mode.Music, Mode.Spotify]))
 		if observation.property_name == 'is_wifi_available':
 			self.wifi_availability_changed(state.is_wifi_available)
 
@@ -369,12 +455,29 @@ class PlaybackContent(MediaContent):
 
 	def toggle_stream(self, new_value: bool = None):
 		self.is_streaming = new_value if new_value is not None else not self.is_streaming
-	
+
+	def set_spotify_event(self, spotify_event: LibreSpotifyEvent):
+
+		spotify_audio_effect = self.audio_effect if isinstance(self.audio_effect, SpotifyAudioEffect) else SpotifyAudioEffect()
+
+		spotify_audio_effect.spotify_event = spotify_event
+		if hasattr(spotify_event, 'track_id'):
+			spotify_audio_effect.track_id = spotify_event.track_id
+			
+		if spotify_event.is_playback_started() and self.state.mode != Mode.Spotify:
+			self.audio_effect = spotify_audio_effect
+			self.state.mode = Mode.Spotify
+
+		if spotify_event.is_playback_stopped() and self.state.mode != Mode.Idle:
+			self.state.mode = Mode.Idle
+
 class DisplayContent(MediaContent):
 	is_volume_meter_shown: bool=False
 	next_alarm_job: Job
 	current_weather: Weather
 	show_blink_segment: bool
+	current_playback_title: str
+
 
 	def __init__(self, state: AlarmClockState, playback_content: PlaybackContent):
 		super().__init__(state)
@@ -390,6 +493,13 @@ class DisplayContent(MediaContent):
 		super().update(observation)
 		if isinstance(observation.observable, AlarmClockState):
 			self.update_from_state(observation, observation.observable)
+		if isinstance(observation.observable, PlaybackContent):
+			self.update_from_playback_content(observation, observation.observable)
+
+	def update_from_playback_content(self, observation: Observation, playback_content: PlaybackContent):
+		if observation.property_name == 'title':
+			self.current_playback_title = playback_content.title
+
 
 	def update_from_state(self, observation: Observation, state: AlarmClockState):
 		if observation.property_name == 'show_blink_segment':

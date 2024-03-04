@@ -2,6 +2,7 @@ import argparse
 import logging
 import logging.config
 import os
+import signal
 from luma.oled.device import ssd1322
 from luma.core.device import device as luma_device
 from luma.core.interface.serial import spi
@@ -18,21 +19,29 @@ from domain import AlarmClockState, Config, DisplayContent, Mode, PlaybackConten
 from gpo import GeneralPurposeOutput
 from persistence import Persistence
 from resources.resources import init_logging
+from utils.spotify_api import SpotifyApi
+from utils import os as app_os
 
 
 class ClockApp:
 	configFile = f"{os.path.dirname(os.path.realpath(__file__))}/config.json"
 
 	def __init__(self) -> None:
-		init_logging()
 		parser = argparse.ArgumentParser("ClockApp")
 		parser.add_argument("-s", '--software', action='store_true')
 		self.args = parser.parse_args()
 
 	def is_on_hardware(self):
 		return not self.args.software
+
+	def shutdown_function(self):
+		logging.info("graceful shutdown")
+		app_os.restart_spotify_daemon()
+		tornado.ioloop.IOLoop.current().stop()
 	
 	def go(self):
+
+		signal.signal(signal.SIGTERM,self.shutdown_function)
 
 		self.state = AlarmClockState(Config())
 		if os.path.exists(self.configFile):
@@ -44,6 +53,8 @@ class ClockApp:
 		self.state.attach(playback_content)
 		display_content = DisplayContent(self.state, playback_content)
 		self.state.attach(display_content)
+		self.spotify_api = SpotifyApi(self.state.configuration.spotify_client_id, self.state.configuration.spotify_client_secret)
+		playback_content.attach(self.spotify_api)
 
 		device: luma_device
 
@@ -59,19 +70,20 @@ class ClockApp:
 
 		self.display = Display(device, display_content, playback_content, self.state.configuration)
 		self.state.configuration.attach(
-			Persistence( self.configFile))
+			Persistence(self.configFile))
 
 		self.speaker = Speaker(playback_content, self.state.configuration)
 		self.state.configuration.attach(self.controls)
 		playback_content.attach(self.controls)
 		self.controls.configure()
 
-		self.api = Api(self.state, lambda:self.display.current_display_image)
+		self.api = Api(self.state, playback_content, lambda:self.display.current_display_image)
 		self.api.start(port)
 
 		self.state.mode = Mode.Idle
 		tornado.ioloop.IOLoop.current().start()
 		
 if __name__ == '__main__':
+	init_logging()
 	logging.info ("start")
 	ClockApp().go()

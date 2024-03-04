@@ -8,16 +8,13 @@ import datetime
 from astral import LocationInfo
 from astral.sun import sun
 from apscheduler.triggers.cron import CronTrigger
+from utils.network import json_api
 
 from utils.singleton import singleton
 
 from resources.resources import weather_icons_dir
 
 weather_icons_tree = ET.parse(f"{weather_icons_dir}/weathericons.xml").getroot()
-
-def json_api(url):
-	response = urlopen(url)
-	return json.load(response)
 
 def translate_keys(input_dict, translation_map):
 	return {translation_map.get(k, k): v for k, v in input_dict.items()}
@@ -71,25 +68,26 @@ class GeoLocation:
 			location_from_ip['lon'])
 
 	def geolocation_db(self):
-		location_from_ip = json_api('https://geolocation-db.com/json/'),
+		location_from_ip = json_api('https://geolocation-db.com/json/')
 		return LocationInfo(
-			location_from_ip[0]['city'], 
-			location_from_ip[0]['country_name'], 
+			location_from_ip['city'], 
+			location_from_ip['country_name'], 
 			'Europe/London',
-			location_from_ip[0]['latitude'], 
-			location_from_ip[0]['longitude'])
+			location_from_ip['latitude'], 
+			location_from_ip['longitude'])
 
 	def get_location_info(self) -> LocationInfo:
 		try:
-			ip_info = self.ip_api()
-			geolocation_db = self.geolocation_db()
-			return LocationInfo(
-				geolocation_db.name, 
-				geolocation_db.region, 
-				ip_info.timezone, 
-				geolocation_db.latitude, 
-				geolocation_db.longitude
-			)
+			return self.ip_api()
+			# ip_info = self.ip_api()
+			# geolocation_db = self.geolocation_db()
+			# return LocationInfo(
+			# 	geolocation_db.name, 
+			# 	geolocation_db.region, 
+			# 	ip_info.timezone, 
+			# 	geolocation_db.latitude, 
+			# 	geolocation_db.longitude
+			# )
 		except:
 			logging.warning("%s", traceback.format_exc())
 			return LocationInfo(

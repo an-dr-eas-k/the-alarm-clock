@@ -11,6 +11,7 @@ from apscheduler.job import Job
 from domain import AlarmClockState, AlarmDefinition, PlaybackContent, DisplayContent, Mode, OfflineAlarmEffect, StreamAudioEffect, Observation, Observer, Config
 from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
+from utils.os import restart_spotify_daemon
 
 button1Id = 0
 button2Id = 5
@@ -124,18 +125,29 @@ class Controls(Observer):
 					logging.info("next runtime for job '%s': %s", job.id, job.next_run_time.strftime(f"%Y-%m-%d %H:%M:%S"))
 
 	def button_action(action, button_id):
+		Controls.action(action, "button %s pressed" % button_id)
+
+	def action(action, info: str = None):
 		try:
-			logging.info("button %s pressed", button_id)
+			if info:
+				logging.info(info)
 			action()
 		except:
 			logging.error("%s", traceback.format_exc())
-		
 
 	def button1_action(self):
-		Controls.button_action(self.playback_content.decrease_volume, 1)
+		def decrease_volume():
+			self.playback_content.decrease_volume()
+			logging.info("new volume: %s", self.playback_content.volume)
+
+		Controls.button_action(decrease_volume, 1)
 
 	def button2_action(self):
-		Controls.button_action(self.playback_content.increase_volume, 2)
+		def increase_volume():
+			self.playback_content.increase_volume()
+			logging.info("new volume: %s", self.playback_content.volume)
+
+		Controls.button_action(increase_volume, 2)
 
 	def button3_action(self):
 
@@ -148,16 +160,18 @@ class Controls(Observer):
 	def button4_action(self):
 
 		def toggle_stream():
-			audio_state = self.playback_content
-			if not audio_state.audio_effect:
-					first_stream = self.state.configuration.audio_streams[0]
-					audio_state.audio_effect = StreamAudioEffect( \
-						stream_definition=first_stream, \
-						volume=self.state.configuration.default_volume)
 
-			if self.state.mode in (Mode.Alarm, Mode.Music):
+			if self.state.mode in [Mode.Alarm, Mode.Music, Mode.Spotify]:
+				if self.state.mode == Mode.Spotify:
+					restart_spotify_daemon()
 				self.state.mode = Mode.Idle
 			else:
+				playback_content = self.playback_content
+				if not playback_content.audio_effect or not isinstance(playback_content.audio_effect, StreamAudioEffect):
+					first_stream = self.state.configuration.audio_streams[0]
+					playback_content.audio_effect = StreamAudioEffect( \
+						stream_definition=first_stream, \
+						volume=self.state.configuration.default_volume)
 				self.state.mode = Mode.Music
 		
 		Controls.button_action(toggle_stream, 4)
@@ -177,47 +191,43 @@ class Controls(Observer):
 			self.buttons.append(b)
 
 	def update_clock(self):
-		try:
+		def do():
 			logging.debug ("update show blink segment: %s", not self.state.show_blink_segment)
 			self.state.show_blink_segment = not self.state.show_blink_segment
-		except:
-			logging.error("%s", traceback.format_exc())
+
+		Controls.action(do)
 
 	def update_weather_status(self):
-		if self.state.is_wifi_available:
-			try:
+		def do():
+			if self.state.is_wifi_available:
 				new_weather = GeoLocation().get_current_weather()
 				logging.info ("weather updating: %s", new_weather)
 				self.display_content.current_weather = new_weather
-			except:
-				logging.error("%s", traceback.format_exc())
+			
+		Controls.action(do)
 
 	def update_wifi_status(self):
-		try:
+		def do():
 			new_state = is_internet_available()
 			if new_state != self.state.is_wifi_available:
 				logging.info ("change wifi state, is available: %s", new_state)
 				self.state.is_wifi_available = new_state
-		except:
-			logging.error("%s", traceback.format_exc())
+		
+		Controls.action(do)
 
 	def sun_event_occured(self, event: SunEvent):
-		try:
-			logging.info ("sun event %s", event)
+		def do():
 			self.state.is_daytime = event == SunEvent.sunrise
-		except:
-			logging.error("%s", traceback.format_exc())
+
+		Controls.action(do, "sun event %s" % event)
 
 	def ring_alarm(self, alarmDefinition: AlarmDefinition):
-		try:
-			logging.info ("ring alarm %s", alarmDefinition.alarm_name)
-
+		def do():
 			self.playback_content.desired_audio_effect = self.playback_content.audio_effect = alarmDefinition.audio_effect
 			self.state.mode = Mode.Alarm
-
 			self.after_ring_alarm(alarmDefinition)
-		except:
-			logging.error("%s", traceback.format_exc())
+		
+		Controls.action(do, "ring alarm %s" % alarmDefinition.alarm_name)
 
 	def after_ring_alarm(self, alarmDefinition: AlarmDefinition):
 
