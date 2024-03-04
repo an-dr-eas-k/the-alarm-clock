@@ -13,7 +13,8 @@ def is_ping_successful(hostname):
 
 def restart_spotify_daemon():
 	logging.info("restarting spotify daemon")
-	os.system('sudo systemctl restart raspotify.service')
+	os.system('sudo systemctl stop raspotify.service')
+	os.system('sudo systemctl start raspotify.service')
 
 def reboot_system():
 	logging.info("rebooting system")
