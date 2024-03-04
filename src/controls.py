@@ -174,8 +174,6 @@ class Controls(Observer):
 						volume=self.state.configuration.default_volume)
 				self.state.mode = Mode.Music
 		
-			logging.info("new mode: %s", self.state.mode.name)
-
 		Controls.button_action(toggle_stream, 4)
 
 	def configure(self):

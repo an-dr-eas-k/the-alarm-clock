@@ -351,6 +351,7 @@ class AlarmClockState(Observable):
 	@mode.setter
 	def mode(self, value: Mode):
 		self._mode = value
+		logging.info("new mode: %s", self.mode.name)
 		self.notify(property='mode')
 
 	@property
