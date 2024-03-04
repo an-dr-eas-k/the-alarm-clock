@@ -2,6 +2,7 @@ import argparse
 import logging
 import logging.config
 import os
+import signal
 from luma.oled.device import ssd1322
 from luma.core.device import device as luma_device
 from luma.core.interface.serial import spi
@@ -19,6 +20,7 @@ from gpo import GeneralPurposeOutput
 from persistence import Persistence
 from resources.resources import init_logging
 from utils.spotify_api import SpotifyApi
+from utils import os as app_os
 
 
 class ClockApp:
@@ -31,8 +33,15 @@ class ClockApp:
 
 	def is_on_hardware(self):
 		return not self.args.software
+
+	def shutdown_function(self):
+		logging.info("graceful shutdown")
+		app_os.restart_spotify_daemon()
+		tornado.ioloop.IOLoop.current().stop()
 	
 	def go(self):
+
+		signal.signal(signal.SIGTERM,self.shutdown_function)
 
 		self.state = AlarmClockState(Config())
 		if os.path.exists(self.configFile):
