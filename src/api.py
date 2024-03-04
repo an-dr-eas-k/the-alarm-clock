@@ -206,7 +206,8 @@ class Api:
 				playback_content = dict(
 					audio_effect = self.playback_content.audio_effect.__str__(), 
 					volume = self.playback_content.volume, 
-					is_streaming = self.playback_content.is_streaming),
+					is_streaming = self.playback_content.is_streaming,
+					mode = self.state.mode),
 				uptime = subprocess.check_output(['uptime']).strip().decode('utf-8'),
 			), 
 			indent=2)

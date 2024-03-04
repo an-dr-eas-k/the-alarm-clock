@@ -111,11 +111,11 @@ class Speaker(Observer):
 	media_player: MediaPlayer = None
 	fallback_player_proc: subprocess.Popen = None
 
-	def __init__(self, audio_state: PlaybackContent, config: Config) -> None:
+	def __init__(self, playback_content: PlaybackContent, config: Config) -> None:
 		self.threadLock = threading.Lock()
-		self.audio_state = audio_state
+		self.playback_content = playback_content
 		self.config = config
-		self.audio_state.attach(self)
+		self.playback_content.attach(self)
 
 	def update(self, observation: Observation):
 		super().update(observation)
@@ -131,7 +131,7 @@ class Speaker(Observer):
 			self.adjust_effect()
 
 	def adjust_effect(self):
-			if self.audio_state.is_streaming:
+			if self.playback_content.is_streaming:
 				self.adjust_streaming(False)
 				self.adjust_streaming(True)
 
@@ -142,7 +142,7 @@ class Speaker(Observer):
 		self.threadLock.acquire(True)
 
 		if (isStreaming):
-			self.start_streaming(self.audio_state.audio_effect)
+			self.start_streaming(self.playback_content.audio_effect)
 		else:
 			self.stop_streaming()
 
@@ -153,7 +153,7 @@ class Speaker(Observer):
 
 	def get_player(self, audio_effect: AudioEffect) -> MediaPlayer:
 		player: MediaPlayer = None
-		if not is_internet_available() and self.audio_state.state.mode == Mode.Alarm:
+		if not is_internet_available() and self.playback_content.state.mode == Mode.Alarm:
 			player = self.get_fallback_player()
 
 		if player is None and isinstance(audio_effect, StreamAudioEffect):
@@ -170,17 +170,17 @@ class Speaker(Observer):
 
 	def handle_player_error(self):
 		logging.info('handling player error')
-		if self.audio_state.state.mode != Mode.Alarm:
+		if self.playback_content.state.mode != Mode.Alarm:
 			return
 
-		if isinstance(self.audio_state.audio_effect, OfflineAlarmEffect):
+		if isinstance(self.playback_content.audio_effect, OfflineAlarmEffect):
 			self.start_streaming_alternative() 
 			return
 
 		logging.info("starting offline fallback playback")
-		self.audio_state.is_streaming = False
-		self.audio_state.audio_effect = self.config.get_offline_alarm_effect()
-		self.audio_state.is_streaming = True
+		self.playback_content.is_streaming = False
+		self.playback_content.audio_effect = self.config.get_offline_alarm_effect()
+		self.playback_content.is_streaming = True
 	
 	def start_streaming(self, audio_effect: AudioEffect):
 		try:
