@@ -5,12 +5,7 @@ import subprocess
 import traceback
 from urllib.request import Request, urlopen
 
-def is_ping_successful(hostname):
-	result = subprocess.run(
-		["ping", "-c", "1", hostname], 
-		stdout=subprocess.DEVNULL, 
-		stderr=subprocess.DEVNULL)
-	return result.returncode == 0
+from utils.os import is_ping_successful
 
 def is_internet_available():
 	return is_ping_successful("8.8.8.8")

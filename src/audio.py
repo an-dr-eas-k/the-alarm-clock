@@ -10,6 +10,7 @@ import re
 from domain import AlarmClockState, Mode, PlaybackContent, AudioEffect, AudioStream, Config, OfflineAlarmEffect, StreamAudioEffect, Observation, Observer, SpotifyAudioEffect
 from utils.network import is_internet_available
 from resources.resources import alarms_dir, init_logging
+from utils.os import set_system_volume
 
 debug_callback: bool = True
 
@@ -134,31 +135,8 @@ class Speaker(Observer):
 				self.adjust_streaming(False)
 				self.adjust_streaming(True)
 
-	def read_volume(self) -> float:
-		control_name = self.get_first_control_name()
-		output = subprocess.check_output(["amixer", "sget", control_name])
-		lines = output.decode().splitlines()
-		pattern = r"\[(\d+)%\]"
-		volumes = [ float(re.match(pattern, line).group(1)) for line in lines if re.match(pattern, line)]
-		volume = sum(volumes) / len(volumes) if len(volumes) > 0 else 0
-		logging.debug(f"volume is %s", volume)
-		return volume
-
-	def adjust_volume(self, newVolume: float):
-		control_name = self.get_first_control_name()
-		subprocess.call(["amixer", "sset", control_name, f"{newVolume * 100}%"], stdout=subprocess.DEVNULL)
-		logging.info(f"set volume to {newVolume}")
-		pass
-
-	def get_first_control_name(self):
-		output = subprocess.check_output(["amixer", "scontrols"])
-		lines = output.decode().splitlines()
-		first_control_line = next(line for line in lines if line.startswith("Simple"))
-		pattern = r"^Simple.+'(.+)',\d+$"
-		first_control_name = re.match(pattern, first_control_line).group(1)
-		logging.debug(f"volume mixer control name: {first_control_name}")
-		return first_control_name
-
+	def adjust_volume(self, volume: float):
+		set_system_volume	(volume)
 
 	def adjust_streaming(self, isStreaming: bool):
 		self.threadLock.acquire(True)

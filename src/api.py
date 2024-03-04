@@ -11,6 +11,7 @@ from PIL.Image import Image
 
 from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, Config, LibreSpotifyEvent, PlaybackContent, StreamAudioEffect, VisualEffect, Weekday, try_update
 from gpi import get_room_brightness
+from utils.os import reboot_system, shutdown_system
 
 def split_path_arguments(path) -> tuple[str, int, str]:
 	path_args = path[0].split('/')
@@ -77,9 +78,9 @@ class ActionApiHandler(tornado.web.RequestHandler):
 			if(type == 'update'):
 				os._exit(0)
 			elif (type == 'reboot'):
-				os.system('sudo reboot')
+				reboot_system()
 			elif (type == 'shutdown'):
-				os.system('sudo shutdown -h now')
+				shutdown_system()
 			else:
 				logging.warning("Unknown action: %s", type)
 
