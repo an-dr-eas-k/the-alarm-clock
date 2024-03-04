@@ -5,12 +5,10 @@ import vlc
 import time
 import subprocess 
 import threading
-import re
 
 from domain import AlarmClockState, Mode, PlaybackContent, AudioEffect, AudioStream, Config, OfflineAlarmEffect, StreamAudioEffect, Observation, Observer, SpotifyAudioEffect
 from utils.network import is_internet_available
 from resources.resources import alarms_dir, init_logging
-from utils.os import set_system_volume
 
 debug_callback: bool = True
 
@@ -123,9 +121,7 @@ class Speaker(Observer):
 			self.update_from_playback_content(observation, observation.observable)
 
 	def update_from_playback_content(self, observation: Observation, playback_content: PlaybackContent):
-		if (observation.property_name == 'volume'):
-			self.adjust_volume(playback_content.volume)
-		elif (observation.property_name == 'is_streaming'):
+		if (observation.property_name == 'is_streaming'):
 			self.adjust_streaming(playback_content.is_streaming)
 		elif (observation.property_name == 'audio_effect'):
 			self.adjust_effect()
@@ -134,9 +130,6 @@ class Speaker(Observer):
 			if self.playback_content.is_streaming:
 				self.adjust_streaming(False)
 				self.adjust_streaming(True)
-
-	def adjust_volume(self, volume: float):
-		set_system_volume	(volume)
 
 	def adjust_streaming(self, isStreaming: bool):
 		self.threadLock.acquire(True)

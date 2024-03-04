@@ -16,6 +16,7 @@ from utils.observer import Observable, Observation, Observer
 from utils.geolocation import GeoLocation, Weather
 from resources.resources import alarms_dir
 from utils.singleton import singleton
+from utils.os import get_system_volume, set_system_volume
 
 def try_update(object, property_name: str, value: str) -> bool:
 	if hasattr(object, property_name):
@@ -403,11 +404,11 @@ class PlaybackContent(MediaContent):
 
 	@property
 	def volume(self) -> float:
-		return self._volume
+		return get_system_volume()
 
 	@volume.setter
 	def volume(self, value: float):
-		self._volume = value
+		set_system_volume(value)
 		self.notify(property='volume')
 
 	@property

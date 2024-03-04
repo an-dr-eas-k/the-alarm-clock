@@ -136,10 +136,18 @@ class Controls(Observer):
 			logging.error("%s", traceback.format_exc())
 
 	def button1_action(self):
-		Controls.button_action(self.playback_content.decrease_volume, 1)
+		def decrease_volume():
+			self.playback_content.decrease_volume()
+			logging.info("new volume: %s", self.playback_content.volume)
+
+		Controls.button_action(decrease_volume, 1)
 
 	def button2_action(self):
-		Controls.button_action(self.playback_content.increase_volume, 2)
+		def increase_volume():
+			self.playback_content.increase_volume()
+			logging.info("new volume: %s", self.playback_content.volume)
+
+		Controls.button_action(increase_volume, 2)
 
 	def button3_action(self):
 
@@ -166,6 +174,8 @@ class Controls(Observer):
 						volume=self.state.configuration.default_volume)
 				self.state.mode = Mode.Music
 		
+			logging.info("new mode: %s", self.state.mode.name)
+
 		Controls.button_action(toggle_stream, 4)
 
 	def configure(self):

@@ -3,7 +3,6 @@ import logging
 import os
 import re
 import subprocess
-import time
 
 def is_ping_successful(hostname):
 	result = subprocess.run(
@@ -24,25 +23,24 @@ def shutdown_system():
 	logging.info("shutting down system")
 	os.system('sudo shutdown -h now')
 
-def get_system_volume(self) -> float:
-	logging.info("getting system volume")
-	control_name = get_system_volume_control_name()
+def get_system_volume(control_name: str = None) -> float:
+	logging.debug("getting system volume")
+	if control_name is None:
+		control_name = get_system_volume_control_name()
 	output = subprocess.check_output(["amixer", "sget", control_name])
 	lines = output.decode().splitlines()
 	pattern = r"\[(\d+)%\]"
-	volumes = [ float(re.match(pattern, line).group(1)) for line in lines if re.match(pattern, line)]
-	volume = sum(volumes) / len(volumes) if len(volumes) > 0 else 0
+	volumes = [ float(re.search(pattern, line).group(1)) for line in lines if re.search(pattern, line)]
+	volume = sum(volumes) / len(volumes) /100 if len(volumes) > 0 else 0 
 	logging.debug(f"volume is %s", volume)
 	return volume
 
-def set_system_volume(self, newVolume: float):
-	logging.info("setting system volume to %s" % newVolume)
+def set_system_volume(newVolume: float):
+	logging.debug("setting system volume to %s" % newVolume)
 	control_name = get_system_volume_control_name()
 	subprocess.call(["amixer", "sset", control_name, f"{newVolume * 100}%"], stdout=subprocess.DEVNULL)
-	logging.info(f"set volume to {newVolume}")
-	pass
 
-def get_system_volume_control_name(self):
+def get_system_volume_control_name():
 	output = subprocess.check_output(["amixer", "scontrols"])
 	lines = output.decode().splitlines()
 	first_control_line = next(line for line in lines if line.startswith("Simple"))
