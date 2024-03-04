@@ -464,11 +464,11 @@ class PlaybackContent(MediaContent):
 		if hasattr(spotify_event, 'track_id'):
 			spotify_audio_effect.track_id = spotify_event.track_id
 			
-		if spotify_event.is_playback_started():
+		if spotify_event.is_playback_started() and self.state.mode != Mode.Spotify:
 			self.audio_effect = spotify_audio_effect
 			self.state.mode = Mode.Spotify
 
-		if spotify_event.is_playback_stopped():
+		if spotify_event.is_playback_stopped() and self.state.mode != Mode.Idle:
 			self.state.mode = Mode.Idle
 
 class DisplayContent(MediaContent):
