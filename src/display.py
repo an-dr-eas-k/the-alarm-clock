@@ -299,8 +299,6 @@ class Display(Observer):
 		clock_image= self.clock_presenter.draw()
 		im.paste(clock_image, ((im.width-clock_image.width),int((im.height-clock_image.height)/2)))
 
-		logging.info("current_playback_title: %s", self.display_content.current_playback_title())
-
 		if self.display_content.show_volume_meter:
 			im.paste(self.volume_meter_presenter.draw(), (0, 0))
 		else:
