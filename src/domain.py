@@ -156,7 +156,7 @@ class SpotifyAudioEffect(Observable, AudioEffect):
 		return f"track_id: {self.track_id}, spotify_event: {self.spotify_event} {super().__str__()}"
 
 	def title(self):
-		self.track_name
+		return self.track_name
 
 
 class AlarmDefinition:
@@ -544,8 +544,8 @@ class DisplayContent(MediaContent):
 
 	def current_playback_title(self):
 		return self.playback_content.audio_effect.title() if True \
-			and self.playback_content \
-			and self.playback_content.audio_effect \
+			and self.playback_content.is_streaming \
+			and self.playback_content.audio_effect is not None \
 			else None
 
 	def current_volume(self) -> float:
