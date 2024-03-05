@@ -31,7 +31,7 @@ def text_to_image(
 	fg_color,
 	bg_color = 'black',
 	mode: str = 'RGB',
-):
+) -> Image.Image:
    box = font.getbbox(text)
    img = Image.new(mode, (box[2]-box[0], box[3]-box[1]), bg_color)
    ImageDraw.Draw(img).text([-box[0],-box[1]], text, font=font, fill=fg_color)

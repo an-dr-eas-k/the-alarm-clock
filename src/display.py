@@ -156,16 +156,28 @@ class PlaybackTitlePresenter(Presenter):
 		super().__init__(formatter, content)
 
 	def draw(self) -> Image.Image:
-		if self.content.current_playback_title() is not None:
+		if self.content.current_playback_title() is None:
 			return self.empty_image
 
+		font_nerd=ImageFont.truetype(self.font_file_nerd, 20)
 		font_7segment=ImageFont.truetype(self.font_file_7segment, 13)
 
-		return text_to_image(
+		title = text_to_image(
 			self.content.current_playback_title(),
 			font_7segment, 
 			fg_color=self.formatter.foreground_color(min_value=2),
+			bg_color=self.formatter.background_color()
+			)
+
+		note_symbol = "\U000f075a"
+		note_symbol_img = text_to_image(
+			note_symbol, 
+			font_nerd, 
+			fg_color=self.formatter.foreground_color(min_value=2),
 			bg_color=self.formatter.background_color())
+
+		return get_concat_h_multi_blank(
+			[note_symbol_img, Image.new(mode='RGBA', size=(3, 0), color=(0, 0, 0, 0)), title])
 
 class NextAlarmPresenter(Presenter):
 	def __init__(self, formatter: DisplayFormatter, content: DisplayContent) -> None:
@@ -253,7 +265,7 @@ class Display(Observer):
 		self.clock_presenter= ClockPresenter(self.formatter, self.display_content)
 		self.next_alarm_presenter = NextAlarmPresenter(self.formatter, self.display_content)
 		self.playback_title_presenter = PlaybackTitlePresenter(self.formatter, self.display_content)
-		self.weather_status_presenter =WeatherStatusPresenter(self.formatter, self.display_content)
+		self.weather_status_presenter = WeatherStatusPresenter(self.formatter, self.display_content)
 		self.wifi_status_presenter = WifiStatusPresenter(self.formatter, self.display_content)
 		self.volume_meter_presenter = VolumeMeterPresenter(self.formatter, self.display_content, (10, self.device.height))
 
@@ -297,7 +309,7 @@ class Display(Observer):
 			else:
 				bottom_left_image = self.next_alarm_presenter.draw()
 
-			im.paste(bottom_left_image, (2,im.height-bottom_left_image.height-2), bottom_left_image)
+			im.paste(bottom_left_image, (2, im.height-bottom_left_image.height-2), bottom_left_image)
 
 			if not self.display_content.get_is_wifi_available():
 				im.paste(self.wifi_status_presenter.draw(), (2,2))
