@@ -414,7 +414,7 @@ class PlaybackContent(MediaContent):
 	def audio_effect(self, value: AudioEffect):
 
 		self._audio_effect = value
-		if value is not None and value.volume != self.volume:
+		if value is not None and value.volume is not None and value.volume != self.volume:
 			self.volume = value.volume
 		self.notify(property='audio_effect')
 
