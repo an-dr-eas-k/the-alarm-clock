@@ -383,15 +383,6 @@ class PlaybackContent(MediaContent):
 	desired_alarm_audio_effect: AudioEffect
 	
 	@property
-	def title(self) -> str:
-		return self._title
-
-	@title.setter
-	def title(self, value: str):
-		self._title = value
-		self.notify(property='title')
-
-	@property
 	def audio_effect(self) -> AudioEffect:
 		return self._audio_effect
 
@@ -475,12 +466,9 @@ class PlaybackContent(MediaContent):
 			self.notify(property='volume')
 
 class DisplayContent(MediaContent):
-	is_volume_meter_shown: bool=False
 	next_alarm_job: Job
-	current_weather: Weather
+	current_weather: Weather = None
 	show_blink_segment: bool
-	current_playback_title: str
-
 
 	def __init__(self, state: AlarmClockState, playback_content: PlaybackContent):
 		super().__init__(state)
@@ -500,8 +488,7 @@ class DisplayContent(MediaContent):
 			self.update_from_playback_content(observation, observation.observable)
 
 	def update_from_playback_content(self, observation: Observation, playback_content: PlaybackContent):
-		if observation.property_name == 'title':
-			self.current_playback_title = playback_content.title
+		pass
 
 
 	def update_from_state(self, observation: Observation, state: AlarmClockState):
@@ -510,13 +497,16 @@ class DisplayContent(MediaContent):
 			self.notify()
 
 	def hide_volume_meter(self):
-		logging.info("volume bar shown: %s", False)
-		self.is_volume_meter_shown = False
-		self.notify()
+		self.show_volume_meter = False
 
-	def show_volume_meter(self):
-		logging.info("volume bar shown: %s", True)
-		self.is_volume_meter_shown = True 
+	@property
+	def show_volume_meter(self) -> bool:
+		return self._show_volume_meter
+
+	@show_volume_meter.setter
+	def show_volume_meter(self, value: bool):
+		logging.info("volume bar shown: %s", value)
+		self._show_volume_meter = value
 		self.notify()
 
 	def get_timedelta_to_alarm(self) -> timedelta:
@@ -527,3 +517,11 @@ class DisplayContent(MediaContent):
 	def get_next_alarm(self) -> datetime:
 		return None if self.next_alarm_job is None else self.next_alarm_job.next_run_time
 
+	def current_playback_title(self):
+		return self.playback_content.audio_effect.title() if True \
+			and self.playback_content \
+			and self.playback_content.audio_effect \
+			else None
+
+	def current_volume(self) -> float:
+		return self.playback_content.volume

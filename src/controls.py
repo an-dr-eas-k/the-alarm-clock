@@ -77,7 +77,7 @@ class Controls(Observer):
 
 	def update_from_playback_content(self, observation: Observation, playback_content: PlaybackContent):
 		if observation.property_name == 'volume' and not observation.during_registration:
-			self.display_content.show_volume_meter()
+			self.display_content.show_volume_meter = True
 			self.start_hide_volume_meter_trigger()
 
 	def start_hide_volume_meter_trigger(self):

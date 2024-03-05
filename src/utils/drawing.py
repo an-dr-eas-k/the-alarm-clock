@@ -10,6 +10,15 @@ def get_concat_h(im1, im2):
 	dst.paste(im2, (im1.width, y))
 	return dst
 
+def get_concat_v(im1, im2):
+	width = max(im1.width, im2.width)
+	dst = Image.new('RGBA', (width, im1.height + im2.height), (0, 0, 0, 0))
+	x=int(( width - im1.width ) / 2)
+	dst.paste(im1, (x, 0))
+	x=int(( width - im2.width ) / 2)
+	dst.paste(im2, (x, im1.height))
+	return dst
+
 def get_concat_h_multi_blank(im_list):
 	_im = im_list.pop(0)
 	for im in im_list:
