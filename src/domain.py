@@ -466,6 +466,7 @@ class PlaybackContent(MediaContent):
 			self.notify(property='volume')
 
 class DisplayContent(MediaContent):
+	_show_volume_meter: bool = False
 	next_alarm_job: Job
 	current_weather: Weather = None
 	show_blink_segment: bool

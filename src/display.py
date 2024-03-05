@@ -136,7 +136,6 @@ class VolumeMeterPresenter(Presenter):
 		
 		fg = Image.new("RGB", (self.size[0], int(self.size[1] * self.content.current_volume())), color='white')
 		bg = Image.new("RGB", (self.size[0], int(self.size[1] * (1.0-self.content.current_volume()))), color=self.formatter.background_color())
-		logging.info("fg height: %s, bg height: %s", fg.height, bg.height)
 		return get_concat_v(bg, fg)
 
 
