@@ -103,36 +103,60 @@ class AudioStream:
 	def __str__(self):
 		return f"stream_name: {self.stream_name}, stream_url: {self.stream_url}"
 
-@dataclass
 class AudioEffect:
-	volume: float
+
+	def __init__(self, volume: float = None):
+		self.volume = volume
 
 	def __str__(self):
 		return f"volume: {self.volume}"
 
-@dataclass
+	def title(self):
+		return None
+
 class StreamAudioEffect(AudioEffect):
 	stream_definition: AudioStream = None
+
+	def __init__(self, stream_definition: AudioStream = None, volume: float = None):
+		super().__init__(volume)
+		self.stream_definition = stream_definition
 
 	def __str__(self):
 		return f"stream_definition: {self.stream_definition} {super().__str__()}"
 
+	def title(self):
+		return self.stream_definition.stream_name
+
 @singleton
-@dataclass
 class OfflineAlarmEffect(StreamAudioEffect):
-	pass
 
-@dataclass
-class SpotifyAudioEffect(AudioEffect):
+	def title(self):
+		return "Offline Alarm"
+
+class SpotifyAudioEffect(Observable, AudioEffect):
 	spotify_event: LibreSpotifyEvent = None
-	track_id: str = None
+	track_name: str = None
 
-	def __init__(self):
-		super().__init__(0.3)
+	@property
+	def track_id(self) -> str:
+		return self._track_id
+
+	@track_id.setter
+	def track_id(self, value: str):
+		self._track_id = value
+		self.notify(property='track_id')
+
+	def __init__(self, volume: float = None):
+		Observable.__init__(self)
+		AudioEffect.__init__(self, volume)
+		
+		
 
 	def __str__(self):
 		return f"track_id: {self.track_id}, spotify_event: {self.spotify_event} {super().__str__()}"
 
+	def title(self):
+		self.track_name
 
 
 class AlarmDefinition:
@@ -282,8 +306,8 @@ class Config(Observable):
 	def get_offline_alarm_effect(self, volume: float = default_volume) -> OfflineAlarmEffect:
 		full_path = os.path.join(alarms_dir, self.offline_alarm.stream_url)
 		return OfflineAlarmEffect(
-			volume=volume, 
-			stream_definition=AudioStream(stream_name='Offline Alarm', stream_url=full_path))
+			stream_definition=AudioStream(stream_name='Offline Alarm', stream_url=full_path),
+			volume=volume)
 
 	def	ensure_valid_config(self):
 		for conf_prop in ([
