@@ -380,7 +380,7 @@ class MediaContent(Observable, Observer):
 
 class PlaybackContent(MediaContent):
 
-	desired_audio_effect: AudioEffect
+	desired_alarm_audio_effect: AudioEffect
 	
 	@property
 	def title(self) -> str:
@@ -443,7 +443,7 @@ class PlaybackContent(MediaContent):
 			if not wifi_available:
 				self.audio_effect = self.state.configuration.get_offline_alarm_effect(self.volume)
 			else:
-				self.audio_effect = self.desired_audio_effect
+				self.audio_effect = self.desired_alarm_audio_effect
 		else:
 			self.is_streaming = self.is_streaming and wifi_available
 

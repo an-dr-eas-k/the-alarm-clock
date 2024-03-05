@@ -157,14 +157,17 @@ class Controls(Observer):
 
 		Controls.button_action(exit, 3)
 
+	def set_to_idle_mode(self):
+		if self.state.mode == Mode.Spotify:
+			restart_spotify_daemon()
+		self.state.mode = Mode.Idle
+
 	def button4_action(self):
 
 		def toggle_stream():
 
 			if self.state.mode in [Mode.Alarm, Mode.Music, Mode.Spotify]:
-				if self.state.mode == Mode.Spotify:
-					restart_spotify_daemon()
-				self.state.mode = Mode.Idle
+				self.set_to_idle_mode()
 			else:
 				playback_content = self.playback_content
 				if not playback_content.audio_effect or not isinstance(playback_content.audio_effect, StreamAudioEffect):
@@ -223,7 +226,8 @@ class Controls(Observer):
 
 	def ring_alarm(self, alarmDefinition: AlarmDefinition):
 		def do():
-			self.playback_content.desired_audio_effect = self.playback_content.audio_effect = alarmDefinition.audio_effect
+			self.set_to_idle_mode()
+			self.playback_content.desired_alarm_audio_effect = self.playback_content.audio_effect = alarmDefinition.audio_effect
 			self.state.mode = Mode.Alarm
 			self.after_ring_alarm(alarmDefinition)
 		
