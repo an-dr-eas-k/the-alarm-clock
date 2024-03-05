@@ -471,6 +471,9 @@ class PlaybackContent(MediaContent):
 		if spotify_event.is_playback_stopped() and self.state.mode != Mode.Idle:
 			self.state.mode = Mode.Idle
 
+		if spotify_event.is_volume_changed() and self.state.mode == Mode.Spotify:
+			self.notify(property='volume')
+
 class DisplayContent(MediaContent):
 	is_volume_meter_shown: bool=False
 	next_alarm_job: Job
