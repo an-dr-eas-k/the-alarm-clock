@@ -24,11 +24,15 @@ class DisplayFormatter:
 	background_grayscale_16: int
 	clock_font: ImageFont
 
+	visual_effect_active: bool = False
+	clear_display: bool = False
+
 	def __init__(self, content: DisplayContent, config: Config):
 		self.display_content = content
 		self.config = config
 	
 	def update_formatter(self, room_brightness: float):
+		self.clear_display = False
 		self.adjust_display(room_brightness)
 		logging.debug(
 			"room_brightness: %s, time_delta_to_alarm: %sh, display_adjustments: %s", 
@@ -55,8 +59,15 @@ class DisplayFormatter:
 			return
 		
 		visual_effect: VisualEffect = get_job_arg(next_alarm_job, AlarmDefinition).visual_effect
-		if visual_effect is not None:
-			self.adjust_display_by_alarm_visual_effect(get_timedelta_to_alarm(next_alarm_job), visual_effect)
+		
+		if visual_effect is None:
+			if self.visual_effect_active:
+				self.clear_display = True
+				self.visual_effect_active = False
+			return
+
+		self.visual_effect_active = True
+		self.adjust_display_by_alarm_visual_effect(get_timedelta_to_alarm(next_alarm_job), visual_effect)
 
 	def adjust_display_by_room_brightness(self, room_brightness: float):
 		self.background_grayscale_16=0
@@ -286,6 +297,9 @@ class Display(Observer):
 		self.device.contrast(16)
 		room_brightness = get_room_brightness()
 		self.formatter.update_formatter(room_brightness)
+
+		if self.formatter.clear_display:
+			self.device.clear()
 
 		self.current_display_image = self.present(room_brightness)
 		self.device.display(self.current_display_image)
