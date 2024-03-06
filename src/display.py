@@ -299,6 +299,7 @@ class Display(Observer):
 		self.formatter.update_formatter(room_brightness)
 
 		if self.formatter.clear_display:
+			logging.info("clearing display")
 			self.device.clear()
 
 		self.current_display_image = self.present(room_brightness)
