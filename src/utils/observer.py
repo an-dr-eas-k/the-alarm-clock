@@ -52,6 +52,9 @@ class Observable:
 
 	def attach(self, observer: Observer):
 		assert isinstance(observer, Observer)
+		if observer in self.observers:
+			return
+
 		self.observers.append(observer)
 		properties = [
 			attr for attr in dir(self) 

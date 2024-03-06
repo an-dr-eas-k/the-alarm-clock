@@ -128,9 +128,12 @@ class GeoLocation:
 			else SunEvent.sunset
 
 	def get_current_weather(self):
-		url = f"https://api.open-meteo.com/v1/forecast?latitude={self.location_info.latitude}&longitude={self.location_info.longitude}&current=temperature_2m&current=weather_code"
-		data = json.load(urlopen(url))
-		return Weather (code=data['current']['weather_code'], temperature=data['current']['temperature_2m']) 
+		try:
+			url = f"https://api.open-meteo.com/v1/forecast?latitude={self.location_info.latitude}&longitude={self.location_info.longitude}&current=temperature_2m&current=weather_code"
+			data = json.load(urlopen(url))
+			return Weather (code=data['current']['weather_code'], temperature=data['current']['temperature_2m']) 
+		except:
+			return None
 
 if __name__ == '__main__':
 	gl = GeoLocation()

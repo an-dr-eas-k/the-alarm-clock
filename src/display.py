@@ -10,7 +10,7 @@ from PIL import ImageFont, Image
 
 from domain import AlarmDefinition, Config, DisplayContent, Observation, Observer, PlaybackContent, VisualEffect
 from gpi import get_room_brightness
-from utils.drawing import get_concat_h_multi_blank, grayscale_to_color, text_to_image
+from utils.drawing import get_concat_h_multi_blank, get_concat_v, grayscale_to_color, text_to_image
 from utils.extensions import get_job_arg, get_timedelta_to_alarm
 from utils.geolocation import GeoLocation
 
@@ -24,11 +24,15 @@ class DisplayFormatter:
 	background_grayscale_16: int
 	clock_font: ImageFont
 
+	visual_effect_active: bool = False
+	clear_display: bool = False
+
 	def __init__(self, content: DisplayContent, config: Config):
 		self.display_content = content
 		self.config = config
 	
 	def update_formatter(self, room_brightness: float):
+		self.clear_display = False
 		self.adjust_display(room_brightness)
 		logging.debug(
 			"room_brightness: %s, time_delta_to_alarm: %sh, display_adjustments: %s", 
@@ -55,8 +59,15 @@ class DisplayFormatter:
 			return
 		
 		visual_effect: VisualEffect = get_job_arg(next_alarm_job, AlarmDefinition).visual_effect
-		if visual_effect is not None:
-			self.adjust_display_by_alarm_visual_effect(get_timedelta_to_alarm(next_alarm_job), visual_effect)
+		
+		if visual_effect is None:
+			if self.visual_effect_active:
+				self.clear_display = True
+				self.visual_effect_active = False
+			return
+
+		self.visual_effect_active = True
+		self.adjust_display_by_alarm_visual_effect(get_timedelta_to_alarm(next_alarm_job), visual_effect)
 
 	def adjust_display_by_room_brightness(self, room_brightness: float):
 		self.background_grayscale_16=0
@@ -125,6 +136,20 @@ class ClockPresenter(Presenter):
 			bg_color=self.formatter.background_color())
 		return clock_image.resize([int(clock_image.width*0.95), clock_image.height], resample=Image.NEAREST)
 
+class VolumeMeterPresenter(Presenter):
+	def __init__(self, formatter: DisplayFormatter, content: DisplayContent, size: tuple[int, int]) -> None:
+		super().__init__(formatter, content)
+		self.size = size
+
+	def draw(self) -> Image.Image:
+		if not self.content.show_volume_meter:
+			return self.empty_image
+		
+		fg = Image.new("RGB", (self.size[0], int(self.size[1] * self.content.current_volume())), color='white')
+		bg = Image.new("RGB", (self.size[0], int(self.size[1] * (1.0-self.content.current_volume()))), color=self.formatter.background_color())
+		return get_concat_v(bg, fg)
+
+
 class WifiStatusPresenter(Presenter):
 	def __init__(self, formatter: DisplayFormatter, content: DisplayContent) -> None:
 		super().__init__(formatter, content)
@@ -136,6 +161,34 @@ class WifiStatusPresenter(Presenter):
 			no_wifi_symbol, font, 
 			fg_color=self.formatter.foreground_color(min_value=2), 
 			bg_color=self.formatter.background_color())
+
+class PlaybackTitlePresenter(Presenter):
+	def __init__(self, formatter: DisplayFormatter, content: DisplayContent) -> None:
+		super().__init__(formatter, content)
+
+	def draw(self) -> Image.Image:
+		if self.content.current_playback_title() is None:
+			return self.empty_image
+
+		font_nerd=ImageFont.truetype(self.font_file_nerd, 20)
+		font_7segment=ImageFont.truetype(self.font_file_7segment, 13)
+
+		title = text_to_image(
+			self.content.current_playback_title(),
+			font_7segment, 
+			fg_color=self.formatter.foreground_color(min_value=2),
+			bg_color=self.formatter.background_color()
+			)
+
+		note_symbol = "\U000f075a"
+		note_symbol_img = text_to_image(
+			note_symbol, 
+			font_nerd, 
+			fg_color=self.formatter.foreground_color(min_value=2),
+			bg_color=self.formatter.background_color())
+
+		return get_concat_h_multi_blank(
+			[note_symbol_img, Image.new(mode='RGBA', size=(3, 0), color=(0, 0, 0, 0)), title])
 
 class NextAlarmPresenter(Presenter):
 	def __init__(self, formatter: DisplayFormatter, content: DisplayContent) -> None:
@@ -222,8 +275,10 @@ class Display(Observer):
 		self.formatter = DisplayFormatter(self.display_content, self.config)
 		self.clock_presenter= ClockPresenter(self.formatter, self.display_content)
 		self.next_alarm_presenter = NextAlarmPresenter(self.formatter, self.display_content)
-		self.weather_status_presenter =WeatherStatusPresenter(self.formatter, self.display_content)
+		self.playback_title_presenter = PlaybackTitlePresenter(self.formatter, self.display_content)
+		self.weather_status_presenter = WeatherStatusPresenter(self.formatter, self.display_content)
 		self.wifi_status_presenter = WifiStatusPresenter(self.formatter, self.display_content)
+		self.volume_meter_presenter = VolumeMeterPresenter(self.formatter, self.display_content, (10, self.device.height))
 
 	def update(self, observation: Observation):
 		super().update(observation)
@@ -243,6 +298,10 @@ class Display(Observer):
 		room_brightness = get_room_brightness()
 		self.formatter.update_formatter(room_brightness)
 
+		if self.formatter.clear_display:
+			logging.info("clearing display")
+			self.device.clear()
+
 		self.current_display_image = self.present(room_brightness)
 		self.device.display(self.current_display_image)
 		if isinstance (self.device, luma_dummy):
@@ -255,12 +314,21 @@ class Display(Observer):
 		clock_image= self.clock_presenter.draw()
 		im.paste(clock_image, ((im.width-clock_image.width),int((im.height-clock_image.height)/2)))
 
-		next_alarm_image = self.next_alarm_presenter.draw()
-		im.paste(next_alarm_image, (2,im.height-next_alarm_image.height-2), next_alarm_image)
-		if not self.display_content.get_is_wifi_available():
-			im.paste(self.wifi_status_presenter.draw(), (2,2))
-		elif (room_brightness >= 0.01):
-			im.paste(self.weather_status_presenter.draw(), (2,4))
+		if self.display_content.show_volume_meter:
+			im.paste(self.volume_meter_presenter.draw(), (0, 0))
+		else:
+			if self.display_content.current_playback_title() is not None:
+				bottom_left_image = self.playback_title_presenter.draw()
+			else:
+				bottom_left_image = self.next_alarm_presenter.draw()
+
+			im.paste(bottom_left_image, (2, im.height-bottom_left_image.height-2), bottom_left_image)
+
+			if not self.display_content.get_is_wifi_available():
+				im.paste(self.wifi_status_presenter.draw(), (2,2))
+			elif (room_brightness >= 0.01):
+				im.paste(self.weather_status_presenter.draw(), (2,4))
+
 		return im
 		
 if __name__ == '__main__':

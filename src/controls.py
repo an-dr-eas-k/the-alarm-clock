@@ -77,7 +77,7 @@ class Controls(Observer):
 
 	def update_from_playback_content(self, observation: Observation, playback_content: PlaybackContent):
 		if observation.property_name == 'volume' and not observation.during_registration:
-			self.display_content.show_volume_meter()
+			self.display_content.show_volume_meter = True
 			self.start_hide_volume_meter_trigger()
 
 	def start_hide_volume_meter_trigger(self):
@@ -157,14 +157,17 @@ class Controls(Observer):
 
 		Controls.button_action(exit, 3)
 
+	def set_to_idle_mode(self):
+		if self.state.mode == Mode.Spotify:
+			restart_spotify_daemon()
+		self.state.mode = Mode.Idle
+
 	def button4_action(self):
 
 		def toggle_stream():
 
 			if self.state.mode in [Mode.Alarm, Mode.Music, Mode.Spotify]:
-				if self.state.mode == Mode.Spotify:
-					restart_spotify_daemon()
-				self.state.mode = Mode.Idle
+				self.set_to_idle_mode()
 			else:
 				playback_content = self.playback_content
 				if not playback_content.audio_effect or not isinstance(playback_content.audio_effect, StreamAudioEffect):
@@ -199,10 +202,9 @@ class Controls(Observer):
 
 	def update_weather_status(self):
 		def do():
-			if self.state.is_wifi_available:
-				new_weather = GeoLocation().get_current_weather()
-				logging.info ("weather updating: %s", new_weather)
-				self.display_content.current_weather = new_weather
+			new_weather = GeoLocation().get_current_weather() if self.state.is_wifi_available else None
+			logging.info ("weather updating: %s", new_weather)
+			self.display_content.current_weather = new_weather
 			
 		Controls.action(do)
 
@@ -223,7 +225,8 @@ class Controls(Observer):
 
 	def ring_alarm(self, alarmDefinition: AlarmDefinition):
 		def do():
-			self.playback_content.desired_audio_effect = self.playback_content.audio_effect = alarmDefinition.audio_effect
+			self.set_to_idle_mode()
+			self.playback_content.desired_alarm_audio_effect = self.playback_content.audio_effect = alarmDefinition.audio_effect
 			self.state.mode = Mode.Alarm
 			self.after_ring_alarm(alarmDefinition)
 		

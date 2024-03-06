@@ -103,36 +103,60 @@ class AudioStream:
 	def __str__(self):
 		return f"stream_name: {self.stream_name}, stream_url: {self.stream_url}"
 
-@dataclass
 class AudioEffect:
-	volume: float
+
+	def __init__(self, volume: float = None):
+		self.volume = volume
 
 	def __str__(self):
 		return f"volume: {self.volume}"
 
-@dataclass
+	def title(self):
+		return None
+
 class StreamAudioEffect(AudioEffect):
 	stream_definition: AudioStream = None
+
+	def __init__(self, stream_definition: AudioStream = None, volume: float = None):
+		super().__init__(volume)
+		self.stream_definition = stream_definition
 
 	def __str__(self):
 		return f"stream_definition: {self.stream_definition} {super().__str__()}"
 
+	def title(self):
+		return self.stream_definition.stream_name
+
 @singleton
-@dataclass
 class OfflineAlarmEffect(StreamAudioEffect):
-	pass
 
-@dataclass
-class SpotifyAudioEffect(AudioEffect):
+	def title(self):
+		return "Offline Alarm"
+
+class SpotifyAudioEffect(Observable, AudioEffect):
 	spotify_event: LibreSpotifyEvent = None
-	track_id: str = None
+	track_name: str = None
 
-	def __init__(self):
-		super().__init__(0.3)
+	@property
+	def track_id(self) -> str:
+		return self._track_id
+
+	@track_id.setter
+	def track_id(self, value: str):
+		self._track_id = value
+		self.notify(property='track_id')
+
+	def __init__(self, volume: float = None):
+		Observable.__init__(self)
+		AudioEffect.__init__(self, volume)
+		
+		
 
 	def __str__(self):
 		return f"track_id: {self.track_id}, spotify_event: {self.spotify_event} {super().__str__()}"
 
+	def title(self):
+		return self.track_name
 
 
 class AlarmDefinition:
@@ -282,8 +306,8 @@ class Config(Observable):
 	def get_offline_alarm_effect(self, volume: float = default_volume) -> OfflineAlarmEffect:
 		full_path = os.path.join(alarms_dir, self.offline_alarm.stream_url)
 		return OfflineAlarmEffect(
-			volume=volume, 
-			stream_definition=AudioStream(stream_name='Offline Alarm', stream_url=full_path))
+			stream_definition=AudioStream(stream_name='Offline Alarm', stream_url=full_path),
+			volume=volume)
 
 	def	ensure_valid_config(self):
 		for conf_prop in ([
@@ -380,17 +404,8 @@ class MediaContent(Observable, Observer):
 
 class PlaybackContent(MediaContent):
 
-	desired_audio_effect: AudioEffect
+	desired_alarm_audio_effect: AudioEffect
 	
-	@property
-	def title(self) -> str:
-		return self._title
-
-	@title.setter
-	def title(self, value: str):
-		self._title = value
-		self.notify(property='title')
-
 	@property
 	def audio_effect(self) -> AudioEffect:
 		return self._audio_effect
@@ -399,7 +414,7 @@ class PlaybackContent(MediaContent):
 	def audio_effect(self, value: AudioEffect):
 
 		self._audio_effect = value
-		if value is not None and value.volume != self.volume:
+		if value is not None and value.volume is not None and value.volume != self.volume:
 			self.volume = value.volume
 		self.notify(property='audio_effect')
 
@@ -443,7 +458,7 @@ class PlaybackContent(MediaContent):
 			if not wifi_available:
 				self.audio_effect = self.state.configuration.get_offline_alarm_effect(self.volume)
 			else:
-				self.audio_effect = self.desired_audio_effect
+				self.audio_effect = self.desired_alarm_audio_effect
 		else:
 			self.is_streaming = self.is_streaming and wifi_available
 
@@ -471,13 +486,14 @@ class PlaybackContent(MediaContent):
 		if spotify_event.is_playback_stopped() and self.state.mode != Mode.Idle:
 			self.state.mode = Mode.Idle
 
-class DisplayContent(MediaContent):
-	is_volume_meter_shown: bool=False
-	next_alarm_job: Job
-	current_weather: Weather
-	show_blink_segment: bool
-	current_playback_title: str
+		if spotify_event.is_volume_changed() and self.state.mode == Mode.Spotify:
+			self.notify(property='volume')
 
+class DisplayContent(MediaContent):
+	_show_volume_meter: bool = False
+	next_alarm_job: Job
+	current_weather: Weather = None
+	show_blink_segment: bool
 
 	def __init__(self, state: AlarmClockState, playback_content: PlaybackContent):
 		super().__init__(state)
@@ -497,8 +513,7 @@ class DisplayContent(MediaContent):
 			self.update_from_playback_content(observation, observation.observable)
 
 	def update_from_playback_content(self, observation: Observation, playback_content: PlaybackContent):
-		if observation.property_name == 'title':
-			self.current_playback_title = playback_content.title
+		pass
 
 
 	def update_from_state(self, observation: Observation, state: AlarmClockState):
@@ -507,13 +522,16 @@ class DisplayContent(MediaContent):
 			self.notify()
 
 	def hide_volume_meter(self):
-		logging.info("volume bar shown: %s", False)
-		self.is_volume_meter_shown = False
-		self.notify()
+		self.show_volume_meter = False
 
-	def show_volume_meter(self):
-		logging.info("volume bar shown: %s", True)
-		self.is_volume_meter_shown = True 
+	@property
+	def show_volume_meter(self) -> bool:
+		return self._show_volume_meter
+
+	@show_volume_meter.setter
+	def show_volume_meter(self, value: bool):
+		logging.info("volume bar shown: %s", value)
+		self._show_volume_meter = value
 		self.notify()
 
 	def get_timedelta_to_alarm(self) -> timedelta:
@@ -524,3 +542,11 @@ class DisplayContent(MediaContent):
 	def get_next_alarm(self) -> datetime:
 		return None if self.next_alarm_job is None else self.next_alarm_job.next_run_time
 
+	def current_playback_title(self):
+		return self.playback_content.audio_effect.title() if True \
+			and self.playback_content.is_streaming \
+			and self.playback_content.audio_effect is not None \
+			else None
+
+	def current_volume(self) -> float:
+		return self.playback_content.volume
