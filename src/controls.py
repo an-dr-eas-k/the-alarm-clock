@@ -202,10 +202,9 @@ class Controls(Observer):
 
 	def update_weather_status(self):
 		def do():
-			if self.state.is_wifi_available:
-				new_weather = GeoLocation().get_current_weather()
-				logging.info ("weather updating: %s", new_weather)
-				self.display_content.current_weather = new_weather
+			new_weather = GeoLocation().get_current_weather() if self.state.is_wifi_available else None
+			logging.info ("weather updating: %s", new_weather)
+			self.display_content.current_weather = new_weather
 			
 		Controls.action(do)
 
