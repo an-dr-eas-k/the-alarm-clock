@@ -41,22 +41,33 @@ class DisplayFormatter:
 		self._clear_display = False
 		self.adjust_display(room_brightness)
 		logging.debug(
-			"room_brightness: %s, time_delta_to_alarm: %sh, display_adjustments: %s", 
+			"room_brightness: %s, time_delta_to_alarm: %sh, display_formatter: %s", 
 			room_brightness, 
 			"{:.2f}".format(self.display_content.get_timedelta_to_alarm().total_seconds() / 3600), 
-			self)
+			self.__dict__)
 
-	def background_color(self):
-		return grayscale_to_color(self._background_grayscale_16*16)
+	def _color(self, color: int, min_value = 0, max_value = 15, in_16: bool = False):
+		grayscale_16 = DisplayFormatter.respect_ranges(color, min_value, max_value)
+		if in_16:
+			return grayscale_16
+		return grayscale_to_color(grayscale_16*16)
 
-	def foreground_color(self, min_value: int=1):
-		return grayscale_to_color(DisplayFormatter.respect_ranges(self._foreground_grayscale_16, min_value)*16)
+	def foreground_color(self, min_value: int=1, in_16: bool = False):
+		return self._color(self._foreground_grayscale_16, min_value, in_16=in_16)
 
-	def respect_ranges(value: float, min_value: int = 1, max_value: int = 15) ->  int:
+	def background_color(self, in_16: bool = False):
+		return self._color(self._background_grayscale_16, in_16=in_16)
+
+	def respect_ranges(value: float, min_value: int = 0, max_value: int = 15) ->  int:
 		return int(max(min_value, min(max_value, value)))
 
-	def get_grayscale_value(self, room_brightness: float, min_value: int=1, max_value: int=15) -> int:
-		return DisplayFormatter.respect_ranges( 32/(1+math.exp(-0.25*room_brightness))-16, min_value, max_value)
+	def get_grayscale_value(self, room_brightness: float, min_value: int=0, max_value: int=15) -> int:
+		x = max_value
+		if room_brightness <= 4:
+			x=8
+		if room_brightness <= 1:
+			x=3
+		return DisplayFormatter.respect_ranges( x, min_value, max_value)
 
 	def adjust_display(self, room_brightness: float):
 		self.adjust_display_by_room_brightness(room_brightness)
@@ -70,12 +81,11 @@ class DisplayFormatter:
 				self._visual_effect_active = False
 			return
 
-		self._visual_effect_active = True
 		self.adjust_display_by_alarm_visual_effect(get_timedelta_to_alarm(next_alarm_job), visual_effect)
 
 	def adjust_display_by_room_brightness(self, room_brightness: float):
 		self._background_grayscale_16=0
-		self._foreground_grayscale_16=self.get_grayscale_value(room_brightness)
+		self._foreground_grayscale_16=self.get_grayscale_value(room_brightness, min_value=1)
 		self._clock_font = self._bold_clock_font if room_brightness >= 0.01 else self._light_clock_font
 
 	def adjust_display_by_alarm_visual_effect(self,time_delta_to_alarm: datetime.timedelta, visual_effect: VisualEffect):
@@ -83,6 +93,8 @@ class DisplayFormatter:
 
 		if alarm_in_minutes > 8:
 			return 
+
+		self._visual_effect_active = True
 
 		if alarm_in_minutes > 4:
 			self._background_grayscale_16=0
@@ -94,13 +106,6 @@ class DisplayFormatter:
 			self._background_grayscale_16=7
 			self._foreground_grayscale_16=0
 			self._clock_font=self._bold_clock_font
-			return
-
-		if alarm_in_minutes > -2:
-			self._background_grayscale_16=15
-			self._foreground_grayscale_16=0
-			self._clock_font=self._bold_clock_font
-			return
 
 	def format_clock_string(self, clock: datetime, show_blink_segment: bool = True) -> str:
 		blink_segment = self.config.blink_segment if show_blink_segment else " "

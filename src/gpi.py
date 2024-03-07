@@ -1,5 +1,4 @@
 import logging
-import math
 import time
 import board
 import adafruit_bh1750

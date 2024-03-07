@@ -8,6 +8,7 @@ import traceback
 import tornado
 import tornado.web
 from PIL.Image import Image
+from display import Display
 
 from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, Config, LibreSpotifyEvent, PlaybackContent, StreamAudioEffect, VisualEffect, Weekday, try_update
 from gpi import get_room_brightness
@@ -178,9 +179,10 @@ class Api:
 
 	app: tornado.web.Application
 
-	def __init__(self, state: AlarmClockState, playback_content: PlaybackContent, image_getter):
+	def __init__(self, state: AlarmClockState, playback_content: PlaybackContent, display: Display, image_getter):
 		self.state = state
 		self.playback_content = playback_content
+		self.display = display
 		handlers = [
 			(r"/api/config/?(.*)", ConfigApiHandler, {"config": state.configuration}),
 			(r"/api/action/?(.*)", ActionApiHandler ),
@@ -200,6 +202,9 @@ class Api:
 		return json.dumps(
 			obj=dict(
 				room_brightness = get_room_brightness(),
+				display = dict(
+					foreground_color = self.display.formatter.foreground_color(in_16=True),
+					background_color = self.display.formatter.background_color(in_16=True)),
 				is_wifi_available = self.state.is_wifi_available,
 				is_daytime = self.state.is_daytime,
 				geo_location = self.state.geo_location.location_info.__dict__,

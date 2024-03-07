@@ -77,7 +77,7 @@ class ClockApp:
 		playback_content.attach(self.controls)
 		self.controls.configure()
 
-		self.api = Api(self.state, playback_content, lambda:self.display.current_display_image)
+		self.api = Api(self.state, playback_content, self.display, lambda:self.display.current_display_image)
 		self.api.start(port)
 
 		self.state.mode = Mode.Idle
