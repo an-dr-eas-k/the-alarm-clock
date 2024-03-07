@@ -65,7 +65,7 @@ class DisplayFormatter:
 		x = max_value
 		if room_brightness < 10:
 			x=10
-		if room_brightness < 4:
+		if room_brightness < 6:
 			x=7
 		if room_brightness < 2:
 			x=3
