@@ -160,7 +160,9 @@ class Controls(Observer):
 	def set_to_idle_mode(self):
 		if self.state.mode == Mode.Spotify:
 			restart_spotify_daemon()
-		self.state.mode = Mode.Idle
+
+		if self.state != Mode.Idle:
+			self.state.mode = Mode.Idle
 
 	def button4_action(self):
 
