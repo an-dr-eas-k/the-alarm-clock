@@ -63,10 +63,12 @@ class DisplayFormatter:
 
 	def get_grayscale_value(self, room_brightness: float, min_value: int=0, max_value: int=15) -> int:
 		x = max_value
-		if room_brightness <= 4:
+		if room_brightness < 4:
 			x=8
-		if room_brightness <= 1:
+		if room_brightness < 1:
 			x=3
+		if room_brightness < 0.01:
+			x=0
 		return DisplayFormatter.respect_ranges( x, min_value, max_value)
 
 	def adjust_display(self, room_brightness: float):
