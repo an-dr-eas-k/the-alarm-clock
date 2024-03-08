@@ -8,7 +8,7 @@ from gpiozero import Button
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
-from domain import AlarmClockState, AlarmDefinition, PlaybackContent, DisplayContent, Mode, OfflineAlarmEffect, StreamAudioEffect, Observation, Observer, Config
+from domain import AlarmClockState, AlarmDefinition, AudioStream, PlaybackContent, DisplayContent, Mode, StreamAudioEffect, Observation, Observer, Config
 from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon
@@ -33,7 +33,7 @@ class Controls(Observer):
 		self.state = state
 		self.display_content = display_content
 		self.playback_content = playback_content
-		self.sun_event_occured(state.geo_location.last_sun_event())
+		self.state.is_daytime = state.geo_location.last_sun_event() == SunEvent.sunrise
 		self.update_weather_status()
 		self.add_scheduler_jobs()
 		self.scheduler.start()
@@ -174,15 +174,20 @@ class Controls(Observer):
 			if self.state.mode in [Mode.Alarm, Mode.Music, Mode.Spotify]:
 				self.set_to_idle_mode()
 			else:
-				playback_content = self.playback_content
-				if not playback_content.audio_effect or not isinstance(playback_content.audio_effect, StreamAudioEffect):
+				if self.playback_content.audio_effect and isinstance(self.playback_content.audio_effect, StreamAudioEffect):
+					first_stream = self.playback_content.audio_effect.stream_definition
+				else:
 					first_stream = self.state.configuration.audio_streams[0]
-					playback_content.audio_effect = StreamAudioEffect( \
-						stream_definition=first_stream, \
-						volume=self.state.configuration.default_volume)
-				self.state.mode = Mode.Music
+				self.play_stream(first_stream)
 		
 		Controls.button_action(toggle_stream, 4)
+
+	def play_stream(self, audio_stream: AudioStream, volume: float = None):
+		if volume is None:
+			volume = self.playback_content.volume
+
+		self.playback_content.audio_effect = StreamAudioEffect(stream_definition=audio_stream, volume=volume)
+		self.state.mode = Mode.Music
 
 	def configure(self):
 		for button in ([

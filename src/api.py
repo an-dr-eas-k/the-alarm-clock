@@ -8,9 +8,10 @@ import traceback
 import tornado
 import tornado.web
 from PIL.Image import Image
+from controls import Controls
 from display import Display
 
-from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, Config, LibreSpotifyEvent, PlaybackContent, StreamAudioEffect, VisualEffect, Weekday, try_update
+from domain import AlarmDefinition, AudioEffect, AudioStream, Config, LibreSpotifyEvent, PlaybackContent, StreamAudioEffect, VisualEffect, Weekday, try_update
 from gpi import get_room_brightness
 from utils.os import reboot_system, shutdown_system
 
@@ -43,12 +44,12 @@ class LibreSpotifyEventHandler(tornado.web.RequestHandler):
 
 class DisplayHandler(tornado.web.RequestHandler):
 
-	def initialize(self, imageGetter) -> None:
-		self.imageGetter = imageGetter
+	def initialize(self, display: Display) -> None:
+		self.display = display
 
 	def get(self):
 		buffered = io.BytesIO()
-		img= self.imageGetter()
+		img= self.display.current_display_image
 		assert isinstance(img, Image)
 		img.save(buffered, format="png")
 		img.seek(0)
@@ -71,6 +72,9 @@ class ConfigHandler(tornado.web.RequestHandler):
 			logging.warning("%s", traceback.format_exc())
 
 class ActionApiHandler(tornado.web.RequestHandler):
+
+	def initialize(self, controls: Controls) -> None:
+		self.controls = controls
 
 	def post(self, *args):
 		try:
@@ -179,19 +183,17 @@ class Api:
 
 	app: tornado.web.Application
 
-	def __init__(self, state: AlarmClockState, playback_content: PlaybackContent, display: Display, image_getter):
-		self.state = state
-		self.playback_content = playback_content
+	def __init__(self, controls: Controls, display: Display):
+		self.controls = controls
 		self.display = display
 		handlers = [
-			(r"/api/config/?(.*)", ConfigApiHandler, {"config": state.configuration}),
-			(r"/api/action/?(.*)", ActionApiHandler ),
-			(r"/api/librespotify", LibreSpotifyEventHandler, {"playback_content": playback_content} ),
-			(r"/(.*)", ConfigHandler, {"config": state.configuration, "api": self})
+			(r"/display", DisplayHandler, {"display": self.display} ),
+			(r"/api/config/?(.*)", ConfigApiHandler, {"config": self.controls.state.configuration}),
+			(r"/api/action/?(.*)", ActionApiHandler, {"controls": self.controls}),
+			(r"/api/librespotify", LibreSpotifyEventHandler, {"playback_content": self.controls.playback_content} ),
+			(r"/(.*)", ConfigHandler, {"config": self.controls.state.configuration, "api": self})
 		]
 
-		if image_getter is not None:
-			handlers= [(r"/display", DisplayHandler, {"imageGetter": image_getter} ),]+handlers
 
 		self.app = tornado.web.Application(handlers)
 
@@ -205,14 +207,14 @@ class Api:
 				display = dict(
 					foreground_color = self.display.formatter.foreground_color(in_16=True),
 					background_color = self.display.formatter.background_color(in_16=True)),
-				is_wifi_available = self.state.is_wifi_available,
-				is_daytime = self.state.is_daytime,
-				geo_location = self.state.geo_location.location_info.__dict__,
+				is_wifi_available = self.controls.state.is_wifi_available,
+				is_daytime = self.controls.state.is_daytime,
+				geo_location = self.controls.state.geo_location.location_info.__dict__,
 				playback_content = dict(
-					audio_effect = self.playback_content.audio_effect.__str__(), 
-					volume = self.playback_content.volume, 
-					is_streaming = self.playback_content.is_streaming,
-					mode = self.state.mode.name),
+					audio_effect = self.controls.playback_content.audio_effect.__str__(), 
+					volume = self.controls.playback_content.volume, 
+					is_streaming = self.controls.playback_content.is_streaming,
+					mode = self.controls.state.mode.name),
 				uptime = subprocess.check_output(['uptime']).strip().decode('utf-8'),
 			), 
 			indent=2)
