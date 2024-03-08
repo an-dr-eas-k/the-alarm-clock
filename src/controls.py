@@ -62,11 +62,14 @@ class Controls(Observer):
 			jobstore=default_store)
 
 		for event in SunEvent.__members__.values():
-			self.scheduler.add_job(
-				lambda : self.sun_event_occured(event), 
-				trigger=self.state.geo_location.get_sun_event_cron_trigger(event),
-				id=event.value,
-				jobstore=default_store)
+			self.init_sun_event_scheduler(event)
+
+	def init_sun_event_scheduler(self, event: SunEvent):
+		self.scheduler.add_job(
+			lambda : self.sun_event_occured(event), 
+			trigger=self.state.geo_location.get_sun_event_cron_trigger(event),
+			id=event.value,
+			jobstore=default_store)
 
 	def update(self, observation: Observation):
 		super().update(observation)
@@ -161,7 +164,7 @@ class Controls(Observer):
 		if self.state.mode == Mode.Spotify:
 			restart_spotify_daemon()
 
-		if self.state != Mode.Idle:
+		if self.state.mode != Mode.Idle:
 			self.state.mode = Mode.Idle
 
 	def button4_action(self):
@@ -224,6 +227,7 @@ class Controls(Observer):
 	def sun_event_occured(self, event: SunEvent):
 		def do():
 			self.state.is_daytime = event == SunEvent.sunrise
+			self.init_sun_event_scheduler(event)
 
 		Controls.action(do, "sun event %s" % event)
 
