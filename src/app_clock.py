@@ -29,6 +29,7 @@ class ClockApp:
 	def __init__(self) -> None:
 		parser = argparse.ArgumentParser("ClockApp")
 		parser.add_argument("-s", '--software', action='store_true')
+		parser.add_argument("-r", '--ring-immediately', action='store_true')
 		self.args = parser.parse_args()
 
 	def is_on_hardware(self):
@@ -81,6 +82,10 @@ class ClockApp:
 		self.api.start(port)
 
 		self.state.mode = Mode.Idle
+		if self.args.ring_immediately:
+			self.speaker.start_streaming_alternative()
+			self.state._mode = Mode.Alarm
+
 		tornado.ioloop.IOLoop.current().start()
 		
 if __name__ == '__main__':

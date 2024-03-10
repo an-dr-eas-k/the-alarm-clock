@@ -24,6 +24,7 @@ check_internet
 
 cd /srv/the-alarm-clock
 git config pull.ff only
+lastExitCode=0
 while true; do
 	echo "update from git"
 	git reset --hard "@{upstream}"
@@ -33,6 +34,16 @@ while true; do
 	git log -1
 	echo "installing requirements"
 	pip3 install -r requirements.txt
-	echo "invoking app_clock.py"
-	python -u src/app_clock.py
+	if [ $lastExitCode -ne 0 ]; then
+		echo "invoking app_clock.py --ring-immediately"
+		python -u src/app_clock.py --ring-immediately
+		lastExitCode=$?
+	else
+		echo "invoking app_clock.py"
+		python -u src/app_clock.py
+		lastExitCode=$?
+	fi
+	if [ $lastExitCode -ne 0 ]; then
+		echo "app_clock.py exited with code $lastExitCode"
+	fi
 done

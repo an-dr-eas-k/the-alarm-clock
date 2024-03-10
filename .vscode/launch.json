@@ -10,7 +10,8 @@
       "request": "launch",
       "program": "app_clock.py",
       "args": [
-        "--software"
+        "--software",
+        "--ring-immediately"
       ],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/src",
