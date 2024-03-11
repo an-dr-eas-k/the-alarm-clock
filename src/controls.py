@@ -175,8 +175,8 @@ class Controls(Observer):
 
 		if self.state.mode != Mode.Idle:
 			self.state.mode = Mode.Idle
-			if os.path.exists(resources.resources.alarm_details_file):
-				os.remove(resources.resources.alarm_details_file)
+			if os.path.exists(alarm_details_file):
+				os.remove(alarm_details_file)
 
 	def button4_action(self):
 

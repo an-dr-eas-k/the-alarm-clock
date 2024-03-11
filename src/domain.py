@@ -245,11 +245,11 @@ class Config(Observable):
 		return sorted(list, key=lambda x: x.id)
 
 	def assure_item_id(item_with_id, list):
-		if not hasattr(item_with_id, 'id') or item_with_id.id is None:
+		if not hasattr(item_with_id, 'id') or item_with_id.id is None or item_with_id.id < 0:
 			item_with_id.id = Config.get_next_id(list)
 
 	def get_next_id(array_with_ids: List[object]) -> int:
-		return sorted(array_with_ids, key=lambda x: x.id, reverse=True)[0].id+1 if len(array_with_ids) > 0 else 1
+		return sorted(array_with_ids, key=lambda x: x.id, reverse=True)[0].id+1 if len(array_with_ids) > 0 else 0
 
 	def add_alarm_definition_for_powernap(self):
 
