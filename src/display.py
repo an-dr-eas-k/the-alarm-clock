@@ -26,6 +26,7 @@ class DisplayFormatter:
 
 	_visual_effect_active: bool = False
 	_clear_display: bool = False
+	_latest_room_brightness: float
 
 	def __init__(self, content: DisplayContent, config: Config):
 		self.display_content = content
@@ -36,8 +37,12 @@ class DisplayFormatter:
 
 	def clear_display(self):
 		return self._clear_display
+
+	def highly_dimmed(self):
+		return self._latest_room_brightness < 0.01
 	
 	def update_formatter(self, room_brightness: float):
+		self._latest_room_brightness = room_brightness
 		self._clear_display = False
 		self.adjust_display(room_brightness)
 		logging.debug(
@@ -69,7 +74,8 @@ class DisplayFormatter:
 			x=7
 		if room_brightness < 2:
 			x=3
-		if room_brightness < 0.01:
+			
+		if self.highly_dimmed():
 			x=0
 		return DisplayFormatter.respect_ranges( x, min_value, max_value)
 
@@ -90,7 +96,7 @@ class DisplayFormatter:
 	def adjust_display_by_room_brightness(self, room_brightness: float):
 		self._background_grayscale_16=0
 		self._foreground_grayscale_16=self.get_grayscale_value(room_brightness, min_value=1)
-		self._clock_font = self._bold_clock_font if room_brightness >= 0.01 else self._light_clock_font
+		self._clock_font = self._light_clock_font if self.highly_dimmed() else self._bold_clock_font
 
 	def adjust_display_by_alarm_visual_effect(self,time_delta_to_alarm: datetime.timedelta, visual_effect: VisualEffect):
 		alarm_in_minutes = time_delta_to_alarm.total_seconds() / 60
@@ -110,6 +116,11 @@ class DisplayFormatter:
 			self._background_grayscale_16=7
 			self._foreground_grayscale_16=0
 			self._clock_font=self._bold_clock_font
+			return
+
+		self._background_grayscale_16=15
+		self._foreground_grayscale_16=0
+		self._clock_font=self._bold_clock_font
 
 	def format_clock_string(self, clock: datetime, show_blink_segment: bool = True) -> str:
 		blink_segment = self.config.blink_segment if show_blink_segment else " "
@@ -315,13 +326,13 @@ class Display(Observer):
 			logging.info("clearing display")
 			self.device.clear()
 
-		self.current_display_image = self.present(room_brightness)
+		self.current_display_image = self.present()
 		self.device.display(self.current_display_image)
 		if isinstance (self.device, luma_dummy):
 			self.current_display_image.save(f"{os.path.dirname(os.path.realpath(__file__))}/../../display_test.png", format="png")
 
 
-	def present(self, room_brightness: int) -> Image.Image:
+	def present(self) -> Image.Image:
 		im = Image.new("RGB", self.device.size, color=self.formatter.background_color())
 
 		clock_image= self.clock_presenter.draw()
@@ -339,7 +350,7 @@ class Display(Observer):
 
 			if not self.display_content.get_is_wifi_available():
 				im.paste(self.wifi_status_presenter.draw(), (2,2))
-			elif (room_brightness >= 0.01):
+			elif not self.formatter.highly_dimmed():
 				im.paste(self.weather_status_presenter.draw(), (2,4))
 
 		return im
