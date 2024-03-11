@@ -193,6 +193,11 @@ class Controls(Observer):
 		
 		Controls.button_action(toggle_stream, 4)
 
+	def play_stream_by_id(self, stream_id: int):
+		streams = self.state.configuration.audio_streams
+		stream = next((s for s in streams if s.id == stream_id), streams[0])
+		self.play_stream(stream)
+
 	def play_stream(self, audio_stream: AudioStream, volume: float = None):
 		if volume is None:
 			volume = self.playback_content.volume

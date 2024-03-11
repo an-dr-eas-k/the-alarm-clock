@@ -78,9 +78,13 @@ class ActionApiHandler(tornado.web.RequestHandler):
 
 	def post(self, *args):
 		try:
-			(type, _1, _2) = split_path_arguments(args)
+			(type, id, _1) = split_path_arguments(args)
 
-			if(type == 'update'):
+			if (type == 'play'):
+				self.controls.play_stream_by_id(id)
+			elif (type == 'stop'):
+				self.controls.set_to_idle_mode()
+			elif(type == 'update'):
 				os._exit(0)
 			elif (type == 'reboot'):
 				reboot_system()

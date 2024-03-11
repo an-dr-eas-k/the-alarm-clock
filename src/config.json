@@ -17,13 +17,13 @@
         "py/object": "domain.AudioStream",
         "stream_name": "br2",
         "stream_url": "https://streams.br.de/bayern2sued_2.m3u",
-        "id": -1
+        "id": 0
       },
       {
         "py/object": "domain.AudioStream",
         "stream_name": "puls",
         "stream_url": "https://streams.br.de/puls_2.m3u",
-        "id": -1
+        "id": 1
       }
     ],
     "_alarm_definitions": [
@@ -42,7 +42,7 @@
         "date": null,
         "_audio_effect": {
           "py/object": "domain.StreamAudioEffect",
-          "volume": 0.3,
+          "volume": 0.4,
           "stream_definition": {
             "py/id": 4
           }
@@ -51,7 +51,7 @@
           "py/object": "domain.VisualEffect"
         },
         "is_active": true,
-        "id": 1
+        "id": 0
       },
       {
         "py/object": "domain.AlarmDefinition",
@@ -70,16 +70,16 @@
         "date": null,
         "_audio_effect": {
           "py/object": "domain.StreamAudioEffect",
-          "volume": 0.3,
+          "volume": 0.4,
           "stream_definition": {
-            "py/id": 4
+            "py/id": 5
           }
         },
         "visual_effect": {
           "py/object": "domain.VisualEffect"
         },
         "is_active": false,
-        "id": 2
+        "id": 1
       }
     ]
   }

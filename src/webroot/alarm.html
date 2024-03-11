@@ -40,7 +40,12 @@
 	<script>
 
 		function onClickAction(type, event) {
-			sendToBackend('/api/action/' + type, 'POST', null);
+			console.log(`Type: ${type}, Event: ${event}`)
+			suffix = ""
+			if (event != null) {
+				suffix = "/" + event.target.value
+			}
+			sendToBackend('/api/action/' + type + suffix, 'POST', null);
 			location.reload();
 		}
 
@@ -126,6 +131,19 @@
 
 <body data-bs-theme="dark">
 	<div class="container">
+		<div id="controls-container" class="row">
+			<h3>Controls</h3>
+			{% for audio_stream in config.audio_streams %}
+			<div class="col">
+				<button type="submit" class="btn btn-primary btn-action" value="{{ audio_stream.id }}"
+					onclick="onClickAction('play', event)">{{
+					escape(audio_stream.stream_name) }}</button>
+			</div>
+			{% end %}
+			<div class="col">
+				<button type="submit" class="btn btn-primary btn-action" onclick="onClickAction('stop')">Stop</button>
+			</div>
+		</div>
 		<div id="alarm-container" class="row">
 			<h3>Alarms</h3>
 			<table class="table table-striped">
@@ -308,23 +326,6 @@
 					</td>
 					<td><button type="submit" class="btn btn-primary btn-row-action"
 							onclick="onClickSave(document.getElementById('alarm_duration_in_mins').value, 'alarm_duration_in_mins')">Save</button>
-					</td>
-				</tr>
-				<tr><!-- string value -->
-					<td>Spotify Client ID</td>
-					<td><input type="text" id="spotify_client_id"
-							value="{{ escape( config.spotify_client_id ) if config.spotify_client_id is not None else '' }}" /></td>
-					<td><button type="submit" class="btn btn-primary btn-row-action"
-							onclick="onClickSave(document.getElementById('spotify_client_id').value, 'spotify_client_id')">Save</button>
-					</td>
-				</tr>
-				<tr><!-- string value -->
-					<td>Spotify Client Secret</td>
-					<td><input type="text" id="spotify_client_secret"
-							value="{{ escape( config.spotify_client_secret ) if config.spotify_client_secret is not None else '' }}" />
-					</td>
-					<td><button type="submit" class="btn btn-primary btn-row-action"
-							onclick="onClickSave(document.getElementById('spotify_client_secret').value, 'spotify_client_secret')">Save</button>
 					</td>
 				</tr>
 			</table>
