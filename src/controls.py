@@ -10,7 +10,7 @@ from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, P
 from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon
-import resources.resources
+from resources.resources import alarm_details_file
 
 button1Id = 0
 button2Id = 5
@@ -39,13 +39,14 @@ class Controls(Observer):
 		self.print_active_jobs(default_store)
 
 	def consider_failed_alarm(self):
-		if os.path.exists(resources.resources.alarm_details_file):
-			logging.info("failed alarm found")
-			ad = AlarmDefinition()
-			ad.alarm_name = "dummy name for failed alarm"
-			ad.audio_effect = AudioEffect.deserialize(resources.resources.alarm_details_file)
-			ad.date = None
+		if os.path.exists(alarm_details_file):
+			ad = AlarmDefinition.deserialize(alarm_details_file)
+			logging.info("failed alarm found %s", ad.alarm_name)
 			self.ring_alarm(ad)
+
+	def store_alarm_definition(self, alarm_definition: AlarmDefinition):
+			with open(alarm_details_file, 'w') as f:
+				f.write(alarm_definition.serialize())
 
 	def add_scheduler_jobs(self):
 		self.scheduler.add_job(
@@ -246,14 +247,15 @@ class Controls(Observer):
 
 		Controls.action(do, "sun event %s" % event)
 
-	def ring_alarm(self, alarmDefinition: AlarmDefinition):
+	def ring_alarm(self, alarm_definition: AlarmDefinition):
 		def do():
+			self.store_alarm_definition(alarm_definition)
 			self.set_to_idle_mode()
-			self.playback_content.desired_alarm_audio_effect = self.playback_content.audio_effect = alarmDefinition.audio_effect
+			self.playback_content.desired_alarm_audio_effect = self.playback_content.audio_effect = alarm_definition.audio_effect
 			self.state.mode = Mode.Alarm
-			self.after_ring_alarm(alarmDefinition)
+			self.after_ring_alarm(alarm_definition)
 		
-		Controls.action(do, "ring alarm %s" % alarmDefinition.alarm_name)
+		Controls.action(do, "ring alarm %s" % alarm_definition.alarm_name)
 
 	def after_ring_alarm(self, alarmDefinition: AlarmDefinition):
 

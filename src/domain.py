@@ -114,16 +114,6 @@ class AudioEffect:
 	def title(self):
 		return None
 
-	def serialize(self):
-		return jsonpickle.encode(self, indent=2)
-
-	def deserialize(desired_alarm_audio_effect_file: str):
-		logging.debug("initializing audio_effect from file: %s", desired_alarm_audio_effect_file)
-		with open(desired_alarm_audio_effect_file, "r") as file:
-			file_contents = file.read()
-			persisted_audio_effect: AudioEffect = jsonpickle.decode(file_contents)
-			return persisted_audio_effect
-
 class StreamAudioEffect(AudioEffect):
 	stream_definition: AudioStream = None
 
@@ -167,7 +157,6 @@ class SpotifyAudioEffect(Observable, AudioEffect):
 
 	def title(self):
 		return self.track_name
-
 
 class AlarmDefinition:
 	id: int
@@ -222,6 +211,16 @@ class AlarmDefinition:
 	@audio_effect.setter
 	def audio_effect(self, value: AudioEffect):
 		self._audio_effect = value
+
+	def serialize(self):
+		return jsonpickle.encode(self, indent=2)
+
+	def deserialize(desired_alarm_audio_effect_file: str):
+		logging.debug("initializing audio_effect from file: %s", desired_alarm_audio_effect_file)
+		with open(desired_alarm_audio_effect_file, "r") as file:
+			file_contents = file.read()
+			persisted_audio_effect: AudioEffect = jsonpickle.decode(file_contents)
+			return persisted_audio_effect
 
 class Config(Observable):
 
