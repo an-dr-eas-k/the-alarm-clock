@@ -114,6 +114,9 @@ class AudioEffect:
 	def title(self):
 		return None
 
+	def serialize(self):
+		return jsonpickle.encode(self, indent=2)
+
 class StreamAudioEffect(AudioEffect):
 	stream_definition: AudioStream = None
 
@@ -404,7 +407,15 @@ class MediaContent(Observable, Observer):
 
 class PlaybackContent(MediaContent):
 
-	desired_alarm_audio_effect: AudioEffect
+	@property
+	def desired_alarm_audio_effect(self) -> AudioEffect:
+		return self._desired_alarm_audio_effect
+
+	@desired_alarm_audio_effect.setter
+	def desired_alarm_audio_effect(self, value: AudioEffect):
+
+		self._desired_alarm_audio_effect = value
+		self.notify(property='desired_alarm_audio_effect')
 	
 	@property
 	def audio_effect(self) -> AudioEffect:

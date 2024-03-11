@@ -69,12 +69,13 @@ class ClockApp:
 			port = 8080
 
 		self.display = Display(device, display_content, playback_content, self.state.configuration)
-		self.state.configuration.attach(
-			Persistence(self.configFile))
+		self.persistence = Persistence(self.configFile)
+		self.state.configuration.attach(self.persistence)
 
 		self.speaker = Speaker(playback_content, self.state.configuration)
 		self.state.configuration.attach(self.controls)
 		playback_content.attach(self.controls)
+		playback_content.attach(self.persistence)
 		self.controls.configure()
 
 		self.api = Api(self.controls, self.display)

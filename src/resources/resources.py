@@ -13,5 +13,7 @@ alarms_dir = f"{sounds_dir}/alarms"
 
 librespotify_env_vars = ["PLAYER_EVENT", "TRACK_ID", "OLD_TRACK_ID", "DURATION_MS", "POSITION_MS", "VOLUME", "SINK_STATUS"]
 
+alarm_details_file = f"{resources_dir}/alarm_details.json"
+
 def init_logging():
 	logging.config.fileConfig(os.path.join(resources_dir, 'logging.conf'))
