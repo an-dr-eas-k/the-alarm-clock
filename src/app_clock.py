@@ -19,7 +19,6 @@ from domain import AlarmClockState, Config, DisplayContent, Mode, PlaybackConten
 from gpo import GeneralPurposeOutput
 from persistence import Persistence
 from resources.resources import init_logging
-from utils.spotify_api import SpotifyApi
 from utils import os as app_os
 
 
@@ -53,8 +52,6 @@ class ClockApp:
 		self.state.attach(playback_content)
 		display_content = DisplayContent(self.state, playback_content)
 		self.state.attach(display_content)
-		self.spotify_api = SpotifyApi(self.state.configuration.spotify_client_id, self.state.configuration.spotify_client_secret)
-		playback_content.attach(self.spotify_api)
 
 		device: luma_device
 

@@ -135,7 +135,7 @@ class OfflineAlarmEffect(StreamAudioEffect):
 
 class SpotifyAudioEffect(Observable, AudioEffect):
 	spotify_event: LibreSpotifyEvent = None
-	track_name: str = None
+	track_name: str = "Spotify"
 
 	@property
 	def track_id(self) -> str:
@@ -231,8 +231,6 @@ class Config(Observable):
 	refresh_timeout_in_secs: int
 	powernap_duration_in_mins: int
 	default_volume: float = 0.3
-	spotify_client_id: str
-	spotify_client_secret: str
 
 	_alarm_definitions: List[AlarmDefinition] = []
 	_audio_streams: List[AudioStream] = []
@@ -326,8 +324,6 @@ class Config(Observable):
 			dict(key='blink_segment', value=':'),
 			dict(key='refresh_timeout_in_secs', value=1),
 			dict(key='powernap_duration_in_mins', value=18),
-			dict(key='spotify_client_id', value=''),
-			dict(key='spotify_client_secret', value=''),
 			dict(key='default_volume', value=0.3)
 			]):
 			if not hasattr(self, conf_prop['key']):
