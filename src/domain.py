@@ -117,6 +117,13 @@ class AudioEffect:
 	def serialize(self):
 		return jsonpickle.encode(self, indent=2)
 
+	def deserialize(desired_alarm_audio_effect_file: str):
+		logging.debug("initializing audio_effect from file: %s", desired_alarm_audio_effect_file)
+		with open(desired_alarm_audio_effect_file, "r") as file:
+			file_contents = file.read()
+			persisted_audio_effect: AudioEffect = jsonpickle.decode(file_contents)
+			return persisted_audio_effect
+
 class StreamAudioEffect(AudioEffect):
 	stream_definition: AudioStream = None
 

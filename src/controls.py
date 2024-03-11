@@ -1,17 +1,16 @@
 import datetime
-import json
 import logging
 import os
 import traceback
-from urllib.request import urlopen
 from gpiozero import Button
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
-from domain import AlarmClockState, AlarmDefinition, AudioStream, PlaybackContent, DisplayContent, Mode, StreamAudioEffect, Observation, Observer, Config
+from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, PlaybackContent, DisplayContent, Mode, StreamAudioEffect, Observation, Observer, Config
 from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon
+import resources.resources
 
 button1Id = 0
 button2Id = 5
@@ -38,6 +37,15 @@ class Controls(Observer):
 		self.add_scheduler_jobs()
 		self.scheduler.start()
 		self.print_active_jobs(default_store)
+
+	def consider_failed_alarm(self):
+		if os.path.exists(resources.resources.alarm_details_file):
+			logging.info("failed alarm found")
+			ad = AlarmDefinition()
+			ad.alarm_name = "dummy name for failed alarm"
+			ad.audio_effect = AudioEffect.deserialize(resources.resources.alarm_details_file)
+			ad.date = None
+			self.ring_alarm(ad)
 
 	def add_scheduler_jobs(self):
 		self.scheduler.add_job(
@@ -166,6 +174,8 @@ class Controls(Observer):
 
 		if self.state.mode != Mode.Idle:
 			self.state.mode = Mode.Idle
+			if os.path.exists(resources.resources.alarm_details_file):
+				os.remove(resources.resources.alarm_details_file)
 
 	def button4_action(self):
 

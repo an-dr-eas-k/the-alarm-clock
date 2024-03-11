@@ -82,6 +82,7 @@ class ClockApp:
 		self.api.start(port)
 
 		self.state.mode = Mode.Idle
+		self.controls.consider_failed_alarm()
 		tornado.ioloop.IOLoop.current().start()
 		
 if __name__ == '__main__':
