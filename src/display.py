@@ -36,14 +36,15 @@ class DisplayFormatter:
 		return self._clock_font
 
 	def clear_display(self):
-		return self._clear_display
+		clear_display = self._clear_display
+		self._clear_display = False
+		return clear_display
 
 	def highly_dimmed(self):
 		return self._latest_room_brightness < 0.01
 	
 	def update_formatter(self, room_brightness: float):
 		self._latest_room_brightness = room_brightness
-		self._clear_display = False
 		self.adjust_display(room_brightness)
 		logging.debug(
 			"room_brightness: %s, time_delta_to_alarm: %sh, display_formatter: %s", 
@@ -104,6 +105,7 @@ class DisplayFormatter:
 		if alarm_in_minutes > 8:
 			return 
 
+		logging.debug("visual effect active: %s", alarm_in_minutes)
 		self._visual_effect_active = True
 
 		if alarm_in_minutes > 4:
