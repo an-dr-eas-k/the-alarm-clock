@@ -84,6 +84,11 @@ class ActionApiHandler(tornado.web.RequestHandler):
 				self.controls.play_stream_by_id(id)
 			elif (type == 'stop'):
 				self.controls.set_to_idle_mode()
+			elif (type == 'volume'):
+				if id == 1:
+					self.controls.increase_volume()
+				else:
+					self.controls.decrease_volume()
 			elif(type == 'update'):
 				os._exit(0)
 			elif (type == 'reboot'):

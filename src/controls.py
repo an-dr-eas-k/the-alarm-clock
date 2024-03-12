@@ -148,18 +148,10 @@ class Controls(Observer):
 			logging.error("%s", traceback.format_exc())
 
 	def button1_action(self):
-		def decrease_volume():
-			self.playback_content.decrease_volume()
-			logging.info("new volume: %s", self.playback_content.volume)
-
-		Controls.button_action(decrease_volume, 1)
+		Controls.button_action(self.decrease_volume, 1)
 
 	def button2_action(self):
-		def increase_volume():
-			self.playback_content.increase_volume()
-			logging.info("new volume: %s", self.playback_content.volume)
-
-		Controls.button_action(increase_volume, 2)
+		Controls.button_action(self.increase_volume, 2)
 
 	def button3_action(self):
 
@@ -192,6 +184,14 @@ class Controls(Observer):
 				self.play_stream(first_stream)
 		
 		Controls.button_action(toggle_stream, 4)
+
+	def increase_volume(self):
+		self.playback_content.increase_volume()
+		logging.info("new volume: %s", self.playback_content.volume)
+
+	def decrease_volume(self):
+		self.playback_content.decrease_volume()
+		logging.info("new volume: %s", self.playback_content.volume)
 
 	def play_stream_by_id(self, stream_id: int):
 		streams = self.state.configuration.audio_streams
