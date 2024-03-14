@@ -44,10 +44,6 @@ class Controls(Observer):
 			logging.info("failed alarm found %s", ad.alarm_name)
 			self.ring_alarm(ad)
 
-	def store_alarm_definition(self, alarm_definition: AlarmDefinition):
-			with open(alarm_details_file, 'w') as f:
-				f.write(alarm_definition.serialize())
-
 	def add_scheduler_jobs(self):
 		self.scheduler.add_job(
 			self.update_clock, 
@@ -167,8 +163,7 @@ class Controls(Observer):
 
 		if self.state.mode != Mode.Idle:
 			self.state.mode = Mode.Idle
-			if os.path.exists(alarm_details_file):
-				os.remove(alarm_details_file)
+			self.state.active_alarm = None
 
 	def button4_action(self):
 
@@ -254,8 +249,8 @@ class Controls(Observer):
 
 	def ring_alarm(self, alarm_definition: AlarmDefinition):
 		def do():
-			self.store_alarm_definition(alarm_definition)
 			self.set_to_idle_mode()
+			self.state.active_alarm = alarm_definition
 			self.playback_content.desired_alarm_audio_effect = self.playback_content.audio_effect = alarm_definition.audio_effect
 			self.state.mode = Mode.Alarm
 			self.after_ring_alarm(alarm_definition)

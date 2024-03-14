@@ -384,6 +384,15 @@ class AlarmClockState(Observable):
 		self.notify(property='mode')
 
 	@property
+	def active_alarm(self)-> AlarmDefinition:
+		return self._active_alarm
+
+	@active_alarm.setter
+	def active_alarm(self, value: AlarmDefinition):
+		self._active_alarm = value
+		self.notify(property='active_alarm')
+
+	@property
 	def spotify_event(self) -> LibreSpotifyEvent:
 		return self._spotify_event
 
