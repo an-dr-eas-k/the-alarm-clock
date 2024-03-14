@@ -91,8 +91,27 @@ class Weekday(Enum):
 	SATURDAY = 6
 	SUNDAY = 7
 
+@dataclass
+class Style:
+		background_grayscale_16: int
+		foreground_grayscale_16: int
+		be_bold: bool
+
 class VisualEffect:
-	pass
+
+	def is_active(self, alarm_in_minutes: int) -> bool:
+		return alarm_in_minutes <= 8
+
+	def get_style(self, alarm_in_minutes: int):
+		if alarm_in_minutes <= 2:
+			return Style(background_grayscale_16=15, foreground_grayscale_16=0, be_bold=True)
+		if alarm_in_minutes <= 4:
+			return Style(background_grayscale_16=7, foreground_grayscale_16=0, be_bold=True)
+
+		return Style(background_grayscale_16=0, foreground_grayscale_16=15, be_bold=True)
+
+
+
 
 @dataclass
 class AudioStream:
