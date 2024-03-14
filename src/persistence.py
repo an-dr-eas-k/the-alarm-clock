@@ -35,8 +35,9 @@ class Persistence(Observer):
 			self.store_alarm(state.active_alarm)
 
 	def store_alarm(self, alarm: AlarmDefinition):
-		if alarm is None and os.path.exists(alarm_details_file):
-			os.remove(alarm_details_file)
+		if alarm is None:
+			if os.path.exists(alarm_details_file):
+				os.remove(alarm_details_file)
 			return
 
 		with open(alarm_details_file, 'w') as f:
