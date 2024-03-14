@@ -532,7 +532,8 @@ class DisplayContent(MediaContent):
 	def update_from_state(self, observation: Observation, state: AlarmClockState):
 		if observation.property_name == 'show_blink_segment':
 			self.show_blink_segment = state.show_blink_segment
-			self.notify()
+			if not observation.during_registration:
+				self.notify()
 
 	def hide_volume_meter(self):
 		self.show_volume_meter = False

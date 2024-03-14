@@ -297,7 +297,6 @@ class Display(Observer):
 		self.display_content = display_content
 		self.playback_content = playback_content
 		self.config = config
-		self.display_content.attach(self)
 		self.formatter = DisplayFormatter(self.display_content, self.config)
 		self.clock_presenter= ClockPresenter(self.formatter, self.display_content)
 		self.next_alarm_presenter = NextAlarmPresenter(self.formatter, self.display_content)
@@ -311,7 +310,7 @@ class Display(Observer):
 		if isinstance(observation.observable, DisplayContent):
 			self.update_from_display_content(observation, observation.observable)
 
-	def update_from_display_content(self, observation: Observation, display_content: DisplayContent):
+	def update_from_display_content(self, _1: Observation, _2: DisplayContent):
 		try:
 			self.adjust_display()
 		except Exception as e:
