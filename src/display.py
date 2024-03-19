@@ -1,6 +1,5 @@
 import datetime
 import logging
-import math
 import os
 import traceback
 from luma.core.device import device as luma_device
@@ -8,7 +7,7 @@ from luma.core.device import dummy as luma_dummy
 from luma.core.render import canvas
 from PIL import ImageFont, Image
 
-from domain import AlarmDefinition, Config, DisplayContent, Observation, Observer, PlaybackContent, Style, VisualEffect
+from domain import AlarmClockState, AlarmDefinition, Config, DisplayContent, Observation, Observer, PlaybackContent, SpotifyAudioEffect, VisualEffect
 from gpi import get_room_brightness
 from utils.drawing import get_concat_h_multi_blank, get_concat_v, grayscale_to_color, text_to_image
 from utils.extensions import get_job_arg, get_timedelta_to_alarm
@@ -90,7 +89,7 @@ class DisplayFormatter:
 		self._clock_font = self._light_clock_font if self.highly_dimmed() else self._bold_clock_font
 
 	def adjust_display_by_alarm(self):
-		next_alarm_job = self.display_content.next_alarm_job
+		next_alarm_job = self.display_content.next_alarm_job if self.display_content or self.display_content.next_alarm_job else None
 		visual_effect: VisualEffect = get_job_arg(next_alarm_job, AlarmDefinition).visual_effect if next_alarm_job is not None else None
 
 		self.adjust_display_by_alarm_visual_effect(get_timedelta_to_alarm(next_alarm_job), visual_effect)
@@ -99,7 +98,7 @@ class DisplayFormatter:
 
 		alarm_in_minutes = time_delta_to_alarm.total_seconds() / 60
 
-		if not visual_effect.is_active(alarm_in_minutes):
+		if not visual_effect or not visual_effect.is_active(alarm_in_minutes):
 			if self._visual_effect_active:
 				self._clear_display = True
 				self._visual_effect_active = False
@@ -118,8 +117,11 @@ class DisplayFormatter:
 		clock_string = clock.strftime(self.config.clock_format_string.replace("<blinkSegment>", blink_segment))
 		return self.format_dseg7_string(clock_string, desired_length=5)
 
-	def format_dseg7_string(self, dseg7: str, desired_length: int = 5) -> str:
-		dseg7 = dseg7.replace("7", "`")
+	def format_dseg7_string(self, dseg7: str, desired_length: int = None) -> str:
+		if desired_length is None:
+			desired_length = len(dseg7)
+		
+		dseg7 = dseg7.lower().replace("7", "`").replace("s", "5").replace("i", "1")
 		dseg7 = "!" * (desired_length - len(dseg7)) + dseg7
 		return dseg7
 
@@ -178,6 +180,7 @@ class WifiStatusPresenter(Presenter):
 			bg_color=self.formatter.background_color())
 
 class PlaybackTitlePresenter(Presenter):
+
 	def __init__(self, formatter: DisplayFormatter, content: DisplayContent) -> None:
 		super().__init__(formatter, content)
 
@@ -189,7 +192,7 @@ class PlaybackTitlePresenter(Presenter):
 		font_7segment=ImageFont.truetype(self.font_file_7segment, 13)
 
 		title = text_to_image(
-			self.content.current_playback_title(),
+			self.formatter.format_dseg7_string(self.content.current_playback_title()),
 			font_7segment, 
 			fg_color=self.formatter.foreground_color(min_value=2),
 			bg_color=self.formatter.background_color()
@@ -361,11 +364,22 @@ if __name__ == '__main__':
 	else:
 		dev= dummy(height=64, width=256, mode="1")
 
-	with canvas(dev) as draw:
-		draw.text((20, 20), "Hello World!", fill="white")
+	c=Config()
+	s = AlarmClockState(c=c)
+	pc = PlaybackContent(state=s)
+	pc.audio_effect = SpotifyAudioEffect()
+	pc.is_streaming = True
+	dc=DisplayContent(state=s, playback_content=pc)
+	dc.show_blink_segment = True
+	d = Display(dev, dc, pc, s.configuration)
+	d.update(Observation(observable=dc, reason="init"))
+	image = d.current_display_image
+
+	# with canvas(dev) as draw:
+	# 	draw.text((20, 20), "Hello World!", fill="white")
 
 	if is_on_hardware:
 		time.sleep(10)
 	else:
 		save_file = f"{os.path.dirname(os.path.realpath(__file__))}/../../display_test.png"
-		dev.image.save(save_file, format="png")
+		image.save(save_file, format="png")
