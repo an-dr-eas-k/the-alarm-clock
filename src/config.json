@@ -11,7 +11,7 @@
     "clock_format_string": "%-H<blinkSegment>%M",
     "blink_segment": ":",
     "refresh_timeout_in_secs": 1,
-    "powernap_duration_in_mins": 0,
+    "powernap_duration_in_mins": 18,
     "_audio_streams": [
       {
         "py/object": "domain.AudioStream",
@@ -52,6 +52,29 @@
         },
         "is_active": true,
         "id": 0
+      },
+      {
+        "py/object": "domain.AlarmDefinition",
+        "alarm_name": "weekend",
+        "hour": 7,
+        "min": 45,
+        "weekdays": [
+          "SATURDAY",
+          "SUNDAY"
+        ],
+        "date": null,
+        "_audio_effect": {
+          "py/object": "domain.StreamAudioEffect",
+          "volume": 0.4,
+          "stream_definition": {
+            "py/id": 4
+          }
+        },
+        "visual_effect": {
+          "py/object": "domain.VisualEffect"
+        },
+        "is_active": true,
+        "id": 1
       },
       {
         "py/object": "domain.AlarmDefinition",
