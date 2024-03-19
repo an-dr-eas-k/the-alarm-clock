@@ -9,6 +9,7 @@ from PIL import ImageFont, Image
 
 from domain import AlarmClockState, AlarmDefinition, Config, DisplayContent, Observation, Observer, PlaybackContent, SpotifyAudioEffect, VisualEffect
 from gpi import get_room_brightness
+from utils.analog_clock import AnalogClockGenerator
 from utils.drawing import get_concat_h_multi_blank, get_concat_v, grayscale_to_color, text_to_image
 from utils.extensions import get_job_arg, get_timedelta_to_alarm
 from utils.geolocation import GeoLocation
@@ -142,8 +143,23 @@ class Presenter:
 class ClockPresenter(Presenter):
 	def __init__(self, formatter: DisplayFormatter, content: DisplayContent) -> None:
 		super().__init__(formatter, content)
+		self.analog_clock = AnalogClockGenerator(
+			hour_hand_width=4,
+			minute_hand_width=2, 
+			second_hand_color=(0, 0, 0, 255), 
+			hour_markings_width=0
+		)
 
 	def draw(self) -> Image.Image:
+		if self.formatter.highly_dimmed():
+			day = GeoLocation().now().day
+			canvas = Image.new("RGBA", (64+day, 64), color=self.formatter.background_color())
+
+			self.analog_clock.hour_hand_color=self.formatter.foreground_color()
+			self.analog_clock.minute_hand_color=self.formatter.foreground_color()
+
+			return self.analog_clock.get_current_clock(canvas=canvas, now=GeoLocation().now())
+
 		font= self.formatter.clock_font()
 		clock_string = self.formatter.format_clock_string(GeoLocation().now(), self.content.show_blink_segment)
 		clock_image = text_to_image(
