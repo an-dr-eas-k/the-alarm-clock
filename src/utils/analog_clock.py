@@ -71,9 +71,11 @@ class AnalogClockGenerator:
 		# -------------- #
 
 		def draw_hand(self, draw: ImageDraw.ImageDraw, center, angle, length, color: tuple = (255, 255, 255, 255), width: int = 1):
-				x_end = center + length * math.sin(math.radians(angle))
-				y_end = center - length * math.cos(math.radians(angle))
-				draw.line((center, center, x_end, y_end), fill=color, width=width)
+			if (width <= 0):
+				return
+			x_end = center + length * math.sin(math.radians(angle))
+			y_end = center - length * math.cos(math.radians(angle))
+			draw.line((center, center, x_end, y_end), fill=color, width=width)
 
 		def draw_hour_markings(self, draw: ImageDraw.ImageDraw, center, start_distance: int = 170, length: int = 50, color: tuple = (255, 255, 255, 255), width: int = 5):
 				for i in range(0, 12):

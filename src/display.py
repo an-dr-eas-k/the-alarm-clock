@@ -146,8 +146,7 @@ class ClockPresenter(Presenter):
 		self.analog_clock = AnalogClockGenerator(
 			hour_hand_width=4,
 			minute_hand_width=2, 
-			second_hand_color=(0, 0, 0, 255), 
-			hour_markings_width=0
+			second_hand_width=0
 		)
 
 	def draw(self) -> Image.Image:
