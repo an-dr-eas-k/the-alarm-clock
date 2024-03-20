@@ -144,6 +144,8 @@ class ClockPresenter(Presenter):
 	def __init__(self, formatter: DisplayFormatter, content: DisplayContent) -> None:
 		super().__init__(formatter, content)
 		self.analog_clock = AnalogClockGenerator(
+			hour_markings_width=1,
+			hour_markings_length=1,
 			hour_hand_width=4,
 			minute_hand_width=2, 
 			second_hand_width=0
@@ -157,7 +159,7 @@ class ClockPresenter(Presenter):
 			self.analog_clock.hour_hand_color=self.formatter.foreground_color()
 			self.analog_clock.minute_hand_color=self.formatter.foreground_color()
 
-			return self.analog_clock.get_current_clock(canvas=canvas, now=GeoLocation().now())
+			return self.analog_clock.get_current_clock(now=GeoLocation().now(), clock_radius=31)
 
 		font= self.formatter.clock_font()
 		clock_string = self.formatter.format_clock_string(GeoLocation().now(), self.content.show_blink_segment)
@@ -356,10 +358,10 @@ class Display(Observer):
 
 			im.paste(bottom_left_image, (2, im.height-bottom_left_image.height-2), bottom_left_image)
 
-			if not self.display_content.get_is_wifi_available():
-				im.paste(self.wifi_status_presenter.draw(), (2,2))
-			elif not self.formatter.highly_dimmed():
+			if not self.formatter.highly_dimmed():
 				im.paste(self.weather_status_presenter.draw(), (2,4))
+				if not self.display_content.get_is_wifi_available():
+					im.paste(self.wifi_status_presenter.draw(), (2,2))
 
 		return im
 		
