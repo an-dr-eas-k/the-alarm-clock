@@ -7,6 +7,7 @@ class AnalogClockGenerator:
 								 minute_hand_color: tuple = (255, 255, 255, 255),
 								 second_hand_color: tuple = (255, 255, 255, 255),
 								 origin_color: tuple = (255, 255, 255, 255),
+								 hour_markings_color: tuple = (255, 255, 255, 255),
 								 background_color: tuple = (0, 0, 0, 0),
 								 hour_markings_width: int = 5,
 								 hour_markings_length: int = 20,
@@ -19,6 +20,7 @@ class AnalogClockGenerator:
 				self.minute_hand_color = minute_hand_color
 				self.second_hand_color = second_hand_color
 				self.origin_color = origin_color
+				self.hour_markings_color = hour_markings_color
 				self.background_color = background_color
 
 				self.hour_markings_width = hour_markings_width
@@ -43,7 +45,7 @@ class AnalogClockGenerator:
 				center = clock_radius
 
 				# Draw hour markings
-				self.draw_hour_markings(draw, center, start_distance=clock_radius-self.hour_markings_length, length=self.hour_markings_length, width=self.hour_markings_width)
+				self.draw_hour_markings(draw, center, start_distance=clock_radius-self.hour_markings_length, length=self.hour_markings_length, width=self.hour_markings_width, color=self.hour_markings_color)
 				
 				# Draw origin in the center
 				radius = int(clock_radius / 7)

@@ -154,12 +154,16 @@ class ClockPresenter(Presenter):
 	def draw(self) -> Image.Image:
 		if self.formatter.highly_dimmed():
 			day = GeoLocation().now().day
-			canvas = Image.new("RGBA", (64+day, 64), color=self.formatter.background_color())
 
-			self.analog_clock.hour_hand_color=self.formatter.foreground_color()
-			self.analog_clock.minute_hand_color=self.formatter.foreground_color()
+			self.analog_clock.hour_hand_color \
+				= self.analog_clock.minute_hand_color	\
+				=	self.analog_clock.hour_markings_color \
+				= self.analog_clock.origin_color \
+				= self.formatter.foreground_color()
 
-			return self.analog_clock.get_current_clock(now=GeoLocation().now(), clock_radius=31)
+			analog_clock = Image.new("RGBA", (64+day, 64), color=self.formatter.background_color())
+			analog_clock.paste(self.analog_clock.get_current_clock(now=GeoLocation().now(), clock_radius=31))
+			return analog_clock
 
 		font= self.formatter.clock_font()
 		clock_string = self.formatter.format_clock_string(GeoLocation().now(), self.content.show_blink_segment)
