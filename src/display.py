@@ -69,7 +69,7 @@ class DisplayFormatter:
 
 	def get_grayscale_value(self, room_brightness: float, min_value: int=0, max_value: int=15) -> int:
 		x = max_value
-		if room_brightness < 10:
+		if room_brightness < 15:
 			x=10
 		if room_brightness < 6:
 			x=7
