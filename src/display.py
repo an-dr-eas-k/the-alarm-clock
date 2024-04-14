@@ -268,6 +268,23 @@ class NextAlarmPresenter(Presenter):
 
 		return get_concat_h_multi_blank(
 			[alarm_symbol_img, Image.new(mode='RGBA', size=(3, 0), color=(0, 0, 0, 0)), next_alarm_img])
+	
+class MediaPreenter(Presenter):
+
+	def __init__(self, 
+							formatter: DisplayFormatter, content: DisplayContent, 
+							next_alarm_presenter: NextAlarmPresenter, 
+							playback_title_presenter: PlaybackTitlePresenter) \
+	-> None:
+		super().__init__(formatter, content)
+		self.next_alarm_presenter = next_alarm_presenter
+		self.playback_title_presenter = playback_title_presenter
+
+	def draw(self) -> Image.Image:
+		if self.content.current_playback_title() is not None:
+			return self.playback_title_presenter.draw()
+		else:
+			return self.next_alarm_presenter.draw()
 
 class WeatherStatusPresenter(Presenter):
 	def __init__(self, formatter: DisplayFormatter, content: DisplayContent) -> None:
@@ -275,6 +292,9 @@ class WeatherStatusPresenter(Presenter):
 		self.font_file_weather = f"{weather_icons_dir}/weathericons-regular-webfont.ttf"
 
 	def draw(self) -> Image.Image:
+		if self.formatter.highly_dimmed():
+			return self.empty_image
+		
 		weather = self.content.current_weather
 		if weather is None:
 			return self.empty_image
@@ -327,6 +347,8 @@ class Display(Observer):
 		self.clock_presenter= ClockPresenter(self.formatter, self.display_content)
 		self.next_alarm_presenter = NextAlarmPresenter(self.formatter, self.display_content)
 		self.playback_title_presenter = PlaybackTitlePresenter(self.formatter, self.display_content)
+		self.media_presenter = MediaPreenter(self.formatter, self.display_content, 
+																			 self.next_alarm_presenter, self.playback_title_presenter)
 		self.weather_status_presenter = WeatherStatusPresenter(self.formatter, self.display_content)
 		self.wifi_status_presenter = WifiStatusPresenter(self.formatter, self.display_content)
 		self.volume_meter_presenter = VolumeMeterPresenter(self.formatter, self.display_content, (10, self.device.height))
@@ -362,23 +384,16 @@ class Display(Observer):
 	def present(self) -> Image.Image:
 		im = Image.new("RGB", self.device.size, color=self.formatter.background_color())
 
-		clock_image= self.clock_presenter.draw()
+		clock_image = self.clock_presenter.draw()
 		im.paste(clock_image, ((im.width-clock_image.width),int((im.height-clock_image.height)/2)))
 
 		if self.display_content.show_volume_meter:
 			im.paste(self.volume_meter_presenter.draw(), (0, 0))
 		else:
-			if self.display_content.current_playback_title() is not None:
-				bottom_left_image = self.playback_title_presenter.draw()
-			else:
-				bottom_left_image = self.next_alarm_presenter.draw()
-
-			im.paste(bottom_left_image, (2, im.height-bottom_left_image.height-2), bottom_left_image)
-
-			if not self.formatter.highly_dimmed():
-				im.paste(self.weather_status_presenter.draw(), (2,4))
-				if not self.display_content.get_is_wifi_available():
-					im.paste(self.wifi_status_presenter.draw(), (2,2))
+			im.paste(self.wifi_status_presenter.draw(), (2,2))
+			im.paste(self.weather_status_presenter.draw(), (2,4))
+			media_image = self.media_presenter.draw()
+			im.paste(media_image, (2, im.height-media_image.height-2), media_image)
 
 		return im
 		
