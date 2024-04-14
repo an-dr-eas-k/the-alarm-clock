@@ -160,6 +160,7 @@ class ClockPresenter(Presenter):
 				=	self.analog_clock.hour_markings_color \
 				= self.analog_clock.origin_color \
 				= self.formatter.foreground_color()
+			self.analog_clock.background_color = self.formatter.background_color()
 
 			analog_clock = Image.new("RGBA", (64+day, 64), color=self.formatter.background_color())
 			analog_clock.paste(self.analog_clock.get_current_clock(now=GeoLocation().now(), clock_radius=31))
