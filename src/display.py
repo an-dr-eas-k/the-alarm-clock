@@ -194,11 +194,23 @@ class WifiStatusPresenter(Presenter):
 		super().__init__(formatter, content)
 
 	def draw(self) -> Image.Image:
-		font=ImageFont.truetype(self.font_file_nerd, 30)
+		if (self.content.get_is_wifi_available()):
+			return self.empty_image
+
 		no_wifi_symbol = "\U000f05aa"
+		font_size = 30
+		min_value = 2
+		if self.formatter.highly_dimmed():
+			no_wifi_symbol = "!"
+			font_size = 15
+			min_value = 1
+
+		font=ImageFont.truetype(self.font_file_nerd, font_size)
+
 		return text_to_image(
-			no_wifi_symbol, font, 
-			fg_color=self.formatter.foreground_color(min_value=2), 
+			no_wifi_symbol, 
+			font, 
+			fg_color=self.formatter.foreground_color(min_value=min_value), 
 			bg_color=self.formatter.background_color())
 
 class PlaybackTitlePresenter(Presenter):
