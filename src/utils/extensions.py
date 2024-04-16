@@ -8,7 +8,7 @@ from utils.geolocation import GeoLocation
 
 def get_timedelta_to_alarm(job: Job) -> timedelta:
 	# positive if before alarm
-	if job.next_run_time is None:
+	if not job or job.next_run_time is None:
 			return timedelta.max
 	diff = job.next_run_time - GeoLocation().now()
 	return diff

@@ -91,8 +91,27 @@ class Weekday(Enum):
 	SATURDAY = 6
 	SUNDAY = 7
 
+@dataclass
+class Style:
+		background_grayscale_16: int
+		foreground_grayscale_16: int
+		be_bold: bool
+
 class VisualEffect:
-	pass
+
+	def is_active(self, alarm_in_minutes: int) -> bool:
+		return alarm_in_minutes <= 8
+
+	def get_style(self, alarm_in_minutes: int):
+		if alarm_in_minutes <= 2:
+			return Style(background_grayscale_16=15, foreground_grayscale_16=0, be_bold=True)
+		if alarm_in_minutes <= 4:
+			return Style(background_grayscale_16=7, foreground_grayscale_16=0, be_bold=True)
+
+		return Style(background_grayscale_16=0, foreground_grayscale_16=15, be_bold=True)
+
+
+
 
 @dataclass
 class AudioStream:
@@ -135,7 +154,7 @@ class OfflineAlarmEffect(StreamAudioEffect):
 
 class SpotifyAudioEffect(Observable, AudioEffect):
 	spotify_event: LibreSpotifyEvent = None
-	track_name: str = None
+	track_name: str = "Spotify"
 
 	@property
 	def track_id(self) -> str:
@@ -157,7 +176,6 @@ class SpotifyAudioEffect(Observable, AudioEffect):
 
 	def title(self):
 		return self.track_name
-
 
 class AlarmDefinition:
 	id: int
@@ -213,6 +231,16 @@ class AlarmDefinition:
 	def audio_effect(self, value: AudioEffect):
 		self._audio_effect = value
 
+	def serialize(self):
+		return jsonpickle.encode(self, indent=2)
+
+	def deserialize(desired_alarm_audio_effect_file: str):
+		logging.debug("initializing audio_effect from file: %s", desired_alarm_audio_effect_file)
+		with open(desired_alarm_audio_effect_file, "r") as file:
+			file_contents = file.read()
+			persisted_audio_effect: AudioEffect = jsonpickle.decode(file_contents)
+			return persisted_audio_effect
+
 class Config(Observable):
 
 	clock_format_string: str
@@ -222,8 +250,6 @@ class Config(Observable):
 	refresh_timeout_in_secs: int
 	powernap_duration_in_mins: int
 	default_volume: float = 0.3
-	spotify_client_id: str
-	spotify_client_secret: str
 
 	_alarm_definitions: List[AlarmDefinition] = []
 	_audio_streams: List[AudioStream] = []
@@ -238,11 +264,11 @@ class Config(Observable):
 		return sorted(list, key=lambda x: x.id)
 
 	def assure_item_id(item_with_id, list):
-		if not hasattr(item_with_id, 'id') or item_with_id.id is None:
+		if not hasattr(item_with_id, 'id') or item_with_id.id is None or item_with_id.id < 0:
 			item_with_id.id = Config.get_next_id(list)
 
 	def get_next_id(array_with_ids: List[object]) -> int:
-		return sorted(array_with_ids, key=lambda x: x.id, reverse=True)[0].id+1 if len(array_with_ids) > 0 else 1
+		return sorted(array_with_ids, key=lambda x: x.id, reverse=True)[0].id+1 if len(array_with_ids) > 0 else 0
 
 	def add_alarm_definition_for_powernap(self):
 
@@ -317,8 +343,6 @@ class Config(Observable):
 			dict(key='blink_segment', value=':'),
 			dict(key='refresh_timeout_in_secs', value=1),
 			dict(key='powernap_duration_in_mins', value=18),
-			dict(key='spotify_client_id', value=''),
-			dict(key='spotify_client_secret', value=''),
 			dict(key='default_volume', value=0.3)
 			]):
 			if not hasattr(self, conf_prop['key']):
@@ -379,6 +403,15 @@ class AlarmClockState(Observable):
 		self.notify(property='mode')
 
 	@property
+	def active_alarm(self)-> AlarmDefinition:
+		return self._active_alarm
+
+	@active_alarm.setter
+	def active_alarm(self, value: AlarmDefinition):
+		self._active_alarm = value
+		self.notify(property='active_alarm')
+
+	@property
 	def spotify_event(self) -> LibreSpotifyEvent:
 		return self._spotify_event
 
@@ -404,7 +437,15 @@ class MediaContent(Observable, Observer):
 
 class PlaybackContent(MediaContent):
 
-	desired_alarm_audio_effect: AudioEffect
+	@property
+	def desired_alarm_audio_effect(self) -> AudioEffect:
+		return self._desired_alarm_audio_effect
+
+	@desired_alarm_audio_effect.setter
+	def desired_alarm_audio_effect(self, value: AudioEffect):
+
+		self._desired_alarm_audio_effect = value
+		self.notify(property='desired_alarm_audio_effect')
 	
 	@property
 	def audio_effect(self) -> AudioEffect:
@@ -491,7 +532,7 @@ class PlaybackContent(MediaContent):
 
 class DisplayContent(MediaContent):
 	_show_volume_meter: bool = False
-	next_alarm_job: Job
+	next_alarm_job: Job = None
 	current_weather: Weather = None
 	show_blink_segment: bool
 
@@ -519,7 +560,8 @@ class DisplayContent(MediaContent):
 	def update_from_state(self, observation: Observation, state: AlarmClockState):
 		if observation.property_name == 'show_blink_segment':
 			self.show_blink_segment = state.show_blink_segment
-			self.notify()
+			if not observation.during_registration:
+				self.notify()
 
 	def hide_volume_meter(self):
 		self.show_volume_meter = False

@@ -1,17 +1,16 @@
 import datetime
-import json
 import logging
 import os
 import traceback
-from urllib.request import urlopen
 from gpiozero import Button
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
-from domain import AlarmClockState, AlarmDefinition, PlaybackContent, DisplayContent, Mode, OfflineAlarmEffect, StreamAudioEffect, Observation, Observer, Config
+from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, PlaybackContent, DisplayContent, Mode, StreamAudioEffect, Observation, Observer, Config
 from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon
+from resources.resources import alarm_details_file
 
 button1Id = 0
 button2Id = 5
@@ -33,11 +32,17 @@ class Controls(Observer):
 		self.state = state
 		self.display_content = display_content
 		self.playback_content = playback_content
-		self.sun_event_occured(state.geo_location.last_sun_event())
+		self.state.is_daytime = state.geo_location.last_sun_event() == SunEvent.sunrise
 		self.update_weather_status()
 		self.add_scheduler_jobs()
 		self.scheduler.start()
 		self.print_active_jobs(default_store)
+
+	def consider_failed_alarm(self):
+		if os.path.exists(alarm_details_file):
+			ad = AlarmDefinition.deserialize(alarm_details_file)
+			logging.info("failed alarm found %s", ad.alarm_name)
+			self.ring_alarm(ad)
 
 	def add_scheduler_jobs(self):
 		self.scheduler.add_job(
@@ -62,11 +67,14 @@ class Controls(Observer):
 			jobstore=default_store)
 
 		for event in SunEvent.__members__.values():
-			self.scheduler.add_job(
-				lambda : self.sun_event_occured(event), 
-				trigger=self.state.geo_location.get_sun_event_cron_trigger(event),
-				id=event.value,
-				jobstore=default_store)
+			self.init_sun_event_scheduler(event)
+
+	def init_sun_event_scheduler(self, event: SunEvent):
+		self.scheduler.add_job(
+			lambda : self.sun_event_occured(event), 
+			trigger=self.state.geo_location.get_sun_event_cron_trigger(event),
+			id=event.value,
+			jobstore=default_store)
 
 	def update(self, observation: Observation):
 		super().update(observation)
@@ -136,18 +144,10 @@ class Controls(Observer):
 			logging.error("%s", traceback.format_exc())
 
 	def button1_action(self):
-		def decrease_volume():
-			self.playback_content.decrease_volume()
-			logging.info("new volume: %s", self.playback_content.volume)
-
-		Controls.button_action(decrease_volume, 1)
+		Controls.button_action(self.decrease_volume, 1)
 
 	def button2_action(self):
-		def increase_volume():
-			self.playback_content.increase_volume()
-			logging.info("new volume: %s", self.playback_content.volume)
-
-		Controls.button_action(increase_volume, 2)
+		Controls.button_action(self.increase_volume, 2)
 
 	def button3_action(self):
 
@@ -160,7 +160,10 @@ class Controls(Observer):
 	def set_to_idle_mode(self):
 		if self.state.mode == Mode.Spotify:
 			restart_spotify_daemon()
-		self.state.mode = Mode.Idle
+
+		if self.state.mode != Mode.Idle:
+			self.state.mode = Mode.Idle
+			self.state.active_alarm = None
 
 	def button4_action(self):
 
@@ -169,15 +172,33 @@ class Controls(Observer):
 			if self.state.mode in [Mode.Alarm, Mode.Music, Mode.Spotify]:
 				self.set_to_idle_mode()
 			else:
-				playback_content = self.playback_content
-				if not playback_content.audio_effect or not isinstance(playback_content.audio_effect, StreamAudioEffect):
+				if self.playback_content.audio_effect and isinstance(self.playback_content.audio_effect, StreamAudioEffect):
+					first_stream = self.playback_content.audio_effect.stream_definition
+				else:
 					first_stream = self.state.configuration.audio_streams[0]
-					playback_content.audio_effect = StreamAudioEffect( \
-						stream_definition=first_stream, \
-						volume=self.state.configuration.default_volume)
-				self.state.mode = Mode.Music
+				self.play_stream(first_stream)
 		
 		Controls.button_action(toggle_stream, 4)
+
+	def increase_volume(self):
+		self.playback_content.increase_volume()
+		logging.info("new volume: %s", self.playback_content.volume)
+
+	def decrease_volume(self):
+		self.playback_content.decrease_volume()
+		logging.info("new volume: %s", self.playback_content.volume)
+
+	def play_stream_by_id(self, stream_id: int):
+		streams = self.state.configuration.audio_streams
+		stream = next((s for s in streams if s.id == stream_id), streams[0])
+		self.play_stream(stream)
+
+	def play_stream(self, audio_stream: AudioStream, volume: float = None):
+		if volume is None:
+			volume = self.playback_content.volume
+
+		self.playback_content.audio_effect = StreamAudioEffect(stream_definition=audio_stream, volume=volume)
+		self.state.mode = Mode.Music
 
 	def configure(self):
 		for button in ([
@@ -202,7 +223,11 @@ class Controls(Observer):
 
 	def update_weather_status(self):
 		def do():
-			new_weather = GeoLocation().get_current_weather() if self.state.is_wifi_available else None
+			if not self.state.is_wifi_available:
+				self.display_content.current_weather = None
+				return 
+
+			new_weather = GeoLocation().get_current_weather()
 			logging.info ("weather updating: %s", new_weather)
 			self.display_content.current_weather = new_weather
 			
@@ -220,17 +245,19 @@ class Controls(Observer):
 	def sun_event_occured(self, event: SunEvent):
 		def do():
 			self.state.is_daytime = event == SunEvent.sunrise
+			self.init_sun_event_scheduler(event)
 
 		Controls.action(do, "sun event %s" % event)
 
-	def ring_alarm(self, alarmDefinition: AlarmDefinition):
+	def ring_alarm(self, alarm_definition: AlarmDefinition):
 		def do():
 			self.set_to_idle_mode()
-			self.playback_content.desired_alarm_audio_effect = self.playback_content.audio_effect = alarmDefinition.audio_effect
+			self.state.active_alarm = alarm_definition
+			self.playback_content.desired_alarm_audio_effect = self.playback_content.audio_effect = alarm_definition.audio_effect
 			self.state.mode = Mode.Alarm
-			self.after_ring_alarm(alarmDefinition)
+			self.after_ring_alarm(alarm_definition)
 		
-		Controls.action(do, "ring alarm %s" % alarmDefinition.alarm_name)
+		Controls.action(do, "ring alarm %s" % alarm_definition.alarm_name)
 
 	def after_ring_alarm(self, alarmDefinition: AlarmDefinition):
 

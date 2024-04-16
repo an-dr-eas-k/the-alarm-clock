@@ -113,7 +113,6 @@ class Speaker(Observer):
 		self.threadLock = threading.Lock()
 		self.playback_content = playback_content
 		self.config = config
-		self.playback_content.attach(self)
 
 	def update(self, observation: Observation):
 		super().update(observation)

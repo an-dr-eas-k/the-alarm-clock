@@ -19,7 +19,6 @@ from domain import AlarmClockState, Config, DisplayContent, Mode, PlaybackConten
 from gpo import GeneralPurposeOutput
 from persistence import Persistence
 from resources.resources import init_logging
-from utils.spotify_api import SpotifyApi
 from utils import os as app_os
 
 
@@ -53,8 +52,6 @@ class ClockApp:
 		self.state.attach(playback_content)
 		display_content = DisplayContent(self.state, playback_content)
 		self.state.attach(display_content)
-		self.spotify_api = SpotifyApi(self.state.configuration.spotify_client_id, self.state.configuration.spotify_client_secret)
-		playback_content.attach(self.spotify_api)
 
 		device: luma_device
 
@@ -69,18 +66,22 @@ class ClockApp:
 			port = 8080
 
 		self.display = Display(device, display_content, playback_content, self.state.configuration)
-		self.state.configuration.attach(
-			Persistence(self.configFile))
+		display_content.attach(self.display)
+		self.persistence = Persistence(self.configFile)
+		self.state.attach(self.persistence)
+		self.state.configuration.attach(self.persistence)
 
 		self.speaker = Speaker(playback_content, self.state.configuration)
+		playback_content.attach(self.speaker)
 		self.state.configuration.attach(self.controls)
 		playback_content.attach(self.controls)
 		self.controls.configure()
 
-		self.api = Api(self.state, playback_content, lambda:self.display.current_display_image)
+		self.api = Api(self.controls, self.display)
 		self.api.start(port)
 
 		self.state.mode = Mode.Idle
+		self.controls.consider_failed_alarm()
 		tornado.ioloop.IOLoop.current().start()
 		
 if __name__ == '__main__':
