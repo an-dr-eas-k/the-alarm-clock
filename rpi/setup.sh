@@ -32,13 +32,13 @@ adduser the-alarm-clock spi
 mkdir -p $uhome
 chown $uid:$uid -R $uhome
 
-ln -s ~+/resources/sudoers /etc/sudoers.d/the-alarm-clock
+ln -fs $uhome/resources/sudoers /etc/sudoers.d/the-alarm-clock
 
 # setup raspotify
 
-ln -s ~+/resources/raspotify.service /lib/systemd/system/raspotify.service
-ln -s ~+/resources/asoundrc $uhome/.asoundrc
-ln -s ~+/resources/raspotify.conf /etc/raspotify/conf
+ln -fs $uhome/resources/raspotify.service /lib/systemd/system/raspotify.service
+ln -fs $uhome/resources/asoundrc $uhome/.asoundrc
+ln -fs $uhome/resources/raspotify.conf /etc/raspotify/conf
 
 cat >> /etc/raspotify/conf << "EOF"
 LIBRESPOT_ONEVENT="${uhome}/rpi/onspotifyevent.sh"
@@ -46,7 +46,7 @@ EOF
 
 
 # setup the-alarm-clock app
-ln -s /usr/bin/python3 /usr/bin/python
+ln -fs /usr/bin/python3 /usr/bin/python
 setcap CAP_NET_BIND_SERVICE=+eip $(readlink /usr/bin/python -f)
 uid=1010
 
