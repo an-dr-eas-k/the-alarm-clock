@@ -32,17 +32,13 @@ adduser the-alarm-clock spi
 mkdir -p $uhome
 chown $uid:$uid -R $uhome
 
-ln -fs $uhome/resources/sudoers /etc/sudoers.d/the-alarm-clock
+ln -fs $uhome/rpi/resources/sudoers /etc/sudoers.d/the-alarm-clock
 
 # setup raspotify
 
-ln -fs $uhome/resources/raspotify.service /lib/systemd/system/raspotify.service
-ln -fs $uhome/resources/asoundrc $uhome/.asoundrc
-ln -fs $uhome/resources/raspotify.conf /etc/raspotify/conf
-
-cat >> /etc/raspotify/conf << "EOF"
-LIBRESPOT_ONEVENT="${uhome}/rpi/onspotifyevent.sh"
-EOF
+ln -fs $uhome/rpi/resources/raspotify.service /lib/systemd/system/raspotify.service
+ln -fs $uhome/rpi/resources/asoundrc $uhome/.asoundrc
+ln -fs $uhome/rpi/resources/raspotify.conf /etc/raspotify/conf
 
 
 # setup the-alarm-clock app
