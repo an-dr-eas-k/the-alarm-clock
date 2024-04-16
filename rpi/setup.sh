@@ -1,3 +1,6 @@
+uid=1010
+uhome=/srv/the-alarm-clock
+
 # install dependencies
 apt-get -y update
 apt-get -y install git python3 vlc python3-pip curl libasound2-plugin-equal python3-dbus
@@ -6,6 +9,9 @@ curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
 # update system
 systemctl disable pigpiod
 # systemctl disable aplay.service
+
+rm $uhome -rf
+git clone -b develop https://github.com/an-dr-eas-k/the-alarm-clock.git $uhome
 
 # configure log rotation
 	cat >> /etc/logrotate.d/the-alarm-clock << "EOF"
@@ -18,8 +24,6 @@ systemctl disable pigpiod
 EOF
 
 # add and configure the-alarm-clock user
-uid=1010
-uhome=/srv/the-alarm-clock
 addgroup --system --gid $uid the-alarm-clock
 adduser --system --home $uhome --uid $uid --gid $uid --disabled-password the-alarm-clock
 adduser the-alarm-clock gpio
@@ -53,8 +57,3 @@ sudo -u the-alarm-clock -- bash ${uhome}/rpi/onboot.sh 2>> /var/log/the-alarm-cl
 exit 0
 EOF
 fi
-
-
-git clone https://github.com/an-dr-eas-k/the-alarm-clock.git $uhome
-cd $uhome
-git checkout develop
