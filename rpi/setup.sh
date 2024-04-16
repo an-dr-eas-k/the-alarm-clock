@@ -5,7 +5,7 @@ curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
 
 # update system
 systemctl disable pigpiod
-systemctl disable aplay.service
+# systemctl disable aplay.service
 
 # configure log rotation
 	cat >> /etc/logrotate.d/the-alarm-clock << "EOF"
@@ -18,6 +18,7 @@ systemctl disable aplay.service
 EOF
 
 # add and configure the-alarm-clock user
+uid=1010
 addgroup --system --gid $uid the-alarm-clock
 adduser --system --home /srv/the-alarm-clock/ --uid $uid --gid $uid --disabled-password the-alarm-clock
 adduser the-alarm-clock gpio
