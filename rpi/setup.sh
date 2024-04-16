@@ -44,7 +44,6 @@ ln -fs $uhome/rpi/resources/raspotify.conf /etc/raspotify/conf
 # setup the-alarm-clock app
 ln -fs /usr/bin/python3 /usr/bin/python
 setcap CAP_NET_BIND_SERVICE=+eip $(readlink /usr/bin/python -f)
-uid=1010
 
 if [ -z "$( grep the-alarm-clock /etc/rc.local )" ]; then
 	sed -i '/exit/d' /etc/rc.local
