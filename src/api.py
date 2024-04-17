@@ -11,9 +11,13 @@ from PIL.Image import Image
 from controls import Controls
 from display import Display
 
+from google.auth.transport.requests import Request
+from google.oauth2 import id_token
+
 from domain import AlarmDefinition, AudioEffect, AudioStream, Config, LibreSpotifyEvent, PlaybackContent, StreamAudioEffect, VisualEffect, Weekday, try_update
 from gpi import get_room_brightness
 from utils.os import reboot_system, shutdown_system
+
 
 def split_path_arguments(path) -> tuple[str, int, str]:
 	path_args = path[0].split('/')
@@ -188,6 +192,23 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 		return ala
 
 
+class GoogleLoginHandler(tornado.web.RequestHandler):
+	async def get(self):
+		authorization_url = "https://accounts.google.com/o/oauth2/auth"
+		query_params = {
+			"client_id": "786495996194-nupf01t8nnfmfp57nd8ql1kptnu8d3t4.apps.googleusercontent.com",
+			"response_type": "code",
+			"scope": "openid email profile",
+			"redirect_uri": "http://localhost:8080/api/google/callback",
+			"state": "some_random_state",
+		}
+		self.redirect(authorization_url + "?" + "&".join(f"{key}={value}" for key, value in query_params.items()))
+
+class GoogleCallbackHandler(tornado.web.RequestHandler):
+	async def get(self):
+		code = self.get_argument("code")
+		logging.debug("code: %s", code)
+
 class Api:
 
 	app: tornado.web.Application
@@ -200,6 +221,8 @@ class Api:
 			(r"/api/config/?(.*)", ConfigApiHandler, {"config": self.controls.state.configuration}),
 			(r"/api/action/?(.*)", ActionApiHandler, {"controls": self.controls}),
 			(r"/api/librespotify", LibreSpotifyEventHandler, {"playback_content": self.controls.playback_content} ),
+			(r"/api/google/login", GoogleLoginHandler),
+			(r"/api/google/callback", GoogleCallbackHandler),
 			(r"/(.*)", ConfigHandler, {"config": self.controls.state.configuration, "api": self})
 		]
 

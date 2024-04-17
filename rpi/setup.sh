@@ -23,11 +23,11 @@ adduser the-alarm-clock gpio
 adduser the-alarm-clock i2c
 adduser the-alarm-clock spi
 adduser the-alarm-clock audio
-chown $uid:$uid -R $uhome
 
 #clone the-alarm-clock
 rm -rf $app
 git clone -b develop https://github.com/an-dr-eas-k/the-alarm-clock.git $app
+chown $uid:$uid -R $uhome
 
 #config sudoers
 rm /etc/sudoers.d/the-alarm-clock

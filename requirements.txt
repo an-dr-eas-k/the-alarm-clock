@@ -10,3 +10,5 @@ jsonpickle
 astral
 adafruit-circuitpython-bh1750
 spotify
+google-auth
+requests

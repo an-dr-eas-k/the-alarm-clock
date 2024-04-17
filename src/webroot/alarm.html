@@ -7,6 +7,7 @@
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
 		integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+	<script src="https://accounts.google.com/gsi/client" async></script>
 	<style>
 		label {
 			width: 200px;
@@ -130,7 +131,22 @@
 
 <body data-bs-theme="dark">
 	<div class="container">
+		<div class="row">
+			<div class="col align-items-right">
+				<div id="g_id_onload" data-client_id="786495996194-nupf01t8nnfmfp57nd8ql1kptnu8d3t4.apps.googleusercontent.com"
+					data-context="signin" data-ux_mode="popup" data-login_uri="http://localhost:8080/api/google/callback"
+					data-nonce="" data-auto_select="true" data-itp_support="true">
+				</div>
+
+				<div class="g_id_signin" data-type="icon" data-shape="square" data-theme="filled_black" data-text="signin"
+					data-size="medium">
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="container">
 		<div id="controls-container" class="row">
+			<a href="/api/google/login">Login to Google Account</a>
 			<h3>Controls</h3>
 			<div class="row align-items-center">
 				{% for audio_stream in config.audio_streams %}
