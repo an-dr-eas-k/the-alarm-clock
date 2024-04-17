@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import subprocess
+from resources.resources import mixer_device_simple_control
 
 def is_ping_successful(hostname):
 	result = subprocess.run(
@@ -26,7 +27,7 @@ def shutdown_system():
 def get_system_volume(control_name: str = None) -> float:
 	logging.debug("getting system volume")
 	if control_name is None:
-		control_name = get_system_volume_control_name()
+		control_name = mixer_device_simple_control
 	output = subprocess.check_output(["amixer", "sget", control_name])
 	lines = output.decode().splitlines()
 	pattern = r"\[(\d+)%\]"
@@ -37,7 +38,7 @@ def get_system_volume(control_name: str = None) -> float:
 
 def set_system_volume(newVolume: float):
 	logging.debug("setting system volume to %s" % newVolume)
-	control_name = get_system_volume_control_name()
+	control_name = mixer_device_simple_control
 	subprocess.call(["amixer", "sset", control_name, f"{newVolume * 100}%"], stdout=subprocess.DEVNULL)
 
 def get_system_volume_control_name():

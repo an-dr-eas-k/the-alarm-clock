@@ -24,15 +24,23 @@ check_internet
 
 cd /srv/the-alarm-clock/app
 git config pull.ff only
+
 while true; do
+
 	echo "update from git"
 	git reset --hard "@{upstream}"
 	git pull
+
 	echo "git status"
 	git status
 	git log -1
+	
+	echo "restore asound state"
+	alsactl --no-ucm --file rpi/resources/asound.state restore
+
 	echo "installing requirements"
 	pip3 install --break-system-packages -r requirements.txt
+
 	echo "invoking app_clock.py"
 	python -u src/app_clock.py
 done
