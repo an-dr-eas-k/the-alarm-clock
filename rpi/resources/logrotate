@@ -1,0 +1,6 @@
+/var/log/the-alarm-clock.errout
+/var/log/the-alarm-clock.stdout
+{
+	rotate 10
+	size 1M
+}

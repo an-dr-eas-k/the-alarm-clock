@@ -14,14 +14,7 @@ rm $uhome -rf
 git clone -b develop https://github.com/an-dr-eas-k/the-alarm-clock.git $uhome
 
 # configure log rotation
-	cat >> /etc/logrotate.d/the-alarm-clock << "EOF"
-/var/log/the-alarm-clock.errout
-/var/log/the-alarm-clock.stdout
-{
-	rotate 10
-	size 1M
-}
-EOF
+ln -fs $uhome/rpi/resources/logrotate /etc/logrotate.d/the-alarm-clock
 
 # add and configure the-alarm-clock user
 addgroup --system --gid $uid the-alarm-clock
@@ -32,7 +25,8 @@ adduser the-alarm-clock spi
 mkdir -p $uhome
 chown $uid:$uid -R $uhome
 
-ln -fs $uhome/rpi/resources/sudoers /etc/sudoers.d/the-alarm-clock
+rm /etc/sudoers.d/the-alarm-clock
+cat $uhome/rpi/resources/sudoers > /etc/sudoers.d/the-alarm-clock
 
 # setup raspotify
 

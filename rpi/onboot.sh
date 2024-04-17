@@ -32,7 +32,7 @@ while true; do
 	git status
 	git log -1
 	echo "installing requirements"
-	pip3 install -r requirements.txt
+	pip3 install --break-system-packages -r requirements.txt
 	echo "invoking app_clock.py"
 	python -u src/app_clock.py
 done
