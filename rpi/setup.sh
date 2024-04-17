@@ -3,17 +3,17 @@ uhome=/srv/the-alarm-clock
 app=${uhome}/app
 
 killall -u the-alarm-clock
-# install dependencies
+# update system and install dependencies
 apt-get -y update
-# apt-get -y dist-upgrade
+apt-get -y dist-upgrade
 apt-get -y install git python3 vlc python3-pip curl libasound2-plugin-equal python3-dbus
 curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
 
-# update system
+# configure system
 systemctl disable pigpiod
 # systemctl disable aplay.service
-raspi-config nonint do_spi 0
-raspi-config nonint do_i2c 0
+
+cat $app/rpi/resources/rpi-boot-config.txt > /boot/firmware/config.txt
 
 # add and configure the-alarm-clock user
 mkdir -p $uhome
