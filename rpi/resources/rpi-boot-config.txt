@@ -15,5 +15,5 @@ otg_mode=1
 
 [all]
 dtoverlay=
-dtoverlay=rpi-digiampplus,auto_mute_amp
+dtoverlay=rpi-digiampplus,auto_mute_amp=off,unmute_amp=on
 dtparam=sd_poll_once
