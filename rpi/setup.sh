@@ -1,6 +1,7 @@
 uid=1010
 uhome=/srv/the-alarm-clock
 
+killall -u the-alarm-clock
 # install dependencies
 apt-get -y update
 # apt-get -y dist-upgrade
@@ -13,7 +14,7 @@ systemctl disable pigpiod
 raspi-config nonint do_spi 0
 raspi-config nonint do_i2c 0
 
-rm $uhome -rf
+rm -rf $uhome
 git clone -b develop https://github.com/an-dr-eas-k/the-alarm-clock.git $uhome
 
 # configure log rotation
