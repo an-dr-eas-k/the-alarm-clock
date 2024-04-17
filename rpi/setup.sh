@@ -3,12 +3,15 @@ uhome=/srv/the-alarm-clock
 
 # install dependencies
 apt-get -y update
+# apt-get -y dist-upgrade
 apt-get -y install git python3 vlc python3-pip curl libasound2-plugin-equal python3-dbus
 curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
 
 # update system
 systemctl disable pigpiod
 # systemctl disable aplay.service
+raspi-config nonint do_spi 0
+raspi-config nonint do_i2c 0
 
 rm $uhome -rf
 git clone -b develop https://github.com/an-dr-eas-k/the-alarm-clock.git $uhome
@@ -22,6 +25,7 @@ adduser --system --home $uhome --uid $uid --gid $uid --disabled-password the-ala
 adduser the-alarm-clock gpio
 adduser the-alarm-clock i2c
 adduser the-alarm-clock spi
+adduser the-alarm-clock audio
 mkdir -p $uhome
 chown $uid:$uid -R $uhome
 
