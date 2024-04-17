@@ -22,7 +22,7 @@ check_internet() {
 
 check_internet
 
-cd /srv/the-alarm-clock
+cd /srv/the-alarm-clock/app
 git config pull.ff only
 while true; do
 	echo "update from git"
