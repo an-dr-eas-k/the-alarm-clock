@@ -11,6 +11,7 @@ apt-get -y dist-upgrade
 apt-get -y remove python3-rpi.gpio
 apt-get -y install git python3 vlc python3-pip curl libasound2-plugin-equal python3-dbus python3-rpi-lgpio
 curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
+apt-get -y autoremove
 
 echo "configure system"
 systemctl disable pigpiod
