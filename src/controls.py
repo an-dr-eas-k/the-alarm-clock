@@ -175,10 +175,9 @@ class Controls(Observer):
 				self.set_to_idle_mode()
 			else:
 				if self.playback_content.audio_effect and isinstance(self.playback_content.audio_effect, StreamAudioEffect):
-					first_stream = self.playback_content.audio_effect.stream_definition
+					self.play_stream(self.playback_content.audio_effect.stream_definition)
 				else:
-					first_stream = self.state.configuration.audio_streams[0]
-				self.play_stream(first_stream)
+					self.play_stream_by_id(0)
 		
 		Controls.button_action(toggle_stream, 4)
 
@@ -196,6 +195,8 @@ class Controls(Observer):
 		self.play_stream(stream)
 
 	def play_stream(self, audio_stream: AudioStream, volume: float = None):
+		self.set_to_idle_mode()
+
 		if volume is None:
 			volume = self.playback_content.volume
 
