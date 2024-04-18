@@ -15,6 +15,8 @@ from domain import AlarmDefinition, AudioEffect, AudioStream, Config, LibreSpoti
 from gpi import get_room_brightness
 from utils.os import reboot_system, shutdown_system
 
+logger = logging.getLogger("api")
+
 def split_path_arguments(path) -> tuple[str, int, str]:
 	path_args = path[0].split('/')
 	return (
@@ -36,10 +38,10 @@ class LibreSpotifyEventHandler(tornado.web.RequestHandler):
 			spotify_event_dict = {key: value for key, value in spotify_event_payload.items()}
 
 			spotify_event = LibreSpotifyEvent(spotify_event_dict)
-			logging.info("received librespotify event %s", spotify_event)
+			logger.info("received librespotify event %s", spotify_event)
 			self.playback_content.set_spotify_event(spotify_event)
 		except:
-			logging.warning("%s", traceback.format_exc())
+			logger.warning("%s", traceback.format_exc())
 		self.finish()
 
 class DisplayHandler(tornado.web.RequestHandler):
@@ -69,7 +71,7 @@ class ConfigHandler(tornado.web.RequestHandler):
 		try:
 			self.render(f'{self.root}/alarm.html', config=self.config, api=self.api)
 		except:
-			logging.warning("%s", traceback.format_exc())
+			logger.warning("%s", traceback.format_exc())
 
 class ActionApiHandler(tornado.web.RequestHandler):
 
@@ -96,10 +98,10 @@ class ActionApiHandler(tornado.web.RequestHandler):
 			elif (type == 'shutdown'):
 				shutdown_system()
 			else:
-				logging.warning("Unknown action: %s", type)
+				logger.warning("Unknown action: %s", type)
 
 		except:
-			logging.warning("%s", traceback.format_exc())
+			logger.warning("%s", traceback.format_exc())
 
 
 class ConfigApiHandler(tornado.web.RequestHandler):
@@ -112,7 +114,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 			self.set_header('Content-Type', 'application/json')
 			self.write(self.config.serialize())
 		except:
-			logging.warning("%s", traceback.format_exc())
+			logger.warning("%s", traceback.format_exc())
 	
 	def delete(self, *args):
 		try:
@@ -122,7 +124,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 			elif type == 'stream':
 				self.config.remove_audio_stream(id) 
 		except:
-			logging.warning("%s", traceback.format_exc())
+			logger.warning("%s", traceback.format_exc())
 
 	def post(self, *args):
 		try:
@@ -147,7 +149,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 			elif type == 'start_powernap':
 				self.config.add_alarm_definition_for_powernap ()
 		except:
-			logging.warning("%s", traceback.format_exc())
+			logger.warning("%s", traceback.format_exc())
 
 	def parse_stream_definition(self, form_arguments) -> AlarmDefinition:
 		stream_name = form_arguments['streamName']

@@ -12,6 +12,8 @@ from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon
 from resources.resources import alarm_details_file
 
+logger = logging.getLogger("controls")
+
 button1Id = 0
 button2Id = 5
 button3Id = 6
@@ -41,7 +43,7 @@ class Controls(Observer):
 	def consider_failed_alarm(self):
 		if os.path.exists(alarm_details_file):
 			ad = AlarmDefinition.deserialize(alarm_details_file)
-			logging.info("failed alarm found %s", ad.alarm_name)
+			logger.info("failed alarm found %s", ad.alarm_name)
 			self.ring_alarm(ad)
 
 	def add_scheduler_jobs(self):
@@ -111,7 +113,7 @@ class Controls(Observer):
 			for alDef in config.alarm_definitions:
 				if not alDef.is_active:
 					continue
-				logging.info("adding job for '%s'", alDef.alarm_name)
+				logger.info("adding job for '%s'", alDef.alarm_name)
 				self.scheduler.add_job(
 					func=self.ring_alarm,
 					args=(alDef,),
@@ -130,7 +132,7 @@ class Controls(Observer):
 	def print_active_jobs(self, jobstore):
 			for job in self.scheduler.get_jobs(jobstore=jobstore):
 				if (hasattr(job, 'next_run_time') and job.next_run_time is not None):
-					logging.info("next runtime for job '%s': %s", job.id, job.next_run_time.strftime(f"%Y-%m-%d %H:%M:%S"))
+					logger.info("next runtime for job '%s': %s", job.id, job.next_run_time.strftime(f"%Y-%m-%d %H:%M:%S"))
 
 	def button_action(action, button_id):
 		Controls.action(action, "button %s pressed" % button_id)
@@ -138,10 +140,10 @@ class Controls(Observer):
 	def action(action, info: str = None):
 		try:
 			if info:
-				logging.info(info)
+				logger.info(info)
 			action()
 		except:
-			logging.error("%s", traceback.format_exc())
+			logger.error("%s", traceback.format_exc())
 
 	def button1_action(self):
 		Controls.button_action(self.decrease_volume, 1)
@@ -182,11 +184,11 @@ class Controls(Observer):
 
 	def increase_volume(self):
 		self.playback_content.increase_volume()
-		logging.info("new volume: %s", self.playback_content.volume)
+		logger.info("new volume: %s", self.playback_content.volume)
 
 	def decrease_volume(self):
 		self.playback_content.decrease_volume()
-		logging.info("new volume: %s", self.playback_content.volume)
+		logger.info("new volume: %s", self.playback_content.volume)
 
 	def play_stream_by_id(self, stream_id: int):
 		streams = self.state.configuration.audio_streams
@@ -216,7 +218,7 @@ class Controls(Observer):
 
 	def update_clock(self):
 		def do():
-			logging.debug ("update show blink segment: %s", not self.state.show_blink_segment)
+			logger.debug ("update show blink segment: %s", not self.state.show_blink_segment)
 			self.state.show_blink_segment = not self.state.show_blink_segment
 
 		Controls.action(do)
@@ -228,7 +230,7 @@ class Controls(Observer):
 				return 
 
 			new_weather = GeoLocation().get_current_weather()
-			logging.info ("weather updating: %s", new_weather)
+			logger.info ("weather updating: %s", new_weather)
 			self.display_content.current_weather = new_weather
 			
 		Controls.action(do)
@@ -237,7 +239,7 @@ class Controls(Observer):
 		def do():
 			new_state = is_internet_available()
 			if new_state != self.state.is_wifi_available:
-				logging.info ("change wifi state, is available: %s", new_state)
+				logger.info ("change wifi state, is available: %s", new_state)
 				self.state.is_wifi_available = new_state
 		
 		Controls.action(do)
@@ -283,7 +285,7 @@ class SoftwareControls(Controls):
 
 	def configure(self):
 		def key_pressed_action(key):
-			logging.debug ("pressed %s", key)
+			logger.debug ("pressed %s", key)
 			if not hasattr(key, 'char'):
 				return
 			try:
@@ -297,7 +299,7 @@ class SoftwareControls(Controls):
 				if (key.char == '4'):
 					self.button4_action()
 			except Exception:
-				logging.warning("%s", traceback.format_exc())
+				logger.warning("%s", traceback.format_exc())
 
 		try:
 			from pynput.keyboard import Listener

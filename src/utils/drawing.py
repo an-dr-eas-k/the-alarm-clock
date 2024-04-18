@@ -34,7 +34,7 @@ def text_to_image(
 ) -> Image.Image:
    box = font.getbbox(text)
    img = Image.new(mode, (box[2]-box[0], box[3]-box[1]), bg_color)
-   ImageDraw.Draw(img).text([-box[0],-box[1]], text, font=font, fill=fg_color)
+   ImageDraw.logger(img).text([-box[0],-box[1]], text, font=font, fill=fg_color)
    return img
 
 def grayscale_to_color(grayscale_value: int):

@@ -3,6 +3,8 @@ from domain import PlaybackContent, Observation, Observer
 from gpiozero import DigitalOutputDevice
 import logging
 
+logger = logging.getLogger("gpo")
+
 audio_mute_pin_id = 22
 
 class GeneralPurposeOutput(Observer):
@@ -13,7 +15,7 @@ class GeneralPurposeOutput(Observer):
 		try:
 			self.audio_unmute_pin = DigitalOutputDevice(audio_mute_pin_id)
 		except:
-			logging.warning("audio unmute pin not available")
+			logger.warning("audio unmute pin not available")
 			self.audio_unmute_pin = None
 
 	def update(self, observation: Observation):
@@ -26,7 +28,7 @@ class GeneralPurposeOutput(Observer):
 			return
 		if observation.property_name == 'is_streaming':
 			if playback_content.is_streaming:
-				logging.info('unmuting audio on pin %s', audio_mute_pin_id)
+				logger.info('unmuting audio on pin %s', audio_mute_pin_id)
 				self.audio_unmute_pin.on()
 			else:
 				self.audio_unmute_pin.off()

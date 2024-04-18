@@ -18,6 +18,8 @@ from resources.resources import alarms_dir
 from utils.singleton import singleton
 from utils.os import get_system_volume, set_system_volume
 
+logger = logging.getLogger("domain")
+
 def try_update(object, property_name: str, value: str) -> bool:
 	if hasattr(object, property_name):
 		attr_value = getattr(object, property_name)
@@ -235,7 +237,7 @@ class AlarmDefinition:
 		return jsonpickle.encode(self, indent=2)
 
 	def deserialize(desired_alarm_audio_effect_file: str):
-		logging.debug("initializing audio_effect from file: %s", desired_alarm_audio_effect_file)
+		logger.debug("initializing audio_effect from file: %s", desired_alarm_audio_effect_file)
 		with open(desired_alarm_audio_effect_file, "r") as file:
 			file_contents = file.read()
 			persisted_audio_effect: AudioEffect = jsonpickle.decode(file_contents)
@@ -325,7 +327,7 @@ class Config(Observable):
 		self.notify(property='blink_segment')
 
 	def __init__(self):
-		logging.debug("initializing default config")
+		logger.debug("initializing default config")
 		self.ensure_valid_config()
 		super().__init__()
 
@@ -346,14 +348,14 @@ class Config(Observable):
 			dict(key='default_volume', value=0.3)
 			]):
 			if not hasattr(self, conf_prop['key']):
-				logging.debug("key not found: %s, adding default value: %s", conf_prop['key'], conf_prop['value'])
+				logger.debug("key not found: %s, adding default value: %s", conf_prop['key'], conf_prop['value'])
 				setattr(self, conf_prop['key'], conf_prop['value'])
 	
 	def serialize(self):
 		return jsonpickle.encode(self, indent=2)
 
 	def deserialize(config_file):
-		logging.debug("initializing config from file: %s", config_file)
+		logger.debug("initializing config from file: %s", config_file)
 		with open(config_file, "r") as file:
 			file_contents = file.read()
 			persisted_config: Config = jsonpickle.decode(file_contents)
@@ -399,7 +401,7 @@ class AlarmClockState(Observable):
 	@mode.setter
 	def mode(self, value: Mode):
 		self._mode = value
-		logging.info("new mode: %s", self.mode.name)
+		logger.info("new mode: %s", self.mode.name)
 		self.notify(property='mode')
 
 	@property
@@ -572,7 +574,7 @@ class DisplayContent(MediaContent):
 
 	@show_volume_meter.setter
 	def show_volume_meter(self, value: bool):
-		logging.info("volume bar shown: %s", value)
+		logger.info("volume bar shown: %s", value)
 		self._show_volume_meter = value
 		self.notify()
 

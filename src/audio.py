@@ -10,6 +10,8 @@ from domain import AlarmClockState, Mode, PlaybackContent, AudioEffect, AudioStr
 from utils.network import is_internet_available
 from resources.resources import alarms_dir, init_logging
 
+logger = logging.getLogger("audio")
+
 debug_callback: bool = True
 
 class MediaPlayer:
@@ -40,7 +42,7 @@ class MediaListPlayer(MediaPlayer):
 
 	def callback_from_player(self, event: vlc.Event, *args):
 		try:
-			logging.debug('callback called: %s, from %s, player state: %s', event.type, args[0], 'unknown')
+			logger.debug('callback called: %s, from %s, player state: %s', event.type, args[0], 'unknown')
 
 			if event.type == vlc.EventType.MediaPlayerPlaying:
 				pass
@@ -48,10 +50,10 @@ class MediaListPlayer(MediaPlayer):
 			if True \
 				and event.type == vlc.EventType.MediaPlayerEncounteredError \
 				and super().error_callback is not None:
-				logging.info('vlc player error')
+				logger.info('vlc player error')
 				threading.Thread(target=super().error_callback).start()
 		except Exception as e:
-			logging.error("callback error: %s", traceback.format_exc())
+			logger.error("callback error: %s", traceback.format_exc())
 
 	def register_error_callback(self, event_manager: vlc.EventManager, called_from: str = None):
 		for event_type in vlc.EventType._enum_names_:
@@ -90,11 +92,11 @@ class MediaListPlayer(MediaPlayer):
 				]:
 					self.register_error_callback(em_struct['em'], em_struct['name'])
 
-			logging.info('starting audio %s', self.url)
+			logger.info('starting audio %s', self.url)
 			self.list_player.play()
 
 		except Exception as e:
-			logging.error("error: %s", traceback.format_exc())
+			logger.error("error: %s", traceback.format_exc())
 			super().error_callback()
 
 	def stop(self):
@@ -103,7 +105,7 @@ class MediaListPlayer(MediaPlayer):
 
 		self.list_player.stop()
 		self.list_player = None
-		logging.info(f'stopped audio')
+		logger.info(f'stopped audio')
 
 class Speaker(Observer):
 	media_player: MediaPlayer = None
@@ -161,7 +163,7 @@ class Speaker(Observer):
 		return player
 
 	def handle_player_error(self):
-		logging.info('handling player error')
+		logger.info('handling player error')
 		if self.playback_content.state.mode != Mode.Alarm:
 			return
 
@@ -169,7 +171,7 @@ class Speaker(Observer):
 			self.start_streaming_alternative() 
 			return
 
-		logging.info("starting offline fallback playback")
+		logger.info("starting offline fallback playback")
 		self.playback_content.is_streaming = False
 		self.playback_content.audio_effect = self.config.get_offline_alarm_effect()
 		self.playback_content.is_streaming = True
@@ -180,19 +182,19 @@ class Speaker(Observer):
 			self.media_player = self.get_player(audio_effect)
 			self.media_player.play()
 		except Exception as e:
-			logging.error("error: %s", traceback.format_exc())
+			logger.error("error: %s", traceback.format_exc())
 			self.handle_player_error()
 	
 	def start_streaming_alternative(self):
 		self.adjust_streaming(False)
-		logging.info("starting alternative fallback player")
+		logger.info("starting alternative fallback player")
 		# self.fallback_player_proc = subprocess.Popen(['speaker-test', '-t', 'sine', '-c', '2', '-f', '1000', '-l', '0', '-p', '23', '-S', '80'])
 		self.fallback_player_proc = subprocess.Popen(['ogg123', '-r', os.path.join(alarms_dir, 'fallback', 'Timer.ogg')], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 	def stop_streaming(self):
 		if self.fallback_player_proc is not None:
 			self.fallback_player_proc.kill()
-			logging.info('killed fallback player')
+			logger.info('killed fallback player')
 		self.fallback_player_proc = None		
 
 		if self.media_player is not None:

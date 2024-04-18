@@ -16,6 +16,8 @@ from utils.geolocation import GeoLocation
 
 from resources.resources import fonts_dir, weather_icons_dir
 
+logger = logging.getLogger("display")
+
 class DisplayFormatter:
 	_bold_clock_font = ImageFont.truetype(f"{fonts_dir}/DSEG7Classic-Regular.ttf", 50)
 	_light_clock_font = ImageFont.truetype(f"{fonts_dir}/DSEG7ClassicMini-Light.ttf", 40)
@@ -46,7 +48,7 @@ class DisplayFormatter:
 	def update_formatter(self, room_brightness: float):
 		self._latest_room_brightness = room_brightness
 		self.adjust_display(room_brightness)
-		logging.debug(
+		logger.debug(
 			"room_brightness: %s, time_delta_to_alarm: %sh, display_formatter: %s", 
 			room_brightness, 
 			"{:.2f}".format(self.display_content.get_timedelta_to_alarm().total_seconds() / 3600), 
@@ -105,7 +107,7 @@ class DisplayFormatter:
 				self._visual_effect_active = False
 			return
 
-		logging.debug("visual effect active: %s", alarm_in_minutes)
+		logger.debug("visual effect active: %s", alarm_in_minutes)
 		self._visual_effect_active = True
 
 		style = visual_effect.get_style(alarm_in_minutes)
@@ -339,7 +341,7 @@ class Display(Observer):
 
 	def __init__(self, device: luma_device, display_content: DisplayContent, playback_content: PlaybackContent, config: Config) -> None:
 		self.device = device
-		logging.info("device mode: %s", self.device.mode)
+		logger.info("device mode: %s", self.device.mode)
 		self.display_content = display_content
 		self.playback_content = playback_content
 		self.config = config
@@ -362,7 +364,7 @@ class Display(Observer):
 		try:
 			self.adjust_display()
 		except Exception as e:
-			logging.warning("%s", traceback.format_exc())
+			logger.warning("%s", traceback.format_exc())
 			with canvas(self.device) as draw:
 				draw.text((20,20), f"exception! ({e})", fill="white")
 
@@ -372,7 +374,7 @@ class Display(Observer):
 		self.formatter.update_formatter(room_brightness)
 
 		if self.formatter.clear_display():
-			logging.info("clearing display")
+			logger.info("clearing display")
 			self.device.clear()
 
 		self.current_display_image = self.present()
