@@ -6,7 +6,7 @@ import json
 from resources.resources import init_logging, librespotify_env_vars
 from utils.network import json_api
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("librespot_ev")
 
 class LibreSpotifyEventListenerApp:
 
