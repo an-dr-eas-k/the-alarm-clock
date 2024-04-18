@@ -1,7 +1,6 @@
 from http.client import HTTPResponse
 import json
 import logging
-import subprocess
 import traceback
 from urllib.request import Request, urlopen
 

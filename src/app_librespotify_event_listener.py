@@ -6,7 +6,7 @@ import json
 from resources.resources import init_logging, librespotify_env_vars
 from utils.network import json_api
 
-logger = logging.getLogger("librespot_ev")
+# logger = logging.getLogger("librespot_ev")
 
 class LibreSpotifyEventListenerApp:
 
@@ -29,9 +29,9 @@ class LibreSpotifyEventListenerApp:
 
 		is_success = self.post_spotify_data(spotify_environment)
 		if not is_success:
-			logger.warning("failed to send data to alarm clock")
+			# logger.warning("failed to send data to alarm clock")
 			sys.exit(1)
-		logger.info(f"sent following data: {json.dumps(spotify_environment)}")
+		# logger.info(f"sent following data: {json.dumps(spotify_environment)}")
 
 	def post_spotify_data(self, data_dict: dict[str, str]) -> int:
 		url = f"{self.alarm_clock_protocol}://{self.alarm_clock_hostname}:{self.alarm_clock_port}/{self.alarm_clock_route.strip('/')}"
@@ -45,5 +45,6 @@ class LibreSpotifyEventListenerApp:
 
 if __name__ == '__main__':
 	init_logging()
-	logger.debug("event occured")
+	# logger.debug("event occured")
+	logging.info("event occured")
 	LibreSpotifyEventListenerApp().go()
