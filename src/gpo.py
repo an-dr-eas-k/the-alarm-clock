@@ -13,7 +13,7 @@ class GeneralPurposeOutput(Observer):
 		try:
 			self.audio_unmute_pin = DigitalOutputDevice(audio_mute_pin_id)
 		except:
-			logging.info("audio unmute pin not available")
+			logging.warning("audio unmute pin not available")
 			self.audio_unmute_pin = None
 
 	def update(self, observation: Observation):
