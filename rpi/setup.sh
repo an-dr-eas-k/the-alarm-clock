@@ -46,6 +46,9 @@ echo "setup raspotify"
 ln -fs $app/rpi/resources/raspotify.service /lib/systemd/system/raspotify.service
 ln -fs $app/rpi/resources/asoundrc $uhome/.asoundrc
 ln -fs $app/rpi/resources/raspotify.conf /etc/raspotify/conf
+touch /var/log/the-alarm-clock.spotify-event.stdout
+touch /var/log/the-alarm-clock.spotify-event.errout
+chown $uid:$uid -R /var/log/the-alarm-clock.spotify-event.*
 
 
 echo "setup the-alarm-clock app"
