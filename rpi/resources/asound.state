@@ -8,7 +8,7 @@ state.DigiAMP {
 	control.2 {
 		iface MIXER
 		name 'Analogue Playback Volume'
-		value.0 0
-		value.1 0
+		value.0 1
+		value.1 1
 	}
 }
