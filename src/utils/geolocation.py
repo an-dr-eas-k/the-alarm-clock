@@ -13,7 +13,7 @@ from utils.network import json_api
 from utils.singleton import singleton
 from resources.resources import weather_icons_dir
 
-logger = logging.getLogger("geolocation")
+logger = logging.getLogger("tac.geolocation")
 
 weather_icons_tree = ET.parse(f"{weather_icons_dir}/weathericons.xml").getroot()
 

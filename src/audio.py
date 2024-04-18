@@ -10,7 +10,7 @@ from domain import AlarmClockState, Mode, PlaybackContent, AudioEffect, AudioStr
 from utils.network import is_internet_available
 from resources.resources import alarms_dir, init_logging
 
-logger = logging.getLogger("audio")
+logger = logging.getLogger("tac.audio")
 
 debug_callback: bool = True
 

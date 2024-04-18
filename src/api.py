@@ -15,7 +15,7 @@ from domain import AlarmDefinition, AudioEffect, AudioStream, Config, LibreSpoti
 from gpi import get_room_brightness
 from utils.os import reboot_system, shutdown_system
 
-logger = logging.getLogger("api")
+logger = logging.getLogger("tac.api")
 
 def split_path_arguments(path) -> tuple[str, int, str]:
 	path_args = path[0].split('/')

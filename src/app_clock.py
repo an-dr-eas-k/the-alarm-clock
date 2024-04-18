@@ -21,7 +21,7 @@ from persistence import Persistence
 from resources.resources import init_logging
 from utils import os as app_os
 
-logger = logging.getLogger("app_clock")
+logger = logging.getLogger("tac.app_clock")
 
 class ClockApp:
 	configFile = f"{os.path.dirname(os.path.realpath(__file__))}/config.json"

@@ -1,7 +1,7 @@
 import logging
 import re
 
-logger = logging.getLogger("observer")
+logger = logging.getLogger("tac.observer")
 
 class Observation:
 	during_registration: bool

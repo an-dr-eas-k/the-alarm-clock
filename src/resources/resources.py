@@ -15,7 +15,7 @@ librespotify_env_vars = ["PLAYER_EVENT", "TRACK_ID", "OLD_TRACK_ID", "DURATION_M
 
 alarm_details_file = f"/tmp/alarm_details.json"
 
-mixer_device_simple_control = "Digital"
+valid_mixer_device_simple_control_names = ["Digital","Master"]
 
 def init_logging():
 	logging.config.fileConfig(os.path.join(resources_dir, 'logging.conf'))

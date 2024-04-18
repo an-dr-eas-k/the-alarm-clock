@@ -12,7 +12,7 @@ from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon
 from resources.resources import alarm_details_file
 
-logger = logging.getLogger("controls")
+logger = logging.getLogger("tac.controls")
 
 button1Id = 0
 button2Id = 5

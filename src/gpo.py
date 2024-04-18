@@ -3,7 +3,7 @@ from domain import PlaybackContent, Observation, Observer
 from gpiozero import DigitalOutputDevice
 import logging
 
-logger = logging.getLogger("gpo")
+logger = logging.getLogger("tac.gpo")
 
 audio_mute_pin_id = 22
 

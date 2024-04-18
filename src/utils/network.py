@@ -6,7 +6,7 @@ from urllib.request import Request, urlopen
 
 from utils.os import is_ping_successful
 
-logger = logging.getLogger("network")
+logger = logging.getLogger("tac.network")
 
 def is_internet_available():
 	return is_ping_successful("8.8.8.8")

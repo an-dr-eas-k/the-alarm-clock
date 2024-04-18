@@ -3,7 +3,7 @@ import time
 import board
 import adafruit_bh1750
 
-logger = logging.getLogger("gpi")
+logger = logging.getLogger("tac.gpi")
 
 def get_room_brightness() -> float:
 	try:

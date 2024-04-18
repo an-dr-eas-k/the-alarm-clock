@@ -16,7 +16,7 @@ from utils.geolocation import GeoLocation
 
 from resources.resources import fonts_dir, weather_icons_dir
 
-logger = logging.getLogger("display")
+logger = logging.getLogger("tac.display")
 
 class DisplayFormatter:
 	_bold_clock_font = ImageFont.truetype(f"{fonts_dir}/DSEG7Classic-Regular.ttf", 50)
