@@ -43,6 +43,7 @@ echo "configure log rotation"
 ln -fs $app/rpi/resources/logrotate /etc/logrotate.d/the-alarm-clock
 
 echo "setup raspotify"
+chown $uid:$uid -R /etc/raspotify
 ln -fs $app/rpi/resources/raspotify.service /lib/systemd/system/raspotify.service
 ln -fs $app/rpi/resources/asoundrc $uhome/.asoundrc
 ln -fs $app/rpi/resources/raspotify.conf /etc/raspotify/conf
