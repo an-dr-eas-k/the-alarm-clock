@@ -45,6 +45,6 @@ class LibreSpotifyEventListenerApp:
 
 if __name__ == '__main__':
 	init_logging()
-	logger.debug("event occured")
 	logging.info("event occured")
+	logger.debug("event occured")
 	LibreSpotifyEventListenerApp().go()
