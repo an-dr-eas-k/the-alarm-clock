@@ -42,10 +42,17 @@ cat $app/rpi/resources/sudoers > /etc/sudoers.d/the-alarm-clock
 echo "configure log rotation"
 ln -fs $app/rpi/resources/logrotate /etc/logrotate.d/the-alarm-clock
 
+echo "setup equalizer"
+if [ -z "$( grep snd-aloop /etc/modules )" ]; then
+	echo "snd-aloop" >> /etc/modules
+fi
+ln -fs $app/rpi/resources/asoundrc $uhome/.asoundrc
+
+
+
 echo "setup raspotify"
 chown $uid:$uid -R /etc/raspotify
 ln -fs $app/rpi/resources/raspotify.service /lib/systemd/system/raspotify.service
-ln -fs $app/rpi/resources/asoundrc $uhome/.asoundrc
 ln -fs $app/rpi/resources/raspotify.conf /etc/raspotify/conf
 touch /var/log/the-alarm-clock.spotify-event.stdout
 touch /var/log/the-alarm-clock.spotify-event.errout

@@ -1,18 +1,13 @@
-cm.!default {
- type plug
- slave.pcm plugequal;
-}
- 
 ctl.equal {
- type equal
+  type equal
 }
- 
+
 pcm.plugequal {
- type equal
- slave.pcm "plughw:ALSA,0"
+  type equal
+  slave.pcm "plughw:Loopback,0,0"
 }
- 
+
 pcm.equal {
- type plug
- slave.pcm plugequal
+  type plug
+  slave.pcm plugequal
 }
