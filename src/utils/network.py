@@ -27,5 +27,4 @@ def json_api(url, headers = {'Content-Type': 'application/json'}, data_bytes = N
 		if response_bytes:
 			return json.loads(response_bytes)
 
-	logging.debug("success")
-	return None
+	return True
