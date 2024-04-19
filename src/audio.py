@@ -73,6 +73,7 @@ class MediaListPlayer(MediaPlayer):
 			self.list_player: vlc.MediaListPlayer = instance.media_list_player_new()
 			self.list_player.set_playback_mode(vlc.PlaybackMode.loop)
 			media_player: vlc.MediaPlayer = self.list_player.get_media_player()
+			[logger.info(d.description) for d in media_player.audio_output_device_enum() if d]
 			media_player.event_manager().event_attach(vlc.EventType.MediaPlayerEncounteredError, self.callback_from_player, "media_player")
 			media_player.event_manager().event_attach(vlc.EventType.MediaPlayerPlaying, self.callback_from_player, "media_player")
 			
