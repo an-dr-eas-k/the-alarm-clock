@@ -1,7 +1,7 @@
 
 # Getting started
 ```
-pip3 install -r requirements.txt
+curl https://raw.githubusercontent.com/an-dr-eas-k/the-alarm-clock/main/rpi/setup.sh |bash
 python3 src/app_clock.py
 ```
 
