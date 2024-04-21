@@ -70,9 +70,12 @@ class MediaListPlayer(MediaPlayer):
 				"--live-caching=3000"
 			]) 
 
+			# logger.info("audio outputs: ", ", ".join([o.description for o in instance.audio_output_list_get()]))
+			# [logger.info(d['description']) for d in instance.audio_output_enumerate_devices() if d]
 			self.list_player: vlc.MediaListPlayer = instance.media_list_player_new()
 			self.list_player.set_playback_mode(vlc.PlaybackMode.loop)
 			media_player: vlc.MediaPlayer = self.list_player.get_media_player()
+			# media_player.audio_output_device_set(None)
 			media_player.event_manager().event_attach(vlc.EventType.MediaPlayerEncounteredError, self.callback_from_player, "media_player")
 			media_player.event_manager().event_attach(vlc.EventType.MediaPlayerPlaying, self.callback_from_player, "media_player")
 			
@@ -94,10 +97,29 @@ class MediaListPlayer(MediaPlayer):
 
 			logger.info('starting audio %s', self.url)
 			self.list_player.play()
+			logger.info("audio output: %s", media_player.audio_output_device_get())
+			foo = instance.audio_output_enumerate_devices()
+			for d in foo:
+				logger.info("output from audio_output_enumerate_devices: %s = %s", d['name'], d['description'])
+				media_player.audio_output_device_set(d['name'], d['description'])
+				logger.info("audio output: %s", media_player.audio_output_device_get())
+
+			for de in media_player.audio_output_device_enum():
+				logger.info("output from audio_output_device_enum: %s = %s", str(de.device), "")
+
+
+			ol= instance.audio_output_list_get()
+			for o in ol:
+				logger.info("audio output %s: %s", o.name, o.description)
+				vlc.libvlc_audio_output_list_release(ol)
+				# for d in instance.audio_output_device_list_get(o.name):
+				# 	logger.info(d)
+			pass
 
 		except Exception as e:
 			logger.error("error: %s", traceback.format_exc())
 			super().error_callback()
+
 
 	def stop(self):
 		if (self.list_player is None):
