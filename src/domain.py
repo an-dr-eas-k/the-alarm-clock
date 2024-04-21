@@ -16,7 +16,7 @@ from utils.observer import Observable, Observation, Observer
 from utils.geolocation import GeoLocation, Weather
 from resources.resources import alarms_dir
 from utils.singleton import singleton
-from utils.os import get_system_volume, set_system_volume
+from utils.os import SoundDevice
 
 logger = logging.getLogger("tac.domain")
 
@@ -463,11 +463,11 @@ class PlaybackContent(MediaContent):
 
 	@property
 	def volume(self) -> float:
-		return get_system_volume()
+		return SoundDevice().get_system_volume()
 
 	@volume.setter
 	def volume(self, value: float):
-		set_system_volume(value)
+		SoundDevice().set_system_volume(value)
 		self.notify(property='volume')
 
 	@property
