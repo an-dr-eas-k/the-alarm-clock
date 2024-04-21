@@ -55,6 +55,13 @@ class SoundDevice:
 		
 
 	def get_mixer(self, valid_mixers: list[str]):
+		logger.info("installed cards: %s", ", ".join(alsaaudio.cards()))
+		for pcm in alsaaudio.pcms():
+			try:
+				logger.info("pcm %s mixers: %s", pcm, ", ".join(alsaaudio.mixers(device=pcm)))
+			except:
+				logger.debug("pcm %s mixers: %s", pcm, "none")
+
 		for putative_mixer in valid_mixers:	
 			try:
 				return alsaaudio.Mixer(putative_mixer)
