@@ -16,7 +16,7 @@ from utils.observer import Observable, Observation, Observer
 from utils.geolocation import GeoLocation, Weather
 from resources.resources import alarms_dir
 from utils.singleton import singleton
-from utils.os import SoundDevice
+from utils.sound_device import SoundDevice
 
 logger = logging.getLogger("tac.domain")
 

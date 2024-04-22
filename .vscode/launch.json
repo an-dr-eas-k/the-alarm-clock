@@ -35,6 +35,15 @@
       "justMyCode": false,
     },
     {
+      "name": "python sound_device.py",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "app_sound_device.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/src",
+      "justMyCode": false,
+    },
+    {
       "name": "python display.py",
       "type": "debugpy",
       "request": "launch",
