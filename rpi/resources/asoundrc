@@ -7,7 +7,8 @@ pcm.plugequal {
   slave.pcm "plughw:0,0";
 }
 
-pcm.equal {
+# pcm.equal {
+pcm.!default {
   type plug;
   slave.pcm plugequal;
 }
