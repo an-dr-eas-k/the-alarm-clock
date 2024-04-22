@@ -97,24 +97,24 @@ class MediaListPlayer(MediaPlayer):
 
 			logger.info('starting audio %s', self.url)
 			self.list_player.play()
-			logger.info("audio output: %s", media_player.audio_output_device_get())
-			foo = instance.audio_output_enumerate_devices()
-			for d in foo:
-				logger.info("output from audio_output_enumerate_devices: %s = %s", d['name'], d['description'])
-				media_player.audio_output_device_set(d['name'], d['description'])
-				logger.info("audio output: %s", media_player.audio_output_device_get())
+			# logger.info("audio output: %s", media_player.audio_output_device_get())
+			# foo = instance.audio_output_enumerate_devices()
+			# for d in foo:
+			# 	logger.info("output from audio_output_enumerate_devices: %s = %s", d['name'], d['description'])
+			# 	media_player.audio_output_device_set(d['name'], d['description'])
+			# 	logger.info("audio output: %s", media_player.audio_output_device_get())
 
-			for de in media_player.audio_output_device_enum():
-				logger.info("output from audio_output_device_enum: %s = %s", str(de.device), "")
+			# for de in media_player.audio_output_device_enum():
+			# 	logger.info("output from audio_output_device_enum: %s = %s", str(de.device), "")
 
 
-			ol= instance.audio_output_list_get()
-			for o in ol:
-				logger.info("audio output %s: %s", o.name, o.description)
-				vlc.libvlc_audio_output_list_release(ol)
-				# for d in instance.audio_output_device_list_get(o.name):
-				# 	logger.info(d)
-			pass
+			# ol= instance.audio_output_list_get()
+			# for o in ol:
+			# 	logger.info("audio output %s: %s", o.name, o.description)
+			# 	vlc.libvlc_audio_output_list_release(ol)
+			# 	# for d in instance.audio_output_device_list_get(o.name):
+			# 	# 	logger.info(d)
+			# pass
 
 		except Exception as e:
 			logger.error("error: %s", traceback.format_exc())

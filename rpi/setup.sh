@@ -43,9 +43,6 @@ echo "configure log rotation"
 ln -fs $app/rpi/resources/logrotate /etc/logrotate.d/the-alarm-clock
 
 echo "setup equalizer"
-if [ -z "$( grep snd-aloop /etc/modules )" ]; then
-	echo "snd-aloop" >> /etc/modules
-fi
 ln -fs $app/rpi/resources/asoundrc $uhome/.asoundrc
 
 
