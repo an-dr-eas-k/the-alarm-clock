@@ -39,6 +39,12 @@
       "type": "debugpy",
       "request": "launch",
       "program": "app_sound_device.py",
+      "args": [
+        "-a",
+        "set",
+        "-f",
+        "../foo.txt"
+      ],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/src",
       "justMyCode": false,

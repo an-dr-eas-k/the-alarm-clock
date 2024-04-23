@@ -13,11 +13,12 @@ class SoundDevice:
 		if self.mixer is not None:
 			return
 		
+		self.control = control
+		self.device = device
 		self.mixer = self.get_mixer(control, device)
 		pass
 
 	def get_system_volume(self) -> float:
-		logger.debug("getting system volume")
 		volumes = self.mixer.getvolume()
 		volume = sum(volumes) / len(volumes) /100 if len(volumes) > 0 else 0 
 		logger.debug(f"volume is %s on %s:%s", volume, self.mixer.cardname(), self.mixer.mixer())
@@ -31,6 +32,18 @@ class SoundDevice:
 	def get_mixer(self, control="Master", device = "default"):
 		self.debug_info()
 		return alsaaudio.Mixer(control=control, device=device)
+
+	def get_controls_settings(self):
+		settings = {}
+		for control in alsaaudio.mixers(device=self.device):
+			settings[control] = alsaaudio.Mixer(control=control, device=self.device).getvolume()
+
+		return settings
+
+	def set_controls_settings(self, settings):
+		for control in settings.keys():
+			for channel in range(len(settings[control])):
+				alsaaudio.Mixer(control=control, device=self.device).setvolume(settings[control][channel], channel=channel)
 
 	def debug_info(self):
 		logger.info("installed cards: %s", ", ".join(alsaaudio.cards()))
