@@ -216,7 +216,7 @@ class Controls(Observer):
 			dict(b=button3Id, wa=self.button3_activated), 
 			dict(b=button4Id, wa=self.button4_activated)
 			]):
-			b = Button(button['b'])
+			b = Button(pin=button['b'], bounce_time=0.4)
 			if ('ht' in button): b.hold_time=button['ht']
 			if ('hr' in button): b.hold_repeat = button['hr']
 			if ('wh' in button): b.when_held = button['wh']
