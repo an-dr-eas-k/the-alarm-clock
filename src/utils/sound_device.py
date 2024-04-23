@@ -33,7 +33,6 @@ class SoundDevice:
 			volume_db = self.combine_channel_values(self.mixer.getvolume(units=alsaaudio.VOLUME_UNITS_DB))
 			human_volume = self.convert_to_human_volume(volume_db, max_volume_db)
 
-		human_volume = self.round(human_volume)
 		logger.debug(f"human_volume is %s on %s:%s (%s)", human_volume, self.mixer.cardname(), self.mixer.mixer(), algorithm)
 		return human_volume
 
@@ -42,6 +41,7 @@ class SoundDevice:
 		return round(value / multiple_of) * multiple_of
 
 	def set_system_volume(self, new_human_volume: float):
+		new_human_volume = self.round(new_human_volume)
 		[min_volume_db, max_volume_db] = self.mixer.getrange(units=alsaaudio.VOLUME_UNITS_DB)
 		algorithm = "cubic"
 
@@ -51,8 +51,8 @@ class SoundDevice:
 			volume_raw = self.convert_from_normalized_volume(new_human_volume, min_volume_raw, max_volume_raw)
 			self.mixer.setvolume(int(volume_raw), units=alsaaudio.VOLUME_UNITS_RAW)
 		else:
-			volume_raw = self.convert_from_human_volume(new_human_volume, min_volume_db, max_volume_db)
-			self.mixer.setvolume(int(volume_raw), units=alsaaudio.VOLUME_UNITS_DB)
+			volume_db = self.convert_from_human_volume(new_human_volume, min_volume_db, max_volume_db)
+			self.mixer.setvolume(int(volume_db), units=alsaaudio.VOLUME_UNITS_DB)
 
 		logger.debug("set %s:%s human_volume to %s (%s)" , self.mixer.cardname(), self.mixer.mixer(), new_human_volume, algorithm)
 
