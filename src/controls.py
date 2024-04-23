@@ -134,8 +134,8 @@ class Controls(Observer):
 				if (hasattr(job, 'next_run_time') and job.next_run_time is not None):
 					logger.info("next runtime for job '%s': %s", job.id, job.next_run_time.strftime(f"%Y-%m-%d %H:%M:%S"))
 
-	def button_action(action, button_id):
-		Controls.action(action, "button %s pressed" % button_id)
+	def button_action(action, button_id, event_type: str = "unknown event"):
+		Controls.action(action, "button %s %s" % button_id, event_type)
 
 	def action(action, info: str = None):
 		try:
@@ -145,19 +145,25 @@ class Controls(Observer):
 		except:
 			logger.error("%s", traceback.format_exc())
 
-	def button1_action(self):
-		Controls.button_action(self.decrease_volume, 1)
+	def button1_activated(self):
+		Controls.button_action(self.decrease_volume, 1, "activated")
 
-	def button2_action(self):
-		Controls.button_action(self.increase_volume, 2)
+	def button1_held(self):
+		Controls.button_action(self.decrease_volume, 1, "held")
 
-	def button3_action(self):
+	def button2_activated(self):
+		Controls.button_action(self.increase_volume, 2, "activated")
+
+	def button2_held(self):
+		Controls.button_action(self.increase_volume, 2, "held")
+
+	def button3_activated(self):
 
 		def exit():
 			self.scheduler.shutdown(wait=False)
 			os._exit(0) 
 
-		Controls.button_action(exit, 3)
+		Controls.button_action(exit, 3, "activated")
 
 	def set_to_idle_mode(self):
 		if self.state.mode == Mode.Spotify:
@@ -167,7 +173,7 @@ class Controls(Observer):
 			self.state.mode = Mode.Idle
 			self.state.active_alarm = None
 
-	def button4_action(self):
+	def button4_activated(self):
 
 		def toggle_stream():
 
@@ -179,7 +185,7 @@ class Controls(Observer):
 				else:
 					self.play_stream_by_id(0)
 		
-		Controls.button_action(toggle_stream, 4)
+		Controls.button_action(toggle_stream, 4, "activated")
 
 	def increase_volume(self):
 		self.playback_content.increase_volume()
@@ -205,10 +211,10 @@ class Controls(Observer):
 
 	def configure(self):
 		for button in ([
-			dict(b=button1Id, ht=0.5, hr=True, wa=self.button1_action, wh=self.button1_action), 
-			dict(b=button2Id, ht=0.5, hr=True, wa=self.button2_action, wh=self.button2_action), 
-			dict(b=button3Id, wa=self.button3_action), 
-			dict(b=button4Id, wa=self.button4_action)
+			dict(b=button1Id, ht=0.5, hr=True, wa=self.button1_activated, wh=self.button1_held), 
+			dict(b=button2Id, ht=0.5, hr=True, wa=self.button2_activated, wh=self.button2_held), 
+			dict(b=button3Id, wa=self.button3_activated), 
+			dict(b=button4Id, wa=self.button4_activated)
 			]):
 			b = Button(button['b'])
 			if ('ht' in button): b.hold_time=button['ht']
@@ -291,14 +297,14 @@ class SoftwareControls(Controls):
 				return
 			try:
 				if (key.char == '1'):
-					self.button1_action()
+					self.button1_activated()
 				if (key.char == '2'):
-					self.button2_action()
+					self.button2_activated()
 				if (key.char == '3'):
 					# self.button3_action()
 					pass
 				if (key.char == '4'):
-					self.button4_action()
+					self.button4_activated()
 			except Exception:
 				logger.warning("%s", traceback.format_exc())
 
