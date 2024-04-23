@@ -9,7 +9,6 @@ logger = logging.getLogger("tac.sound_device")
 class SoundDevice:
 
 	mixer: alsaaudio.Mixer = None
-	threadLock = threading.Lock()
 
 	def __init__(self, control: str, device: str ):
 		self.control = control
@@ -27,14 +26,10 @@ class SoundDevice:
 		
 
 	def get_mixer(self, control="Master", device = "default"):
-		self.debug_info()
-
-		self.threadLock.acquire(True)
 
 		if (self.mixer is None):
 			self.mixer = alsaaudio.Mixer(control=control, device=device)
 
-		self.threadLock.release()
 		return self.mixer
 
 	def get_controls_settings(self):
@@ -59,14 +54,24 @@ class SoundDevice:
 
 @singleton
 class TACSoundDevice(SoundDevice):
+
 	def __init__(self):
+		self.threadLock = threading.Lock()
 		self.init_mixer(resources.valid_mixer_device_simple_control_names)
 
 	def init_mixer(self, valid_mixers: list[str]):
+		self.debug_info()
+
+		self.threadLock.acquire(True)
+
 		for mixer in valid_mixers:
 			try:
 				self.mixer = self.get_mixer(mixer)
-				return
+				break
 			except alsaaudio.ALSAAudioError:
 				pass
-		raise Exception("no valid mixer found")
+
+		self.threadLock.release()
+
+		if (self.mixer is None):
+			raise Exception("no valid mixer found")
