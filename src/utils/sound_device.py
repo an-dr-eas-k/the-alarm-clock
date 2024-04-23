@@ -66,18 +66,29 @@ class SoundDevice:
 		return (volume_raw - min_volume_raw) / (max_volume_raw - min_volume_raw)
 
 	def convert_from_human_volume(self, human_volume: float, min_volume: float, max_volume: float) -> float:
-		if (human_volume <= min_volume):
+		volume_db = min_volume
+
+		try:
+			volume_db = 6000.0 * math.log10(human_volume) + max_volume
+		except:
+			pass
+
+		if (volume_db <= min_volume):
 			return min_volume
-		if (human_volume >= max_volume):
+		if (volume_db >= max_volume):
 			return max_volume
-		return 6000.0 * math.log10(human_volume) + max_volume
+
+		return volume_db
 
 	def convert_from_normalized_volume(self, human_volume: float, min_volume: float, max_volume: float) -> float:
-		if (human_volume <= min_volume):
+		volume_raw = human_volume * (max_volume - min_volume) + min_volume
+
+		if (volume_raw <= min_volume):
 			return min_volume
-		if (human_volume >= max_volume):
+		if (volume_raw >= max_volume):
 			return max_volume
-		return human_volume * (max_volume - min_volume) + min_volume
+
+		return volume_raw
 		
 
 	def get_mixer(self, control, device) -> alsaaudio.Mixer:
