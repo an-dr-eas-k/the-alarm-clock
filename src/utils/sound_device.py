@@ -101,14 +101,16 @@ class TACSoundDevice(SoundDevice):
 		self.threadLock = threading.Lock()
 		self.init_mixer(resources.valid_mixer_device_simple_control_names)
 
-	def init_mixer(self, valid_mixers: list[str]):
+	def init_mixer(self, valid_mixers: list[str], device: str = 'default'):
+		self.device = device
 		self.debug_info()
 
 		self.threadLock.acquire(True)
 
 		for mixer in valid_mixers:
 			try:
-				self._mixer = self.get_mixer(control=mixer)
+				self.control = mixer
+				self._mixer = self.get_mixer(control=mixer, device=device)
 				break
 			except alsaaudio.ALSAAudioError:
 				pass
