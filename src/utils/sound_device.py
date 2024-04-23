@@ -33,7 +33,7 @@ class SoundDevice:
 			volume_db = self.combine_channel_values(self.mixer.getvolume(units=alsaaudio.VOLUME_UNITS_DB))
 			human_volume = self.convert_to_human_volume(volume_db, max_volume_db)
 
-		logger.debug(f"human_volume is %s on %s:%s (%s)", human_volume, self.mixer.cardname(), self.mixer.mixer(), algorithm)
+		logger.debug(f"human_volume is %s on %s:%s (%s)" % (human_volume, self.mixer.cardname(), self.mixer.mixer(), algorithm))
 		return human_volume
 
 	@staticmethod

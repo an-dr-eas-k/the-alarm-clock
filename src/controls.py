@@ -135,7 +135,7 @@ class Controls(Observer):
 					logger.info("next runtime for job '%s': %s", job.id, job.next_run_time.strftime(f"%Y-%m-%d %H:%M:%S"))
 
 	def button_action(action, button_id, event_type: str = "unknown event"):
-		Controls.action(action, "button %s %s" % button_id, event_type)
+		Controls.action(action, "button %s %s" % (button_id, event_type))
 
 	def action(action, info: str = None):
 		try:
