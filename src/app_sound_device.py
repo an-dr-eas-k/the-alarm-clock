@@ -13,7 +13,7 @@ class SoundDeviceApp():
 	def __init__(self) -> None:
 		parser = argparse.ArgumentParser("SoundDevice")
 		parser.add_argument("-D", '--device', type=str, default="default")
-		parser.add_argument("-C", '--control', type=str, default=None)
+		parser.add_argument("-C", '--control', type=str, default="Master")
 		parser.add_argument("-a", '--action', type=str, default="get", choices=["get", "set"])
 		parser.add_argument("-f", '--file', type=str, default=None)
 		self.args = parser.parse_args()
@@ -23,6 +23,9 @@ class SoundDeviceApp():
 		if self.args.action == "get":
 			if self.args.file is None:
 				print(json.dumps(sd.get_controls_settings()))
+				v = sd.get_system_volume()
+				logger.info(v)
+				sd.set_system_volume(v)
 			else:
 				with open(self.args.file, 'w') as f:
 					json.dump(sd.get_controls_settings(), f)
