@@ -9,15 +9,11 @@ logger = logging.getLogger("tac.sound_device")
 class SoundDevice:
 
 	mixer: alsaaudio.Mixer = None
+	threadLock = threading.Lock()
 
 	def __init__(self, control: str, device: str ):
-		if self.mixer is not None:
-			return
-		
 		self.control = control
 		self.device = device
-		self.threadLock = threading.Lock()
-		pass
 
 	def get_system_volume(self) -> float:
 		volumes = self.get_mixer().getvolume()
