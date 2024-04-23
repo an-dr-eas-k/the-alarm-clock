@@ -11,6 +11,8 @@ if __name__ == "__main__":
 	init_logging()
 	parser = argparse.ArgumentParser("SoundDevice")
 	parser.add_argument("-D", '--device', type=str, default="default")
+	parser.add_argument("-C", '--control', type=str, default="Master")
 	args = parser.parse_args()
-	sd = SoundDevice(args.device)
+	sd = SoundDevice(args.control, args.device)
+
 	logger.info("volume: %s", sd.get_system_volume()) 
