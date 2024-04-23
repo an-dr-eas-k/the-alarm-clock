@@ -51,7 +51,7 @@ class SoundDevice:
 			volume_raw = self.convert_from_normalized_volume(new_human_volume, min_volume_raw, max_volume_raw)
 			self.mixer.setvolume(int(volume_raw), units=alsaaudio.VOLUME_UNITS_RAW)
 		else:
-			volume_raw = self.convert_from_human_volume(new_human_volume, max_volume_db)
+			volume_raw = self.convert_from_human_volume(new_human_volume, min_volume_db, max_volume_db)
 			self.mixer.setvolume(int(volume_raw), units=alsaaudio.VOLUME_UNITS_DB)
 
 		logger.debug("set %s:%s human_volume to %s (%s)" , self.mixer.cardname(), self.mixer.mixer(), new_human_volume, algorithm)
@@ -65,11 +65,19 @@ class SoundDevice:
 	def convert_to_normalized_volume(self, volume_raw: float, min_volume_raw: float, max_volume_raw: float) -> float:
 		return (volume_raw - min_volume_raw) / (max_volume_raw - min_volume_raw)
 
-	def convert_from_human_volume(self, human_volume: float, max_volume: float) -> float:
+	def convert_from_human_volume(self, human_volume: float, min_volume: float, max_volume: float) -> float:
+		if (human_volume <= min_volume):
+			return min_volume
+		if (human_volume >= max_volume):
+			return max_volume
 		return 6000.0 * math.log10(human_volume) + max_volume
 
 	def convert_from_normalized_volume(self, human_volume: float, min_volume: float, max_volume: float) -> float:
-			return human_volume * (max_volume - min_volume) + min_volume
+		if (human_volume <= min_volume):
+			return min_volume
+		if (human_volume >= max_volume):
+			return max_volume
+		return human_volume * (max_volume - min_volume) + min_volume
 		
 
 	def get_mixer(self, control, device) -> alsaaudio.Mixer:
