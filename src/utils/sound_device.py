@@ -41,7 +41,7 @@ class SoundDevice:
 		return round(value / multiple_of) * multiple_of
 
 	def set_system_volume(self, new_human_volume: float):
-		new_human_volume = self.round(new_human_volume)
+		# new_human_volume = self.round(new_human_volume)
 		[min_volume_db, max_volume_db] = self.mixer.getrange(units=alsaaudio.VOLUME_UNITS_DB)
 		algorithm = "cubic"
 
