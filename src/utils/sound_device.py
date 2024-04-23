@@ -1,4 +1,5 @@
 import logging
+import threading
 import alsaaudio
 from resources import resources
 from utils.singleton import singleton
@@ -15,23 +16,30 @@ class SoundDevice:
 		
 		self.control = control
 		self.device = device
-		self.mixer = self.get_mixer(control, device)
+		self.threadLock = threading.Lock()
 		pass
 
 	def get_system_volume(self) -> float:
-		volumes = self.mixer.getvolume()
+		volumes = self.get_mixer().getvolume()
 		volume = sum(volumes) / len(volumes) /100 if len(volumes) > 0 else 0 
 		logger.debug(f"volume is %s on %s:%s", volume, self.mixer.cardname(), self.mixer.mixer())
 		return volume
 
 	def set_system_volume(self, newVolume: float):
 		logger.debug("setting %s:%s volume to %s" , self.mixer.cardname(), self.mixer.mixer(), newVolume)
-		self.mixer.setvolume(int(newVolume * 100), units=alsaaudio.VOLUME_UNITS_PERCENTAGE)
+		self.get_mixer().setvolume(int(newVolume * 100), units=alsaaudio.VOLUME_UNITS_PERCENTAGE)
 		
 
 	def get_mixer(self, control="Master", device = "default"):
 		self.debug_info()
-		return alsaaudio.Mixer(control=control, device=device)
+
+		self.threadLock.acquire(True)
+
+		if (self.mixer is None):
+			self.mixer = alsaaudio.Mixer(control=control, device=device)
+
+		self.threadLock.release()
+		return self.mixer
 
 	def get_controls_settings(self):
 		settings = {}

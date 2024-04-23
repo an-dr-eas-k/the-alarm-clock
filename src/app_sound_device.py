@@ -13,7 +13,7 @@ class SoundDeviceApp():
 	def __init__(self) -> None:
 		parser = argparse.ArgumentParser("SoundDevice")
 		parser.add_argument("-D", '--device', type=str, default="default")
-		parser.add_argument("-C", '--control', type=str, default="Master")
+		parser.add_argument("-C", '--control', type=str, default=None)
 		parser.add_argument("-a", '--action', type=str, default="get", choices=["get", "set"])
 		parser.add_argument("-f", '--file', type=str, default=None)
 		self.args = parser.parse_args()
