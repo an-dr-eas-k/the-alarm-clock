@@ -11,8 +11,9 @@ from apscheduler.triggers.cron import CronTrigger
 from utils.network import json_api
 
 from utils.singleton import singleton
-
 from resources.resources import weather_icons_dir
+
+logger = logging.getLogger("tac.geolocation")
 
 weather_icons_tree = ET.parse(f"{weather_icons_dir}/weathericons.xml").getroot()
 
@@ -89,7 +90,7 @@ class GeoLocation:
 			# 	geolocation_db.longitude
 			# )
 		except:
-			logging.warning("%s", traceback.format_exc())
+			logger.warning("%s", traceback.format_exc())
 			return LocationInfo(
 				'Munich',
 				'Bavaria',

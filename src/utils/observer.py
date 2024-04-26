@@ -1,6 +1,8 @@
 import logging
 import re
 
+logger = logging.getLogger("tac.observer")
+
 class Observation:
 	during_registration: bool
 	reason: str = None
@@ -28,7 +30,7 @@ class Observation:
 class Observer:
 
 	def update(self, observation: Observation):
-		logging.debug(f"{self.__class__.__name__} is notified: {observation.to_string()}")
+		logger.debug(f"{self.__class__.__name__} is notified: {observation.to_string()}")
 
 class Observable:
 	observers : []

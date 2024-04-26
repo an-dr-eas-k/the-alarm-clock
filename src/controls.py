@@ -12,6 +12,8 @@ from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon
 from resources.resources import alarm_details_file
 
+logger = logging.getLogger("tac.controls")
+
 button1Id = 0
 button2Id = 5
 button3Id = 6
@@ -41,7 +43,7 @@ class Controls(Observer):
 	def consider_failed_alarm(self):
 		if os.path.exists(alarm_details_file):
 			ad = AlarmDefinition.deserialize(alarm_details_file)
-			logging.info("failed alarm found %s", ad.alarm_name)
+			logger.info("failed alarm found %s", ad.alarm_name)
 			self.ring_alarm(ad)
 
 	def add_scheduler_jobs(self):
@@ -111,7 +113,7 @@ class Controls(Observer):
 			for alDef in config.alarm_definitions:
 				if not alDef.is_active:
 					continue
-				logging.info("adding job for '%s'", alDef.alarm_name)
+				logger.info("adding job for '%s'", alDef.alarm_name)
 				self.scheduler.add_job(
 					func=self.ring_alarm,
 					args=(alDef,),
@@ -130,32 +132,38 @@ class Controls(Observer):
 	def print_active_jobs(self, jobstore):
 			for job in self.scheduler.get_jobs(jobstore=jobstore):
 				if (hasattr(job, 'next_run_time') and job.next_run_time is not None):
-					logging.info("next runtime for job '%s': %s", job.id, job.next_run_time.strftime(f"%Y-%m-%d %H:%M:%S"))
+					logger.info("next runtime for job '%s': %s", job.id, job.next_run_time.strftime(f"%Y-%m-%d %H:%M:%S"))
 
-	def button_action(action, button_id):
-		Controls.action(action, "button %s pressed" % button_id)
+	def button_action(action, button_id, event_type: str = "unknown event"):
+		Controls.action(action, "button %s %s" % (button_id, event_type))
 
 	def action(action, info: str = None):
 		try:
 			if info:
-				logging.info(info)
+				logger.info(info)
 			action()
 		except:
-			logging.error("%s", traceback.format_exc())
+			logger.error("%s", traceback.format_exc())
 
-	def button1_action(self):
-		Controls.button_action(self.decrease_volume, 1)
+	def button1_activated(self):
+		Controls.button_action(self.decrease_volume, 1, "activated")
 
-	def button2_action(self):
-		Controls.button_action(self.increase_volume, 2)
+	def button1_held(self):
+		Controls.button_action(self.decrease_volume, 1, "held")
 
-	def button3_action(self):
+	def button2_activated(self):
+		Controls.button_action(self.increase_volume, 2, "activated")
+
+	def button2_held(self):
+		Controls.button_action(self.increase_volume, 2, "held")
+
+	def button3_activated(self):
 
 		def exit():
 			self.scheduler.shutdown(wait=False)
 			os._exit(0) 
 
-		Controls.button_action(exit, 3)
+		Controls.button_action(exit, 3, "activated")
 
 	def set_to_idle_mode(self):
 		if self.state.mode == Mode.Spotify:
@@ -165,7 +173,7 @@ class Controls(Observer):
 			self.state.mode = Mode.Idle
 			self.state.active_alarm = None
 
-	def button4_action(self):
+	def button4_activated(self):
 
 		def toggle_stream():
 
@@ -173,20 +181,19 @@ class Controls(Observer):
 				self.set_to_idle_mode()
 			else:
 				if self.playback_content.audio_effect and isinstance(self.playback_content.audio_effect, StreamAudioEffect):
-					first_stream = self.playback_content.audio_effect.stream_definition
+					self.play_stream(self.playback_content.audio_effect.stream_definition)
 				else:
-					first_stream = self.state.configuration.audio_streams[0]
-				self.play_stream(first_stream)
+					self.play_stream_by_id(0)
 		
-		Controls.button_action(toggle_stream, 4)
+		Controls.button_action(toggle_stream, 4, "activated")
 
 	def increase_volume(self):
 		self.playback_content.increase_volume()
-		logging.info("new volume: %s", self.playback_content.volume)
+		logger.info("new volume: %s", self.playback_content.volume)
 
 	def decrease_volume(self):
 		self.playback_content.decrease_volume()
-		logging.info("new volume: %s", self.playback_content.volume)
+		logger.info("new volume: %s", self.playback_content.volume)
 
 	def play_stream_by_id(self, stream_id: int):
 		streams = self.state.configuration.audio_streams
@@ -194,6 +201,8 @@ class Controls(Observer):
 		self.play_stream(stream)
 
 	def play_stream(self, audio_stream: AudioStream, volume: float = None):
+		self.set_to_idle_mode()
+
 		if volume is None:
 			volume = self.playback_content.volume
 
@@ -202,12 +211,12 @@ class Controls(Observer):
 
 	def configure(self):
 		for button in ([
-			dict(b=button1Id, ht=0.5, hr=True, wa=self.button1_action, wh=self.button1_action), 
-			dict(b=button2Id, ht=0.5, hr=True, wa=self.button2_action, wh=self.button2_action), 
-			dict(b=button3Id, wa=self.button3_action), 
-			dict(b=button4Id, wa=self.button4_action)
+			dict(b=button1Id, ht=0.5, hr=True, wa=self.button1_activated, wh=self.button1_held), 
+			dict(b=button2Id, ht=0.5, hr=True, wa=self.button2_activated, wh=self.button2_held), 
+			dict(b=button3Id, wa=self.button3_activated), 
+			dict(b=button4Id, wa=self.button4_activated)
 			]):
-			b = Button(button['b'])
+			b = Button(pin=button['b'], bounce_time=0.4)
 			if ('ht' in button): b.hold_time=button['ht']
 			if ('hr' in button): b.hold_repeat = button['hr']
 			if ('wh' in button): b.when_held = button['wh']
@@ -216,7 +225,7 @@ class Controls(Observer):
 
 	def update_clock(self):
 		def do():
-			logging.debug ("update show blink segment: %s", not self.state.show_blink_segment)
+			logger.debug ("update show blink segment: %s", not self.state.show_blink_segment)
 			self.state.show_blink_segment = not self.state.show_blink_segment
 
 		Controls.action(do)
@@ -228,7 +237,7 @@ class Controls(Observer):
 				return 
 
 			new_weather = GeoLocation().get_current_weather()
-			logging.info ("weather updating: %s", new_weather)
+			logger.info ("weather updating: %s", new_weather)
 			self.display_content.current_weather = new_weather
 			
 		Controls.action(do)
@@ -237,7 +246,7 @@ class Controls(Observer):
 		def do():
 			new_state = is_internet_available()
 			if new_state != self.state.is_wifi_available:
-				logging.info ("change wifi state, is available: %s", new_state)
+				logger.info ("change wifi state, is available: %s", new_state)
 				self.state.is_wifi_available = new_state
 		
 		Controls.action(do)
@@ -283,21 +292,21 @@ class SoftwareControls(Controls):
 
 	def configure(self):
 		def key_pressed_action(key):
-			logging.debug ("pressed %s", key)
+			logger.debug ("pressed %s", key)
 			if not hasattr(key, 'char'):
 				return
 			try:
 				if (key.char == '1'):
-					self.button1_action()
+					self.button1_activated()
 				if (key.char == '2'):
-					self.button2_action()
+					self.button2_activated()
 				if (key.char == '3'):
 					# self.button3_action()
 					pass
 				if (key.char == '4'):
-					self.button4_action()
+					self.button4_activated()
 			except Exception:
-				logging.warning("%s", traceback.format_exc())
+				logger.warning("%s", traceback.format_exc())
 
 		try:
 			from pynput.keyboard import Listener

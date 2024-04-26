@@ -21,6 +21,7 @@ from persistence import Persistence
 from resources.resources import init_logging
 from utils import os as app_os
 
+logger = logging.getLogger("tac.app_clock")
 
 class ClockApp:
 	configFile = f"{os.path.dirname(os.path.realpath(__file__))}/config.json"
@@ -34,7 +35,7 @@ class ClockApp:
 		return not self.args.software
 
 	def shutdown_function(self):
-		logging.info("graceful shutdown")
+		logger.info("graceful shutdown")
 		app_os.restart_spotify_daemon()
 		tornado.ioloop.IOLoop.current().stop()
 	
@@ -46,7 +47,7 @@ class ClockApp:
 		if os.path.exists(self.configFile):
 			self.state.configuration = Config.deserialize(self.configFile)
 		
-		logging.info("config available")
+		logger.info("config available")
 
 		playback_content = PlaybackContent(self.state)
 		self.state.attach(playback_content)
@@ -57,7 +58,7 @@ class ClockApp:
 
 		if (self.is_on_hardware()):
 			self.controls = Controls(self.state, display_content, playback_content)
-			playback_content.attach(GeneralPurposeOutput())
+			# playback_content.attach(GeneralPurposeOutput())
 			device = ssd1322(serial_interface=spi(device=0, port=0))
 			port = 80
 		else:
@@ -86,5 +87,5 @@ class ClockApp:
 		
 if __name__ == '__main__':
 	init_logging()
-	logging.info ("start")
+	logger.info ("start")
 	ClockApp().go()
