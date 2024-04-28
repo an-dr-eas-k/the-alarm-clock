@@ -24,6 +24,12 @@
         "stream_name": "puls",
         "stream_url": "https://streams.br.de/puls_2.m3u",
         "id": 1
+      },
+      {
+        "py/object": "domain.AudioStream",
+        "stream_name": "fm4",
+        "stream_url": "https://orf-live.ors-shoutcast.at/fm4-q2a",
+        "id": 2
       }
     ],
     "_alarm_definitions": [
@@ -42,7 +48,7 @@
         "date": null,
         "_audio_effect": {
           "py/object": "domain.StreamAudioEffect",
-          "volume": 0.2,
+          "volume": 0.25,
           "stream_definition": {
             "py/id": 4
           }
@@ -65,7 +71,7 @@
         "date": null,
         "_audio_effect": {
           "py/object": "domain.StreamAudioEffect",
-          "volume": 0.2,
+          "volume": 0.25,
           "stream_definition": {
             "py/id": 4
           }
@@ -93,7 +99,7 @@
         "date": null,
         "_audio_effect": {
           "py/object": "domain.StreamAudioEffect",
-          "volume": 0.2,
+          "volume": 0.25,
           "stream_definition": {
             "py/id": 5
           }
