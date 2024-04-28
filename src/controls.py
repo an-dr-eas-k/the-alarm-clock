@@ -2,11 +2,11 @@ import datetime
 import logging
 import os
 import traceback
-from gpiozero import Button
+from gpiozero import Button, Device
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
-from domain import AlarmClockState, AlarmDefinition, AudioEffect, AudioStream, PlaybackContent, DisplayContent, Mode, StreamAudioEffect, Observation, Observer, Config
+from domain import AlarmClockState, AlarmDefinition, AudioStream, PlaybackContent, DisplayContent, Mode, StreamAudioEffect, Observation, Observer, Config
 from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon
@@ -222,6 +222,8 @@ class Controls(Observer):
 			if ('wh' in button): b.when_held = button['wh']
 			if ('wa' in button): b.when_activated = button['wa']
 			self.buttons.append(b)
+
+		logger.info("pin factory: %s", Device.pin_factory)
 
 	def update_clock(self):
 		def do():
