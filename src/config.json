@@ -98,9 +98,7 @@
             "py/id": 6
           }
         },
-        "visual_effect": {
-          "py/object": null
-        },
+        "visual_effect": null,
         "is_active": true,
         "id": 2
       },
