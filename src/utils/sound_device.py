@@ -60,7 +60,7 @@ class SoundDevice:
 		return sum(values) / len(values) if len(values) > 0 else 0
 		
 	def convert_to_human_volume(self, volume: float, max_volume: float) -> float:
-		return 10 ** ((volume - max_volume) / 6000.0)
+		return 10 ** ((volume - max_volume) / 6000.0) if (volume <= max_volume) else max_volume
 
 	def convert_to_normalized_volume(self, volume_raw: float, min_volume_raw: float, max_volume_raw: float) -> float:
 		return (volume_raw - min_volume_raw) / (max_volume_raw - min_volume_raw)
