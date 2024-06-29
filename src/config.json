@@ -48,7 +48,7 @@
         "date": null,
         "_audio_effect": {
           "py/object": "domain.StreamAudioEffect",
-          "volume": 0.25,
+          "volume": 0.20,
           "stream_definition": {
             "py/id": 4
           }
@@ -71,7 +71,7 @@
         "date": null,
         "_audio_effect": {
           "py/object": "domain.StreamAudioEffect",
-          "volume": 0.25,
+          "volume": 0.20,
           "stream_definition": {
             "py/id": 4
           }
@@ -81,6 +81,28 @@
         },
         "is_active": true,
         "id": 1
+      },
+      {
+        "py/object": "domain.AlarmDefinition",
+        "alarm_name": "work on wednesday",
+        "hour": 6,
+        "min": 25,
+        "weekdays": [
+          "WEDNESDAY"
+        ],
+        "date": null,
+        "_audio_effect": {
+          "py/object": "domain.StreamAudioEffect",
+          "volume": 0.15,
+          "stream_definition": {
+            "py/id": 6
+          }
+        },
+        "visual_effect": {
+          "py/object": null
+        },
+        "is_active": true,
+        "id": 2
       },
       {
         "py/object": "domain.AlarmDefinition",
@@ -108,7 +130,7 @@
           "py/object": "domain.VisualEffect"
         },
         "is_active": false,
-        "id": 1
+        "id": 3
       }
     ]
   }
