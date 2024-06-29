@@ -237,9 +237,8 @@
 								</div>
 								<div class="form-group">
 									<label for="volume-picker">Volume: <span id="volumeValue"></span> </label>
-									<input style="width: calc(100% - 300px); min-width: 250px; " id="volume-picker" name="volume"
-										type="range" min="0" max="1" step="0.05" value="{{ config.default_volume }}"
-										oninput="updateVolume(event)">
+									<input id="volume-picker" name="volume" type="range" min="0" max="1" step="0.05"
+										value="{{ config.default_volume }}" oninput="updateVolume(event)">
 								</div>
 								<div class="form-group">
 									<label for="visualeffectpicker">Visual Effects:</label>
@@ -249,7 +248,7 @@
 									<label for="activepicker">Active:</label>
 									<input type="checkbox" checked name="isActive" id="activepicker" />
 								</div>
-								<div style="display: block; text-align: right;">
+								<div style="display: block; text-align: right; margin-top: 10px;">
 									<button type="submit" class="btn btn-primary">Add
 										Alarm</button>
 								</div>
