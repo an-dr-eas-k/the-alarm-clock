@@ -18,5 +18,7 @@ alarm_details_file = f"/tmp/alarm_details.json"
 valid_mixer_device_simple_control_names = ["Digital","Master"]
 valid_sound_card_pattern = ["digiamp","pch"]
 
+default_volume = 0.2
+
 def init_logging():
 	logging.config.fileConfig(os.path.join(resources_dir, 'logging.conf'))

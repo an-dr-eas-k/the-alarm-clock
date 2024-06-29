@@ -8,7 +8,7 @@ import threading
 
 from domain import AlarmClockState, Mode, PlaybackContent, AudioEffect, AudioStream, Config, OfflineAlarmEffect, StreamAudioEffect, Observation, Observer, SpotifyAudioEffect
 from utils.network import is_internet_available
-from resources.resources import alarms_dir, init_logging
+from resources.resources import alarms_dir, init_logging, default_volume
 
 logger = logging.getLogger("tac.audio")
 
@@ -229,7 +229,7 @@ def main():
 		c.offline_alarm = AudioStream(stream_name='Offline Alarm', stream_url='Enchantment.ogg')
 		pc = PlaybackContent(AlarmClockState(c))
 		pc.audio_effect = StreamAudioEffect(
-			volume=0.3,
+			volume=default_volume,
 			stream_definition=AudioStream(stream_name="test", stream_url='https://streams.br.de/bayern2sued_2.m3u'))
 			# stream_definition=c.get_offline_alarm_effect().stream_definition)
 		s = Speaker(pc, c)

@@ -15,7 +15,7 @@ class SoundDevice:
 	def mixer(self) -> alsaaudio.Mixer:
 		return self.get_mixer(control=self.control, device=self.device)
 
-	def __init__(self, control="Master", device = "default"):
+	def __init__(self, control="", device = "default"):
 		self.control = control
 		self.device = device
 
