@@ -9,8 +9,6 @@ logger = logging.getLogger("tac.sound_device")
 
 class SoundDevice:
 
-	_mixer: alsaaudio.Mixer = None
-
 	@property
 	def mixer(self) -> alsaaudio.Mixer:
 		return self.get_mixer(control=self.control, device=self.device)
@@ -24,14 +22,14 @@ class SoundDevice:
 
 		human_volume = 0
 		algorithm = "cubic"
-		if (min_volume_db >= max_volume_db):
+		if (min_volume_db < max_volume_db):
+			volume_db = self.combine_channel_values(self.mixer.getvolume(units=alsaaudio.VOLUME_UNITS_DB))
+			human_volume = self.convert_to_human_volume(volume_db, max_volume_db)
+		else:
 			algorithm = "linear"
 			[min_volume_raw, max_volume_raw] = self.mixer.getrange(units=alsaaudio.VOLUME_UNITS_RAW)
 			volume_raw = self.combine_channel_values(self.mixer.getvolume(units=alsaaudio.VOLUME_UNITS_RAW))
 			human_volume = self.convert_to_normalized_volume(volume_raw, min_volume_raw, max_volume_raw)
-		else:
-			volume_db = self.combine_channel_values(self.mixer.getvolume(units=alsaaudio.VOLUME_UNITS_DB))
-			human_volume = self.convert_to_human_volume(volume_db, max_volume_db)
 
 		logger.debug(f"human_volume is %s on %s:%s (%s)" % (human_volume, self.mixer.cardname(), self.mixer.mixer(), algorithm))
 		return human_volume
@@ -92,11 +90,7 @@ class SoundDevice:
 		
 
 	def get_mixer(self, control, device) -> alsaaudio.Mixer:
-
-		if (self._mixer is None):
-			self._mixer = alsaaudio.Mixer(control=control, device=device)
-
-		return self._mixer
+		return alsaaudio.Mixer(control=control, device=device)
 
 	def get_controls_settings(self):
 		settings = {}
@@ -133,13 +127,13 @@ class TACSoundDevice(SoundDevice):
 
 		for mixer in valid_mixers:
 			try:
+				self.get_mixer(control=mixer, device=device)
 				self.control = mixer
-				self._mixer = self.get_mixer(control=mixer, device=device)
 				break
 			except alsaaudio.ALSAAudioError:
 				pass
 
 		self.threadLock.release()
 
-		if (self._mixer is None):
+		if (self.control is None):
 			raise Exception("no valid mixer found")
