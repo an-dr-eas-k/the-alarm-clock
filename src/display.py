@@ -271,7 +271,7 @@ class NextAlarmPresenter(Presenter):
 		return get_concat_h_multi_blank(
 			[alarm_symbol_img, Image.new(mode='RGBA', size=(3, 0), color=(0, 0, 0, 0)), next_alarm_img])
 	
-class MediaPreenter(Presenter):
+class MediaPresenter(Presenter):
 
 	def __init__(self, 
 							formatter: DisplayFormatter, content: DisplayContent, 
@@ -349,7 +349,7 @@ class Display(Observer):
 		self.clock_presenter= ClockPresenter(self.formatter, self.display_content)
 		self.next_alarm_presenter = NextAlarmPresenter(self.formatter, self.display_content)
 		self.playback_title_presenter = PlaybackTitlePresenter(self.formatter, self.display_content)
-		self.media_presenter = MediaPreenter(self.formatter, self.display_content, 
+		self.media_presenter = MediaPresenter(self.formatter, self.display_content, 
 																			 self.next_alarm_presenter, self.playback_title_presenter)
 		self.weather_status_presenter = WeatherStatusPresenter(self.formatter, self.display_content)
 		self.wifi_status_presenter = WifiStatusPresenter(self.formatter, self.display_content)
