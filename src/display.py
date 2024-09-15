@@ -523,6 +523,8 @@ class Display(Observer):
             media_image = self.media_presenter.draw()
             im.paste(media_image, (2, im.height - media_image.height - 2), media_image)
 
+        if self.formatter.highly_dimmed():
+            im = im.point(lambda x: 1 if x > 0 else x)
         return im
 
 
