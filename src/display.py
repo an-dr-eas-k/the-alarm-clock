@@ -524,7 +524,7 @@ class Display(Observer):
             im.paste(media_image, (2, im.height - media_image.height - 2), media_image)
 
         if self.formatter.highly_dimmed():
-            im = im.point(lambda x: self.formatter.foreground_color() if x > 0 else x)
+            im = im.point(lambda x: 16 if x > 0 else x)
         return im
 
 
