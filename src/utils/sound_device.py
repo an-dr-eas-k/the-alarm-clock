@@ -7,137 +7,181 @@ from utils.singleton import singleton
 
 logger = logging.getLogger("tac.sound_device")
 
+
 class SoundDevice:
 
-	def invoke_on_mixer(self, callback):
-		mixer = self.get_mixer(control=self.control, device=self.device)
-		if (callback is not None):
-			return_from_callback = callback(mixer)
-		mixer.close()
-		return return_from_callback
+    def invoke_on_mixer(self, callback):
+        mixer = self.get_mixer(control=self.control, device=self.device)
+        if callback is not None:
+            return_from_callback = callback(mixer)
+        mixer.close()
+        return return_from_callback
 
-	def __init__(self, control="", device = "default"):
-		self.control = control
-		self.device = device
+    def __init__(self, control="", device="default"):
+        self.control = control
+        self.device = device
 
-	def get_system_volume(self) -> float:
-		def callback(mixer) -> float:
-			[min_volume_db, max_volume_db] = mixer.getrange(units=alsaaudio.VOLUME_UNITS_DB)
+    def get_system_volume(self) -> float:
+        def callback(mixer) -> float:
+            [min_volume_db, max_volume_db] = mixer.getrange(
+                units=alsaaudio.VOLUME_UNITS_DB
+            )
 
-			human_volume = 0
-			algorithm = "cubic"
-			if (min_volume_db < max_volume_db):
-				volume_db = self.combine_channel_values(mixer.getvolume(units=alsaaudio.VOLUME_UNITS_DB))
-				human_volume = self.convert_to_human_volume(volume_db, max_volume_db)
-			else:
-				algorithm = "linear"
-				[min_volume_raw, max_volume_raw] = mixer.getrange(units=alsaaudio.VOLUME_UNITS_RAW)
-				volume_raw = self.combine_channel_values(mixer.getvolume(units=alsaaudio.VOLUME_UNITS_RAW))
-				human_volume = self.convert_to_normalized_volume(volume_raw, min_volume_raw, max_volume_raw)
+            human_volume = 0
+            algorithm = "cubic"
+            if min_volume_db < max_volume_db:
+                volume_db = self.combine_channel_values(
+                    mixer.getvolume(units=alsaaudio.VOLUME_UNITS_DB)
+                )
+                human_volume = self.convert_to_human_volume(volume_db, max_volume_db)
+            else:
+                algorithm = "linear"
+                [min_volume_raw, max_volume_raw] = mixer.getrange(
+                    units=alsaaudio.VOLUME_UNITS_RAW
+                )
+                volume_raw = self.combine_channel_values(
+                    mixer.getvolume(units=alsaaudio.VOLUME_UNITS_RAW)
+                )
+                human_volume = self.convert_to_normalized_volume(
+                    volume_raw, min_volume_raw, max_volume_raw
+                )
 
-			logger.debug(f"human_volume is %s on %s:%s (%s)" % (human_volume, mixer.cardname(), mixer.mixer(), algorithm))
-			return human_volume
-		
-		return self.invoke_on_mixer(callback)
+            logger.debug(
+                f"human_volume is %s on %s:%s (%s)"
+                % (human_volume, mixer.cardname(), mixer.mixer(), algorithm)
+            )
+            return human_volume
 
-	def set_system_volume(self, new_human_volume: float):
-		def callback(mixer) -> None:
-			[min_volume_db, max_volume_db] = mixer.getrange(units=alsaaudio.VOLUME_UNITS_DB)
-			algorithm = "cubic"
+        return self.invoke_on_mixer(callback)
 
-			if (min_volume_db >= max_volume_db):
-				algorithm = "linear"
-				[min_volume_raw, max_volume_raw] = mixer.getrange(units=alsaaudio.VOLUME_UNITS_RAW)
-				volume_raw = self.convert_from_normalized_volume(new_human_volume, min_volume_raw, max_volume_raw)
-				mixer.setvolume(int(volume_raw), units=alsaaudio.VOLUME_UNITS_RAW)
-			else:
-				volume_db = self.convert_from_human_volume(new_human_volume, min_volume_db, max_volume_db)
-				mixer.setvolume(int(volume_db), units=alsaaudio.VOLUME_UNITS_DB)
+    def set_system_volume(self, new_human_volume: float):
+        def callback(mixer) -> None:
+            [min_volume_db, max_volume_db] = mixer.getrange(
+                units=alsaaudio.VOLUME_UNITS_DB
+            )
+            algorithm = "cubic"
 
-			logger.debug("set %s:%s human_volume to %s (%s)" , mixer.cardname(), mixer.mixer(), new_human_volume, algorithm)
+            if min_volume_db >= max_volume_db:
+                algorithm = "linear"
+                [min_volume_raw, max_volume_raw] = mixer.getrange(
+                    units=alsaaudio.VOLUME_UNITS_RAW
+                )
+                volume_raw = self.convert_from_normalized_volume(
+                    new_human_volume, min_volume_raw, max_volume_raw
+                )
+                mixer.setvolume(int(volume_raw), units=alsaaudio.VOLUME_UNITS_RAW)
+            else:
+                volume_db = self.convert_from_human_volume(
+                    new_human_volume, min_volume_db, max_volume_db
+                )
+                mixer.setvolume(int(volume_db), units=alsaaudio.VOLUME_UNITS_DB)
 
-		self.invoke_on_mixer(callback)
+            logger.debug(
+                "set %s:%s human_volume to %s (%s)",
+                mixer.cardname(),
+                mixer.mixer(),
+                new_human_volume,
+                algorithm,
+            )
 
-	def combine_channel_values(self, values):
-		return sum(values) / len(values) if len(values) > 0 else 0
-		
-	def convert_to_human_volume(self, volume: float, max_volume: float) -> float:
-		return 10 ** ((volume - max_volume) / 6000.0) if (volume <= max_volume) else max_volume
+        self.invoke_on_mixer(callback)
 
-	def convert_to_normalized_volume(self, volume_raw: float, min_volume_raw: float, max_volume_raw: float) -> float:
-		return (volume_raw - min_volume_raw) / (max_volume_raw - min_volume_raw)
+    def combine_channel_values(self, values):
+        return sum(values) / len(values) if len(values) > 0 else 0
 
-	def convert_from_human_volume(self, human_volume: float, min_volume: float, max_volume: float) -> float:
-		volume_db = min_volume
+    def convert_to_human_volume(self, volume: float, max_volume: float) -> float:
+        return (
+            10 ** ((volume - max_volume) / 6000.0)
+            if (volume <= max_volume)
+            else max_volume
+        )
 
-		try:
-			volume_db = 6000.0 * math.log10(human_volume) + max_volume
-		except:
-			pass
+    def convert_to_normalized_volume(
+        self, volume_raw: float, min_volume_raw: float, max_volume_raw: float
+    ) -> float:
+        return (volume_raw - min_volume_raw) / (max_volume_raw - min_volume_raw)
 
-		if (volume_db <= min_volume):
-			return min_volume
-		if (volume_db >= max_volume):
-			return max_volume
+    def convert_from_human_volume(
+        self, human_volume: float, min_volume: float, max_volume: float
+    ) -> float:
+        volume_db = min_volume
 
-		return volume_db
+        try:
+            volume_db = 6000.0 * math.log10(human_volume) + max_volume
+        except:
+            pass
 
-	def convert_from_normalized_volume(self, human_volume: float, min_volume: float, max_volume: float) -> float:
-		volume_raw = human_volume * (max_volume - min_volume) + min_volume
+        if volume_db <= min_volume:
+            return min_volume
+        if volume_db >= max_volume:
+            return max_volume
 
-		if (volume_raw <= min_volume):
-			return min_volume
-		if (volume_raw >= max_volume):
-			return max_volume
+        return volume_db
 
-		return volume_raw
-		
+    def convert_from_normalized_volume(
+        self, human_volume: float, min_volume: float, max_volume: float
+    ) -> float:
+        volume_raw = human_volume * (max_volume - min_volume) + min_volume
 
-	def get_mixer(self, control, device) -> alsaaudio.Mixer:
-		return alsaaudio.Mixer(control=control, device=device)
+        if volume_raw <= min_volume:
+            return min_volume
+        if volume_raw >= max_volume:
+            return max_volume
 
-	def get_controls_settings(self):
-		settings = {}
-		for control in alsaaudio.mixers(device=self.device):
-			settings[control] = alsaaudio.Mixer(control=control, device=self.device).getvolume()
+        return volume_raw
 
-		return settings
+    def get_mixer(self, control, device) -> alsaaudio.Mixer:
+        return alsaaudio.Mixer(control=control, device=device)
 
-	def set_controls_settings(self, settings):
-		for control in settings.keys():
-			for channel in range(len(settings[control])):
-				alsaaudio.Mixer(control=control, device=self.device).setvolume(settings[control][channel], channel=channel)
+    def get_controls_settings(self):
+        settings = {}
+        for control in alsaaudio.mixers(device=self.device):
+            settings[control] = alsaaudio.Mixer(
+                control=control, device=self.device
+            ).getvolume()
 
-	def debug_info(self):
-		logger.info("installed cards: %s", ", ".join(alsaaudio.cards()))
-		for pcm in alsaaudio.pcms():
-			try:
-				logger.info("pcm %s mixers: %s", pcm, ", ".join(alsaaudio.mixers(device=pcm)))
-			except:
-				logger.debug("pcm %s mixers: %s", pcm, "none")
+        return settings
+
+    def set_controls_settings(self, settings):
+        for control in settings.keys():
+            for channel in range(len(settings[control])):
+                alsaaudio.Mixer(control=control, device=self.device).setvolume(
+                    settings[control][channel], channel=channel
+                )
+
+    def debug_info(self):
+        logger.info("installed cards: %s", ", ".join(alsaaudio.cards()))
+        for pcm in alsaaudio.pcms():
+            try:
+                logger.info(
+                    "pcm %s mixers: %s", pcm, ", ".join(alsaaudio.mixers(device=pcm))
+                )
+            except:
+                logger.debug("pcm %s mixers: %s", pcm, "none")
+
 
 @singleton
 class TACSoundDevice(SoundDevice):
 
-	def __init__(self):
-		self.threadLock = threading.Lock()
-		self.init_mixer(resources.valid_mixer_device_simple_control_names)
+    def __init__(self):
+        self.threadLock = threading.Lock()
+        self.init_mixer(resources.valid_mixer_device_simple_control_names)
 
-	def init_mixer(self, valid_mixers: list[str], device: str = 'default'):
-		self.device = device
-		self.debug_info()
+    def init_mixer(self, valid_mixers: list[str], device: str = "default"):
+        self.device = device
+        self.debug_info()
 
-		self.threadLock.acquire(True)
+        self.threadLock.acquire(True)
 
-		for mixer in valid_mixers:
-			try:
-				self.get_mixer(control=mixer, device=device)
-				self.control = mixer
-				break
-			except alsaaudio.ALSAAudioError:
-				pass
+        for mixer in valid_mixers:
+            try:
+                self.get_mixer(control=mixer, device=device)
+                self.control = mixer
+                break
+            except alsaaudio.ALSAAudioError:
+                pass
 
-		self.threadLock.release()
+        self.threadLock.release()
 
-		if (self.control is None):
-			raise Exception("no valid mixer found")
+        if self.control is None:
+            raise Exception("no valid mixer found")

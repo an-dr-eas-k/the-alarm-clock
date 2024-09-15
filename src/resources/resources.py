@@ -11,7 +11,15 @@ weather_icons_dir = f"{icons_dir}/weather"
 sounds_dir = f"{media_dir}/sounds"
 alarms_dir = f"{sounds_dir}/alarms"
 
-librespotify_env_vars = ["PLAYER_EVENT", "TRACK_ID", "OLD_TRACK_ID", "DURATION_MS", "POSITION_MS", "VOLUME", "SINK_STATUS"]
+librespotify_env_vars = [
+    "PLAYER_EVENT",
+    "TRACK_ID",
+    "OLD_TRACK_ID",
+    "DURATION_MS",
+    "POSITION_MS",
+    "VOLUME",
+    "SINK_STATUS",
+]
 
 alarm_details_file = f"/tmp/alarm_details.json"
 
@@ -19,5 +27,6 @@ valid_mixer_device_simple_control_names = ["Digital", "Master"]
 
 default_volume = 0.2
 
+
 def init_logging():
-	logging.config.fileConfig(os.path.join(resources_dir, 'logging.conf'))
+    logging.config.fileConfig(os.path.join(resources_dir, "logging.conf"))
