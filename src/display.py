@@ -200,24 +200,27 @@ class ClockPresenter(Presenter):
             second_hand_width=0,
         )
 
+    def draw_analog_clock(self) -> Image.Image:
+        day = GeoLocation().now().day
+
+        self.analog_clock.hour_hand_color = self.analog_clock.minute_hand_color = (
+            self.analog_clock.hour_markings_color
+        ) = self.analog_clock.origin_color = self.formatter.foreground_color()
+        self.analog_clock.background_color = self.formatter.background_color()
+
+        analog_clock = Image.new(
+            "RGBA", (64 + day, 64), color=self.formatter.background_color()
+        )
+        analog_clock.paste(
+            self.analog_clock.get_current_clock(
+                now=GeoLocation().now(), clock_radius=31
+            )
+        )
+        return analog_clock
+
     def draw(self) -> Image.Image:
         if self.formatter.highly_dimmed() and self.formatter.config.use_analog_clock:
-            day = GeoLocation().now().day
-
-            self.analog_clock.hour_hand_color = self.analog_clock.minute_hand_color = (
-                self.analog_clock.hour_markings_color
-            ) = self.analog_clock.origin_color = self.formatter.foreground_color()
-            self.analog_clock.background_color = self.formatter.background_color()
-
-            analog_clock = Image.new(
-                "RGBA", (64 + day, 64), color=self.formatter.background_color()
-            )
-            analog_clock.paste(
-                self.analog_clock.get_current_clock(
-                    now=GeoLocation().now(), clock_radius=31
-                )
-            )
-            return analog_clock
+            return self.draw_analog_clock()
 
         font = self.formatter.clock_font()
         clock_string = self.formatter.format_clock_string(
