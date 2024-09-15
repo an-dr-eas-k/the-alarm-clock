@@ -9,50 +9,54 @@ logger = logging.getLogger("tac.sound_device")
 
 class SoundDevice:
 
-	@property
-	def mixer(self) -> alsaaudio.Mixer:
-		return self.get_mixer(control=self.control, device=self.device)
+	def invoke_on_mixer(self, callback):
+		mixer = self.get_mixer(control=self.control, device=self.device)
+		if (callback is not None):
+			return_from_callback = callback(mixer)
+		mixer.close()
+		return return_from_callback
 
 	def __init__(self, control="", device = "default"):
 		self.control = control
 		self.device = device
 
 	def get_system_volume(self) -> float:
-		[min_volume_db, max_volume_db] = self.mixer.getrange(units=alsaaudio.VOLUME_UNITS_DB)
+		def callback(mixer) -> float:
+			[min_volume_db, max_volume_db] = mixer.getrange(units=alsaaudio.VOLUME_UNITS_DB)
 
-		human_volume = 0
-		algorithm = "cubic"
-		if (min_volume_db < max_volume_db):
-			volume_db = self.combine_channel_values(self.mixer.getvolume(units=alsaaudio.VOLUME_UNITS_DB))
-			human_volume = self.convert_to_human_volume(volume_db, max_volume_db)
-		else:
-			algorithm = "linear"
-			[min_volume_raw, max_volume_raw] = self.mixer.getrange(units=alsaaudio.VOLUME_UNITS_RAW)
-			volume_raw = self.combine_channel_values(self.mixer.getvolume(units=alsaaudio.VOLUME_UNITS_RAW))
-			human_volume = self.convert_to_normalized_volume(volume_raw, min_volume_raw, max_volume_raw)
+			human_volume = 0
+			algorithm = "cubic"
+			if (min_volume_db < max_volume_db):
+				volume_db = self.combine_channel_values(mixer.getvolume(units=alsaaudio.VOLUME_UNITS_DB))
+				human_volume = self.convert_to_human_volume(volume_db, max_volume_db)
+			else:
+				algorithm = "linear"
+				[min_volume_raw, max_volume_raw] = mixer.getrange(units=alsaaudio.VOLUME_UNITS_RAW)
+				volume_raw = self.combine_channel_values(mixer.getvolume(units=alsaaudio.VOLUME_UNITS_RAW))
+				human_volume = self.convert_to_normalized_volume(volume_raw, min_volume_raw, max_volume_raw)
 
-		logger.debug(f"human_volume is %s on %s:%s (%s)" % (human_volume, self.mixer.cardname(), self.mixer.mixer(), algorithm))
-		return human_volume
-
-	@staticmethod
-	def round(value: float, multiple_of: float=0.02) -> float:
-		return round(value / multiple_of) * multiple_of
+			logger.debug(f"human_volume is %s on %s:%s (%s)" % (human_volume, mixer.cardname(), mixer.mixer(), algorithm))
+			return human_volume
+		
+		return self.invoke_on_mixer(callback)
 
 	def set_system_volume(self, new_human_volume: float):
-		# new_human_volume = self.round(new_human_volume)
-		[min_volume_db, max_volume_db] = self.mixer.getrange(units=alsaaudio.VOLUME_UNITS_DB)
-		algorithm = "cubic"
+		def callback(mixer) -> None:
+			[min_volume_db, max_volume_db] = mixer.getrange(units=alsaaudio.VOLUME_UNITS_DB)
+			algorithm = "cubic"
 
-		if (min_volume_db >= max_volume_db):
-			algorithm = "linear"
-			[min_volume_raw, max_volume_raw] = self.mixer.getrange(units=alsaaudio.VOLUME_UNITS_RAW)
-			volume_raw = self.convert_from_normalized_volume(new_human_volume, min_volume_raw, max_volume_raw)
-			self.mixer.setvolume(int(volume_raw), units=alsaaudio.VOLUME_UNITS_RAW)
-		else:
-			volume_db = self.convert_from_human_volume(new_human_volume, min_volume_db, max_volume_db)
-			self.mixer.setvolume(int(volume_db), units=alsaaudio.VOLUME_UNITS_DB)
+			if (min_volume_db >= max_volume_db):
+				algorithm = "linear"
+				[min_volume_raw, max_volume_raw] = mixer.getrange(units=alsaaudio.VOLUME_UNITS_RAW)
+				volume_raw = self.convert_from_normalized_volume(new_human_volume, min_volume_raw, max_volume_raw)
+				mixer.setvolume(int(volume_raw), units=alsaaudio.VOLUME_UNITS_RAW)
+			else:
+				volume_db = self.convert_from_human_volume(new_human_volume, min_volume_db, max_volume_db)
+				mixer.setvolume(int(volume_db), units=alsaaudio.VOLUME_UNITS_DB)
 
-		logger.debug("set %s:%s human_volume to %s (%s)" , self.mixer.cardname(), self.mixer.mixer(), new_human_volume, algorithm)
+			logger.debug("set %s:%s human_volume to %s (%s)" , mixer.cardname(), mixer.mixer(), new_human_volume, algorithm)
+
+		self.invoke_on_mixer(callback)
 
 	def combine_channel_values(self, values):
 		return sum(values) / len(values) if len(values) > 0 else 0
