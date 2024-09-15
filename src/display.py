@@ -44,7 +44,7 @@ class ColorType(Enum):
 class DisplayFormatter:
     _bold_clock_font = ImageFont.truetype(f"{fonts_dir}/DSEG7Classic-Regular.ttf", 50)
     _light_clock_font = ImageFont.truetype(
-        f"{fonts_dir}/DSEG7ClassicMini-Light.ttf", 30
+        f"{fonts_dir}/DSEG7ClassicMini-Light.ttf", 20
     )
 
     _foreground_grayscale_16: int
