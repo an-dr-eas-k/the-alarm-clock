@@ -39,9 +39,10 @@
 	</style>
 
 	<script>
+		var enable_console = true;
 
 		function onClickAction(type, event) {
-			console.log(`Type: ${type}, Event: ${event}`)
+			if (enable_console) console.log(`Type: ${type}, Event: ${event}`)
 			suffix = event?.target?.value ?? event?.target?.parentNode?.value ?? ""
 			suffix = suffix === "" ? "" : "/" + suffix
 			sendToBackend('/api/action/' + type + suffix, 'POST', null);
@@ -79,7 +80,7 @@
 		}
 
 		function onClickSave(newValue, type, selector = null, property = null) {
-			// console.log(`Type: ${type}, Selector: ${selector}, Property: ${property}, New Value: ${newValue}`);
+			if (enable_console) console.log(`Type: ${type}, Selector: ${selector}, Property: ${property}, New Value: ${newValue}`);
 			let path = type
 			if (property !== null) {
 				path = [type, selector, property].join('/');
@@ -100,7 +101,7 @@
 
 		function onSubmitNew(event) {
 			event.preventDefault();
-			console.log(event)
+			if (enable_console) console.log(event)
 
 			var formData = new FormData(event.target);
 			var jsonData = formToJSON(formData);
@@ -121,7 +122,7 @@
 		}
 
 		function updateVolume(event) {
-			console.log(event.target.value)
+			if (enable_console) console.log(event.target.value)
 			document.getElementById('volumeValue').textContent = event.target.value;
 		}
 	</script>
@@ -326,10 +327,19 @@
 							onclick="onClickSave(document.getElementById('powernap_duration_in_mins').value, 'powernap_duration_in_mins')">Save</button>
 					</td>
 				</tr>
+				<tr>
+					<td>Use Analog Clock when room dimmed</td>
+					<td><input type="checkbox" id="use_analog_clock" {% if config.use_analog_clock %}checked{% end %} />
+					</td>
+					<td><button type="submit" class="btn btn-primary btn-row-action"
+							onclick="onClickSave(document.getElementById('use_analog_clock').checked, 'use_analog_clock')">Save</button>
+					</td>
+				</tr>
 				<tr><!-- string value -->
 					<td>Local Alarm File</td>
 					<td><input type="text" id="local_alarm_file"
-							value="{{ escape( config.local_alarm_file ) if config.local_alarm_file is not None else '' }}" /></td>
+							value="{{ escape( config.local_alarm_file ) if config.local_alarm_file is not None else '' }}" />
+					</td>
 					<td><button type="submit" class="btn btn-primary btn-row-action"
 							onclick="onClickSave(document.getElementById('local_alarm_file').value, 'local_alarm_file')">Save</button>
 					</td>

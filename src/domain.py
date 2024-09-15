@@ -26,7 +26,7 @@ def try_update(object, property_name: str, value: str) -> bool:
 		attr_value = getattr(object, property_name)
 		attr_type = type(attr_value)
 		if attr_type == bool:
-			value = value.lower() in ["yes", "true", "t", "1"]
+			value = value.lower() in ["on", "yes", "true", "t", "1"]
 		else:
 			value = attr_type(value) if len(value) > 0 else None
 		if value != attr_value:
@@ -253,6 +253,7 @@ class Config(Observable):
 	refresh_timeout_in_secs: int
 	powernap_duration_in_mins: int
 	default_volume: float = default_volume
+	use_analog_clock: bool
 
 	_alarm_definitions: List[AlarmDefinition] = []
 	_audio_streams: List[AudioStream] = []
@@ -347,6 +348,7 @@ class Config(Observable):
 			dict(key='refresh_timeout_in_secs', value=1),
 			dict(key='powernap_duration_in_mins', value=18),
 			dict(key='default_volume', value=default_volume),
+			dict(key='use_analog_clock', value=False),
 			]):
 			if not hasattr(self, conf_prop['key']):
 				logger.debug("key not found: %s, adding default value: %s", conf_prop['key'], conf_prop['value'])

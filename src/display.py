@@ -154,7 +154,7 @@ class ClockPresenter(Presenter):
 		)
 
 	def draw(self) -> Image.Image:
-		if self.formatter.highly_dimmed():
+		if self.formatter.highly_dimmed() and self.formatter.config.use_analog_clock:
 			day = GeoLocation().now().day
 
 			self.analog_clock.hour_hand_color \
