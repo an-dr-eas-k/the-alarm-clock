@@ -174,7 +174,7 @@ class DisplayFormatter:
         return dseg7
 
     def postprocess_image(self, im: Image.Image) -> Image.Image:
-        if self.formatter.highly_dimmed():
+        if self.highly_dimmed():
             im = im.point(lambda x: self.foreground_color() if x > 0 else 0)
         return im
 
