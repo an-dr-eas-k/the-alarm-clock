@@ -1,4 +1,5 @@
 import datetime
+from enum import Enum
 import logging
 import os
 import traceback
@@ -32,6 +33,12 @@ from utils.geolocation import GeoLocation
 from resources.resources import fonts_dir, weather_icons_dir
 
 logger = logging.getLogger("tac.display")
+
+
+class ColorType(Enum):
+    IN16 = 0
+    IN256 = 1
+    INCOLOR = 2
 
 
 class DisplayFormatter:
@@ -75,17 +82,31 @@ class DisplayFormatter:
             self.__dict__,
         )
 
-    def _color(self, color: int, min_value=0, max_value=15, in_16: bool = False):
+    def _color(
+        self,
+        color: int,
+        min_value=0,
+        max_value=15,
+        color_type: ColorType = ColorType.INCOLOR,
+    ):
         grayscale_16 = DisplayFormatter.respect_ranges(color, min_value, max_value)
-        if in_16:
+
+        if color_type == ColorType.IN16:
             return grayscale_16
-        return grayscale_to_color(grayscale_16 * 16)
+        if color_type == ColorType.IN256:
+            return grayscale_16 * 16
+        if color_type == ColorType.INCOLOR:
+            return grayscale_to_color(grayscale_16 * 16)
 
-    def foreground_color(self, min_value: int = 1, in_16: bool = False):
-        return self._color(self._foreground_grayscale_16, min_value, in_16=in_16)
+    def foreground_color(
+        self, min_value: int = 1, color_type: ColorType = ColorType.INCOLOR
+    ):
+        return self._color(
+            self._foreground_grayscale_16, min_value, color_type=color_type
+        )
 
-    def background_color(self, in_16: bool = False):
-        return self._color(self._background_grayscale_16, in_16=in_16)
+    def background_color(self, color_type: ColorType = ColorType.INCOLOR):
+        return self._color(self._background_grayscale_16, color_type=color_type)
 
     def respect_ranges(value: float, min_value: int = 0, max_value: int = 15) -> int:
         return int(max(min_value, min(max_value, value)))
@@ -175,13 +196,16 @@ class DisplayFormatter:
 
     def postprocess_image(self, im: Image.Image) -> Image.Image:
         if self.highly_dimmed():
-            im = im.point(
-                lambda x: (
-                    self.background_color()
-                    if x == self.background_color()
-                    else self.foreground_color()
-                )
-            )
+            fg_color = self.foreground_color(color_type=ColorType.IN256)
+            bg_color = self.background_color(color_type=ColorType.IN256)
+
+            def replace_colors(pixel):
+                if pixel == bg_color:
+                    return bg_color
+                return fg_color
+
+            im = im.point(replace_colors)
+
         return im
 
 

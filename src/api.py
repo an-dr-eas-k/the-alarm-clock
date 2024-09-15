@@ -9,7 +9,7 @@ import tornado
 import tornado.web
 from PIL.Image import Image
 from controls import Controls
-from display import Display
+from display import ColorType, Display
 
 from domain import (
     AlarmDefinition,
@@ -269,10 +269,10 @@ class Api:
                 room_brightness=get_room_brightness(),
                 display=dict(
                     foreground_color=self.display.formatter.foreground_color(
-                        in_16=True
+                        color_type=ColorType.IN16
                     ),
                     background_color=self.display.formatter.background_color(
-                        in_16=True
+                        color_type=ColorType.IN16
                     ),
                 ),
                 is_wifi_available=self.controls.state.is_wifi_available,
