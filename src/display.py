@@ -37,7 +37,7 @@ logger = logging.getLogger("tac.display")
 class DisplayFormatter:
     _bold_clock_font = ImageFont.truetype(f"{fonts_dir}/DSEG7Classic-Regular.ttf", 50)
     _light_clock_font = ImageFont.truetype(
-        f"{fonts_dir}/DSEG7ClassicMini-Light.ttf", 40
+        f"{fonts_dir}/DSEG7ClassicMini-Light.ttf", 30
     )
 
     _foreground_grayscale_16: int
