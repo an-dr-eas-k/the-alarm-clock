@@ -233,7 +233,7 @@ class ClockPresenter(Presenter):
             bg_color=self.formatter.background_color(),
         )
         return clock_image.resize(
-            [int(clock_image.width * 0.95), clock_image.height], resample=Image.BICUBIC
+            [int(clock_image.width * 0.95), clock_image.height], resample=Image.BILINEAR
         )
 
 
