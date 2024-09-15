@@ -173,6 +173,11 @@ class DisplayFormatter:
         dseg7 = "!" * (desired_length - len(dseg7)) + dseg7
         return dseg7
 
+    def postprocess_image(self, im: Image.Image) -> Image.Image:
+        if self.formatter.highly_dimmed():
+            im = im.point(lambda x: self.foreground_color() if x > 0 else 0)
+        return im
+
 
 class Presenter:
     empty_image = Image.new("RGBA", (0, 0))
@@ -232,8 +237,11 @@ class ClockPresenter(Presenter):
             fg_color=self.formatter.foreground_color(),
             bg_color=self.formatter.background_color(),
         )
-        return clock_image.resize(
-            [int(clock_image.width * 0.95), clock_image.height], resample=Image.NEAREST
+        return self.formatter.postprocess_image(
+            clock_image.resize(
+                [int(clock_image.width * 0.95), clock_image.height],
+                resample=Image.NEAREST,
+            )
         )
 
 
@@ -523,8 +531,6 @@ class Display(Observer):
             media_image = self.media_presenter.draw()
             im.paste(media_image, (2, im.height - media_image.height - 2), media_image)
 
-        if self.formatter.highly_dimmed():
-            im = im.point(lambda x: 16 if x > 0 else x)
         return im
 
 
