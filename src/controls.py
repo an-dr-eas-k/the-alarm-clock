@@ -316,11 +316,18 @@ class Controls(Observer):
 
     def ring_alarm(self, alarm_definition: AlarmDefinition):
         def do():
+            alarm_effect = alarm_definition.audio_effect
+
+            if self.state.mode in [Mode.Music, Mode.Spotify]:
+                alarm_effect = self.state.configuration.get_offline_alarm_effect(
+                    alarm_effect.volume
+                )
+
             self.set_to_idle_mode()
             self.state.active_alarm = alarm_definition
             self.playback_content.desired_alarm_audio_effect = (
                 self.playback_content.audio_effect
-            ) = alarm_definition.audio_effect
+            ) = alarm_effect
             self.state.mode = Mode.Alarm
             self.after_ring_alarm(alarm_definition)
 
