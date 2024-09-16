@@ -9,6 +9,7 @@ from apscheduler.job import Job
 from domain import (
     AlarmClockState,
     AlarmDefinition,
+    AudioEffect,
     AudioStream,
     PlaybackContent,
     DisplayContent,
@@ -56,9 +57,9 @@ class Controls(Observer):
 
     def consider_failed_alarm(self):
         if os.path.exists(alarm_details_file):
-            ad = AlarmDefinition.deserialize(alarm_details_file)
-            logger.info("failed alarm found %s", ad.alarm_name)
-            self.ring_alarm(ad)
+            ae = AudioEffect.deserialize(alarm_details_file)
+            logger.info("failed audioeffect found %s", ae.title)
+            self.ring_alarm_effect(ae)
 
     def add_scheduler_jobs(self):
         self.scheduler.add_job(
@@ -201,7 +202,7 @@ class Controls(Observer):
 
         if self.state.mode != Mode.Idle:
             self.state.mode = Mode.Idle
-            self.state.active_alarm = None
+            self.state.desired_alarm_audio_effect = None
 
     def button4_activated(self):
 
@@ -323,18 +324,20 @@ class Controls(Observer):
                     alarm_effect.volume
                 )
 
-            self.set_to_idle_mode()
-            self.state.active_alarm = alarm_definition
-            self.playback_content.desired_alarm_audio_effect = (
-                self.playback_content.audio_effect
-            ) = alarm_effect
-            self.state.mode = Mode.Alarm
-            self.after_ring_alarm(alarm_definition)
+            if alarm_definition.is_one_time():
+                self.state.configuration.remove_alarm_definition(alarm_definition.id)
+
+            self.ring_alarm_effect(alarm_effect)
 
         Controls.action(do, "ring alarm %s" % alarm_definition.alarm_name)
 
-    def after_ring_alarm(self, alarmDefinition: AlarmDefinition):
+    def ring_alarm_effect(self, alarm_effect: AudioEffect):
+        self.set_to_idle_mode()
+        self.state.desired_alarm_audio_effect = alarm_effect
+        self.state.mode = Mode.Alarm
+        self.postprocess_ring_alarm_effect()
 
+    def postprocess_ring_alarm_effect(self):
         self.start_generic_trigger(
             "stop_alarm_trigger",
             datetime.timedelta(minutes=self.state.configuration.alarm_duration_in_mins),
@@ -342,8 +345,6 @@ class Controls(Observer):
         )
 
         self.display_content.next_alarm_job = self.get_next_alarm_job()
-        if alarmDefinition.is_one_time():
-            self.state.configuration.remove_alarm_definition(alarmDefinition.id)
 
     def cleanup_alarms(self):
         job: Job

@@ -150,6 +150,16 @@ class AudioEffect:
     def title(self):
         return None
 
+    def serialize(self):
+        return jsonpickle.encode(self, indent=2)
+
+    def deserialize(audio_effect_file: str):
+        logger.debug("initializing audio_effect from file: %s", audio_effect_file)
+        with open(audio_effect_file, "r") as file:
+            file_contents = file.read()
+            persisted_audio_effect: AudioEffect = jsonpickle.decode(file_contents)
+            return persisted_audio_effect
+
 
 class StreamAudioEffect(AudioEffect):
     stream_definition: AudioStream = None
@@ -253,18 +263,6 @@ class AlarmDefinition:
     @audio_effect.setter
     def audio_effect(self, value: AudioEffect):
         self._audio_effect = value
-
-    def serialize(self):
-        return jsonpickle.encode(self, indent=2)
-
-    def deserialize(desired_alarm_audio_effect_file: str):
-        logger.debug(
-            "initializing audio_effect from file: %s", desired_alarm_audio_effect_file
-        )
-        with open(desired_alarm_audio_effect_file, "r") as file:
-            file_contents = file.read()
-            persisted_audio_effect: AudioEffect = jsonpickle.decode(file_contents)
-            return persisted_audio_effect
 
 
 class Config(Observable):
@@ -462,15 +460,6 @@ class AlarmClockState(Observable):
         self.notify(property="mode")
 
     @property
-    def active_alarm(self) -> AlarmDefinition:
-        return self._active_alarm
-
-    @active_alarm.setter
-    def active_alarm(self, value: AlarmDefinition):
-        self._active_alarm = value
-        self.notify(property="active_alarm")
-
-    @property
     def spotify_event(self) -> LibreSpotifyEvent:
         return self._spotify_event
 
@@ -478,6 +467,16 @@ class AlarmClockState(Observable):
     def spotify_event(self, value: LibreSpotifyEvent):
         self._spotify_event = value
         self.notify(property="spotify_event")
+
+    @property
+    def desired_alarm_audio_effect(self) -> AudioEffect:
+        return self._desired_alarm_audio_effect
+
+    @desired_alarm_audio_effect.setter
+    def desired_alarm_audio_effect(self, value: AudioEffect):
+
+        self._desired_alarm_audio_effect = value
+        self.notify(property="desired_alarm_audio_effect")
 
     def __init__(self, c: Config) -> None:
         super().__init__()
@@ -496,16 +495,6 @@ class MediaContent(Observable, Observer):
 
 
 class PlaybackContent(MediaContent):
-
-    @property
-    def desired_alarm_audio_effect(self) -> AudioEffect:
-        return self._desired_alarm_audio_effect
-
-    @desired_alarm_audio_effect.setter
-    def desired_alarm_audio_effect(self, value: AudioEffect):
-
-        self._desired_alarm_audio_effect = value
-        self.notify(property="desired_alarm_audio_effect")
 
     @property
     def audio_effect(self) -> AudioEffect:
@@ -558,6 +547,9 @@ class PlaybackContent(MediaContent):
 
         if observation.property_name == "is_wifi_available":
             self.wifi_availability_changed(state.is_wifi_available)
+
+        if observation.property_name == "desired_alarm_audio_effect":
+            self.audio_effect = state.desired_alarm_audio_effect
 
     def wifi_availability_changed(self, wifi_available: bool):
         if self.state.mode == Mode.Alarm:

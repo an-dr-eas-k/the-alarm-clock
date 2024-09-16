@@ -16,7 +16,6 @@ from controls import Controls, SoftwareControls
 
 from display import Display
 from domain import AlarmClockState, Config, DisplayContent, Mode, PlaybackContent
-from gpo import GeneralPurposeOutput
 from persistence import Persistence
 from resources.resources import init_logging
 from utils import os as app_os
