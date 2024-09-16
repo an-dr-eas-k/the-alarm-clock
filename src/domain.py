@@ -554,9 +554,8 @@ class PlaybackContent(MediaContent):
 
     def update_from_state(self, observation: Observation, state: AlarmClockState):
         if observation.property_name == "mode":
-            self.toggle_stream(
-                new_value=(state.mode in [Mode.Alarm, Mode.Music, Mode.Spotify])
-            )
+            self.is_streaming = state.mode in [Mode.Alarm, Mode.Music, Mode.Spotify]
+
         if observation.property_name == "is_wifi_available":
             self.wifi_availability_changed(state.is_wifi_available)
 
@@ -576,11 +575,6 @@ class PlaybackContent(MediaContent):
 
     def decrease_volume(self):
         self.volume = max(self.volume - 0.05, 0.0)
-
-    def toggle_stream(self, new_value: bool = None):
-        self.is_streaming = (
-            new_value if new_value is not None else not self.is_streaming
-        )
 
     def set_spotify_event(self, spotify_event: LibreSpotifyEvent):
 

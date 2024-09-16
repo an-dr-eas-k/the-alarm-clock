@@ -59,7 +59,7 @@ class ClockApp:
 
         if self.is_on_hardware():
             self.controls = Controls(self.state, display_content, playback_content)
-            # playback_content.attach(GeneralPurposeOutput())
+            # self.state.attach(GeneralPurposeOutput())
             device = ssd1322(serial_interface=spi(device=0, port=0))
             port = 80
         else:

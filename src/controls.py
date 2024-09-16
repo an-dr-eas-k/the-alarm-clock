@@ -331,7 +331,7 @@ class Controls(Observer):
         self.start_generic_trigger(
             "stop_alarm_trigger",
             datetime.timedelta(minutes=self.state.configuration.alarm_duration_in_mins),
-            func=lambda: self.playback_content.toggle_stream(new_value=False),
+            func=lambda: self.set_to_idle_mode(),
         )
 
         self.display_content.next_alarm_job = self.get_next_alarm_job()

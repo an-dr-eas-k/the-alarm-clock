@@ -1,4 +1,4 @@
-from domain import PlaybackContent, Observation, Observer
+from domain import AlarmClockState, Mode, Observation, Observer
 from gpiozero import DigitalOutputDevice
 import logging
 
@@ -7,6 +7,7 @@ logger = logging.getLogger("tac.gpo")
 audio_mute_pin_id = 22
 
 
+# currently unused because kernel handles audio unmute
 class GeneralPurposeOutput(Observer):
 
     audio_unmute_pin: DigitalOutputDevice
@@ -20,16 +21,14 @@ class GeneralPurposeOutput(Observer):
 
     def update(self, observation: Observation):
         super().update(observation)
-        if isinstance(observation.observable, PlaybackContent):
-            self.update_from_playback_content(observation, observation.observable)
+        if isinstance(observation.observable, AlarmClockState):
+            self.update_from_state(observation, observation.observable)
 
-    def update_from_playback_content(
-        self, observation: Observation, playback_content: PlaybackContent
-    ):
+    def update_from_state(self, observation: Observation, state: AlarmClockState):
         if self.audio_unmute_pin is None:
             return
-        if observation.property_name == "is_streaming":
-            if playback_content.is_streaming:
+        if observation.property_name == "mode":
+            if state.mode in [Mode.Alarm, Mode.Music, Mode.Spotify]:
                 logger.info("unmuting audio on pin %s", audio_mute_pin_id)
                 self.audio_unmute_pin.on()
             else:
