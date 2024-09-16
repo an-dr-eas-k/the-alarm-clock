@@ -231,6 +231,9 @@ class Speaker(Observer):
             self.start_streaming_alternative()
             return
 
+        self.start_offline_effect()
+
+    def start_offline_effect(self):
         logger.info("starting offline fallback playback")
         self.playback_content.is_streaming = False
         self.playback_content.audio_effect = self.config.get_offline_alarm_effect()
@@ -248,7 +251,6 @@ class Speaker(Observer):
     def start_streaming_alternative(self):
         self.adjust_streaming(False)
         logger.info("starting alternative fallback player")
-        # self.fallback_player_proc = subprocess.Popen(['speaker-test', '-t', 'sine', '-c', '2', '-f', '1000', '-l', '0', '-p', '23', '-S', '80'])
         self.fallback_player_proc = subprocess.Popen(
             ["ogg123", "-r", os.path.join(alarms_dir, "fallback", "Timer.ogg")],
             stdout=subprocess.DEVNULL,
