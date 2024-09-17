@@ -29,10 +29,10 @@ class SoundDevice:
 
             human_volume = 0
             algorithm = "cubic"
-            if min_volume_db < max_volume_db:
-                volume_db = self.combine_channel_values(
-                    mixer.getvolume(units=alsaaudio.VOLUME_UNITS_DB)
-                )
+            volume_db = self.combine_channel_values(
+                mixer.getvolume(units=alsaaudio.VOLUME_UNITS_DB)
+            )
+            if min_volume_db < max_volume_db and volume_db < max_volume_db:
                 human_volume = self.convert_to_human_volume(volume_db, max_volume_db)
             else:
                 algorithm = "linear"

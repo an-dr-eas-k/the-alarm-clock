@@ -551,7 +551,10 @@ class PlaybackContent(MediaContent):
         if observation.property_name == "is_online":
             self.wifi_availability_changed(state.is_online)
 
-        if observation.property_name == "active_alarm":
+        if (
+            observation.property_name == "active_alarm"
+            and state.active_alarm is not None
+        ):
             self.audio_effect = state.active_alarm.audio_effect
 
     def wifi_availability_changed(self, is_online: bool):
