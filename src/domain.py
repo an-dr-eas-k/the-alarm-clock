@@ -436,13 +436,13 @@ class AlarmClockState(Observable):
         self.notify(property="show_blink_segment")
 
     @property
-    def is_wifi_available(self) -> bool:
-        return self._is_wifi_available
+    def is_online(self) -> bool:
+        return self._is_online
 
-    @is_wifi_available.setter
-    def is_wifi_available(self, value: bool):
-        self._is_wifi_available = value
-        self.notify(property="is_wifi_available")
+    @is_online.setter
+    def is_online(self, value: bool):
+        self._is_online = value
+        self.notify(property="is_online")
 
     @property
     def is_daytime(self) -> bool:
@@ -486,7 +486,7 @@ class AlarmClockState(Observable):
         self.configuration = c
         self.mode = Mode.Boot
         self.geo_location = GeoLocation()
-        self.is_wifi_available = True
+        self.is_online = True
         self.show_blink_segment = True
 
 
@@ -548,22 +548,20 @@ class PlaybackContent(MediaContent):
         if observation.property_name == "mode":
             self.is_streaming = state.mode in [Mode.Alarm, Mode.Music, Mode.Spotify]
 
-        if observation.property_name == "is_wifi_available":
-            self.wifi_availability_changed(state.is_wifi_available)
+        if observation.property_name == "is_online":
+            self.wifi_availability_changed(state.is_online)
 
         if observation.property_name == "active_alarm":
             self.audio_effect = state.active_alarm.audio_effect
 
-    def wifi_availability_changed(self, wifi_available: bool):
+    def wifi_availability_changed(self, is_online: bool):
         if self.state.mode == Mode.Alarm:
-            if not wifi_available:
+            if not is_online:
                 self.audio_effect = self.state.configuration.get_offline_alarm_effect(
                     self.volume
                 )
             else:
                 self.audio_effect = self.state.active_alarm.audio_effect
-        else:
-            self.is_streaming = self.is_streaming and wifi_available
 
     def increase_volume(self):
         self.volume = min(self.volume + 0.05, 1.0)
@@ -604,8 +602,8 @@ class DisplayContent(MediaContent):
         super().__init__(state)
         self.playback_content = playback_content
 
-    def get_is_wifi_available(self) -> bool:
-        return self.state.is_wifi_available
+    def get_is_online(self) -> bool:
+        return self.state.is_online
 
     def notify(self):
         super().notify(reason="display_changed")

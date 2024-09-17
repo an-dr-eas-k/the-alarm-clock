@@ -307,7 +307,7 @@ class WifiStatusPresenter(Presenter):
         super().__init__(formatter, content)
 
     def draw(self) -> Image.Image:
-        if self.content.get_is_wifi_available():
+        if self.content.get_is_online():
             return self.empty_image
 
         no_wifi_symbol = "\U000f05aa"

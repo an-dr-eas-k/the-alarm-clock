@@ -275,7 +275,7 @@ class Api:
                         color_type=ColorType.IN16
                     ),
                 ),
-                is_wifi_available=self.controls.state.is_wifi_available,
+                is_online=self.controls.state.is_online,
                 is_daytime=self.controls.state.is_daytime,
                 geo_location=self.controls.state.geo_location.location_info.__dict__,
                 playback_content=dict(

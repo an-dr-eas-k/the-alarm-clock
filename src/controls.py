@@ -290,7 +290,7 @@ class Controls(Observer):
 
     def update_weather_status(self):
         def do():
-            if not self.state.is_wifi_available:
+            if not self.state.is_online:
                 self.display_content.current_weather = None
                 return
 
@@ -302,10 +302,14 @@ class Controls(Observer):
 
     def update_wifi_status(self):
         def do():
-            new_state = is_internet_available()
-            if new_state != self.state.is_wifi_available:
-                logger.info("change wifi state, is available: %s", new_state)
-                self.state.is_wifi_available = new_state
+            is_online = is_internet_available()
+
+            if is_online != self.state.is_online:
+                logger.info("change wifi state, is online: %s", is_online)
+                self.state.is_online = is_online
+
+                if not is_online and self.state in [Mode.Music, Mode.Spotify]:
+                    self.set_to_idle_mode()
 
         Controls.action(do)
 
