@@ -9,7 +9,6 @@ from apscheduler.job import Job
 from domain import (
     AlarmClockState,
     AlarmDefinition,
-    AudioEffect,
     AudioStream,
     PlaybackContent,
     DisplayContent,
@@ -22,7 +21,7 @@ from domain import (
 from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon
-from resources.resources import alarm_details_file
+from resources.resources import active_alarm_definition_file
 
 logger = logging.getLogger("tac.controls")
 
@@ -56,10 +55,12 @@ class Controls(Observer):
         self.print_active_jobs(default_store)
 
     def consider_failed_alarm(self):
-        if os.path.exists(alarm_details_file):
-            ae = AudioEffect.deserialize(alarm_details_file)
-            logger.info("failed audioeffect found %s", ae.title)
-            self.ring_alarm_effect(ae)
+        if os.path.exists(active_alarm_definition_file):
+            ad: AlarmDefinition = AlarmDefinition.deserialize(
+                active_alarm_definition_file
+            )
+            logger.info("failed audioeffect found %s", ad.alarm_name)
+            self.ring_alarm(ad)
 
     def add_scheduler_jobs(self):
         self.scheduler.add_job(
@@ -202,7 +203,7 @@ class Controls(Observer):
 
         if self.state.mode != Mode.Idle:
             self.state.mode = Mode.Idle
-            self.state.desired_alarm_audio_effect = None
+            self.state.active_alarm = None
 
     def button4_activated(self):
 
@@ -327,17 +328,14 @@ class Controls(Observer):
             if alarm_definition.is_one_time():
                 self.state.configuration.remove_alarm_definition(alarm_definition.id)
 
-            self.ring_alarm_effect(alarm_effect)
+            self.set_to_idle_mode()
+            self.state.active_alarm = alarm_definition
+            self.state.mode = Mode.Alarm
+            self.postprocess_ring_alarm()
 
         Controls.action(do, "ring alarm %s" % alarm_definition.alarm_name)
 
-    def ring_alarm_effect(self, alarm_effect: AudioEffect):
-        self.set_to_idle_mode()
-        self.state.desired_alarm_audio_effect = alarm_effect
-        self.state.mode = Mode.Alarm
-        self.postprocess_ring_alarm_effect()
-
-    def postprocess_ring_alarm_effect(self):
+    def postprocess_ring_alarm(self):
         self.start_generic_trigger(
             "stop_alarm_trigger",
             datetime.timedelta(minutes=self.state.configuration.alarm_duration_in_mins),

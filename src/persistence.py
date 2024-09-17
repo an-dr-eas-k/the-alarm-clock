@@ -8,7 +8,7 @@ from domain import (
     Observation,
     Observer,
 )
-from resources.resources import alarm_details_file
+from resources.resources import active_alarm_definition_file
 
 
 class Persistence(Observer):
@@ -37,14 +37,13 @@ class Persistence(Observer):
             f.write(config.serialize())
 
     def update_from_state(self, observation: Observation, state: AlarmClockState):
-        if observation.property_name == "desired_alarm_audio_effect":
-            self.store_alarm(state.desired_alarm_audio_effect)
+        if observation.property_name == "active_alarm":
+            self.store_alarm(state.active_alarm)
 
-    def store_alarm(self, alarm: AudioEffect):
-        if alarm is None:
-            if os.path.exists(alarm_details_file):
-                os.remove(alarm_details_file)
+    def store_alarm(self, alarm_definition: AlarmDefinition):
+        if alarm_definition is None:
+            if os.path.exists(active_alarm_definition_file):
+                os.remove(active_alarm_definition_file)
             return
 
-        with open(alarm_details_file, "w") as f:
-            f.write(alarm.serialize())
+        alarm_definition.serialize(active_alarm_definition_file)

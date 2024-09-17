@@ -21,7 +21,7 @@ librespotify_env_vars = [
     "SINK_STATUS",
 ]
 
-alarm_details_file = f"/tmp/alarm_details.json"
+active_alarm_definition_file = f"/tmp/toc_active_alarm.json"
 
 valid_mixer_device_simple_control_names = ["Digital", "Master"]
 
