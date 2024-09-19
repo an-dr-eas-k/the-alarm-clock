@@ -26,5 +26,5 @@ cd /srv/the-alarm-clock/app
 git config pull.ff only
 
 while true; do
-  bash ./run.sh
+  bash ./rpi/run.sh
 done
