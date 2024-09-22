@@ -26,5 +26,15 @@ cd /srv/the-alarm-clock/app
 git config pull.ff only
 
 while true; do
+  echo "update from git"
+  git reset --hard "@{upstream}"
+  git pull
+
+  echo "git status"
+  git status
+  git log -1
+  
+  echo "calling rpi/run.sh"
+
   bash ./rpi/run.sh
 done
