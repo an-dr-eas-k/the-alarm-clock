@@ -266,7 +266,7 @@ class Controls(Observer):
             dict(b=button3Id, wa=self.button3_activated),
             dict(b=button4Id, wa=self.button4_activated),
         ]:
-            b = Button(pin=button["b"], bounce_time=0.4)
+            b = Button(pin=button["b"])
             if "ht" in button:
                 b.hold_time = button["ht"]
             if "hr" in button:
@@ -323,8 +323,10 @@ class Controls(Observer):
     def ring_alarm(self, alarm_definition: AlarmDefinition):
         def do():
             if self.state.mode in [Mode.Music, Mode.Spotify]:
-                alarm_definition.audio_effect = self.state.configuration.get_offline_alarm_effect(
-                    alarm_definition.audio_effect.volume
+                alarm_definition.audio_effect = (
+                    self.state.configuration.get_offline_alarm_effect(
+                        alarm_definition.audio_effect.volume
+                    )
                 )
 
             if alarm_definition.is_one_time():
