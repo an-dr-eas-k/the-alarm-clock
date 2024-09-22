@@ -9,5 +9,5 @@ alsactl --no-ucm --file rpi/resources/asound.state restore
 python -u src/app_sound_device.py -D equal -a set -f rpi/resources/equalizer.conf
 
 echo "invoking app_clock.py"
-# GPIOZERO_PIN_FACTORY=pigpio python -u src/app_clock.py
-python -u src/app_clock.py
+GPIOZERO_PIN_FACTORY=pigpio python -u src/app_clock.py
+# python -u src/app_clock.py
