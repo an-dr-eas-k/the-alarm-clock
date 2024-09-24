@@ -128,7 +128,9 @@ class Controls(Observer):
             func=self.display_content.hide_volume_meter,
         )
 
-    def start_generic_trigger(self, job_id: str, duration: datetime.timedelta, func):
+    def stop_generic_trigger(self, job_id: str, job_store=default_store):
+        if self.scheduler.get_job(job_id=job_id, jobstore=job_store) is not None:
+            self.scheduler.remove_job(job_id=job_id, jobstore=job_store)
 
     def start_generic_trigger(
         self, job_id: str, duration: datetime.timedelta, func, job_store=default_store
@@ -216,6 +218,7 @@ class Controls(Observer):
             restart_spotify_daemon()
 
         if self.state.mode != Mode.Idle:
+            self.stop_generic_trigger(SchedulerJobIds.hide_volume_meter.value)
             self.state.mode = Mode.Idle
             self.state.active_alarm = None
 
