@@ -9,6 +9,12 @@ python3 src/app_clock.py
 weather symbols are included from https://github.com/erikflowers/weather-icons
 
 
+# Box
+
+## Simple
+
+
+
 # Connection Guide
 
 |         |||||||||

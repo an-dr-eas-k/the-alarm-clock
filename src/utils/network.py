@@ -8,25 +8,32 @@ from utils.os import is_ping_successful
 
 logger = logging.getLogger("tac.network")
 
+
 def is_internet_available():
-	return is_ping_successful("8.8.8.8")
+    return is_ping_successful("8.8.8.8")
 
-def json_api(url, headers = {'Content-Type': 'application/json'}, data_bytes = None):
-	try:
-		request = Request(url, headers=headers, data=data_bytes)
-		response: HTTPResponse = urlopen(request)
-		return_code = response.getcode()
-	except:
-		logger.error("Error calling url %s. %s", url, traceback.format_exc())
-		return False
 
-	if return_code != 200:
-		logger.error("Error calling url %s. status code: %s, response: %s", url, return_code, response.read())
-		return False
+def json_api(url, headers={"Content-Type": "application/json"}, data_bytes=None):
+    try:
+        request = Request(url, headers=headers, data=data_bytes)
+        response: HTTPResponse = urlopen(request)
+        return_code = response.getcode()
+    except:
+        logger.error("Error calling url %s. %s", url, traceback.format_exc())
+        return False
 
-	if response.readable():
-		response_bytes = response.read()
-		if response_bytes:
-			return json.loads(response_bytes)
+    if return_code != 200:
+        logger.error(
+            "Error calling url %s. status code: %s, response: %s",
+            url,
+            return_code,
+            response.read(),
+        )
+        return False
 
-	return True
+    if response.readable():
+        response_bytes = response.read()
+        if response_bytes:
+            return json.loads(response_bytes)
+
+    return True

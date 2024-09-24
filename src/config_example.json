@@ -24,6 +24,12 @@
         "stream_name": "puls",
         "stream_url": "https://streams.br.de/puls_2.m3u",
         "id": 1
+      },
+      {
+        "py/object": "domain.AudioStream",
+        "stream_name": "fm4",
+        "stream_url": "https://orf-live.ors-shoutcast.at/fm4-q2a",
+        "id": 2
       }
     ],
     "_alarm_definitions": [
@@ -42,7 +48,7 @@
         "date": null,
         "_audio_effect": {
           "py/object": "domain.StreamAudioEffect",
-          "volume": 0.2,
+          "volume": 0.20,
           "stream_definition": {
             "py/id": 4
           }
@@ -65,7 +71,7 @@
         "date": null,
         "_audio_effect": {
           "py/object": "domain.StreamAudioEffect",
-          "volume": 0.2,
+          "volume": 0.20,
           "stream_definition": {
             "py/id": 4
           }
@@ -75,6 +81,26 @@
         },
         "is_active": true,
         "id": 1
+      },
+      {
+        "py/object": "domain.AlarmDefinition",
+        "alarm_name": "work on wednesday",
+        "hour": 6,
+        "min": 25,
+        "weekdays": [
+          "WEDNESDAY"
+        ],
+        "date": null,
+        "_audio_effect": {
+          "py/object": "domain.StreamAudioEffect",
+          "volume": 0.15,
+          "stream_definition": {
+            "py/id": 6
+          }
+        },
+        "visual_effect": null,
+        "is_active": true,
+        "id": 2
       },
       {
         "py/object": "domain.AlarmDefinition",
@@ -93,7 +119,7 @@
         "date": null,
         "_audio_effect": {
           "py/object": "domain.StreamAudioEffect",
-          "volume": 0.2,
+          "volume": 0.25,
           "stream_definition": {
             "py/id": 5
           }
@@ -102,7 +128,7 @@
           "py/object": "domain.VisualEffect"
         },
         "is_active": false,
-        "id": 1
+        "id": 3
       }
     ]
   }

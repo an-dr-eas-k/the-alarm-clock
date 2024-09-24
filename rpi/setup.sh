@@ -14,7 +14,9 @@ curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
 apt-get -y autoremove
 
 echo "configure system"
-systemctl disable pigpiod
+ln -fs $app/rpi/resources/raspotify.service /lib/systemd/system/pigpiod.service
+systemctl daemon-reload
+systemctl enable pigpiod
 # systemctl disable aplay.service
 
 
@@ -50,6 +52,8 @@ ln -fs $app/rpi/resources/asoundrc $uhome/.asoundrc
 echo "setup raspotify"
 chown $uid:$uid -R /etc/raspotify
 ln -fs $app/rpi/resources/raspotify.service /lib/systemd/system/raspotify.service
+systemctl daemon-reload
+systemctl enable raspotify
 ln -fs $app/rpi/resources/raspotify.conf /etc/raspotify/conf
 touch /var/log/the-alarm-clock.spotify-event.stdout
 touch /var/log/the-alarm-clock.spotify-event.errout
