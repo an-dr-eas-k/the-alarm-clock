@@ -1,7 +1,10 @@
 [Unit]
 Description=Daemon required to control GPIO pins via pigpio
 [Service]
-ExecStart=/usr/bin/pigpiod -l -x 0x2061 -t 0
+# -x activates all pins 
+# if a specific set of pins should be activated use bash with ``` printf "0x%x\n" $(( (1 << 0) | (1 << 5) | (1 << 6) | (1 << 13) )) ``` where 0, 5, 6 and 13 are examples for pins
+# -t is to use PWM
+ExecStart=/usr/bin/pigpiod -l -x 0xFFFFFFF -t 0
 ExecStop=/bin/systemctl kill pigpiod
 Type=forking
 [Install]
