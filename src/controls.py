@@ -1,4 +1,5 @@
 import datetime
+from enum import Enum
 import logging
 import os
 import traceback
@@ -31,6 +32,11 @@ button3Id = 6
 button4Id = 13
 alarm_store = "alarm"
 default_store = "default"
+
+
+class SchedulerJobIds(Enum):
+    hide_volume_meter = "hide_volume_meter_trigger"
+    stop_alarm = "stop_alarm_trigger"
 
 
 class Controls(Observer):
@@ -117,19 +123,27 @@ class Controls(Observer):
 
     def start_hide_volume_meter_trigger(self):
         self.start_generic_trigger(
-            "hide_volume_meter_trigger",
+            SchedulerJobIds.hide_volume_meter.value,
             datetime.timedelta(seconds=5),
             func=self.display_content.hide_volume_meter,
         )
 
     def start_generic_trigger(self, job_id: str, duration: datetime.timedelta, func):
+
+    def start_generic_trigger(
+        self, job_id: str, duration: datetime.timedelta, func, job_store=default_store
+    ):
         trigger = DateTrigger(run_date=GeoLocation().now() + duration)
 
-        existing_job = self.scheduler.get_job(job_id=job_id)
+        existing_job = self.scheduler.get_job(job_id=job_id, jobstore=job_store)
         if existing_job:
-            self.scheduler.reschedule_job(job_id=job_id, trigger=trigger)
+            self.scheduler.reschedule_job(
+                job_id=job_id, trigger=trigger, jobstore=job_store
+            )
         else:
-            self.scheduler.add_job(id=job_id, trigger=trigger, func=func)
+            self.scheduler.add_job(
+                id=job_id, trigger=trigger, func=func, jobstore=job_store
+            )
 
     def update_from_config(self, observation: Observation, config: Config):
         if observation.property_name == "alarm_definitions":
@@ -252,14 +266,12 @@ class Controls(Observer):
             dict(
                 b=button1Id,
                 ht=0.5,
-                hr=True,
                 wa=self.button1_activated,
                 wh=self.button1_held,
             ),
             dict(
                 b=button2Id,
                 ht=0.5,
-                hr=True,
                 wa=self.button2_activated,
                 wh=self.button2_held,
             ),
@@ -269,8 +281,7 @@ class Controls(Observer):
             b = Button(pin=button["b"], bounce_time=0.2)
             if "ht" in button:
                 b.hold_time = button["ht"]
-            if "hr" in button:
-                b.hold_repeat = button["hr"]
+                b.hold_repeat = True
             if "wh" in button:
                 b.when_held = button["wh"]
             if "wa" in button:
@@ -341,7 +352,7 @@ class Controls(Observer):
 
     def postprocess_ring_alarm(self):
         self.start_generic_trigger(
-            "stop_alarm_trigger",
+            SchedulerJobIds.stop_alarm.value,
             datetime.timedelta(minutes=self.state.configuration.alarm_duration_in_mins),
             func=lambda: self.set_to_idle_mode(),
         )
