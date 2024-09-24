@@ -26,6 +26,8 @@ from resources.resources import active_alarm_definition_file
 
 logger = logging.getLogger("tac.controls")
 
+logger = logging.getLogger("tac.controls")
+
 button1Id = 0
 button2Id = 5
 button3Id = 6

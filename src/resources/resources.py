@@ -28,5 +28,8 @@ valid_mixer_device_simple_control_names = ["Digital", "Master"]
 default_volume = 0.2
 
 
+valid_mixer_device_simple_control_names = ["Digital","Master"]
+valid_sound_card_pattern = ["digiamp","pch"]
+
 def init_logging():
     logging.config.fileConfig(os.path.join(resources_dir, "logging.conf"))

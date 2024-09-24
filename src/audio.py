@@ -24,6 +24,8 @@ from resources.resources import alarms_dir, init_logging, default_volume
 
 logger = logging.getLogger("tac.audio")
 
+logger = logging.getLogger("tac.audio")
+
 debug_callback: bool = True
 
 
