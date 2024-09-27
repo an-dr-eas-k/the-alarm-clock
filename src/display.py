@@ -534,7 +534,6 @@ class Display(Observer):
 
         if self.formatter.clear_display():
             logger.info("clearing display")
-            self.device.hide()
             self.device.clear()
 
         self.current_display_image = self.present()
