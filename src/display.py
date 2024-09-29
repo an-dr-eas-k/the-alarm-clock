@@ -30,6 +30,7 @@ from utils.drawing import (
 )
 from utils.extensions import get_job_arg, get_timedelta_to_alarm
 from utils.geolocation import GeoLocation
+from utils.scroll_utils import main
 
 from resources.resources import fonts_dir, weather_icons_dir
 
@@ -561,8 +562,10 @@ class Display(Observer):
         im = Image.new("RGB", self.device.size, color=self.formatter.background_color())
 
         if self.display_content.mode_state.is_active():
-            im.paste(self.mode_presenter.draw(), (0, 0))
-            return im
+            main(self.device)
+            return
+            # im.paste(self.mode_presenter.draw(), (0, 0))
+            # return im
 
         clock_image = self.clock_presenter.draw()
         im.paste(
