@@ -595,11 +595,26 @@ class PlaybackContent(MediaContent):
             self.notify(property="volume")
 
 
+class TACMode:
+    class ModesOnLevel0(Enum):
+        NoMode = 0
+        AlarmChanger = 1
+
+    mode_0 = ModesOnLevel0.NoMode
+
+    def start(self):
+        self.mode_0 = TACMode.ModesOnLevel0.AlarmChanger
+
+    def is_active(self) -> bool:
+        return self.mode_0 != TACMode.ModesOnLevel0.NoMode
+
+
 class DisplayContent(MediaContent):
     _show_volume_meter: bool = False
     next_alarm_job: Job = None
     current_weather: Weather = None
     show_blink_segment: bool
+    mode_state: TACMode = TACMode()
 
     def __init__(self, state: AlarmClockState, playback_content: PlaybackContent):
         super().__init__(state)

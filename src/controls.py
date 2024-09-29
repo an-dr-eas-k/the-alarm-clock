@@ -206,12 +206,7 @@ class Controls(Observer):
         Controls.button_action(self.increase_volume, 2, "held")
 
     def button3_activated(self):
-
-        def exit():
-            self.scheduler.shutdown(wait=False)
-            os._exit(0)
-
-        Controls.button_action(exit, 3, "activated")
+        Controls.button_action(self.enter_mode, 3, "activated")
 
     def set_to_idle_mode(self):
         if self.state.mode == Mode.Spotify:
@@ -239,6 +234,9 @@ class Controls(Observer):
                     self.play_stream_by_id(0)
 
         Controls.button_action(toggle_stream, 4, "activated")
+
+    def enter_mode(self):
+        self.display_content.mode_state.start()
 
     def increase_volume(self):
         self.playback_content.increase_volume()

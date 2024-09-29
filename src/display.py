@@ -17,6 +17,7 @@ from domain import (
     Observer,
     PlaybackContent,
     SpotifyAudioEffect,
+    TACMode,
     VisualEffect,
 )
 from gpi import get_room_brightness
@@ -472,6 +473,17 @@ class WeatherStatusPresenter(Presenter):
         return dst
 
 
+class ModePresenter(Presenter):
+    def __init__(self, formatter: DisplayFormatter, content: DisplayContent) -> None:
+        super().__init__(formatter, content)
+
+    def draw(self) -> Image.Image:
+        if self.content.mode_state.mode_0 == TACMode.ModesOnLevel0.AlarmChanger:
+            # for alarm in self.content.state.configuration.alarm_definitions:
+            #     alarm.
+            pass
+
+
 class Display(Observer):
 
     device: luma_device
@@ -513,6 +525,7 @@ class Display(Observer):
         self.volume_meter_presenter = VolumeMeterPresenter(
             self.formatter, self.display_content, (10, self.device.height)
         )
+        self.mode_presenter = ModePresenter(self.formatter, self.display_content)
 
     def update(self, observation: Observation):
         super().update(observation)
@@ -546,6 +559,10 @@ class Display(Observer):
 
     def present(self) -> Image.Image:
         im = Image.new("RGB", self.device.size, color=self.formatter.background_color())
+
+        if self.display_content.mode_state.is_active():
+            im.paste(self.mode_presenter.draw(), (0, 0))
+            return im
 
         clock_image = self.clock_presenter.draw()
         im.paste(
