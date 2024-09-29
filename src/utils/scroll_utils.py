@@ -7,6 +7,7 @@ from pathlib import Path
 from PIL import ImageFont, Image, ImageDraw
 from luma.core.render import canvas
 from luma.core.image_composition import ImageComposition, ComposableImage
+from resources.resources import fonts_dir
 
 titles = [
     ("Bridge over troubled water", "Simon & Garfunkel"),
@@ -116,17 +117,9 @@ class Scroller:
         return self.cycles
 
 
-def make_font(name, size):
-    font_path = str(Path(__file__).resolve().parent.joinpath("fonts", name))
-    return ImageFont.truetype(font_path, size)
-
-
 def main(device):
 
-    if device.height >= 16:
-        font = make_font("code2000.ttf", 12)
-    else:
-        font = make_font("pixelmix.ttf", 8)
+    font = ImageFont.truetype(f"{fonts_dir}/DSEG7ClassicMini-Light.ttf", 12)
 
     image_composition = ImageComposition(device)
 
