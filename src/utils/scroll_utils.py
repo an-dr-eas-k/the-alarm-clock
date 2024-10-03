@@ -17,6 +17,66 @@ titles = [
 ]
 
 
+class ComposableImage(object):
+    empty_image = Image.new("RGBA", (0, 0))
+
+    def __init__(self, position: callable = None):
+        self._position: callable = position if position else lambda _, _1: (0, 0)
+
+    def position(self, width, height):
+        return self._position(width, height)
+
+    def is_present(self) -> bool:
+        return False
+
+    def draw(self):
+        raise ValueError("no image available")
+
+    def image(self):
+        if not self.is_present():
+            return self.empty_image
+        return self.draw()
+
+
+class ImageComposition(object):
+
+    def __init__(self, background_image: Image):
+        self._background_image: Image.Image = background_image
+        self._bounding_box = (
+            0,
+            0,
+            self._background_image.width - 1,
+            self._background_image.height - 1,
+        )
+        self.composed_images = []
+
+    def add_image(self, image: ComposableImage):
+        assert image
+        self.composed_images.append(image)
+
+    def remove_image(self, image: ComposableImage):
+        assert image
+        self.composed_images.remove(image)
+
+    def __call__(self):
+        return self._background_image
+
+    def refresh(self):
+        self._clear()
+        for img in self.composed_images:
+            img: ComposableImage = img
+            pil_img = img.image()
+            self._background_image.paste(
+                pil_img, img.position(pil_img.width, pil_img.height)
+            )
+        self._background_image.crop(box=self._bounding_box)
+
+    def _clear(self):
+        draw = ImageDraw.Draw(self._background_image)
+        draw.rectangle(self._bounding_box, fill="black")
+        del draw
+
+
 class TextImage:
     def __init__(self, device, text, font):
         with canvas(device) as draw:
@@ -54,32 +114,33 @@ class Scroller:
     WAIT_REWIND = 3
     WAIT_SYNC = 4
 
-    def __init__(self, image_composition, rendered_image, scroll_delay, synchroniser):
-        self.image_composition = image_composition
-        self.speed = 1
-        self.image_x_pos = 0
-        self.rendered_image = rendered_image
-        self.image_composition.add_image(rendered_image)
-        self.max_pos = rendered_image.width - image_composition().width
+    def __init__(
+        self,
+        canvas_width: int,
+        scroll_delay,
+        scroll_speed: int = 2,
+        synchroniser: Synchroniser = None,
+    ):
+        if synchroniser is None:
+            synchroniser = Synchroniser()
+        self.canvas_width = canvas_width
+        self.speed = scroll_speed
         self.delay = scroll_delay
+        self.synchroniser = synchroniser
+        self.image_x_pos = 0
         self.ticks = 0
         self.state = self.WAIT_SCROLL
-        self.synchroniser = synchroniser
-        self.render()
         self.synchroniser.busy(self)
-        self.cycles = 0
+
+    def tick(self, rendered_image):
+        self.max_pos = rendered_image.width - self.canvas_width
         self.must_scroll = self.max_pos > 0
-
-    def __del__(self):
-        self.image_composition.remove_image(self.rendered_image)
-
-    def tick(self):
+        rendered_image = self.render(rendered_image)
 
         # Repeats the following sequence:
         #  wait - scroll - wait - rewind -> sync with other scrollers -> wait
         if self.state == self.WAIT_SCROLL:
             if not self.is_waiting():
-                self.cycles += 1
                 self.state = self.SCROLLING
                 self.synchroniser.busy(self)
 
@@ -92,19 +153,26 @@ class Scroller:
             if self.synchroniser.is_synchronised():
                 if self.must_scroll:
                     self.image_x_pos = 0
-                    self.render()
                 self.state = self.WAIT_SCROLL
 
         elif self.state == self.SCROLLING:
             if self.image_x_pos < self.max_pos:
                 if self.must_scroll:
-                    self.render()
                     self.image_x_pos += self.speed
             else:
                 self.state = self.WAIT_REWIND
 
-    def render(self):
-        self.rendered_image.offset = (self.image_x_pos, 0)
+        return rendered_image
+
+    def render(self, rendered_image: Image.Image):
+        return rendered_image.crop(
+            (
+                self.image_x_pos,
+                0,
+                self.image_x_pos + self.canvas_width,
+                rendered_image.height,
+            )
+        )
 
     def is_waiting(self):
         self.ticks += 1
@@ -112,39 +180,3 @@ class Scroller:
             self.ticks = 0
             return False
         return True
-
-    def get_cycles(self):
-        return self.cycles
-
-
-def main(device):
-
-    font = ImageFont.truetype(f"{fonts_dir}/DSEG7ClassicMini-Light.ttf", 12)
-
-    image_composition = ImageComposition(device)
-
-    for i in range(300):
-        for title in titles:
-            synchroniser = Synchroniser()
-            ci_song = ComposableImage(
-                TextImage(device, title[0], font).image, position=(0, 1)
-            )
-            ci_artist = ComposableImage(
-                TextImage(device, title[1], font).image, position=(0, 30)
-            )
-            song = Scroller(image_composition, ci_song, 100, synchroniser)
-            artist = Scroller(image_composition, ci_artist, 100, synchroniser)
-            cycles = 0
-
-            while cycles < 3:
-                artist.tick()
-                song.tick()
-                time.sleep(0.025)
-                cycles = song.get_cycles()
-
-                with canvas(device, background=image_composition()) as draw:
-                    image_composition.refresh()
-                    draw.rectangle(device.bounding_box, outline="white")
-
-            del artist
-            del song

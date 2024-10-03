@@ -6,6 +6,7 @@ import traceback
 from luma.core.device import device as luma_device
 from luma.core.device import dummy as luma_dummy
 from luma.core.render import canvas
+from utils.scroll_utils import ComposableImage, ImageComposition
 from PIL import ImageFont, Image
 
 from domain import (
@@ -13,6 +14,7 @@ from domain import (
     AlarmDefinition,
     Config,
     DisplayContent,
+    Mode,
     Observation,
     Observer,
     PlaybackContent,
@@ -30,7 +32,7 @@ from utils.drawing import (
 )
 from utils.extensions import get_job_arg, get_timedelta_to_alarm
 from utils.geolocation import GeoLocation
-from utils.scroll_utils import main
+from utils.scroll_utils import Scroller, main
 
 from resources.resources import fonts_dir, weather_icons_dir
 
@@ -211,24 +213,65 @@ class DisplayFormatter:
         return im
 
 
-class Presenter:
-    empty_image = Image.new("RGBA", (0, 0))
+class Presenter(Observer, ComposableImage):
     font_file_7segment = f"{fonts_dir}/DSEG7Classic-Regular.ttf"
     font_file_nerd = f"{fonts_dir}/CousineNerdFontMono-Regular.ttf"
 
     content: DisplayContent
 
-    def __init__(self, formatter: DisplayFormatter, content: DisplayContent) -> None:
+    def __init__(
+        self,
+        formatter: DisplayFormatter,
+        content: DisplayContent,
+        position: callable = None,
+    ) -> None:
+        super().__init__(position)
         self.formatter = formatter
         self.content = content
 
     def draw(self) -> Image.Image:
         raise NotImplementedError("The draw method is not implemented.")
 
+    def raw_image(self) -> Image.Image:
+        return self.draw()
+
+
+class ScrollingPresenter(Presenter):
+    _scroller: Scroller = None
+
+    def __init__(
+        self,
+        formatter: DisplayFormatter,
+        content: DisplayContent,
+        canvas_width: int,
+        position,
+    ) -> None:
+        super().__init__(formatter, content, position)
+        self.canvas_width = canvas_width
+        self._scroller = Scroller(self.canvas_width, 0, 5)
+
+    def scroll(self, image: Image.Image) -> Image.Image:
+        return self._scroller.tick(image)
+
+
+class BackgroundPresenter(Presenter):
+    def __init__(
+        self, formatter: DisplayFormatter, content: DisplayContent, device: luma_device
+    ) -> None:
+        super().__init__(formatter, content)
+        self._device = device
+
+    def raw_image(self):
+        return Image.new(
+            "RGB", self._device.size, color=self.formatter.background_color()
+        )
+
 
 class ClockPresenter(Presenter):
-    def __init__(self, formatter: DisplayFormatter, content: DisplayContent) -> None:
-        super().__init__(formatter, content)
+    def __init__(
+        self, formatter: DisplayFormatter, content: DisplayContent, position: callable
+    ) -> None:
+        super().__init__(formatter, content, position)
         self.analog_clock = AnalogClockGenerator(
             hour_markings_width=1,
             hour_markings_length=1,
@@ -236,6 +279,9 @@ class ClockPresenter(Presenter):
             minute_hand_width=2,
             second_hand_width=0,
         )
+
+    def is_present(self) -> bool:
+        return True
 
     def draw_analog_clock(self) -> Image.Image:
         day = GeoLocation().now().day
@@ -283,9 +329,13 @@ class VolumeMeterPresenter(Presenter):
         formatter: DisplayFormatter,
         content: DisplayContent,
         size: tuple[int, int],
+        position=None,
     ) -> None:
-        super().__init__(formatter, content)
+        super().__init__(formatter, content, position)
         self.size = size
+
+    def is_present(self):
+        return self.content.show_volume_meter
 
     def draw(self) -> Image.Image:
         if not self.content.show_volume_meter:
@@ -305,8 +355,13 @@ class VolumeMeterPresenter(Presenter):
 
 
 class WifiStatusPresenter(Presenter):
-    def __init__(self, formatter: DisplayFormatter, content: DisplayContent) -> None:
-        super().__init__(formatter, content)
+    def __init__(
+        self, formatter: DisplayFormatter, content: DisplayContent, position
+    ) -> None:
+        super().__init__(formatter, content, position)
+
+    def is_present(self):
+        return not self.content.show_volume_meter
 
     def draw(self) -> Image.Image:
         if self.content.get_is_online():
@@ -330,12 +385,39 @@ class WifiStatusPresenter(Presenter):
         )
 
 
-class PlaybackTitlePresenter(Presenter):
+class PlaybackTitlePresenter(ScrollingPresenter):
 
-    def __init__(self, formatter: DisplayFormatter, content: DisplayContent) -> None:
-        super().__init__(formatter, content)
+    def __init__(
+        self,
+        formatter: DisplayFormatter,
+        content: DisplayContent,
+        position,
+    ) -> None:
+        super().__init__(formatter, content, 20, position)
+        content.state.attach(self)
+        self.scrolling_image = self.compose_playback_title()
+
+    def update(self, observation: Observation):
+        super().update(observation)
+        if isinstance(observation.observable, AlarmClockState):
+            if (
+                True
+                and observation.property_name == "mode"
+                and observation.new_value in (Mode.Alarm, Mode.Music, Mode.Spotify)
+            ):
+                self.scrolling_image = self.compose_playback_title()
+
+    def is_present(self) -> bool:
+        return (
+            True
+            and self.content.current_playback_title() is not None
+            and not self.content.show_volume_meter
+        )
 
     def draw(self) -> Image.Image:
+        return super().scroll(self.scrolling_image)
+
+    def compose_playback_title(self) -> Image.Image:
         if self.content.current_playback_title() is None:
             return self.empty_image
 
@@ -367,8 +449,17 @@ class PlaybackTitlePresenter(Presenter):
 
 
 class NextAlarmPresenter(Presenter):
-    def __init__(self, formatter: DisplayFormatter, content: DisplayContent) -> None:
-        super().__init__(formatter, content)
+    def __init__(
+        self, formatter: DisplayFormatter, content: DisplayContent, position
+    ) -> None:
+        super().__init__(formatter, content, position)
+
+    def is_present(self) -> bool:
+        return (
+            True
+            and self.content.current_playback_title() is None
+            and not self.content.show_volume_meter
+        )
 
     def draw(self) -> Image.Image:
         if (
@@ -405,30 +496,15 @@ class NextAlarmPresenter(Presenter):
         )
 
 
-class MediaPresenter(Presenter):
-
-    def __init__(
-        self,
-        formatter: DisplayFormatter,
-        content: DisplayContent,
-        next_alarm_presenter: NextAlarmPresenter,
-        playback_title_presenter: PlaybackTitlePresenter,
-    ) -> None:
-        super().__init__(formatter, content)
-        self.next_alarm_presenter = next_alarm_presenter
-        self.playback_title_presenter = playback_title_presenter
-
-    def draw(self) -> Image.Image:
-        if self.content.current_playback_title() is not None:
-            return self.playback_title_presenter.draw()
-        else:
-            return self.next_alarm_presenter.draw()
-
-
 class WeatherStatusPresenter(Presenter):
-    def __init__(self, formatter: DisplayFormatter, content: DisplayContent) -> None:
-        super().__init__(formatter, content)
+    def __init__(
+        self, formatter: DisplayFormatter, content: DisplayContent, position
+    ) -> None:
+        super().__init__(formatter, content, position)
         self.font_file_weather = f"{weather_icons_dir}/weathericons-regular-webfont.ttf"
+
+    def is_present(self):
+        return not self.content.show_volume_meter
 
     def draw(self) -> Image.Image:
         if self.formatter.highly_dimmed():
@@ -504,27 +580,56 @@ class Display(Observer):
         self.playback_content = playback_content
         self.config = config
         self.formatter = DisplayFormatter(self.display_content, self.config)
-        self.clock_presenter = ClockPresenter(self.formatter, self.display_content)
-        self.next_alarm_presenter = NextAlarmPresenter(
-            self.formatter, self.display_content
+        self.composable_presenters = ImageComposition(
+            Image.new(mode=self.device.mode, size=self.device.size, color="black")
         )
-        self.playback_title_presenter = PlaybackTitlePresenter(
-            self.formatter, self.display_content
+
+        self.composable_presenters.add_image(
+            BackgroundPresenter(self.formatter, self.display_content, self.device)
         )
-        self.media_presenter = MediaPresenter(
-            self.formatter,
-            self.display_content,
-            self.next_alarm_presenter,
-            self.playback_title_presenter,
+
+        self.composable_presenters.add_image(
+            ClockPresenter(
+                self.formatter,
+                self.display_content,
+                lambda width, height: (
+                    (device.width - width),
+                    int((device.height - height) / 2),
+                ),
+            )
         )
-        self.weather_status_presenter = WeatherStatusPresenter(
-            self.formatter, self.display_content
+        self.composable_presenters.add_image(
+            NextAlarmPresenter(
+                self.formatter,
+                self.display_content,
+                lambda _, height: (2, device.height - height - 2),
+            )
         )
-        self.wifi_status_presenter = WifiStatusPresenter(
-            self.formatter, self.display_content
+        self.composable_presenters.add_image(
+            PlaybackTitlePresenter(
+                self.formatter,
+                self.display_content,
+                lambda _, height: (2, device.height - height - 2),
+            )
         )
-        self.volume_meter_presenter = VolumeMeterPresenter(
-            self.formatter, self.display_content, (10, self.device.height)
+        self.composable_presenters.add_image(
+            WeatherStatusPresenter(
+                self.formatter,
+                self.display_content,
+                lambda _, _1: (2, 4),
+            )
+        )
+        self.composable_presenters.add_image(
+            WifiStatusPresenter(
+                self.formatter,
+                self.display_content,
+                lambda _, _1: (2, 2),
+            )
+        )
+        self.composable_presenters.add_image(
+            VolumeMeterPresenter(
+                self.formatter, self.display_content, (10, self.device.height)
+            )
         )
         self.mode_presenter = ModePresenter(self.formatter, self.display_content)
 
@@ -559,29 +664,13 @@ class Display(Observer):
             )
 
     def present(self) -> Image.Image:
-        im = Image.new("RGB", self.device.size, color=self.formatter.background_color())
-
         if self.display_content.mode_state.is_active():
-            main(self.device)
-            return
+            pass
             # im.paste(self.mode_presenter.draw(), (0, 0))
             # return im
 
-        clock_image = self.clock_presenter.draw()
-        im.paste(
-            clock_image,
-            ((im.width - clock_image.width), int((im.height - clock_image.height) / 2)),
-        )
-
-        if self.display_content.show_volume_meter:
-            im.paste(self.volume_meter_presenter.draw(), (0, 0))
-        else:
-            im.paste(self.wifi_status_presenter.draw(), (2, 2))
-            im.paste(self.weather_status_presenter.draw(), (2, 4))
-            media_image = self.media_presenter.draw()
-            im.paste(media_image, (2, im.height - media_image.height - 2), media_image)
-
-        return im
+        self.composable_presenters.refresh()
+        return self.composable_presenters()
 
 
 if __name__ == "__main__":
