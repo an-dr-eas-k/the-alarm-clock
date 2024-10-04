@@ -1,41 +1,41 @@
-"""
-Scrolling artist + song and play/pause indicator
-"""
-
-import time
-from pathlib import Path
-from PIL import ImageFont, Image, ImageDraw
+from PIL import Image, ImageDraw
 from luma.core.render import canvas
-from luma.core.image_composition import ImageComposition, ComposableImage
-from resources.resources import fonts_dir
+from luma.core.image_composition import ComposableImage
 
-titles = [
-    ("Bridge over troubled water", "Simon & Garfunkel"),
-    ("Up", "R.E.M."),
-    ("Wild Child", "Lou Reed & The Velvet Underground"),
-    ("(Shake Shake Shake) Shake your body", "KC & The Sunshine Band"),
-]
+import logging
+
+logger = logging.getLogger("tac.scroll_utils")
 
 
 class ComposableImage(object):
     empty_image = Image.new("RGBA", (0, 0))
+    debug: bool = False
 
     def __init__(self, position: callable = None):
         self._position: callable = position if position else lambda _, _1: (0, 0)
 
-    def position(self, width, height):
+    def position(self, width, height) -> tuple[int, int]:
         return self._position(width, height)
 
     def is_present(self) -> bool:
         return False
 
-    def draw(self):
+    def draw(self) -> Image.Image:
         raise ValueError("no image available")
 
-    def image(self):
+    def draw_if_present(self) -> Image.Image:
         if not self.is_present():
             return self.empty_image
-        return self.draw()
+        image = self.draw()
+        logger.debug(
+            f"draw_if_present ({self.__class__.__name__}): {image.width}x{image.height}"
+        )
+        if self.debug and image.width > 0 and image.height > 0:
+            draw = ImageDraw.Draw(image)
+            x0, y0, x1, y1 = 0, 0, image.width - 1, image.height - 1
+            draw.rectangle((x0, y0, x1, y1), outline="white")
+            del draw
+        return image
 
 
 class ImageComposition(object):
@@ -65,7 +65,7 @@ class ImageComposition(object):
         self._clear()
         for img in self.composed_images:
             img: ComposableImage = img
-            pil_img = img.image()
+            pil_img = img.draw_if_present()
             self._background_image.paste(
                 pil_img, img.position(pil_img.width, pil_img.height)
             )

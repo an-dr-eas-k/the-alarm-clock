@@ -279,6 +279,7 @@ class Config(Observable):
     powernap_duration_in_mins: int
     default_volume: float = default_volume
     use_analog_clock: bool
+    alarm_preview_hours: int
 
     _alarm_definitions: List[AlarmDefinition] = []
     _audio_streams: List[AudioStream] = []
@@ -401,6 +402,7 @@ class Config(Observable):
             dict(key="powernap_duration_in_mins", value=18),
             dict(key="default_volume", value=default_volume),
             dict(key="use_analog_clock", value=False),
+            dict(key="alarm_preview_hours", value=12),
         ]:
             if not hasattr(self, conf_prop["key"]):
                 logger.debug(

@@ -32,7 +32,7 @@ from utils.drawing import (
 )
 from utils.extensions import get_job_arg, get_timedelta_to_alarm
 from utils.geolocation import GeoLocation
-from utils.scroll_utils import Scroller, main
+from utils.scroll_utils import Scroller
 
 from resources.resources import fonts_dir, weather_icons_dir
 
@@ -229,15 +229,10 @@ class Presenter(Observer, ComposableImage):
         self.formatter = formatter
         self.content = content
 
-    def draw(self) -> Image.Image:
-        raise NotImplementedError("The draw method is not implemented.")
-
-    def raw_image(self) -> Image.Image:
-        return self.draw()
-
 
 class ScrollingPresenter(Presenter):
     _scroller: Scroller = None
+    scrolling_image: Image.Image
 
     def __init__(
         self,
@@ -248,7 +243,10 @@ class ScrollingPresenter(Presenter):
     ) -> None:
         super().__init__(formatter, content, position)
         self.canvas_width = canvas_width
-        self._scroller = Scroller(self.canvas_width, 0, 5)
+        self._scroller = Scroller(self.canvas_width, 0, 2)
+
+    def draw(self) -> Image.Image:
+        return self.scroll(self.scrolling_image)
 
     def scroll(self, image: Image.Image) -> Image.Image:
         return self._scroller.tick(image)
@@ -261,7 +259,10 @@ class BackgroundPresenter(Presenter):
         super().__init__(formatter, content)
         self._device = device
 
-    def raw_image(self):
+    def is_present(self) -> bool:
+        return True
+
+    def draw(self):
         return Image.new(
             "RGB", self._device.size, color=self.formatter.background_color()
         )
@@ -361,12 +362,13 @@ class WifiStatusPresenter(Presenter):
         super().__init__(formatter, content, position)
 
     def is_present(self):
-        return not self.content.show_volume_meter
+        return (
+            True
+            and not self.content.show_volume_meter
+            and not self.content.get_is_online()
+        )
 
     def draw(self) -> Image.Image:
-        if self.content.get_is_online():
-            return self.empty_image
-
         no_wifi_symbol = "\U000f05aa"
         font_size = 30
         min_value = 2
@@ -393,36 +395,33 @@ class PlaybackTitlePresenter(ScrollingPresenter):
         content: DisplayContent,
         position,
     ) -> None:
-        super().__init__(formatter, content, 20, position)
+        super().__init__(formatter, content, 90, position)
         content.state.attach(self)
         self.scrolling_image = self.compose_playback_title()
 
     def update(self, observation: Observation):
         super().update(observation)
         if isinstance(observation.observable, AlarmClockState):
-            if (
-                True
-                and observation.property_name == "mode"
-                and observation.new_value in (Mode.Alarm, Mode.Music, Mode.Spotify)
-            ):
-                self.scrolling_image = self.compose_playback_title()
+            if observation.property_name == "mode":
+                self.scrolling_image = (
+                    self.compose_playback_title()
+                    if observation.new_value in (Mode.Alarm, Mode.Music, Mode.Spotify)
+                    else None
+                )
 
     def is_present(self) -> bool:
         return (
             True
-            and self.content.current_playback_title() is not None
             and not self.content.show_volume_meter
+            and self.scrolling_image is not None
         )
-
-    def draw(self) -> Image.Image:
-        return super().scroll(self.scrolling_image)
 
     def compose_playback_title(self) -> Image.Image:
         if self.content.current_playback_title() is None:
-            return self.empty_image
+            return None
 
-        font_nerd = ImageFont.truetype(self.font_file_nerd, 20)
-        font_7segment = ImageFont.truetype(self.font_file_7segment, 13)
+        font_nerd = ImageFont.truetype(self.font_file_nerd, 27)
+        font_7segment = ImageFont.truetype(self.font_file_7segment, 22)
 
         title = text_to_image(
             self.formatter.format_dseg7_string(self.content.current_playback_title()),
@@ -459,14 +458,11 @@ class NextAlarmPresenter(Presenter):
             True
             and self.content.current_playback_title() is None
             and not self.content.show_volume_meter
+            and self.content.get_timedelta_to_alarm().total_seconds() / 3600
+            <= self.content.state.configuration.alarm_preview_hours
         )
 
     def draw(self) -> Image.Image:
-        if (
-            self.content.get_timedelta_to_alarm().total_seconds() / 3600 > 12
-        ):  # 12 hours
-            return self.empty_image
-
         font_nerd = ImageFont.truetype(self.font_file_nerd, 20)
         font_7segment = ImageFont.truetype(self.font_file_7segment, 13)
 
@@ -504,15 +500,16 @@ class WeatherStatusPresenter(Presenter):
         self.font_file_weather = f"{weather_icons_dir}/weathericons-regular-webfont.ttf"
 
     def is_present(self):
-        return not self.content.show_volume_meter
+        return (
+            True
+            and not self.content.show_volume_meter
+            and not self.formatter.highly_dimmed()
+            and self.content.get_is_online()
+            and self.content.current_weather is not None
+        )
 
     def draw(self) -> Image.Image:
-        if self.formatter.highly_dimmed():
-            return self.empty_image
-
         weather = self.content.current_weather
-        if weather is None:
-            return self.empty_image
         weather_character = weather.code.to_character()
         font_weather = ImageFont.truetype(self.font_file_weather, 20)
         font_7segment = ImageFont.truetype(self.font_file_7segment, 24)
