@@ -232,7 +232,6 @@ class Presenter(Observer, ComposableImage):
 
 class ScrollingPresenter(Presenter):
     _scroller: Scroller = None
-    scrolling_image: Image.Image
 
     def __init__(
         self,
@@ -245,8 +244,8 @@ class ScrollingPresenter(Presenter):
         self.canvas_width = canvas_width
         self._scroller = Scroller(self.canvas_width, 0, 2)
 
-    def draw(self) -> Image.Image:
-        return self.scroll(self.scrolling_image)
+    def rewind_scroller(self):
+        self._scroller.rewind()
 
     def scroll(self, image: Image.Image) -> Image.Image:
         return self._scroller.tick(image)
@@ -396,30 +395,28 @@ class PlaybackTitlePresenter(ScrollingPresenter):
         position,
     ) -> None:
         super().__init__(formatter, content, 90, position)
-        content.state.attach(self)
-        self.scrolling_image = self.compose_playback_title()
+        content.playback_content.attach(self)
 
     def update(self, observation: Observation):
         super().update(observation)
-        if isinstance(observation.observable, AlarmClockState):
-            if observation.property_name == "mode":
-                self.scrolling_image = (
-                    self.compose_playback_title()
-                    if observation.new_value in (Mode.Alarm, Mode.Music, Mode.Spotify)
-                    else None
-                )
+        if (
+            True
+            and isinstance(observation.observable, PlaybackContent)
+            and observation.property_name == "audio_effect"
+        ):
+            self.rewind_scroller()
 
     def is_present(self) -> bool:
         return (
             True
             and not self.content.show_volume_meter
-            and self.scrolling_image is not None
+            and self.content.current_playback_title() is not None
         )
 
-    def compose_playback_title(self) -> Image.Image:
-        if self.content.current_playback_title() is None:
-            return None
+    def draw(self) -> Image.Image:
+        return self.scroll(self.compose_playback_title())
 
+    def compose_playback_title(self) -> Image.Image:
         font_nerd = ImageFont.truetype(self.font_file_nerd, 27)
         font_7segment = ImageFont.truetype(self.font_file_7segment, 22)
 
