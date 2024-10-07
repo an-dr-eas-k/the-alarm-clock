@@ -72,6 +72,7 @@ class Controls(Observer):
         self.scheduler.add_job(
             self.update_clock,
             "interval",
+            start_date=datetime.datetime.today(),
             seconds=self.state.configuration.refresh_timeout_in_secs,
             id="clock_interval",
             jobstore=default_store,
@@ -296,7 +297,14 @@ class Controls(Observer):
             logger.debug(
                 "update show blink segment: %s", not self.state.show_blink_segment
             )
-            self.state.show_blink_segment = not self.state.show_blink_segment
+
+            refresh_timeout = self.state.configuration.refresh_timeout_in_secs
+            if (
+                False
+                or refresh_timeout >= 1
+                or GeoLocation().now().microsecond < refresh_timeout * 1000000
+            ):
+                self.state.show_blink_segment = not self.state.show_blink_segment
 
         Controls.action(do)
 

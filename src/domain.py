@@ -275,7 +275,7 @@ class Config(Observable):
     blink_segment: str
     offline_alarm: AudioStream
     alarm_duration_in_mins: int
-    refresh_timeout_in_secs: int
+    refresh_timeout_in_secs: float
     powernap_duration_in_mins: int
     default_volume: float = default_volume
     use_analog_clock: bool
@@ -399,7 +399,7 @@ class Config(Observable):
             ),
             dict(key="clock_format_string", value="%-H<blinkSegment>%M"),
             dict(key="blink_segment", value=":"),
-            dict(key="refresh_timeout_in_secs", value=1),
+            dict(key="refresh_timeout_in_secs", value=0.25),
             dict(key="powernap_duration_in_mins", value=18),
             dict(key="default_volume", value=default_volume),
             dict(key="use_analog_clock", value=False),

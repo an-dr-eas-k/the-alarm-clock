@@ -10,7 +10,7 @@
     },
     "clock_format_string": "%-H<blinkSegment>%M",
     "blink_segment": ":",
-    "refresh_timeout_in_secs": 1,
+    "refresh_timeout_in_secs": 0.25,
     "powernap_duration_in_mins": 18,
     "_audio_streams": [
       {
