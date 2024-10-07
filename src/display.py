@@ -418,8 +418,8 @@ class PlaybackTitlePresenter(ScrollingPresenter):
         return self.scroll(self.compose_playback_title())
 
     def compose_playback_title(self) -> Image.Image:
-        font_nerd = ImageFont.truetype(self.font_file_nerd, 27)
-        font_7segment = ImageFont.truetype(self.font_file_7segment, 22)
+        font_nerd = ImageFont.truetype(self.font_file_nerd, 22)
+        font_7segment = ImageFont.truetype(self.font_file_7segment, 18)
 
         title = text_to_image(
             self.formatter.format_dseg7_string(self.content.current_playback_title()),
