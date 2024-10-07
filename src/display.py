@@ -6,7 +6,6 @@ import traceback
 from luma.core.device import device as luma_device
 from luma.core.device import dummy as luma_dummy
 from luma.core.render import canvas
-from utils.scroll_utils import ComposableImage, ImageComposition
 from PIL import ImageFont, Image
 
 from domain import (
@@ -29,10 +28,12 @@ from utils.drawing import (
     get_concat_v,
     grayscale_to_color,
     text_to_image,
+    ComposableImage,
+    ImageComposition,
+    Scroller,
 )
 from utils.extensions import get_job_arg, get_timedelta_to_alarm
 from utils.geolocation import GeoLocation
-from utils.scroll_utils import Scroller
 
 from resources.resources import fonts_dir, weather_icons_dir
 
