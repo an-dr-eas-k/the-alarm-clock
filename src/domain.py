@@ -280,6 +280,7 @@ class Config(Observable):
     default_volume: float = default_volume
     use_analog_clock: bool
     alarm_preview_hours: int
+    enable_debug: bool
 
     _alarm_definitions: List[AlarmDefinition] = []
     _audio_streams: List[AudioStream] = []
@@ -403,6 +404,7 @@ class Config(Observable):
             dict(key="default_volume", value=default_volume),
             dict(key="use_analog_clock", value=False),
             dict(key="alarm_preview_hours", value=12),
+            dict(key="enable_debug", value=False),
         ]:
             if not hasattr(self, conf_prop["key"]):
                 logger.debug(

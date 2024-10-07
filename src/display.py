@@ -645,6 +645,7 @@ class Display(Observer):
         self.device.contrast(16)
         room_brightness = get_room_brightness()
         self.formatter.update_formatter(room_brightness)
+        self.composable_presenters.debug = self.config.enable_debug
 
         if self.formatter.clear_display():
             logger.info("clearing display")

@@ -353,6 +353,14 @@
               onclick="onClickSave(document.getElementById('alarm_duration_in_mins').value, 'alarm_duration_in_mins')">Save</button>
           </td>
         </tr>
+        <tr>
+          <td>Enable Debug Info</td>
+          <td><input type="checkbox" id="enable_debug" {% if config.enable_debug %}checked{% end %} />
+          </td>
+          <td><button type="submit" class="btn btn-primary btn-row-action"
+              onclick="onClickSave(document.getElementById('enable_debug').checked, 'enable_debug')">Save</button>
+          </td>
+        </tr>
       </table>
     </div>
     <div id="version" class="row">
@@ -361,12 +369,15 @@
 				{% raw api.get_git_log().replace('\n', '<br>') %}
 			</code>
     </div>
+
+    {% if config.enable_debug %}
     <div id="state" class="row">
       <h3>Alarm Clock State</h3>
       <code>
 				{% raw api.get_state_as_json().replace(' ', '&nbsp;').replace('\n', '<br />') %}
 			</code>
     </div>
+    {% end %}
     <div id="general-actions" class="row">
       <h3>Actions</h3>
       <div class="col">

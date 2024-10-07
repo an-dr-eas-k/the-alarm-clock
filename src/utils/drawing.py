@@ -9,7 +9,6 @@ logger = logging.getLogger("utils.drawing")
 
 class ComposableImage(object):
     empty_image = Image.new("RGBA", (0, 0))
-    debug: bool = False
 
     def __init__(self, position: callable = None):
         self._position: callable = position if position else lambda _, _1: (0, 0)
@@ -27,18 +26,11 @@ class ComposableImage(object):
         if not self.is_present():
             return self.empty_image
         image = self.draw()
-        logger.debug(
-            f"draw_if_present ({self.__class__.__name__}): {image.width}x{image.height}"
-        )
-        if self.debug and image.width > 0 and image.height > 0:
-            draw = ImageDraw.Draw(image)
-            x0, y0, x1, y1 = 0, 0, image.width - 1, image.height - 1
-            draw.rectangle((x0, y0, x1, y1), outline="white")
-            del draw
         return image
 
 
 class ImageComposition(object):
+    debug: bool = False
 
     def __init__(self, background_image: Image):
         self._background_image: Image.Image = background_image
@@ -63,13 +55,25 @@ class ImageComposition(object):
 
     def refresh(self):
         self._clear()
-        for img in self.composed_images:
-            img: ComposableImage = img
-            pil_img = img.draw_if_present()
-            self._background_image.paste(
-                pil_img, img.position(pil_img.width, pil_img.height)
-            )
+        for comp_img in self.composed_images:
+            comp_img: ComposableImage = comp_img
+            if comp_img.is_present():
+                self.draw(comp_img)
         self._background_image.crop(box=self._bounding_box)
+
+    def draw(self, comp_img: ComposableImage):
+        pil_img = comp_img.draw()
+        logger.debug(
+            f"refresh ({self.__class__.__name__}): {pil_img.width}x{pil_img.height}"
+        )
+        if self.debug and pil_img.width > 0 and pil_img.height > 0:
+            draw = ImageDraw.Draw(pil_img)
+            x0, y0, x1, y1 = 0, 0, pil_img.width - 1, pil_img.height - 1
+            draw.rectangle((x0, y0, x1, y1), outline="white")
+            del draw
+        self._background_image.paste(
+            pil_img, comp_img.position(pil_img.width, pil_img.height)
+        )
 
     def _clear(self):
         draw = ImageDraw.Draw(self._background_image)
