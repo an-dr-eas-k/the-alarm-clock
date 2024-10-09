@@ -429,15 +429,8 @@ class Config(Observable):
 class AlarmClockState(Observable):
 
     configuration: Config
-
-    @property
-    def show_blink_segment(self) -> bool:
-        return self._show_blink_segment
-
-    @show_blink_segment.setter
-    def show_blink_segment(self, value: bool):
-        self._show_blink_segment = value
-        self.notify(property="show_blink_segment")
+    room_brightness: float = 0
+    show_blink_segment: bool = False
 
     @property
     def is_online(self) -> bool:
@@ -492,6 +485,20 @@ class AlarmClockState(Observable):
         self.geo_location = GeoLocation()
         self.is_online = True
         self.show_blink_segment = True
+
+    def update_state(
+        self, show_blink_segment: bool, brightness: float, is_scrolling: bool
+    ):
+        if any(
+            (
+                self.show_blink_segment != show_blink_segment,
+                self.room_brightness != brightness,
+                is_scrolling,
+            )
+        ):
+            self.show_blink_segment = show_blink_segment
+            self.room_brightness = brightness
+            self.notify(property="update_state")
 
 
 class MediaContent(Observable, Observer):
@@ -618,6 +625,8 @@ class DisplayContent(MediaContent):
     next_alarm_job: Job = None
     current_weather: Weather = None
     show_blink_segment: bool
+    room_brightness: float
+    is_scrolling: bool = False
     mode_state: TACMode = TACMode()
 
     def __init__(self, state: AlarmClockState, playback_content: PlaybackContent):
@@ -643,8 +652,9 @@ class DisplayContent(MediaContent):
         pass
 
     def update_from_state(self, observation: Observation, state: AlarmClockState):
-        if observation.property_name == "show_blink_segment":
+        if observation.property_name == "update_state":
             self.show_blink_segment = state.show_blink_segment
+            self.room_brightness = state.room_brightness
             if not observation.during_registration:
                 self.notify()
 

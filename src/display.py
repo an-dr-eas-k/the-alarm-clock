@@ -243,13 +243,16 @@ class ScrollingPresenter(Presenter):
     ) -> None:
         super().__init__(formatter, content, position)
         self.canvas_width = canvas_width
-        self._scroller = Scroller(self.canvas_width, 0, 2)
+        self._scroller = Scroller(self.canvas_width, 0, 5)
 
     def rewind_scroller(self):
         self._scroller.rewind()
 
     def scroll(self, image: Image.Image) -> Image.Image:
-        return self._scroller.tick(image)
+        scrolling_image = self._scroller.tick(image)
+        if self._scroller.is_scrolling():
+            self.content.is_scrolling = True
+        return scrolling_image
 
 
 class BackgroundPresenter(Presenter):
@@ -355,6 +358,33 @@ class VolumeMeterPresenter(Presenter):
         return get_concat_v(bg, fg)
 
 
+class RefreshPresenter(Presenter):
+    _symbols = "-\\|/"
+    _prev_symbol_index = 0
+
+    def __init__(
+        self, formatter: DisplayFormatter, content: DisplayContent, position
+    ) -> None:
+        super().__init__(formatter, content, position)
+
+    def is_present(self):
+        return self.content.state.configuration.enable_debug
+
+    def draw(self) -> Image.Image:
+
+        self._prev_symbol_index = (self._prev_symbol_index + 1) % len(self._symbols)
+        font_size = 15
+
+        font = ImageFont.truetype(self.font_file_nerd, font_size)
+
+        return text_to_image(
+            self._symbols[self._prev_symbol_index],
+            font,
+            fg_color=self.formatter.foreground_color(),
+            bg_color=self.formatter.background_color(),
+        )
+
+
 class WifiStatusPresenter(Presenter):
     def __init__(
         self, formatter: DisplayFormatter, content: DisplayContent, position
@@ -395,7 +425,7 @@ class PlaybackTitlePresenter(ScrollingPresenter):
         content: DisplayContent,
         position,
     ) -> None:
-        super().__init__(formatter, content, 90, position)
+        super().__init__(formatter, content, 70, position)
         content.playback_content.attach(self)
 
     def update(self, observation: Observation):
@@ -415,33 +445,33 @@ class PlaybackTitlePresenter(ScrollingPresenter):
         )
 
     def draw(self) -> Image.Image:
-        return self.scroll(self.compose_playback_title())
+        return get_concat_h_multi_blank(
+            [self.compose_note_symbol(), self.scroll(self.compose_playback_title())]
+        )
 
     def compose_playback_title(self) -> Image.Image:
-        font_nerd = ImageFont.truetype(self.font_file_nerd, 22)
-        font_7segment = ImageFont.truetype(self.font_file_7segment, 18)
+        title_font = ImageFont.truetype(self.font_file_nerd, 18)
 
-        title = text_to_image(
-            self.formatter.format_dseg7_string(self.content.current_playback_title()),
-            font_7segment,
+        return text_to_image(
+            self.content.current_playback_title(),
+            title_font,
             fg_color=self.formatter.foreground_color(min_value=2),
             bg_color=self.formatter.background_color(),
         )
 
+    def compose_note_symbol(self) -> Image.Image:
+        note_font = ImageFont.truetype(self.font_file_nerd, 22)
+
         note_symbol = "\U000f075a"
         note_symbol_img = text_to_image(
             note_symbol,
-            font_nerd,
+            note_font,
             fg_color=self.formatter.foreground_color(min_value=2),
             bg_color=self.formatter.background_color(),
         )
 
         return get_concat_h_multi_blank(
-            [
-                note_symbol_img,
-                Image.new(mode="RGBA", size=(3, 0), color=(0, 0, 0, 0)),
-                title,
-            ]
+            [note_symbol_img, Image.new(mode="RGBA", size=(3, 0), color=(0, 0, 0, 0))]
         )
 
 
@@ -622,6 +652,13 @@ class Display(Observer):
             )
         )
         self.composable_presenters.add_image(
+            RefreshPresenter(
+                self.formatter,
+                self.display_content,
+                lambda width, _1: (self.device.width - width, 2),
+            )
+        )
+        self.composable_presenters.add_image(
             VolumeMeterPresenter(
                 self.formatter, self.display_content, (10, self.device.height)
             )
@@ -642,10 +679,12 @@ class Display(Observer):
                 draw.text((20, 20), f"exception! ({e})", fill="white")
 
     def adjust_display(self):
+        logger.debug("refreshing display...")
+        start_time = GeoLocation().now()
         self.device.contrast(16)
-        room_brightness = get_room_brightness()
-        self.formatter.update_formatter(room_brightness)
+        self.formatter.update_formatter(self.display_content.room_brightness)
         self.composable_presenters.debug = self.config.enable_debug
+        self.display_content.is_scrolling = False
 
         if self.formatter.clear_display():
             logger.info("clearing display")
@@ -658,6 +697,11 @@ class Display(Observer):
                 f"{os.path.dirname(os.path.realpath(__file__))}/../../display_test.png",
                 format="png",
             )
+
+        logger.debug(
+            "refreshed display in %dms",
+            (GeoLocation().now() - start_time).total_seconds() * 1000,
+        )
 
     def present(self) -> Image.Image:
         if self.display_content.mode_state.is_active():

@@ -19,6 +19,7 @@ from domain import (
     Observer,
     Config,
 )
+from gpi import get_room_brightness
 from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon
@@ -44,6 +45,7 @@ class Controls(Observer):
     scheduler = BackgroundScheduler(jobstores=jobstores)
     buttons = []
     state: AlarmClockState
+    _previous_second = GeoLocation().now().second
 
     def __init__(
         self,
@@ -70,11 +72,11 @@ class Controls(Observer):
 
     def add_scheduler_jobs(self):
         self.scheduler.add_job(
-            self.update_clock,
+            self.update_display,
             "interval",
             start_date=datetime.datetime.today(),
             seconds=self.state.configuration.refresh_timeout_in_secs,
-            id="clock_interval",
+            id="display_interval",
             jobstore=default_store,
         )
 
@@ -292,19 +294,21 @@ class Controls(Observer):
 
         logger.info("pin factory: %s", Device.pin_factory)
 
-    def update_clock(self):
-        def do():
-            logger.debug(
-                "update show blink segment: %s", not self.state.show_blink_segment
-            )
+    def update_display(self):
 
-            refresh_timeout = self.state.configuration.refresh_timeout_in_secs
-            if (
-                False
-                or refresh_timeout >= 1
-                or GeoLocation().now().microsecond < refresh_timeout * 1000000
-            ):
-                self.state.show_blink_segment = not self.state.show_blink_segment
+        def do():
+            logger.debug("update display")
+            current_second = GeoLocation().now().second
+            new_blink_state = self.state.show_blink_segment
+            if self._previous_second != current_second:
+                new_blink_state = not self.state.show_blink_segment
+                self._previous_second = current_second
+
+            self.state.update_state(
+                new_blink_state,
+                get_room_brightness(),
+                self.display_content.is_scrolling,
+            )
 
         Controls.action(do)
 

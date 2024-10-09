@@ -108,7 +108,7 @@ class ImageComposition(object):
     def draw(self, comp_img: ComposableImage):
         pil_img = comp_img.draw()
         logger.debug(
-            f"refresh ({self.__class__.__name__}): {pil_img.width}x{pil_img.height}"
+            f"refresh ({comp_img.__class__.__name__}): {pil_img.width}x{pil_img.height}"
         )
         if self.debug and pil_img.width > 0 and pil_img.height > 0:
             draw = ImageDraw.Draw(pil_img)
@@ -201,6 +201,9 @@ class Scroller:
         if self.must_scroll:
             self.image_x_pos = 0
         self.state = self.WAIT_SCROLL
+
+    def is_scrolling(self) -> bool:
+        return self.must_scroll
 
     def render(self, rendered_image: Image.Image):
         return rendered_image.crop(
