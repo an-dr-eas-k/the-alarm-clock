@@ -7,9 +7,9 @@ import logging
 logger = logging.getLogger("utils.drawing")
 
 
-def get_concat_h(im1, im2):
+def get_concat_h(im1, im2, bg_color=(0, 0, 0, 0)):
     height = max(im1.height, im2.height)
-    dst = Image.new("RGBA", (im1.width + im2.width, height), (0, 0, 0, 0))
+    dst = Image.new("RGBA", (im1.width + im2.width, height), bg_color)
     y = int((height - im1.height) / 2)
     dst.paste(im1, (0, y))
     y = int((height - im2.height) / 2)
@@ -17,9 +17,9 @@ def get_concat_h(im1, im2):
     return dst
 
 
-def get_concat_v(im1, im2):
+def get_concat_v(im1, im2, bg_color=(0, 0, 0, 0)):
     width = max(im1.width, im2.width)
-    dst = Image.new("RGBA", (width, im1.height + im2.height), (0, 0, 0, 0))
+    dst = Image.new("RGBA", (width, im1.height + im2.height), bg_color)
     x = int((width - im1.width) / 2)
     dst.paste(im1, (x, 0))
     x = int((width - im2.width) / 2)
@@ -27,10 +27,10 @@ def get_concat_v(im1, im2):
     return dst
 
 
-def get_concat_h_multi_blank(im_list):
+def get_concat_h_multi_blank(im_list, bg_color=(0, 0, 0, 0)):
     _im = im_list.pop(0)
     for im in im_list:
-        _im = get_concat_h(_im, im)
+        _im = get_concat_h(_im, im, bg_color=bg_color)
     return _im
 
 

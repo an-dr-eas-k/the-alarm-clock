@@ -331,14 +331,14 @@ class VolumeMeterPresenter(Presenter):
         fg = Image.new(
             "RGB",
             (self.size[0], int(self.size[1] * self.content.current_volume())),
-            color="white",
+            color=self.formatter.foreground_color(),
         )
         bg = Image.new(
             "RGB",
             (self.size[0], int(self.size[1] * (1.0 - self.content.current_volume()))),
             color=self.formatter.background_color(),
         )
-        return get_concat_v(bg, fg)
+        return get_concat_v(bg, fg, self.formatter.background_color())
 
 
 class RefreshPresenter(Presenter):
@@ -429,7 +429,8 @@ class PlaybackTitlePresenter(ScrollingPresenter):
 
     def draw(self) -> Image.Image:
         return get_concat_h_multi_blank(
-            [self.compose_note_symbol(), self.scroll(self.compose_playback_title())]
+            [self.compose_note_symbol(), self.scroll(self.compose_playback_title())],
+            self.formatter.background_color(),
         )
 
     def compose_playback_title(self) -> Image.Image:
@@ -454,7 +455,8 @@ class PlaybackTitlePresenter(ScrollingPresenter):
         )
 
         return get_concat_h_multi_blank(
-            [note_symbol_img, Image.new(mode="RGBA", size=(3, 0), color=(0, 0, 0, 0))]
+            [note_symbol_img, Image.new(mode="RGB", size=(3, 0))],
+            self.formatter.background_color(),
         )
 
 
@@ -497,11 +499,10 @@ class NextAlarmPresenter(Presenter):
         return get_concat_h_multi_blank(
             [
                 alarm_symbol_img,
-                Image.new(
-                    mode="RGBA", size=(3, 0), color=self.formatter.background_color()
-                ),
+                Image.new(mode="RGB", size=(3, 0)),
                 next_alarm_img,
-            ]
+            ],
+            self.formatter.background_color(),
         )
 
 
