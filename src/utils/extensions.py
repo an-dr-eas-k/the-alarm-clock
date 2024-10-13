@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import Type, TypeVar
+from typing import Generic, Type, TypeVar
 from apscheduler.job import Job
 
 from utils.geolocation import GeoLocation
@@ -26,7 +26,7 @@ def respect_ranges(value: float, min_value: int = 0, max_value: int = 15) -> int
     return int(max(min_value, min(max_value, value)))
 
 
-class Value[T]:
+class Value(Generic[T]):
     value: T
 
     def __init__(self, value: T):
