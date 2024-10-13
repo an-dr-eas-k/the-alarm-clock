@@ -163,11 +163,9 @@ class DisplayFormatter:
     def format_clock_string(
         self, clock: datetime, show_blink_segment: bool = True
     ) -> str:
-        blink_segment = (
-            self.state.configuration.blink_segment if show_blink_segment else " "
-        )
+        blink_segment = self.state.config.blink_segment if show_blink_segment else " "
         clock_string = clock.strftime(
-            self.state.configuration.clock_format_string.replace(
+            self.state.config.clock_format_string.replace(
                 "<blinkSegment>", blink_segment
             )
         )
@@ -290,7 +288,7 @@ class ClockPresenter(Presenter):
     def draw(self) -> Image.Image:
         if (
             self.formatter.highly_dimmed()
-            and self.formatter.state.configuration.use_analog_clock
+            and self.formatter.state.config.use_analog_clock
         ):
             return self.draw_analog_clock()
 
@@ -353,7 +351,7 @@ class RefreshPresenter(Presenter):
         super().__init__(formatter, content, position)
 
     def is_present(self):
-        return self.content.state.configuration.debug_level >= 5
+        return self.content.state.config.debug_level >= 5
 
     def draw(self) -> Image.Image:
 
@@ -472,7 +470,7 @@ class NextAlarmPresenter(Presenter):
             and self.content.current_playback_title() is None
             and not self.content.show_volume_meter
             and self.content.get_timedelta_to_alarm().total_seconds() / 3600
-            <= self.content.state.configuration.alarm_preview_hours
+            <= self.content.state.config.alarm_preview_hours
         )
 
     def draw(self) -> Image.Image:
@@ -568,8 +566,6 @@ class ModePresenter(Presenter):
 
     def draw(self) -> Image.Image:
         if self.content.mode_state.mode_0 == TACMode.ModesOnLevel0.AlarmChanger:
-            # for alarm in self.content.state.configuration.alarm_definitions:
-            #     alarm.
             pass
 
 
@@ -670,7 +666,7 @@ class Display(Observer):
         start_time = GeoLocation().now()
         self.device.contrast(16)
         self.formatter.update_formatter()
-        self.composable_presenters.debug = self.state.configuration.debug_level >= 10
+        self.composable_presenters.debug = self.state.config.debug_level >= 10
         self.display_content.is_scrolling = False
 
         if self.formatter.clear_display():

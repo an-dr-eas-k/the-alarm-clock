@@ -76,7 +76,7 @@ class Controls(Observer):
             self.update_display,
             "interval",
             start_date=datetime.datetime.today(),
-            seconds=self.state.configuration.refresh_timeout_in_secs,
+            seconds=self.state.config.refresh_timeout_in_secs,
             id="display_interval",
             jobstore=default_store,
         )
@@ -251,7 +251,7 @@ class Controls(Observer):
         logger.info("new volume: %s", self.playback_content.volume)
 
     def play_stream_by_id(self, stream_id: int):
-        streams = self.state.configuration.audio_streams
+        streams = self.state.config.audio_streams
         stream = next((s for s in streams if s.id == stream_id), streams[0])
         self.play_stream(stream)
 
@@ -349,13 +349,13 @@ class Controls(Observer):
         def do():
             if self.state.mode in [Mode.Music, Mode.Spotify]:
                 alarm_definition.audio_effect = (
-                    self.state.configuration.get_offline_alarm_effect(
+                    self.state.config.get_offline_alarm_effect(
                         alarm_definition.audio_effect.volume
                     )
                 )
 
             if alarm_definition.is_one_time():
-                self.state.configuration.remove_alarm_definition(alarm_definition.id)
+                self.state.config.remove_alarm_definition(alarm_definition.id)
 
             self.set_to_idle_mode()
             self.state.active_alarm = alarm_definition
@@ -367,7 +367,7 @@ class Controls(Observer):
     def postprocess_ring_alarm(self):
         self.start_generic_trigger(
             SchedulerJobIds.stop_alarm.value,
-            datetime.timedelta(minutes=self.state.configuration.alarm_duration_in_mins),
+            datetime.timedelta(minutes=self.state.config.alarm_duration_in_mins),
             func=lambda: self.set_to_idle_mode(),
         )
 
@@ -377,7 +377,7 @@ class Controls(Observer):
         job: Job
         for job in self.scheduler.get_jobs(jobstore=alarm_store):
             if job.next_run_time is None:
-                self.state.configuration.remove_alarm_definition(int(job.id))
+                self.state.config.remove_alarm_definition(int(job.id))
 
 
 class SoftwareControls(Controls):

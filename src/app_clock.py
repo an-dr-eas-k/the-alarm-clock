@@ -45,7 +45,7 @@ class ClockApp:
 
         self.state = AlarmClockState(Config())
         if os.path.exists(self.configFile):
-            self.state.configuration = Config.deserialize(self.configFile)
+            self.state.config = Config.deserialize(self.configFile)
 
         logger.info("config available")
 
@@ -72,11 +72,11 @@ class ClockApp:
         display_content.attach(self.display)
         self.persistence = Persistence(self.configFile)
         self.state.attach(self.persistence)
-        self.state.configuration.attach(self.persistence)
+        self.state.config.attach(self.persistence)
 
-        self.speaker = Speaker(playback_content, self.state.configuration)
+        self.speaker = Speaker(playback_content, self.state.config)
         playback_content.attach(self.speaker)
-        self.state.configuration.attach(self.controls)
+        self.state.config.attach(self.controls)
         playback_content.attach(self.controls)
         self.controls.configure()
 

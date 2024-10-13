@@ -243,7 +243,7 @@ class Api:
             (
                 r"/api/config/?(.*)",
                 ConfigApiHandler,
-                {"config": self.controls.state.configuration},
+                {"config": self.controls.state.config},
             ),
             (r"/api/action/?(.*)", ActionApiHandler, {"controls": self.controls}),
             (
@@ -254,7 +254,7 @@ class Api:
             (
                 r"/(.*)",
                 ConfigHandler,
-                {"config": self.controls.state.configuration, "api": self},
+                {"config": self.controls.state.config, "api": self},
             ),
         ]
 

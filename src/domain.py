@@ -455,7 +455,7 @@ class Config(Observable):
 
 class AlarmClockState(Observable):
 
-    configuration: Config
+    config: Config
     room_brightness: RoomBrightness = RoomBrightness(1.0)
     show_blink_segment: bool = False
 
@@ -507,7 +507,7 @@ class AlarmClockState(Observable):
 
     def __init__(self, c: Config) -> None:
         super().__init__()
-        self.configuration = c
+        self.config = c
         self.mode = Mode.Boot
         self.geo_location = GeoLocation()
         self.is_online = True
@@ -598,7 +598,7 @@ class PlaybackContent(MediaContent):
     def wifi_availability_changed(self, is_online: bool):
         if self.state.mode == Mode.Alarm:
             if not is_online:
-                self.audio_effect = self.state.configuration.get_offline_alarm_effect(
+                self.audio_effect = self.state.config.get_offline_alarm_effect(
                     self.volume
                 )
             else:
