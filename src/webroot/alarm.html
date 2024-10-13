@@ -354,11 +354,12 @@
           </td>
         </tr>
         <tr>
-          <td>Enable Debug Info</td>
-          <td><input type="checkbox" id="enable_debug" {% if config.enable_debug %}checked{% end %} />
+          <td>Debug Level</td>
+          <td><input type="text" id="debug_level"
+              value="{{ config.debug_level if config.debug_level is not None else '' }}" />
           </td>
           <td><button type="submit" class="btn btn-primary btn-row-action"
-              onclick="onClickSave(document.getElementById('enable_debug').checked, 'enable_debug')">Save</button>
+              onclick="onClickSave(document.getElementById('debug_level').value, 'debug_level')">Save</button>
           </td>
         </tr>
       </table>
@@ -370,7 +371,7 @@
 			</code>
     </div>
 
-    {% if config.enable_debug %}
+    {% if config.debug_level > 0 %}
     <div id="state" class="row">
       <h3>Alarm Clock State</h3>
       <code>

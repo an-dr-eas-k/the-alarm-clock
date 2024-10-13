@@ -368,7 +368,7 @@ class RefreshPresenter(Presenter):
         super().__init__(formatter, content, position)
 
     def is_present(self):
-        return self.content.state.configuration.enable_debug
+        return self.content.state.configuration.debug_level >= 5
 
     def draw(self) -> Image.Image:
 
@@ -683,7 +683,7 @@ class Display(Observer):
         start_time = GeoLocation().now()
         self.device.contrast(16)
         self.formatter.update_formatter(self.display_content.room_brightness)
-        self.composable_presenters.debug = self.config.enable_debug
+        self.composable_presenters.debug = self.config.debug_level >= 10
         self.display_content.is_scrolling = False
 
         if self.formatter.clear_display():
