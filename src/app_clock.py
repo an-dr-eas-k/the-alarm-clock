@@ -68,9 +68,7 @@ class ClockApp:
             device = dummy(height=64, width=256, mode="RGB")
             port = 8080
 
-        self.display = Display(
-            device, display_content, playback_content, self.state.configuration
-        )
+        self.display = Display(device, display_content, playback_content, self.state)
         display_content.attach(self.display)
         self.persistence = Persistence(self.configFile)
         self.state.attach(self.persistence)

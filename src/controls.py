@@ -14,6 +14,7 @@ from domain import (
     PlaybackContent,
     DisplayContent,
     Mode,
+    RoomBrightness,
     StreamAudioEffect,
     Observation,
     Observer,
@@ -306,7 +307,7 @@ class Controls(Observer):
 
             self.state.update_state(
                 new_blink_state,
-                get_room_brightness(),
+                RoomBrightness(get_room_brightness()),
                 self.display_content.is_scrolling,
             )
 

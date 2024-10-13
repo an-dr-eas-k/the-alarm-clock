@@ -13,7 +13,6 @@ from domain import (
     AlarmDefinition,
     Config,
     DisplayContent,
-    Mode,
     Observation,
     Observer,
     PlaybackContent,
@@ -21,7 +20,6 @@ from domain import (
     TACMode,
     VisualEffect,
 )
-from gpi import get_room_brightness
 from utils.analog_clock import AnalogClockGenerator
 from utils.drawing import (
     get_concat_h_multi_blank,
@@ -32,7 +30,7 @@ from utils.drawing import (
     ImageComposition,
     Scroller,
 )
-from utils.extensions import get_job_arg, get_timedelta_to_alarm
+from utils.extensions import get_job_arg, get_timedelta_to_alarm, respect_ranges
 from utils.geolocation import GeoLocation
 
 from resources.resources import fonts_dir, weather_icons_dir
@@ -58,11 +56,10 @@ class DisplayFormatter:
 
     _visual_effect_active: bool = False
     _clear_display: bool = False
-    _latest_room_brightness: float
 
-    def __init__(self, content: DisplayContent, config: Config):
+    def __init__(self, content: DisplayContent, state: AlarmClockState):
         self.display_content = content
-        self.config = config
+        self.state = state
 
     def clock_font(self):
         return self._clock_font
@@ -73,14 +70,13 @@ class DisplayFormatter:
         return clear_display
 
     def highly_dimmed(self):
-        return self._latest_room_brightness < 0.01
+        return self.state.room_brightness.is_highly_dimmed()
 
-    def update_formatter(self, room_brightness: float):
-        self._latest_room_brightness = room_brightness
-        self.adjust_display(room_brightness)
+    def update_formatter(self):
+        self.adjust_display()
         logger.debug(
             "room_brightness: %s, time_delta_to_alarm: %sh, display_formatter: %s",
-            room_brightness,
+            self.state.room_brightness(),
             "{:.2f}".format(
                 self.display_content.get_timedelta_to_alarm().total_seconds() / 3600
             ),
@@ -94,7 +90,7 @@ class DisplayFormatter:
         max_value=15,
         color_type: ColorType = ColorType.INCOLOR,
     ):
-        grayscale_16 = DisplayFormatter.respect_ranges(color, min_value, max_value)
+        grayscale_16 = respect_ranges(color, min_value, max_value)
 
         if color_type == ColorType.IN16:
             return grayscale_16
@@ -113,32 +109,14 @@ class DisplayFormatter:
     def background_color(self, color_type: ColorType = ColorType.INCOLOR):
         return self._color(self._background_grayscale_16, color_type=color_type)
 
-    def respect_ranges(value: float, min_value: int = 0, max_value: int = 15) -> int:
-        return int(max(min_value, min(max_value, value)))
-
-    def get_grayscale_value(
-        self, room_brightness: float, min_value: int = 0, max_value: int = 15
-    ) -> int:
-        x = max_value
-        if room_brightness < 15:
-            x = 10
-        if room_brightness < 6:
-            x = 7
-        if room_brightness < 2:
-            x = 3
-
-        if self.highly_dimmed():
-            x = 0
-        return DisplayFormatter.respect_ranges(x, min_value, max_value)
-
-    def adjust_display(self, room_brightness: float):
-        self.adjust_display_by_room_brightness(room_brightness)
+    def adjust_display(self):
+        self.adjust_display_by_room_brightness()
         self.adjust_display_by_alarm()
 
-    def adjust_display_by_room_brightness(self, room_brightness: float):
+    def adjust_display_by_room_brightness(self):
         self._background_grayscale_16 = 0
-        self._foreground_grayscale_16 = self.get_grayscale_value(
-            room_brightness, min_value=1
+        self._foreground_grayscale_16 = self.state.room_brightness.get_grayscale_value(
+            min_value=1
         )
         self._clock_font = (
             self._light_clock_font if self.highly_dimmed() else self._bold_clock_font
@@ -185,9 +163,13 @@ class DisplayFormatter:
     def format_clock_string(
         self, clock: datetime, show_blink_segment: bool = True
     ) -> str:
-        blink_segment = self.config.blink_segment if show_blink_segment else " "
+        blink_segment = (
+            self.state.configuration.blink_segment if show_blink_segment else " "
+        )
         clock_string = clock.strftime(
-            self.config.clock_format_string.replace("<blinkSegment>", blink_segment)
+            self.state.configuration.clock_format_string.replace(
+                "<blinkSegment>", blink_segment
+            )
         )
         return self.format_dseg7_string(clock_string, desired_length=5)
 
@@ -306,7 +288,10 @@ class ClockPresenter(Presenter):
         return analog_clock
 
     def draw(self) -> Image.Image:
-        if self.formatter.highly_dimmed() and self.formatter.config.use_analog_clock:
+        if (
+            self.formatter.highly_dimmed()
+            and self.formatter.state.configuration.use_analog_clock
+        ):
             return self.draw_analog_clock()
 
         font = self.formatter.clock_font()
@@ -514,7 +499,9 @@ class NextAlarmPresenter(Presenter):
         return get_concat_h_multi_blank(
             [
                 alarm_symbol_img,
-                Image.new(mode="RGBA", size=(3, 0), color=(0, 0, 0, 0)),
+                Image.new(
+                    mode="RGBA", size=(3, 0), color=self.formatter.background_color()
+                ),
                 next_alarm_img,
             ]
         )
@@ -597,14 +584,14 @@ class Display(Observer):
         device: luma_device,
         display_content: DisplayContent,
         playback_content: PlaybackContent,
-        config: Config,
+        state: AlarmClockState,
     ) -> None:
         self.device = device
         logger.info("device mode: %s", self.device.mode)
         self.display_content = display_content
         self.playback_content = playback_content
-        self.config = config
-        self.formatter = DisplayFormatter(self.display_content, self.config)
+        self.state = state
+        self.formatter = DisplayFormatter(self.display_content, self.state)
         self.composable_presenters = ImageComposition(
             Image.new(mode=self.device.mode, size=self.device.size, color="black")
         )
@@ -682,8 +669,8 @@ class Display(Observer):
         logger.debug("refreshing display...")
         start_time = GeoLocation().now()
         self.device.contrast(16)
-        self.formatter.update_formatter(self.display_content.room_brightness)
-        self.composable_presenters.debug = self.config.debug_level >= 10
+        self.formatter.update_formatter()
+        self.composable_presenters.debug = self.state.configuration.debug_level >= 10
         self.display_content.is_scrolling = False
 
         if self.formatter.clear_display():
@@ -737,7 +724,7 @@ if __name__ == "__main__":
     pc.is_streaming = True
     dc = DisplayContent(state=s, playback_content=pc)
     dc.show_blink_segment = True
-    d = Display(dev, dc, pc, s.configuration)
+    d = Display(dev, dc, pc, s)
     d.update(Observation(observable=dc, reason="init"))
     image = d.current_display_image
 

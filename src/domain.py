@@ -10,7 +10,7 @@ import logging
 
 import jsonpickle
 from apscheduler.triggers.cron import CronTrigger
-from utils.extensions import get_timedelta_to_alarm
+from utils.extensions import Value, get_timedelta_to_alarm, respect_ranges
 
 from utils.observer import Observable, Observation, Observer
 from utils.geolocation import GeoLocation, Weather
@@ -100,6 +100,33 @@ class Weekday(Enum):
     FRIDAY = 5
     SATURDAY = 6
     SUNDAY = 7
+
+
+class RoomBrightness(Value[float]):
+    def __init__(self, room_brightness: float):
+        super().__init__(room_brightness)
+
+    def is_highly_dimmed(self) -> bool:
+        return self.value < 0.01
+
+    def __ne__(self, other: "RoomBrightness"):
+        return not self == other
+
+    def __eq__(self, other: "RoomBrightness"):
+        return self.get_grayscale_value() == other.get_grayscale_value()
+
+    def get_grayscale_value(self, min_value: int = 0, max_value: int = 15) -> int:
+        x = max_value
+        if self.value < 15:
+            x = 10
+        if self.value < 6:
+            x = 7
+        if self.value < 2:
+            x = 3
+
+        if self.is_highly_dimmed():
+            x = 0
+        return respect_ranges(x, min_value, max_value)
 
 
 @dataclass
@@ -429,7 +456,7 @@ class Config(Observable):
 class AlarmClockState(Observable):
 
     configuration: Config
-    room_brightness: float = 0
+    room_brightness: RoomBrightness = RoomBrightness(1.0)
     show_blink_segment: bool = False
 
     @property
@@ -487,7 +514,7 @@ class AlarmClockState(Observable):
         self.show_blink_segment = True
 
     def update_state(
-        self, show_blink_segment: bool, brightness: float, is_scrolling: bool
+        self, show_blink_segment: bool, brightness: RoomBrightness, is_scrolling: bool
     ):
         if any(
             (
