@@ -243,7 +243,7 @@ class Api:
             (
                 r"/api/config/?(.*)",
                 ConfigApiHandler,
-                {"config": self.controls.state.configuration},
+                {"config": self.controls.state.config},
             ),
             (r"/api/action/?(.*)", ActionApiHandler, {"controls": self.controls}),
             (
@@ -254,14 +254,20 @@ class Api:
             (
                 r"/(.*)",
                 ConfigHandler,
-                {"config": self.controls.state.configuration, "api": self},
+                {"config": self.controls.state.config, "api": self},
             ),
         ]
 
         self.app = tornado.web.Application(handlers)
 
     def get_git_log(self) -> str:
-        return subprocess.check_output(["git", "log", "-1"]).decode("utf-8")
+
+        branch = "Branch: " + subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"]
+        ).decode("utf-8")
+
+        log = subprocess.check_output(["git", "log", "-1"]).decode("utf-8")
+        return f"{branch}\n{log}"
 
     def get_state_as_json(self) -> str:
         return json.dumps(

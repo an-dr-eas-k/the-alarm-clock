@@ -1,7 +1,9 @@
 #!/bin/bash
 
-echo "installing requirements"
-pip3 install --break-system-packages -r requirements.txt
+if [ $(find requirements.txt -mmin -720) ]; then
+  echo "installing requirements"
+  pip3 install --break-system-packages -r requirements.txt
+fi
 
 echo "restore asound state"
 alsactl --no-ucm --file rpi/resources/asound.state restore
