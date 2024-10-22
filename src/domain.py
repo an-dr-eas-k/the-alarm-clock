@@ -10,7 +10,7 @@ import logging
 
 import jsonpickle
 from apscheduler.triggers.cron import CronTrigger
-from utils.extensions import get_timedelta_to_alarm
+from utils.extensions import Value, get_timedelta_to_alarm, respect_ranges
 
 from utils.observer import Observable, Observation, Observer
 from utils.geolocation import GeoLocation, Weather
@@ -100,6 +100,33 @@ class Weekday(Enum):
     FRIDAY = 5
     SATURDAY = 6
     SUNDAY = 7
+
+
+class RoomBrightness(Value[float]):
+    def __init__(self, room_brightness: float):
+        super().__init__(room_brightness)
+
+    def is_highly_dimmed(self) -> bool:
+        return self.value < 0.01
+
+    def __ne__(self, other: "RoomBrightness"):
+        return not self == other
+
+    def __eq__(self, other: "RoomBrightness"):
+        return self.get_grayscale_value() == other.get_grayscale_value()
+
+    def get_grayscale_value(self, min_value: int = 0, max_value: int = 15) -> int:
+        x = max_value
+        if self.value < 15:
+            x = 10
+        if self.value < 6:
+            x = 7
+        if self.value < 2:
+            x = 3
+
+        if self.is_highly_dimmed():
+            x = 0
+        return respect_ranges(x, min_value, max_value)
 
 
 @dataclass
@@ -275,10 +302,12 @@ class Config(Observable):
     blink_segment: str
     offline_alarm: AudioStream
     alarm_duration_in_mins: int
-    refresh_timeout_in_secs: int
+    refresh_timeout_in_secs: float
     powernap_duration_in_mins: int
     default_volume: float = default_volume
     use_analog_clock: bool
+    alarm_preview_hours: int
+    debug_level: int
 
     _alarm_definitions: List[AlarmDefinition] = []
     _audio_streams: List[AudioStream] = []
@@ -397,10 +426,12 @@ class Config(Observable):
             ),
             dict(key="clock_format_string", value="%-H<blinkSegment>%M"),
             dict(key="blink_segment", value=":"),
-            dict(key="refresh_timeout_in_secs", value=1),
+            dict(key="refresh_timeout_in_secs", value=0.25),
             dict(key="powernap_duration_in_mins", value=18),
             dict(key="default_volume", value=default_volume),
             dict(key="use_analog_clock", value=False),
+            dict(key="alarm_preview_hours", value=12),
+            dict(key="debug_level", value=0),
         ]:
             if not hasattr(self, conf_prop["key"]):
                 logger.debug(
@@ -424,16 +455,9 @@ class Config(Observable):
 
 class AlarmClockState(Observable):
 
-    configuration: Config
-
-    @property
-    def show_blink_segment(self) -> bool:
-        return self._show_blink_segment
-
-    @show_blink_segment.setter
-    def show_blink_segment(self, value: bool):
-        self._show_blink_segment = value
-        self.notify(property="show_blink_segment")
+    config: Config
+    room_brightness: RoomBrightness = RoomBrightness(1.0)
+    show_blink_segment: bool = False
 
     @property
     def is_online(self) -> bool:
@@ -483,11 +507,25 @@ class AlarmClockState(Observable):
 
     def __init__(self, c: Config) -> None:
         super().__init__()
-        self.configuration = c
+        self.config = c
         self.mode = Mode.Boot
         self.geo_location = GeoLocation()
         self.is_online = True
         self.show_blink_segment = True
+
+    def update_state(
+        self, show_blink_segment: bool, brightness: RoomBrightness, is_scrolling: bool
+    ):
+        if any(
+            (
+                self.show_blink_segment != show_blink_segment,
+                self.room_brightness != brightness,
+                is_scrolling,
+            )
+        ):
+            self.show_blink_segment = show_blink_segment
+            self.room_brightness = brightness
+            self.notify(property="update_state")
 
 
 class MediaContent(Observable, Observer):
@@ -560,7 +598,7 @@ class PlaybackContent(MediaContent):
     def wifi_availability_changed(self, is_online: bool):
         if self.state.mode == Mode.Alarm:
             if not is_online:
-                self.audio_effect = self.state.configuration.get_offline_alarm_effect(
+                self.audio_effect = self.state.config.get_offline_alarm_effect(
                     self.volume
                 )
             else:
@@ -595,11 +633,28 @@ class PlaybackContent(MediaContent):
             self.notify(property="volume")
 
 
+class TACMode:
+    class ModesOnLevel0(Enum):
+        NoMode = 0
+        AlarmChanger = 1
+
+    mode_0 = ModesOnLevel0.NoMode
+
+    def start(self):
+        self.mode_0 = TACMode.ModesOnLevel0.AlarmChanger
+
+    def is_active(self) -> bool:
+        return self.mode_0 != TACMode.ModesOnLevel0.NoMode
+
+
 class DisplayContent(MediaContent):
     _show_volume_meter: bool = False
     next_alarm_job: Job = None
     current_weather: Weather = None
     show_blink_segment: bool
+    room_brightness: float
+    is_scrolling: bool = False
+    mode_state: TACMode = TACMode()
 
     def __init__(self, state: AlarmClockState, playback_content: PlaybackContent):
         super().__init__(state)
@@ -624,8 +679,9 @@ class DisplayContent(MediaContent):
         pass
 
     def update_from_state(self, observation: Observation, state: AlarmClockState):
-        if observation.property_name == "show_blink_segment":
+        if observation.property_name == "update_state":
             self.show_blink_segment = state.show_blink_segment
+            self.room_brightness = state.room_brightness
             if not observation.during_registration:
                 self.notify()
 

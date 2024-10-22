@@ -14,11 +14,13 @@ from domain import (
     PlaybackContent,
     DisplayContent,
     Mode,
+    RoomBrightness,
     StreamAudioEffect,
     Observation,
     Observer,
     Config,
 )
+from gpi import get_room_brightness
 from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon
@@ -44,6 +46,7 @@ class Controls(Observer):
     scheduler = BackgroundScheduler(jobstores=jobstores)
     buttons = []
     state: AlarmClockState
+    _previous_second = GeoLocation().now().second
 
     def __init__(
         self,
@@ -70,10 +73,11 @@ class Controls(Observer):
 
     def add_scheduler_jobs(self):
         self.scheduler.add_job(
-            self.update_clock,
+            self.update_display,
             "interval",
-            seconds=self.state.configuration.refresh_timeout_in_secs,
-            id="clock_interval",
+            start_date=datetime.datetime.today(),
+            seconds=self.state.config.refresh_timeout_in_secs,
+            id="display_interval",
             jobstore=default_store,
         )
 
@@ -206,12 +210,7 @@ class Controls(Observer):
         Controls.button_action(self.increase_volume, 2, "held")
 
     def button3_activated(self):
-
-        def exit():
-            self.scheduler.shutdown(wait=False)
-            os._exit(0)
-
-        Controls.button_action(exit, 3, "activated")
+        Controls.button_action(self.enter_mode, 3, "activated")
 
     def set_to_idle_mode(self):
         if self.state.mode == Mode.Spotify:
@@ -240,6 +239,9 @@ class Controls(Observer):
 
         Controls.button_action(toggle_stream, 4, "activated")
 
+    def enter_mode(self):
+        self.display_content.mode_state.start()
+
     def increase_volume(self):
         self.playback_content.increase_volume()
         logger.info("new volume: %s", self.playback_content.volume)
@@ -249,7 +251,7 @@ class Controls(Observer):
         logger.info("new volume: %s", self.playback_content.volume)
 
     def play_stream_by_id(self, stream_id: int):
-        streams = self.state.configuration.audio_streams
+        streams = self.state.config.audio_streams
         stream = next((s for s in streams if s.id == stream_id), streams[0])
         self.play_stream(stream)
 
@@ -293,12 +295,21 @@ class Controls(Observer):
 
         logger.info("pin factory: %s", Device.pin_factory)
 
-    def update_clock(self):
+    def update_display(self):
+
         def do():
-            logger.debug(
-                "update show blink segment: %s", not self.state.show_blink_segment
+            logger.debug("update display")
+            current_second = GeoLocation().now().second
+            new_blink_state = self.state.show_blink_segment
+            if self._previous_second != current_second:
+                new_blink_state = not self.state.show_blink_segment
+                self._previous_second = current_second
+
+            self.state.update_state(
+                new_blink_state,
+                RoomBrightness(get_room_brightness()),
+                self.display_content.is_scrolling,
             )
-            self.state.show_blink_segment = not self.state.show_blink_segment
 
         Controls.action(do)
 
@@ -338,13 +349,13 @@ class Controls(Observer):
         def do():
             if self.state.mode in [Mode.Music, Mode.Spotify]:
                 alarm_definition.audio_effect = (
-                    self.state.configuration.get_offline_alarm_effect(
+                    self.state.config.get_offline_alarm_effect(
                         alarm_definition.audio_effect.volume
                     )
                 )
 
             if alarm_definition.is_one_time():
-                self.state.configuration.remove_alarm_definition(alarm_definition.id)
+                self.state.config.remove_alarm_definition(alarm_definition.id)
 
             self.set_to_idle_mode()
             self.state.active_alarm = alarm_definition
@@ -356,7 +367,7 @@ class Controls(Observer):
     def postprocess_ring_alarm(self):
         self.start_generic_trigger(
             SchedulerJobIds.stop_alarm.value,
-            datetime.timedelta(minutes=self.state.configuration.alarm_duration_in_mins),
+            datetime.timedelta(minutes=self.state.config.alarm_duration_in_mins),
             func=lambda: self.set_to_idle_mode(),
         )
 
@@ -366,7 +377,7 @@ class Controls(Observer):
         job: Job
         for job in self.scheduler.get_jobs(jobstore=alarm_store):
             if job.next_run_time is None:
-                self.state.configuration.remove_alarm_definition(int(job.id))
+                self.state.config.remove_alarm_definition(int(job.id))
 
 
 class SoftwareControls(Controls):
