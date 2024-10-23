@@ -10,6 +10,7 @@ import tornado.web
 from PIL.Image import Image
 from core.application.controls import Controls
 from core.infrastructure.display import ColorType, Display
+from resources.resources import webroot_file
 
 from core.domain import (
     AlarmDefinition,
@@ -84,15 +85,13 @@ class DisplayHandler(tornado.web.RequestHandler):
 
 class ConfigHandler(tornado.web.RequestHandler):
 
-    root = os.path.join(os.path.dirname(__file__), "..", "ui")
-
     def initialize(self, config: Config, api) -> None:
         self.config = config
         self.api = api
 
     def get(self, *args, **kwargs):
         try:
-            self.render(f"{self.root}/alarm.html", config=self.config, api=self.api)
+            self.render(webroot_file, config=self.config, api=self.api)
         except:
             logger.warning("%s", traceback.format_exc())
 

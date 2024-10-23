@@ -1,6 +1,5 @@
 import logging.config
 import os
-import __main__ as main
 
 
 resources_dir = os.path.dirname(os.path.realpath(__file__))
@@ -24,6 +23,7 @@ librespotify_env_vars = [
 ]
 
 config_file = os.path.join(app_dir, "config.json")
+webroot_file = os.path.join(app_dir, "core", "ui", "alarm.html")
 active_alarm_definition_file = f"/tmp/toc_active_alarm.json"
 display_shot_file = os.path.join(app_dir, "..", "..", "display_test.png")
 
