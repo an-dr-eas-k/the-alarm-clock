@@ -8,10 +8,10 @@ import traceback
 import tornado
 import tornado.web
 from PIL.Image import Image
-from controls import Controls
-from display import ColorType, Display
+from core.application.controls import Controls
+from core.infrastructure.display import ColorType, Display
 
-from domain import (
+from core.domain import (
     AlarmDefinition,
     AudioEffect,
     AudioStream,
@@ -23,7 +23,7 @@ from domain import (
     Weekday,
     try_update,
 )
-from gpi import get_room_brightness
+from core.infrastructure.gpi import get_room_brightness
 from utils.os import reboot_system, shutdown_system
 
 logger = logging.getLogger("tac.api")
@@ -84,7 +84,7 @@ class DisplayHandler(tornado.web.RequestHandler):
 
 class ConfigHandler(tornado.web.RequestHandler):
 
-    root = os.path.join(os.path.dirname(__file__), "webroot")
+    root = os.path.join(os.path.dirname(__file__), "..", "ui")
 
     def initialize(self, config: Config, api) -> None:
         self.config = config

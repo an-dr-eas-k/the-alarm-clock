@@ -8,7 +8,7 @@ from luma.core.device import dummy as luma_dummy
 from luma.core.render import canvas
 from PIL import ImageFont, Image
 
-from domain import (
+from core.domain import (
     AlarmClockState,
     AlarmDefinition,
     Config,
@@ -33,7 +33,7 @@ from utils.drawing import (
 from utils.extensions import get_job_arg, get_timedelta_to_alarm, respect_ranges
 from utils.geolocation import GeoLocation
 
-from resources.resources import fonts_dir, weather_icons_dir
+from resources.resources import fonts_dir, weather_icons_dir, display_shot_file
 
 logger = logging.getLogger("tac.display")
 
@@ -678,7 +678,7 @@ class Display(Observer):
         self.device.display(self.current_display_image)
         if isinstance(self.device, luma_dummy):
             self.current_display_image.save(
-                f"{os.path.dirname(os.path.realpath(__file__))}/../../display_test.png",
+                display_shot_file,
                 format="png",
             )
 
@@ -700,7 +700,7 @@ class Display(Observer):
 if __name__ == "__main__":
     import argparse
     from luma.oled.device import ssd1322
-    from luma.core.interface.serial import spi
+    from luma.core.infrastructure.serial import spi
     from luma.core.device import dummy
     import time
 
@@ -731,7 +731,5 @@ if __name__ == "__main__":
     if is_on_hardware:
         time.sleep(10)
     else:
-        save_file = (
-            f"{os.path.dirname(os.path.realpath(__file__))}/../../display_test.png"
-        )
+        save_file = display_shot_file
         image.save(save_file, format="png")

@@ -10,21 +10,21 @@ from luma.core.device import dummy
 
 import tornado.ioloop
 import tornado.web
-from api import Api
-from audio import Speaker
-from controls import Controls, SoftwareControls
+from core.application.api import Api
+from core.infrastructure.audio import Speaker
+from core.application.controls import Controls, SoftwareControls
 
-from display import Display
-from domain import AlarmClockState, Config, DisplayContent, Mode, PlaybackContent
-from persistence import Persistence
+from core.infrastructure.display import Display
+from core.domain import AlarmClockState, Config, DisplayContent, Mode, PlaybackContent
+from core.infrastructure.persistence import Persistence
 from resources.resources import init_logging
+from resources.resources import config_file
 from utils import os as app_os
 
 logger = logging.getLogger("tac.app_clock")
 
 
 class ClockApp:
-    configFile = f"{os.path.dirname(os.path.realpath(__file__))}/config.json"
 
     def __init__(self) -> None:
         parser = argparse.ArgumentParser("ClockApp")
@@ -44,8 +44,8 @@ class ClockApp:
         signal.signal(signal.SIGTERM, self.shutdown_function)
 
         self.state = AlarmClockState(Config())
-        if os.path.exists(self.configFile):
-            self.state.config = Config.deserialize(self.configFile)
+        if os.path.exists(config_file):
+            self.state.config = Config.deserialize(config_file)
 
         logger.info("config available")
 
@@ -70,7 +70,7 @@ class ClockApp:
 
         self.display = Display(device, display_content, playback_content, self.state)
         display_content.attach(self.display)
-        self.persistence = Persistence(self.configFile)
+        self.persistence = Persistence(config_file)
         self.state.attach(self.persistence)
         self.state.config.attach(self.persistence)
 

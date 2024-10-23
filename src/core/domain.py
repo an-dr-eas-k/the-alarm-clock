@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import date, time, timedelta
+from datetime import time, timedelta
 import datetime
 import json
 import os
@@ -14,8 +14,7 @@ from utils.extensions import Value, get_timedelta_to_alarm, respect_ranges
 
 from utils.observer import Observable, Observation, Observer
 from utils.geolocation import GeoLocation, Weather
-from resources.resources import alarms_dir
-from resources.resources import default_volume
+from resources.resources import alarms_dir, default_volume
 from utils.singleton import singleton
 from utils.sound_device import TACSoundDevice
 

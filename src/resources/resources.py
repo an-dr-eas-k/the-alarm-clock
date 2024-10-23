@@ -1,8 +1,10 @@
 import logging.config
 import os
+import __main__ as main
 
 
 resources_dir = os.path.dirname(os.path.realpath(__file__))
+app_dir = os.path.normpath(os.path.join(resources_dir, ".."))
 media_dir = os.path.join(resources_dir, "media")
 
 fonts_dir = f"{media_dir}/fonts"
@@ -21,7 +23,9 @@ librespotify_env_vars = [
     "SINK_STATUS",
 ]
 
+config_file = os.path.join(app_dir, "config.json")
 active_alarm_definition_file = f"/tmp/toc_active_alarm.json"
+display_shot_file = os.path.join(app_dir, "..", "..", "display_test.png")
 
 valid_mixer_device_simple_control_names = ["Digital", "Master"]
 

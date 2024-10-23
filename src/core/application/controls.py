@@ -7,7 +7,7 @@ from gpiozero import Button, Device
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
-from domain import (
+from core.domain import (
     AlarmClockState,
     AlarmDefinition,
     AudioStream,
@@ -20,7 +20,7 @@ from domain import (
     Observer,
     Config,
 )
-from gpi import get_room_brightness
+from core.infrastructure.gpi import get_room_brightness
 from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon

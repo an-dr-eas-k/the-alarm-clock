@@ -1,4 +1,4 @@
-from domain import AlarmClockState, Mode, Observation, Observer
+from core.domain import AlarmClockState, Mode, Observation, Observer
 from gpiozero import DigitalOutputDevice
 import logging
 
