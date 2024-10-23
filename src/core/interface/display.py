@@ -700,7 +700,7 @@ class Display(TACEventSubscriber):
 if __name__ == "__main__":
     import argparse
     from luma.oled.device import ssd1322
-    from luma.core.infrastructure.serial import spi
+    from luma.core.interface.serial import spi
     from luma.core.device import dummy
     import time
 

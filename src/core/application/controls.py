@@ -16,8 +16,8 @@ from core.domain import (
     Mode,
     RoomBrightness,
     StreamAudioEffect,
-    Observation,
-    Observer,
+    TACEvent,
+    TACEventSubscriber,
     Config,
 )
 from core.infrastructure.gpi import get_room_brightness
@@ -41,7 +41,7 @@ class SchedulerJobIds(Enum):
     stop_alarm = "stop_alarm_trigger"
 
 
-class Controls(Observer):
+class Controls(TACEventSubscriber):
     jobstores = {alarm_store: {"type": "memory"}, default_store: {"type": "memory"}}
     scheduler = BackgroundScheduler(jobstores=jobstores)
     buttons = []
@@ -108,15 +108,15 @@ class Controls(Observer):
             jobstore=default_store,
         )
 
-    def update(self, observation: Observation):
-        super().update(observation)
-        if isinstance(observation.observable, Config):
-            self.update_from_config(observation, observation.observable)
-        if isinstance(observation.observable, PlaybackContent):
-            self.update_from_playback_content(observation, observation.observable)
+    def handle(self, observation: TACEvent):
+        super().handle(observation)
+        if isinstance(observation.subscriber, Config):
+            self.update_from_config(observation, observation.subscriber)
+        if isinstance(observation.subscriber, PlaybackContent):
+            self.update_from_playback_content(observation, observation.subscriber)
 
     def update_from_playback_content(
-        self, observation: Observation, playback_content: PlaybackContent
+        self, observation: TACEvent, playback_content: PlaybackContent
     ):
         if (
             observation.property_name == "volume"
@@ -151,7 +151,7 @@ class Controls(Observer):
                 id=job_id, trigger=trigger, func=func, jobstore=job_store
             )
 
-    def update_from_config(self, observation: Observation, config: Config):
+    def update_from_config(self, observation: TACEvent, config: Config):
         if observation.property_name == "alarm_definitions":
             self.scheduler.remove_all_jobs(jobstore=alarm_store)
             alDef: AlarmDefinition

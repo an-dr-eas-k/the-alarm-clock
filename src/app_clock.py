@@ -50,9 +50,9 @@ class ClockApp:
         logger.info("config available")
 
         playback_content = PlaybackContent(self.state)
-        self.state.attach(playback_content)
+        self.state.subscribe(playback_content)
         display_content = DisplayContent(self.state, playback_content)
-        self.state.attach(display_content)
+        self.state.subscribe(display_content)
 
         device: luma_device
 
@@ -69,15 +69,15 @@ class ClockApp:
             port = 8080
 
         self.display = Display(device, display_content, playback_content, self.state)
-        display_content.attach(self.display)
+        display_content.subscribe(self.display)
         self.persistence = Persistence(config_file)
-        self.state.attach(self.persistence)
-        self.state.config.attach(self.persistence)
+        self.state.subscribe(self.persistence)
+        self.state.config.subscribe(self.persistence)
 
         self.speaker = Speaker(playback_content, self.state.config)
-        playback_content.attach(self.speaker)
-        self.state.config.attach(self.controls)
-        playback_content.attach(self.controls)
+        playback_content.subscribe(self.speaker)
+        self.state.config.subscribe(self.controls)
+        playback_content.subscribe(self.controls)
         self.controls.configure()
 
         self.api = Api(self.controls, self.display)

@@ -12,7 +12,7 @@ import jsonpickle
 from apscheduler.triggers.cron import CronTrigger
 from utils.extensions import Value, get_timedelta_to_alarm, respect_ranges
 
-from utils.observer import Observable, Observation, Observer
+from utils.events import TACEventPublisher, TACEvent, TACEventSubscriber
 from utils.geolocation import GeoLocation, Weather
 from resources.resources import alarms_dir, default_volume
 from utils.singleton import singleton
@@ -31,8 +31,8 @@ def try_update(object, property_name: str, value: str) -> bool:
             value = attr_type(value) if len(value) > 0 else None
         if value != attr_value:
             setattr(object, property_name, value)
-            if isinstance(object, Observable):
-                object.notify(property=property_name)
+            if isinstance(object, TACEventPublisher):
+                object.publish(property=property_name)
         return True
     return False
 
@@ -198,7 +198,7 @@ class OfflineAlarmEffect(StreamAudioEffect):
         return "Offline Alarm"
 
 
-class SpotifyAudioEffect(Observable, AudioEffect):
+class SpotifyAudioEffect(TACEventPublisher, AudioEffect):
     spotify_event: LibreSpotifyEvent = None
     track_name: str = "Spotify"
 
@@ -209,10 +209,10 @@ class SpotifyAudioEffect(Observable, AudioEffect):
     @track_id.setter
     def track_id(self, value: str):
         self._track_id = value
-        self.notify(property="track_id")
+        self.publish(property="track_id")
 
     def __init__(self, volume: float = None):
-        Observable.__init__(self)
+        TACEventPublisher.__init__(self)
         AudioEffect.__init__(self, volume)
 
     def __str__(self):
@@ -295,7 +295,7 @@ class AlarmDefinition:
         return persisted_alarm_definition
 
 
-class Config(Observable):
+class Config(TACEventPublisher):
 
     clock_format_string: str
     blink_segment: str
@@ -359,13 +359,13 @@ class Config(Observable):
         self._alarm_definitions = Config.append_item_with_id(
             value, self._alarm_definitions
         )
-        self.notify(property="alarm_definitions")
+        self.publish(property="alarm_definitions")
 
     def remove_alarm_definition(self, id: int):
         self._alarm_definitions = [
             alarm_def for alarm_def in self._alarm_definitions if alarm_def.id != id
         ]
-        self.notify(property="alarm_definitions")
+        self.publish(property="alarm_definitions")
 
     def get_alarm_definition(self, id: int) -> AlarmDefinition:
         return next(
@@ -378,7 +378,7 @@ class Config(Observable):
 
     def add_audio_stream(self, value: AudioStream):
         self._audio_streams = Config.append_item_with_id(value, self._audio_streams)
-        self.notify(property="audio_streams")
+        self.publish(property="audio_streams")
 
     def get_audio_stream(self, id: int) -> AudioStream:
         return next((stream for stream in self._audio_streams if stream.id == id), None)
@@ -387,7 +387,7 @@ class Config(Observable):
         self._audio_streams = [
             stream_def for stream_def in self._audio_streams if stream_def.id != id
         ]
-        self.notify(property="audio_streams")
+        self.publish(property="audio_streams")
 
     @property
     def local_alarm_file(self) -> str:
@@ -396,7 +396,7 @@ class Config(Observable):
     @local_alarm_file.setter
     def local_alarm_file(self, value: str):
         self.offline_alarm = AudioStream(stream_name="Offline Alarm", stream_url=value)
-        self.notify(property="blink_segment")
+        self.publish(property="blink_segment")
 
     def __init__(self):
         logger.debug("initializing default config")
@@ -452,7 +452,7 @@ class Config(Observable):
             return persisted_config
 
 
-class AlarmClockState(Observable):
+class AlarmClockState(TACEventPublisher):
 
     config: Config
     room_brightness: RoomBrightness = RoomBrightness(1.0)
@@ -465,7 +465,7 @@ class AlarmClockState(Observable):
     @is_online.setter
     def is_online(self, value: bool):
         self._is_online = value
-        self.notify(property="is_online")
+        self.publish(property="is_online")
 
     @property
     def is_daytime(self) -> bool:
@@ -474,7 +474,7 @@ class AlarmClockState(Observable):
     @is_daytime.setter
     def is_daytime(self, value: bool):
         self._is_daytime = value
-        self.notify(property="is_daytime")
+        self.publish(property="is_daytime")
 
     @property
     def mode(self) -> Mode:
@@ -484,7 +484,7 @@ class AlarmClockState(Observable):
     def mode(self, value: Mode):
         self._mode = value
         logger.info("new mode: %s", self.mode.name)
-        self.notify(property="mode")
+        self.publish(property="mode")
 
     @property
     def spotify_event(self) -> LibreSpotifyEvent:
@@ -493,7 +493,7 @@ class AlarmClockState(Observable):
     @spotify_event.setter
     def spotify_event(self, value: LibreSpotifyEvent):
         self._spotify_event = value
-        self.notify(property="spotify_event")
+        self.publish(property="spotify_event")
 
     @property
     def active_alarm(self) -> AlarmDefinition:
@@ -502,7 +502,7 @@ class AlarmClockState(Observable):
     @active_alarm.setter
     def active_alarm(self, value: AlarmDefinition):
         self._active_alarm = value
-        self.notify(property="active_alarm")
+        self.publish(property="active_alarm")
 
     def __init__(self, c: Config) -> None:
         super().__init__()
@@ -524,10 +524,10 @@ class AlarmClockState(Observable):
         ):
             self.show_blink_segment = show_blink_segment
             self.room_brightness = brightness
-            self.notify(property="update_state")
+            self.publish(property="update_state")
 
 
-class MediaContent(Observable, Observer):
+class MediaContent(TACEventPublisher, TACEventSubscriber):
 
     def __init__(self, state: AlarmClockState):
         super().__init__()
@@ -550,7 +550,7 @@ class PlaybackContent(MediaContent):
             and value.volume != self.volume
         ):
             self.volume = value.volume
-        self.notify(property="audio_effect")
+        self.publish(property="audio_effect")
 
     @property
     def volume(self) -> float:
@@ -559,7 +559,7 @@ class PlaybackContent(MediaContent):
     @volume.setter
     def volume(self, value: float):
         TACSoundDevice().set_system_volume(value)
-        self.notify(property="volume")
+        self.publish(property="volume")
 
     @property
     def is_streaming(self) -> str:
@@ -568,7 +568,7 @@ class PlaybackContent(MediaContent):
     @is_streaming.setter
     def is_streaming(self, value: bool):
         self._is_streaming = value
-        self.notify(property="is_streaming")
+        self.publish(property="is_streaming")
 
     def __init__(self, state: AlarmClockState):
         super().__init__(state)
@@ -576,12 +576,12 @@ class PlaybackContent(MediaContent):
         self.volume = default_volume
         self.is_streaming = False
 
-    def update(self, observation: Observation):
-        super().update(observation)
-        if isinstance(observation.observable, AlarmClockState):
-            self.update_from_state(observation, observation.observable)
+    def handle(self, observation: TACEvent):
+        super().handle(observation)
+        if isinstance(observation.subscriber, AlarmClockState):
+            self.update_from_state(observation, observation.subscriber)
 
-    def update_from_state(self, observation: Observation, state: AlarmClockState):
+    def update_from_state(self, observation: TACEvent, state: AlarmClockState):
         if observation.property_name == "mode":
             self.is_streaming = state.mode in [Mode.Alarm, Mode.Music, Mode.Spotify]
 
@@ -629,7 +629,7 @@ class PlaybackContent(MediaContent):
             self.state.mode = Mode.Idle
 
         if spotify_event.is_volume_changed() and self.state.mode == Mode.Spotify:
-            self.notify(property="volume")
+            self.publish(property="volume")
 
 
 class TACMode:
@@ -662,27 +662,27 @@ class DisplayContent(MediaContent):
     def get_is_online(self) -> bool:
         return self.state.is_online
 
-    def notify(self):
-        super().notify(reason="display_changed")
+    def publish(self):
+        super().publish(reason="display_changed")
 
-    def update(self, observation: Observation):
-        super().update(observation)
-        if isinstance(observation.observable, AlarmClockState):
-            self.update_from_state(observation, observation.observable)
-        if isinstance(observation.observable, PlaybackContent):
-            self.update_from_playback_content(observation, observation.observable)
+    def handle(self, observation: TACEvent):
+        super().handle(observation)
+        if isinstance(observation.subscriber, AlarmClockState):
+            self.update_from_state(observation, observation.subscriber)
+        if isinstance(observation.subscriber, PlaybackContent):
+            self.update_from_playback_content(observation, observation.subscriber)
 
     def update_from_playback_content(
-        self, observation: Observation, playback_content: PlaybackContent
+        self, observation: TACEvent, playback_content: PlaybackContent
     ):
         pass
 
-    def update_from_state(self, observation: Observation, state: AlarmClockState):
+    def update_from_state(self, observation: TACEvent, state: AlarmClockState):
         if observation.property_name == "update_state":
             self.show_blink_segment = state.show_blink_segment
             self.room_brightness = state.room_brightness
             if not observation.during_registration:
-                self.notify()
+                self.publish()
 
     def hide_volume_meter(self):
         self.show_volume_meter = False
@@ -695,7 +695,7 @@ class DisplayContent(MediaContent):
     def show_volume_meter(self, value: bool):
         logger.info("volume bar shown: %s", value)
         self._show_volume_meter = value
-        self.notify()
+        self.publish()
 
     def get_timedelta_to_alarm(self) -> timedelta:
         if self.next_alarm_job is None:

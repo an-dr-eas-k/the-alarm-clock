@@ -15,8 +15,8 @@ from core.domain import (
     Config,
     OfflineAlarmEffect,
     StreamAudioEffect,
-    Observation,
-    Observer,
+    TACEvent,
+    TACEventSubscriber,
     SpotifyAudioEffect,
 )
 from utils.network import is_internet_available
@@ -160,7 +160,7 @@ class MediaListPlayer(MediaPlayer):
         logger.info(f"stopped audio")
 
 
-class Speaker(Observer):
+class Speaker(TACEventSubscriber):
     media_player: MediaPlayer = None
     fallback_player_proc: subprocess.Popen = None
 
@@ -169,13 +169,13 @@ class Speaker(Observer):
         self.playback_content = playback_content
         self.config = config
 
-    def update(self, observation: Observation):
-        super().update(observation)
-        if isinstance(observation.observable, PlaybackContent):
-            self.update_from_playback_content(observation, observation.observable)
+    def handle(self, observation: TACEvent):
+        super().handle(observation)
+        if isinstance(observation.subscriber, PlaybackContent):
+            self.update_from_playback_content(observation, observation.subscriber)
 
     def update_from_playback_content(
-        self, observation: Observation, playback_content: PlaybackContent
+        self, observation: TACEvent, playback_content: PlaybackContent
     ):
         if observation.property_name == "is_streaming":
             self.adjust_streaming(playback_content.is_streaming)

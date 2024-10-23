@@ -1,28 +1,29 @@
 import logging
 import re
+from typing import List
 
-logger = logging.getLogger("tac.observer")
+logger = logging.getLogger("tac.events")
 
 
-class Observation:
+class TACEvent:
     during_registration: bool
     reason: str = None
     property_name: str = None
     new_value: any = None
-    observable: any = None
+    subscriber: "TACEventSubscriber" = None
 
     def __init__(
         self,
         property_name: str = None,
         reason: str = None,
         during_registration: bool = False,
-        observable: any = None,
+        event_publisher: "TACEventPublisher" = None,
     ) -> None:
         assert property_name or reason
         self.during_registration = during_registration
         self.reason = reason
         self.property_name = property_name
-        self.observable = observable
+        self.subscriber = event_publisher
 
     def to_string(self):
         property_segment = ""
@@ -31,69 +32,69 @@ class Observation:
         reason_segment = ""
         if self.reason:
             reason_segment = f"reason {self.reason}"
-        return f"observation {self.observable.__class__.__name__}: {reason_segment}{property_segment}"
+        return f"event {self.subscriber.__class__.__name__}: {reason_segment}{property_segment}"
 
 
-class Observer:
+class TACEventSubscriber:
 
-    def update(self, observation: Observation):
-        logger.debug(
-            f"{self.__class__.__name__} is notified: {observation.to_string()}"
-        )
+    def handle(self, event: TACEvent):
+        logger.debug(f"{self.__class__.__name__} is handled: {event.to_string()}")
 
 
-class Observable:
-    observers: []
+class TACEventPublisher:
+    event_subscriber: List["TACEventSubscriber"]
 
     def __init__(self):
-        self.observers = []
+        self.event_subscriber = []
 
-    def notify(self, property=None, reason=None, during_registration: bool = False):
+    def publish(self, property=None, reason=None, during_registration: bool = False):
 
-        o: Observation
+        o: TACEvent
         if property:
             assert property in dir(self)
-            o = Observation(
+            o = TACEvent(
                 property_name=property,
                 during_registration=during_registration,
-                observable=self,
+                event_publisher=self,
             )
             o.new_value = self.__getattribute__(o.property_name)
         else:
-            o = Observation(
-                reason=reason, during_registration=during_registration, observable=self
+            o = TACEvent(
+                reason=reason,
+                during_registration=during_registration,
+                event_publisher=self,
             )
 
-        for observer in self.observers:
-            assert isinstance(observer, Observer)
-            observer.update(o)
+        for subscriber in self.event_subscriber:
+            assert isinstance(subscriber, TACEventSubscriber)
+            subscriber.handle(o)
 
-    def attach(self, observer: Observer):
-        assert isinstance(observer, Observer)
-        if observer in self.observers:
+    def subscribe(self, subscriber: TACEventSubscriber):
+        assert isinstance(subscriber, TACEventSubscriber)
+        if subscriber in self.event_subscriber:
             return
 
-        self.observers.append(observer)
+        self.event_subscriber.append(subscriber)
         properties = [
             attr
             for attr in dir(self)
             if True
-            and attr != "observers"
+            and attr != "event_subscriber"
             and not re.match(r"^__.*__$", attr)
             and hasattr(self, attr)
             and not callable(getattr(self, attr))
         ]
         for property_name in properties:
             try:
-                self.notify(property=property_name, during_registration=True)
+                self.publish(property=property_name, during_registration=True)
             except:
                 pass
 
     def __getstate__(self):
         state = self.__dict__.copy()
-        del state["observers"]
+        del state["event_subscriber"]
         return state
 
     def __setstate__(self, state):
-        state["observers"] = []
+        state["event_subscriber"] = []
         self.__dict__.update(state)
