@@ -308,55 +308,19 @@ class Config(TACEventPublisher):
     alarm_preview_hours: int
     debug_level: int
 
-    _alarm_definitions: List[AlarmDefinition] = []
-    _audio_streams: List[AudioStream] = []
+    def __init__(self):
+        logger.debug("initializing default config")
+        self._alarm_definitions = []
+        self._audio_streams = []
+        self.ensure_valid_config()
+        super().__init__()
 
     @property
     def alarm_definitions(self) -> List[AlarmDefinition]:
         return self._alarm_definitions
 
-    def append_item_with_id(item_with_id, list) -> List[object]:
-        Config.assure_item_id(item_with_id, list)
-        list.append(item_with_id)
-        return sorted(list, key=lambda x: x.id)
-
-    def assure_item_id(item_with_id, list):
-        if (
-            not hasattr(item_with_id, "id")
-            or item_with_id.id is None
-            or item_with_id.id < 0
-        ):
-            item_with_id.id = Config.get_next_id(list)
-
-    def get_next_id(array_with_ids: List[object]) -> int:
-        return (
-            sorted(array_with_ids, key=lambda x: x.id, reverse=True)[0].id + 1
-            if len(array_with_ids) > 0
-            else 0
-        )
-
-    def add_alarm_definition_for_powernap(self):
-
-        duration = GeoLocation().now() + timedelta(
-            minutes=(1 + self.powernap_duration_in_mins)
-        )
-        audio_effect = StreamAudioEffect(
-            stream_definition=self.audio_streams[0], volume=self.default_volume
-        )
-
-        powernap_alarm_def = AlarmDefinition()
-        powernap_alarm_def.alarm_name = "Powernap"
-        powernap_alarm_def.hour = duration.hour
-        powernap_alarm_def.min = duration.minute
-        powernap_alarm_def.is_active = True
-        powernap_alarm_def.set_future_date(duration.hour, duration.minute)
-        powernap_alarm_def.audio_effect = audio_effect
-        powernap_alarm_def.visual_effect = None
-
-        self.add_alarm_definition(powernap_alarm_def)
-
     def add_alarm_definition(self, value: AlarmDefinition):
-        self._alarm_definitions = Config.append_item_with_id(
+        self._alarm_definitions = self._append_item_with_id(
             value, self._alarm_definitions
         )
         self.publish(property="alarm_definitions")
@@ -377,17 +341,34 @@ class Config(TACEventPublisher):
         return self._audio_streams
 
     def add_audio_stream(self, value: AudioStream):
-        self._audio_streams = Config.append_item_with_id(value, self._audio_streams)
+        self._audio_streams = self._append_item_with_id(value, self._audio_streams)
         self.publish(property="audio_streams")
-
-    def get_audio_stream(self, id: int) -> AudioStream:
-        return next((stream for stream in self._audio_streams if stream.id == id), None)
 
     def remove_audio_stream(self, id: int):
         self._audio_streams = [
             stream_def for stream_def in self._audio_streams if stream_def.id != id
         ]
         self.publish(property="audio_streams")
+
+    def _append_item_with_id(self, item_with_id, list) -> List[object]:
+        self._assure_item_id(item_with_id, list)
+        list.append(item_with_id)
+        return sorted(list, key=lambda x: x.id)
+
+    def _assure_item_id(self, item_with_id, list):
+        if (
+            not hasattr(item_with_id, "id")
+            or item_with_id.id is None
+            or item_with_id.id < 0
+        ):
+            item_with_id.id = self._get_next_id(list)
+
+    def _get_next_id(self, array_with_ids: List[object]) -> int:
+        return (
+            sorted(array_with_ids, key=lambda x: x.id, reverse=True)[0].id + 1
+            if len(array_with_ids) > 0
+            else 0
+        )
 
     @property
     def local_alarm_file(self) -> str:
@@ -398,21 +379,25 @@ class Config(TACEventPublisher):
         self.offline_alarm = AudioStream(stream_name="Offline Alarm", stream_url=value)
         self.publish(property="blink_segment")
 
-    def __init__(self):
-        logger.debug("initializing default config")
-        self.ensure_valid_config()
-        super().__init__()
+    def add_alarm_definition_for_powernap(self):
 
-    def get_offline_alarm_effect(
-        self, volume: float = default_volume
-    ) -> OfflineAlarmEffect:
-        full_path = os.path.join(alarms_dir, self.offline_alarm.stream_url)
-        return OfflineAlarmEffect(
-            stream_definition=AudioStream(
-                stream_name="Offline Alarm", stream_url=full_path
-            ),
-            volume=volume,
+        duration = GeoLocation().now() + timedelta(
+            minutes=(1 + self.powernap_duration_in_mins)
         )
+        audio_effect = StreamAudioEffect(
+            stream_definition=self.audio_streams[0], volume=self.default_volume
+        )
+
+        powernap_alarm_def = AlarmDefinition()
+        powernap_alarm_def.alarm_name = "Powernap"
+        powernap_alarm_def.hour = duration.hour
+        powernap_alarm_def.min = duration.minute
+        powernap_alarm_def.is_active = True
+        powernap_alarm_def.set_future_date(duration.hour, duration.minute)
+        powernap_alarm_def.audio_effect = audio_effect
+        powernap_alarm_def.visual_effect = None
+
+        self.add_alarm_definition(powernap_alarm_def)
 
     def ensure_valid_config(self):
         for conf_prop in [

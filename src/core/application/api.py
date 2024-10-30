@@ -30,7 +30,7 @@ from utils.os import reboot_system, shutdown_system
 logger = logging.getLogger("tac.api")
 
 
-def split_path_arguments(path) -> tuple[str, int, str]:
+def parse_path_arguments(path) -> tuple[str, int, str]:
     path_args = path[0].split("/")
     return (
         path_args[0],
@@ -45,6 +45,10 @@ class LibreSpotifyEventHandler(tornado.web.RequestHandler):
         self.playback_content = playback_content
 
     def post(self):
+        self.handle_spotify_event()
+        self.finish()
+
+    def handle_spotify_event(self):
         try:
             body = (
                 "{}"
@@ -60,9 +64,8 @@ class LibreSpotifyEventHandler(tornado.web.RequestHandler):
             spotify_event = LibreSpotifyEvent(spotify_event_dict)
             logger.info("received librespotify event %s", spotify_event)
             self.playback_content.set_spotify_event(spotify_event)
-        except:
+        except Exception:
             logger.warning("%s", traceback.format_exc())
-        self.finish()
 
 
 class DisplayHandler(tornado.web.RequestHandler):
@@ -103,7 +106,7 @@ class ActionApiHandler(tornado.web.RequestHandler):
 
     def post(self, *args):
         try:
-            (type, id, _1) = split_path_arguments(args)
+            (type, id, _1) = parse_path_arguments(args)
 
             if type == "play":
                 self.controls.play_stream_by_id(id)
@@ -115,7 +118,7 @@ class ActionApiHandler(tornado.web.RequestHandler):
                 else:
                     self.controls.decrease_volume()
             elif type == "update":
-                os._exit(0)
+                tornado.ioloop.IOLoop.instance().stop()
             elif type == "reboot":
                 reboot_system()
             elif type == "shutdown":
@@ -141,7 +144,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 
     def delete(self, *args):
         try:
-            (type, id, _) = split_path_arguments(args)
+            (type, id, _) = parse_path_arguments(args)
             if type == "alarm":
                 self.config.remove_alarm_definition(id)
             elif type == "stream":
@@ -151,7 +154,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 
     def post(self, *args):
         try:
-            (type, id, property) = split_path_arguments(args)
+            (type, id, property) = parse_path_arguments(args)
             simpleValue = tornado.escape.to_unicode(self.request.body)
             if try_update(self.config, type, simpleValue):
                 return
@@ -184,7 +187,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
         except:
             logger.warning("%s", traceback.format_exc())
 
-    def parse_stream_definition(self, form_arguments) -> AlarmDefinition:
+    def parse_stream_definition(self, form_arguments) -> AudioStream:
         stream_name = form_arguments["streamName"]
         stream_url = form_arguments["streamUrl"]
         return AudioStream(stream_name=stream_name, stream_url=stream_url)
