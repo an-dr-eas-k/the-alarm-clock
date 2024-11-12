@@ -340,6 +340,9 @@ class Config(TACEventPublisher):
     def audio_streams(self) -> List[AudioStream]:
         return self._audio_streams
 
+    def get_audio_stream(self, id: int) -> AudioStream:
+        return next((stream for stream in self._audio_streams if stream.id == id), None)
+
     def add_audio_stream(self, value: AudioStream):
         self._audio_streams = self._append_item_with_id(value, self._audio_streams)
         self.publish(property="audio_streams")
