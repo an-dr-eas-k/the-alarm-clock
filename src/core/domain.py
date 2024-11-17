@@ -308,16 +308,29 @@ class Config(TACEventPublisher):
     alarm_preview_hours: int
     debug_level: int
 
+    @property
+    def alarm_definitions(self) -> List[AlarmDefinition]:
+        return self._alarm_definitions
+
+    @property
+    def audio_streams(self) -> List[AudioStream]:
+        return self._audio_streams
+
+    @property
+    def local_alarm_file(self) -> str:
+        return self.offline_alarm.stream_url
+
+    @local_alarm_file.setter
+    def local_alarm_file(self, value: str):
+        self.offline_alarm = AudioStream(stream_name="Offline Alarm", stream_url=value)
+        self.publish(property="blink_segment")
+
     def __init__(self):
         logger.debug("initializing default config")
         self._alarm_definitions = []
         self._audio_streams = []
         self.ensure_valid_config()
         super().__init__()
-
-    @property
-    def alarm_definitions(self) -> List[AlarmDefinition]:
-        return self._alarm_definitions
 
     def add_alarm_definition(self, value: AlarmDefinition):
         self._alarm_definitions = self._append_item_with_id(
@@ -335,10 +348,6 @@ class Config(TACEventPublisher):
         return next(
             (alarm for alarm in self._alarm_definitions if alarm.id == id), None
         )
-
-    @property
-    def audio_streams(self) -> List[AudioStream]:
-        return self._audio_streams
 
     def get_audio_stream(self, id: int) -> AudioStream:
         return next((stream for stream in self._audio_streams if stream.id == id), None)
@@ -372,15 +381,6 @@ class Config(TACEventPublisher):
             if len(array_with_ids) > 0
             else 0
         )
-
-    @property
-    def local_alarm_file(self) -> str:
-        return self.offline_alarm.stream_url
-
-    @local_alarm_file.setter
-    def local_alarm_file(self, value: str):
-        self.offline_alarm = AudioStream(stream_name="Offline Alarm", stream_url=value)
-        self.publish(property="blink_segment")
 
     def add_alarm_definition_for_powernap(self):
 
