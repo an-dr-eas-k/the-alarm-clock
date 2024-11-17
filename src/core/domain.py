@@ -402,6 +402,17 @@ class Config(TACEventPublisher):
 
         self.add_alarm_definition(powernap_alarm_def)
 
+    def get_offline_alarm_effect(
+        self, volume: float = default_volume
+    ) -> OfflineAlarmEffect:
+        full_path = os.path.join(alarms_dir, self.offline_alarm.stream_url)
+        return OfflineAlarmEffect(
+            stream_definition=AudioStream(
+                stream_name="Offline Alarm", stream_url=full_path
+            ),
+            volume=volume,
+        )
+
     def ensure_valid_config(self):
         for conf_prop in [
             dict(key="alarm_duration_in_mins", value=60),
