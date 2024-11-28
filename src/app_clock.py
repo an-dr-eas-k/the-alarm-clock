@@ -14,7 +14,7 @@ from core.application.api import Api
 from core.infrastructure.audio import Speaker
 from core.application.controls import Controls, SoftwareControls
 
-from core.infrastructure.display import Display
+from core.interface.display import Display
 from core.domain import AlarmClockState, Config, DisplayContent, Mode, PlaybackContent
 from core.infrastructure.persistence import Persistence
 from resources.resources import init_logging

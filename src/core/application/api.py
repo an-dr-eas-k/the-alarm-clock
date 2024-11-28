@@ -9,7 +9,7 @@ import tornado
 import tornado.web
 from PIL.Image import Image
 from core.application.controls import Controls
-from core.infrastructure.display import ColorType, Display
+from core.interface.display import ColorType, Display
 from resources.resources import webroot_file
 
 from core.domain import (
