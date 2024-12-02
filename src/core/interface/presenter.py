@@ -1,34 +1,25 @@
 import datetime
 from enum import Enum
 import logging
-import traceback
 from luma.core.device import device as luma_device
-from luma.core.device import dummy as luma_dummy
-from luma.core.render import canvas
 from PIL import ImageFont, Image
 
 from core.domain import (
     AlarmClockState,
     AlarmDefinition,
-    Config,
     DisplayContent,
-    TACEvent,
     TACEventSubscriber,
-    PlaybackContent,
-    SpotifyAudioEffect,
-    TACMode,
     VisualEffect,
 )
-from core.interface.default import DefaultMode
-from core.interface.presenter import ModePresenter, Presenter
 from utils.drawing import (
     grayscale_to_color,
-    ImageComposition,
+    text_to_image,
+    ComposableImage,
+    Scroller,
 )
 from utils.extensions import get_job_arg, get_timedelta_to_alarm, respect_ranges
-from utils.geolocation import GeoLocation
 
-from resources.resources import fonts_dir, display_shot_file
+from resources.resources import fonts_dir
 
 logger = logging.getLogger("tac.display")
 
@@ -189,132 +180,85 @@ class DisplayFormatter:
         return im
 
 
-class ModePresenter(Presenter):
+class Presenter(TACEventSubscriber, ComposableImage):
+    font_file_7segment = f"{fonts_dir}/DSEG7Classic-Regular.ttf"
+    font_file_nerd = f"{fonts_dir}/CousineNerdFontMono-Regular.ttf"
+
+    content: DisplayContent
+
     def __init__(
         self,
         formatter: DisplayFormatter,
         content: DisplayContent,
-        size: tuple[int, int],
+        position: callable = None,
     ) -> None:
-        super().__init__(formatter, content)
-        self.size = size
-
-    def draw(self) -> Image.Image:
-        if self.content.mode_state.mode_0 == TACMode.ModesOnLevel0.NoMode:
-            return DefaultMode()
-
-        if self.content.mode_state.mode_0 == TACMode.ModesOnLevel0.AlarmChanger:
-            pass
+        super().__init__(position)
+        self.formatter = formatter
+        self.content = content
 
 
-class Display(TACEventSubscriber):
-
-    device: luma_device
-    display_content: DisplayContent
-    current_display_image: Image.Image
+class ScrollingPresenter(Presenter):
+    _scroller: Scroller = None
 
     def __init__(
         self,
-        device: luma_device,
-        display_content: DisplayContent,
-        playback_content: PlaybackContent,
-        state: AlarmClockState,
+        formatter: DisplayFormatter,
+        content: DisplayContent,
+        canvas_width: int,
+        position,
     ) -> None:
-        self.device = device
-        logger.info("device mode: %s", self.device.mode)
-        self.display_content = display_content
-        self.playback_content = playback_content
-        self.state = state
-        self.formatter = DisplayFormatter(self.display_content, self.state)
-        self.composable_presenters = ImageComposition(
-            Image.new(mode=self.device.mode, size=self.device.size, color="black")
+        super().__init__(formatter, content, position)
+        self.canvas_width = canvas_width
+        self._scroller = Scroller(self.canvas_width, 0, 5)
+
+    def rewind_scroller(self):
+        self._scroller.rewind()
+
+    def scroll(self, image: Image.Image) -> Image.Image:
+        scrolling_image = self._scroller.tick(image)
+        if self._scroller.is_scrolling():
+            self.content.is_scrolling = True
+        return scrolling_image
+
+
+class BackgroundPresenter(Presenter):
+    def __init__(
+        self, formatter: DisplayFormatter, content: DisplayContent, device: luma_device
+    ) -> None:
+        super().__init__(formatter, content)
+        self._device = device
+
+    def is_present(self) -> bool:
+        return True
+
+    def draw(self):
+        return Image.new(
+            "RGB", self._device.size, color=self.formatter.background_color()
         )
 
-        self.mode_presenter = ModePresenter(
-            self.formatter, self.display_content, self.device.size
+
+class RefreshPresenter(Presenter):
+    _symbols = "-\\|/"
+    _prev_symbol_index = 0
+
+    def __init__(
+        self, formatter: DisplayFormatter, content: DisplayContent, position
+    ) -> None:
+        super().__init__(formatter, content, position)
+
+    def is_present(self):
+        return self.content.state.config.debug_level >= 5
+
+    def draw(self) -> Image.Image:
+
+        self._prev_symbol_index = (self._prev_symbol_index + 1) % len(self._symbols)
+        font_size = 15
+
+        font = ImageFont.truetype(self.font_file_nerd, font_size)
+
+        return text_to_image(
+            self._symbols[self._prev_symbol_index],
+            font,
+            fg_color=self.formatter.foreground_color(),
+            bg_color=self.formatter.background_color(),
         )
-
-    def handle(self, observation: TACEvent):
-        super().handle(observation)
-        if isinstance(observation.subscriber, DisplayContent):
-            self.update_from_display_content(observation, observation.subscriber)
-
-    def update_from_display_content(self, _1: TACEvent, _2: DisplayContent):
-        try:
-            self.adjust_display()
-        except Exception as e:
-            logger.warning("%s", traceback.format_exc())
-            with canvas(self.device) as draw:
-                draw.text((20, 20), f"exception! ({e})", fill="white")
-
-    def adjust_display(self):
-        logger.debug("refreshing display...")
-        start_time = GeoLocation().now()
-        self.device.contrast(16)
-        self.formatter.update_formatter()
-        self.composable_presenters.debug = self.state.config.debug_level >= 10
-        self.display_content.is_scrolling = False
-
-        if self.formatter.clear_display():
-            logger.info("clearing display")
-            self.device.clear()
-
-        self.current_display_image = self.present()
-        self.device.display(self.current_display_image)
-        if isinstance(self.device, luma_dummy):
-            self.current_display_image.save(
-                display_shot_file,
-                format="png",
-            )
-
-        logger.debug(
-            "refreshed display in %dms",
-            (GeoLocation().now() - start_time).total_seconds() * 1000,
-        )
-
-    def present(self) -> Image.Image:
-        if self.display_content.mode_state.is_active():
-            pass
-            # im.paste(self.mode_presenter.draw(), (0, 0))
-            # return im
-
-        self.composable_presenters.refresh()
-        return self.composable_presenters()
-
-
-if __name__ == "__main__":
-    import argparse
-    from luma.oled.device import ssd1322
-    from luma.core.interface.serial import spi
-    from luma.core.device import dummy
-    import time
-
-    parser = argparse.ArgumentParser("Display")
-    parser.add_argument("-s", "--software", action="store_true")
-    is_on_hardware = not parser.parse_args().software
-    dev: luma_device
-
-    if is_on_hardware:
-        dev = ssd1322(serial_interface=spi(device=0, port=0))
-    else:
-        dev = dummy(height=64, width=256, mode="1")
-
-    c = Config()
-    s = AlarmClockState(c=c)
-    pc = PlaybackContent(state=s)
-    pc.audio_effect = SpotifyAudioEffect()
-    pc.is_streaming = True
-    dc = DisplayContent(state=s, playback_content=pc)
-    dc.show_blink_segment = True
-    d = Display(dev, dc, pc, s)
-    d.handle(TACEvent(event_publisher=dc, reason="init"))
-    image = d.current_display_image
-
-    # with canvas(dev) as draw:
-    # 	draw.text((20, 20), "Hello World!", fill="white")
-
-    if is_on_hardware:
-        time.sleep(10)
-    else:
-        save_file = display_shot_file
-        image.save(save_file, format="png")
