@@ -26,6 +26,7 @@ config_file = os.path.join(app_dir, "config.json")
 webroot_file = os.path.join(app_dir, "core", "ui", "alarm.html")
 active_alarm_definition_file = f"/tmp/toc_active_alarm.json"
 display_shot_file = os.path.join(app_dir, "..", "..", "display_test.png")
+ssl_dir = os.path.join(app_dir, "../rpi/tls")
 
 valid_mixer_device_simple_control_names = ["Digital", "Master"]
 

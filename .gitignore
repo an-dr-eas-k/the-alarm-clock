@@ -1,3 +1,7 @@
 *.pyc
 src/config.json
 __pycache__
+ca.crt
+ca.key
+cert.crt
+cert.key
