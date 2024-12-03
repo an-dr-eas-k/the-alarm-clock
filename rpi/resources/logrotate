@@ -1,6 +1,5 @@
-/var/log/the-alarm-clock.errout
-/var/log/the-alarm-clock.stdout
-{
+/var/log/the-alarm-clock.* {
+	missingok
 	rotate 10
-	size 1M
+	size 10M
 }
