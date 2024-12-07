@@ -60,13 +60,11 @@ class ClockApp:
             self.controls = Controls(self.state, display_content, playback_content)
             # self.state.attach(GeneralPurposeOutput())
             device = ssd1322(serial_interface=spi(device=0, port=0))
-            port = 443
         else:
             self.controls = SoftwareControls(
                 self.state, display_content, playback_content
             )
             device = dummy(height=64, width=256, mode="RGB")
-            port = 8080
 
         self.display = Display(device, display_content, playback_content, self.state)
         display_content.subscribe(self.display)
@@ -80,8 +78,8 @@ class ClockApp:
         playback_content.subscribe(self.controls)
         self.controls.configure()
 
-        self.api = Api(self.controls, self.display)
-        self.api.start(port)
+        self.api = Api(self.controls, self.display, self.is_on_hardware())
+        self.api.start()
 
         self.state.mode = Mode.Idle
         self.controls.consider_failed_alarm()
