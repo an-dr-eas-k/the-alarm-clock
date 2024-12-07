@@ -237,9 +237,10 @@ class Api:
 
     app: tornado.web.Application
 
-    def __init__(self, controls: Controls, display: Display):
+    def __init__(self, controls: Controls, display: Display, encrypted: bool):
         self.controls = controls
         self.display = display
+        self.encrypted = encrypted
         handlers = [
             (r"/display", DisplayHandler, {"display": self.display}),
             (
@@ -296,11 +297,16 @@ class Api:
             indent=2,
         )
 
-    def start(self, port):
+    def start(self):
+        port = 443
         ssl_options = {
             "certfile": os.path.join(ssl_dir, "cert.crt"),
             "keyfile": os.path.join(ssl_dir, "cert.key"),
         }
+        if not self.encrypted:
+            ssl_options = None
+            port = 8080
+
         self.app.listen(port, ssl_options=ssl_options)
 
 
