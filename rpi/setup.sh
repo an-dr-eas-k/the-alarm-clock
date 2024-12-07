@@ -42,7 +42,8 @@ rm /etc/sudoers.d/the-alarm-clock
 cat $app/rpi/resources/sudoers > /etc/sudoers.d/the-alarm-clock
 
 echo "configure log rotation"
-ln -fs $app/rpi/resources/logrotate /etc/logrotate.d/the-alarm-clock
+rm /etc/logrotate.d/the-alarm-clock
+cat $app/rpi/resources/logrotate > /etc/logrotate.d/the-alarm-clock
 
 echo "setup equalizer"
 ln -fs $app/rpi/resources/asoundrc $uhome/.asoundrc

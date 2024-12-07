@@ -60,7 +60,7 @@ class ClockApp:
             self.controls = Controls(self.state, display_content, playback_content)
             # self.state.attach(GeneralPurposeOutput())
             device = ssd1322(serial_interface=spi(device=0, port=0))
-            port = 80
+            port = 443
         else:
             self.controls = SoftwareControls(
                 self.state, display_content, playback_content

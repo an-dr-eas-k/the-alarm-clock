@@ -10,7 +10,7 @@ import tornado.web
 from PIL.Image import Image
 from core.application.controls import Controls
 from core.interface.display import ColorType, Display
-from resources.resources import webroot_file
+from resources.resources import webroot_file, ssl_dir
 
 from core.domain import (
     AlarmDefinition,
@@ -297,7 +297,11 @@ class Api:
         )
 
     def start(self, port):
-        self.app.listen(port)
+        ssl_options = {
+            "certfile": os.path.join(ssl_dir, "cert.crt"),
+            "keyfile": os.path.join(ssl_dir, "cert.key"),
+        }
+        self.app.listen(port, ssl_options=ssl_options)
 
 
 if __name__ == "__main__":
