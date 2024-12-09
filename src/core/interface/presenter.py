@@ -189,15 +189,29 @@ class Presenter(TACEventSubscriber, ComposableImage):
     def __init__(
         self,
         formatter: DisplayFormatter,
-        content: DisplayContent,
         position: callable = None,
     ) -> None:
         super().__init__(position)
         self.formatter = formatter
+
+
+class DefaultPresenter(Presenter):
+    def __init__(
+        self, formatter: DisplayFormatter, content: DisplayContent, position
+    ) -> None:
+        super().__init__(formatter, position)
         self.content = content
 
 
-class ScrollingPresenter(Presenter):
+class AlarmEditorPresenter(Presenter):
+    def __init__(self, formatter: DisplayFormatter, position) -> None:
+        super().__init__(formatter, position)
+
+    def is_present(self) -> bool:
+        return True
+
+
+class ScrollingPresenter(DefaultPresenter):
     _scroller: Scroller = None
 
     def __init__(
@@ -223,21 +237,22 @@ class ScrollingPresenter(Presenter):
 
 class BackgroundPresenter(Presenter):
     def __init__(
-        self, formatter: DisplayFormatter, content: DisplayContent, device: luma_device
+        self,
+        formatter: DisplayFormatter,
+        _: DisplayContent,
+        size: tuple[int, int],
     ) -> None:
-        super().__init__(formatter, content)
-        self._device = device
+        super().__init__(formatter)
+        self._size = size
 
     def is_present(self) -> bool:
         return True
 
     def draw(self):
-        return Image.new(
-            "RGB", self._device.size, color=self.formatter.background_color()
-        )
+        return Image.new("RGB", self._size, color=self.formatter.background_color())
 
 
-class RefreshPresenter(Presenter):
+class RefreshPresenter(DefaultPresenter):
     _symbols = "-\\|/"
     _prev_symbol_index = 0
 

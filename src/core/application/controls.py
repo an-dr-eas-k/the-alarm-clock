@@ -11,6 +11,7 @@ from core.domain import (
     AlarmClockState,
     AlarmDefinition,
     AudioStream,
+    HwButton,
     PlaybackContent,
     DisplayContent,
     Mode,
@@ -28,10 +29,10 @@ from resources.resources import active_alarm_definition_file
 
 logger = logging.getLogger("tac.controls")
 
-button1Id = 0
-button2Id = 5
-button3Id = 6
-button4Id = 13
+button1 = HwButton(1, 1, "button1")
+button2 = HwButton(2, 5, "button2")
+button3 = HwButton(3, 6, "button3")
+button4 = HwButton(4, 13, "button4")
 alarm_store = "alarm"
 default_store = "default"
 
@@ -186,8 +187,14 @@ class Controls(TACEventSubscriber):
                     job.next_run_time.strftime(f"%Y-%m-%d %H:%M:%S"),
                 )
 
-    def button_action(action, button_id, event_type: str = "unknown event"):
-        Controls.action(action, "button %s %s" % (button_id, event_type))
+    def button_action(self, hwButton: HwButton):
+        self.state.state_machine.do_state_transition(hwButton)
+        if not hwButton.action:
+            return
+        Controls.action(
+            hwButton.action,
+            "button %s %s" % (hwButton.button_id, hwButton.button_name),
+        )
 
     def action(action, info: str = None):
         try:
@@ -198,19 +205,19 @@ class Controls(TACEventSubscriber):
             logger.error("%s", traceback.format_exc())
 
     def button1_activated(self):
-        Controls.button_action(self.decrease_volume, 1, "activated")
+        self.button_action(HwButton(1, "activated", self.decrease_volume))
 
     def button1_held(self):
-        Controls.button_action(self.decrease_volume, 1, "held")
+        self.button_action(HwButton(1, "held", self.decrease_volume))
 
     def button2_activated(self):
-        Controls.button_action(self.increase_volume, 2, "activated")
+        self.button_action(HwButton(2, "activated", self.increase_volume))
 
     def button2_held(self):
-        Controls.button_action(self.increase_volume, 2, "held")
+        self.button_action(HwButton(2, "held", self.increase_volume))
 
     def button3_activated(self):
-        Controls.button_action(self.enter_mode, 3, "activated")
+        self.button_action(HwButton(3, "activated"))
 
     def set_to_idle_mode(self):
         if self.state.mode == Mode.Spotify:
@@ -237,10 +244,10 @@ class Controls(TACEventSubscriber):
                 else:
                     self.play_stream_by_id(0)
 
-        Controls.button_action(toggle_stream, 4, "activated")
+        self.button_action(HwButton(4, "activated", toggle_stream))
 
     def enter_mode(self):
-        self.display_content.mode_state.start()
+        self.display_content.mode_state.next_mode_0()
 
     def increase_volume(self):
         self.playback_content.increase_volume()
@@ -269,19 +276,19 @@ class Controls(TACEventSubscriber):
     def configure(self):
         for button in [
             dict(
-                b=button1Id,
+                b=button1.gpio_id,
                 ht=0.5,
                 wa=self.button1_activated,
                 wh=self.button1_held,
             ),
             dict(
-                b=button2Id,
+                b=button2.gpio_id,
                 ht=0.5,
                 wa=self.button2_activated,
                 wh=self.button2_held,
             ),
-            dict(b=button3Id, wa=self.button3_activated),
-            dict(b=button4Id, wa=self.button4_activated),
+            dict(b=button3.gpio_id, wa=self.button3_activated),
+            dict(b=button4.gpio_id, wa=self.button4_activated),
         ]:
             b = Button(pin=button["b"], bounce_time=0.2)
             if "ht" in button:
@@ -400,8 +407,7 @@ class SoftwareControls(Controls):
                 if key.char == "2":
                     self.button2_activated()
                 if key.char == "3":
-                    # self.button3_action()
-                    pass
+                    self.button3_activated()
                 if key.char == "4":
                     self.button4_activated()
             except Exception:

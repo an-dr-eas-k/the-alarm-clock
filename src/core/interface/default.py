@@ -2,13 +2,15 @@ import logging
 from PIL import ImageFont, Image
 
 from core.domain import (
+    AlarmDefinition,
     DisplayContent,
     TACEvent,
     PlaybackContent,
 )
-from core.interface.display import ModePresenter
 from core.interface.presenter import (
+    AlarmEditorPresenter,
     BackgroundPresenter,
+    DefaultPresenter,
     DisplayFormatter,
     Presenter,
     RefreshPresenter,
@@ -27,7 +29,18 @@ from resources.resources import weather_icons_dir
 logger = logging.getLogger("tac.display.default")
 
 
-class ClockPresenter(Presenter):
+class AlarmDefinitionPresenter(AlarmEditorPresenter):
+    def __init__(
+        self, formatter: DisplayFormatter, alarm_definition: AlarmDefinition, position
+    ) -> None:
+        super().__init__(formatter, position)
+        self.alarm_definition = alarm_definition
+
+    def draw(self) -> Image.Image:
+        pass
+
+
+class ClockPresenter(DefaultPresenter):
     def __init__(
         self, formatter: DisplayFormatter, content: DisplayContent, position: callable
     ) -> None:
@@ -86,7 +99,7 @@ class ClockPresenter(Presenter):
         )
 
 
-class VolumeMeterPresenter(Presenter):
+class VolumeMeterPresenter(DefaultPresenter):
     def __init__(
         self,
         formatter: DisplayFormatter,
@@ -117,7 +130,7 @@ class VolumeMeterPresenter(Presenter):
         return get_concat_v(bg, fg, self.formatter.background_color())
 
 
-class WifiStatusPresenter(Presenter):
+class WifiStatusPresenter(DefaultPresenter):
     def __init__(
         self, formatter: DisplayFormatter, content: DisplayContent, position
     ) -> None:
@@ -209,7 +222,7 @@ class PlaybackTitlePresenter(ScrollingPresenter):
         )
 
 
-class NextAlarmPresenter(Presenter):
+class NextAlarmPresenter(DefaultPresenter):
     def __init__(
         self, formatter: DisplayFormatter, content: DisplayContent, position
     ) -> None:
@@ -255,7 +268,7 @@ class NextAlarmPresenter(Presenter):
         )
 
 
-class WeatherStatusPresenter(Presenter):
+class WeatherStatusPresenter(DefaultPresenter):
     def __init__(
         self, formatter: DisplayFormatter, content: DisplayContent, position
     ) -> None:
@@ -308,61 +321,3 @@ class WeatherStatusPresenter(Presenter):
         dst.paste(temperature_image, (x, y))
         dst.paste(weather_image, (0, 0))
         return dst
-
-
-class DefaultMode:
-    def default_mode(self):
-        self.composable_presenters.add_image(
-            BackgroundPresenter(self.formatter, self.display_content, self.device)
-        )
-
-        self.composable_presenters.add_image(
-            ClockPresenter(
-                self.formatter,
-                self.display_content,
-                lambda width, height: (
-                    (self.device.width - width),
-                    int((self.device.height - height) / 2),
-                ),
-            )
-        )
-        self.composable_presenters.add_image(
-            NextAlarmPresenter(
-                self.formatter,
-                self.display_content,
-                lambda _, height: (2, self.device.height - height - 2),
-            )
-        )
-        self.composable_presenters.add_image(
-            PlaybackTitlePresenter(
-                self.formatter,
-                self.display_content,
-                lambda _, height: (2, self.device.height - height - 2),
-            )
-        )
-        self.composable_presenters.add_image(
-            WeatherStatusPresenter(
-                self.formatter,
-                self.display_content,
-                lambda _, _1: (2, 4),
-            )
-        )
-        self.composable_presenters.add_image(
-            WifiStatusPresenter(
-                self.formatter,
-                self.display_content,
-                lambda _, _1: (2, 2),
-            )
-        )
-        self.composable_presenters.add_image(
-            RefreshPresenter(
-                self.formatter,
-                self.display_content,
-                lambda width, _1: (self.device.width - width, 2),
-            )
-        )
-        self.composable_presenters.add_image(
-            VolumeMeterPresenter(
-                self.formatter, self.display_content, (10, self.device.height)
-            )
-        )

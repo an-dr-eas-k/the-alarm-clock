@@ -10,17 +10,26 @@ from PIL import ImageFont, Image
 from core.domain import (
     AlarmClockState,
     AlarmDefinition,
+    AlarmEditorMode,
     Config,
+    DefaultMode,
     DisplayContent,
     TACEvent,
     TACEventSubscriber,
     PlaybackContent,
     SpotifyAudioEffect,
-    TACMode,
+    TacMode,
     VisualEffect,
 )
-from core.interface.default import DefaultMode
-from core.interface.presenter import ModePresenter, Presenter
+from core.interface.default import (
+    ClockPresenter,
+    NextAlarmPresenter,
+    PlaybackTitlePresenter,
+    VolumeMeterPresenter,
+    WeatherStatusPresenter,
+    WifiStatusPresenter,
+)
+from core.interface.presenter import BackgroundPresenter, Presenter, RefreshPresenter
 from utils.drawing import (
     grayscale_to_color,
     ImageComposition,
@@ -189,22 +198,91 @@ class DisplayFormatter:
         return im
 
 
-class ModePresenter(Presenter):
+class ModeComposer:
     def __init__(
         self,
         formatter: DisplayFormatter,
         content: DisplayContent,
         size: tuple[int, int],
     ) -> None:
-        super().__init__(formatter, content)
+        self.formatter = formatter
+        self.display_content = content
         self.size = size
 
-    def draw(self) -> Image.Image:
-        if self.content.mode_state.mode_0 == TACMode.ModesOnLevel0.NoMode:
-            return DefaultMode()
+    def compose(self, composition: ImageComposition):
+        current_state = self.display_content.state.state_machine.current_state
+        if isinstance(current_state, DefaultMode):
+            self.compose_default(composition, current_state)
 
-        if self.content.mode_state.mode_0 == TACMode.ModesOnLevel0.AlarmChanger:
-            pass
+        elif isinstance(current_state, AlarmEditorMode):
+            self.compose_alarm_changer(composition, current_state)
+
+    def compose_alarm_changer(
+        self, composition: ImageComposition, mode: AlarmEditorMode
+    ):
+        composition.add_image(
+            BackgroundPresenter(self.formatter, self.display_content, self.size)
+        )
+
+        alarm_definition: AlarmDefinition = (
+            self.display_content.state.config.alarm_definitions[mode.alarm_index]
+        )
+
+    def compose_default(self, composition: ImageComposition, mode: DefaultMode):
+        composition.add_image(
+            BackgroundPresenter(self.formatter, self.display_content, self.size)
+        )
+
+        composition.add_image(
+            ClockPresenter(
+                self.formatter,
+                self.display_content,
+                lambda width, height: (
+                    (self.size[0] - width),
+                    int((self.size[1] - height) / 2),
+                ),
+            )
+        )
+        composition.add_image(
+            NextAlarmPresenter(
+                self.formatter,
+                self.display_content,
+                lambda _, height: (2, self.size[1] - height - 2),
+            )
+        )
+        composition.add_image(
+            PlaybackTitlePresenter(
+                self.formatter,
+                self.display_content,
+                lambda _, height: (2, self.size[1] - height - 2),
+            )
+        )
+        composition.add_image(
+            WeatherStatusPresenter(
+                self.formatter,
+                self.display_content,
+                lambda _, _1: (2, 4),
+            )
+        )
+        composition.add_image(
+            WifiStatusPresenter(
+                self.formatter,
+                self.display_content,
+                lambda _, _1: (2, 2),
+            )
+        )
+        composition.add_image(
+            RefreshPresenter(
+                self.formatter,
+                self.display_content,
+                lambda width, _1: (self.size[0] - width, 2),
+            )
+        )
+        composition.add_image(
+            VolumeMeterPresenter(
+                self.formatter, self.display_content, (10, self.size[1])
+            )
+        )
 
 
 class Display(TACEventSubscriber):
@@ -230,7 +308,7 @@ class Display(TACEventSubscriber):
             Image.new(mode=self.device.mode, size=self.device.size, color="black")
         )
 
-        self.mode_presenter = ModePresenter(
+        self.mode_presenter = ModeComposer(
             self.formatter, self.display_content, self.device.size
         )
 
@@ -273,11 +351,7 @@ class Display(TACEventSubscriber):
         )
 
     def present(self) -> Image.Image:
-        if self.display_content.mode_state.is_active():
-            pass
-            # im.paste(self.mode_presenter.draw(), (0, 0))
-            # return im
-
+        self.mode_presenter.compose(self.composable_presenters)
         self.composable_presenters.refresh()
         return self.composable_presenters()
 

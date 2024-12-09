@@ -17,6 +17,7 @@ from utils.geolocation import GeoLocation, Weather
 from resources.resources import alarms_dir, default_volume
 from utils.singleton import singleton
 from utils.sound_device import TACSoundDevice
+from utils.state_machine import State, StateMachine, StateTransition, Trigger
 
 logger = logging.getLogger("tac.domain")
 
@@ -451,11 +452,52 @@ class Config(TACEventPublisher):
             return persisted_config
 
 
+class HwButton(Trigger):
+    def __init__(
+        self, button_id: int, gpio_id: int = None, button_name: str = None, action=None
+    ):
+        self.button_id = button_id
+        self.gpio_id = gpio_id
+        self.button_name = button_name
+        self.action = action
+
+    def __hash__(self):
+        return f"button.{self.button_id}".__hash__()
+
+
+class TacMode(State):
+
+    def __hash__(self):
+        return self.__class__.__name__.__hash__()
+
+
+class DefaultMode(TacMode):
+    pass
+
+
+class AlarmEditorMode(TacMode):
+    alarm_index: int = 0
+
+
+class AlarmClockStateMachine(StateMachine):
+    def __init__(self):
+        super().__init__(DefaultMode())
+        super().add_definition(
+            DefaultMode(),
+            StateTransition().add_transition(HwButton(3), AlarmEditorMode()),
+        ).add_definition(
+            AlarmEditorMode(),
+            StateTransition().add_transition(HwButton(3), DefaultMode()),
+        )
+        pass
+
+
 class AlarmClockState(TACEventPublisher):
 
     config: Config
     room_brightness: RoomBrightness = RoomBrightness(1.0)
     show_blink_segment: bool = False
+    state_machine: StateMachine = AlarmClockStateMachine()
 
     @property
     def is_online(self) -> bool:
@@ -631,20 +673,6 @@ class PlaybackContent(MediaContent):
             self.publish(property="volume")
 
 
-class TACMode:
-    class ModesOnLevel0(Enum):
-        NoMode = 0
-        AlarmChanger = 1
-
-    mode_0 = ModesOnLevel0.NoMode
-
-    def start(self):
-        self.mode_0 = TACMode.ModesOnLevel0.AlarmChanger
-
-    def is_active(self) -> bool:
-        return self.mode_0 != TACMode.ModesOnLevel0.NoMode
-
-
 class DisplayContent(MediaContent):
     _show_volume_meter: bool = False
     next_alarm_job: Job = None
@@ -652,7 +680,6 @@ class DisplayContent(MediaContent):
     show_blink_segment: bool
     room_brightness: float
     is_scrolling: bool = False
-    mode_state: TACMode = TACMode()
 
     def __init__(self, state: AlarmClockState, playback_content: PlaybackContent):
         super().__init__(state)
