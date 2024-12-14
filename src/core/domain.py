@@ -467,29 +467,108 @@ class HwButton(Trigger):
 
 class TacMode(State):
 
+    def __init__(self, state: "AlarmClockState"):
+        self.state = state
+
     def __hash__(self):
         return self.__class__.__name__.__hash__()
 
 
 class DefaultMode(TacMode):
-    pass
+    def __init__(self, state: "AlarmClockState"):
+        super().__init__(state)
+
+
+class AlarmViewMode(TacMode):
+    alarm_index: int = 0
+
+    def __init__(self, state: "AlarmClockState"):
+        super().__init__(state)
+
+    def activate_next_alarm(self):
+        if self.alarm_index < len(self.state.config.alarm_definitions) - 1:
+            self.alarm_index += 1
+        else:
+            self.alarm_index = 0
+        return self.alarm_index
+
+    def activate_previous_alarm(self):
+        if self.alarm_index > 0:
+            self.alarm_index -= 1
+        else:
+            self.alarm_index = len(self.state.config.alarm_definitions) - 1
+        return self.alarm_index
 
 
 class AlarmEditorMode(TacMode):
-    alarm_index: int = 0
+    def __init__(self, alarm_view_mode: AlarmViewMode):
+        super().__init__(alarm_view_mode.state)
+        self.alarm_view_mode = alarm_view_mode
+        self.property_to_edit = "hour"
+
+    def activate_next_property_to_edit(self):
+        if self.property_to_edit == "hour":
+            self.property_to_edit = "min"
+        elif self.property_to_edit == "min":
+            self.property_to_edit = "weekdays"
+        elif self.property_to_edit == "weekdays":
+            self.property_to_edit = "audio_effect"
+        elif self.property_to_edit == "audio_effect":
+            self.property_to_edit = "hour"
+        return self.property_to_edit
+
+    def activate_previous_property_to_edit(self):
+        if self.property_to_edit == "hour":
+            self.property_to_edit = "audio_effect"
+        elif self.property_to_edit == "min":
+            self.property_to_edit = "hour"
+        elif self.property_to_edit == "weekdays":
+            self.property_to_edit = "min"
+        elif self.property_to_edit == "audio_effect":
+            self.property_to_edit = "weekdays"
+        return self.property_to_edit
+
+    def save(self):
+        return self.alarm_view_mode.alarm_index
 
 
 class AlarmClockStateMachine(StateMachine):
-    def __init__(self):
-        super().__init__(DefaultMode())
+    def __init__(self, state: "AlarmClockState"):
+        dm = DefaultMode(state)
+        avm = AlarmViewMode(state)
+        aem = AlarmEditorMode(avm)
+        super().__init__(dm)
         super().add_definition(
-            DefaultMode(),
-            StateTransition().add_transition(HwButton(3), AlarmEditorMode()),
+            StateTransition(dm).add_transition(HwButton(3), avm)
         ).add_definition(
-            AlarmEditorMode(),
-            StateTransition().add_transition(HwButton(3), DefaultMode()),
+            StateTransition(avm)
+            .add_transition(HwButton(3), dm)
+            .add_transition(
+                HwButton(2),
+                avm,
+                source_state_update=lambda su: su.activate_next_alarm(),
+            )
+            .add_transition(
+                HwButton(1),
+                avm,
+                source_state_update=lambda su: su.activate_previous_alarm(),
+            )
+            .add_transition(HwButton(4), aem),
+        ).add_definition(
+            StateTransition(aem)
+            .add_transition(HwButton(3), dm)
+            .add_transition(
+                HwButton(2),
+                aem,
+                source_state_update=lambda su: su.activate_next_property_to_edit(),
+            )
+            .add_transition(
+                HwButton(1),
+                aem,
+                source_state_update=lambda su: su.activate_previous_property_to_edit(),
+            )
+            .add_transition(HwButton(4), avm, source_state_update=lambda su: su.save()),
         )
-        pass
 
 
 class AlarmClockState(TACEventPublisher):
@@ -497,7 +576,7 @@ class AlarmClockState(TACEventPublisher):
     config: Config
     room_brightness: RoomBrightness = RoomBrightness(1.0)
     show_blink_segment: bool = False
-    state_machine: StateMachine = AlarmClockStateMachine()
+    state_machine: StateMachine = None
 
     @property
     def is_online(self) -> bool:
@@ -552,6 +631,7 @@ class AlarmClockState(TACEventPublisher):
         self.geo_location = GeoLocation()
         self.is_online = True
         self.show_blink_segment = True
+        self.state_machine: StateMachine = AlarmClockStateMachine(self)
 
     def update_state(
         self, show_blink_segment: bool, brightness: RoomBrightness, is_scrolling: bool

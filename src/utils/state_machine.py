@@ -20,13 +20,24 @@ class State(StateMachineIdentifier):
 class StateTransition:
     log = logging.getLogger(__name__)
 
-    def __init__(self):
+    def __init__(self, source_state: State):
         super().__init__()
+        self.source_state = source_state
         self.state_transition = {}
 
-    def add_transition(self, trigger: Trigger, new_state: State):
+    def add_transition(
+        self,
+        trigger: Trigger,
+        new_state: State,
+        source_state_update: callable = None,
+        destination_state_update: callable = None,
+    ) -> "StateTransition":
         try:
-            self.state_transition[trigger] = new_state
+            self.state_transition[trigger] = (
+                new_state,
+                source_state_update,
+                destination_state_update,
+            )
         except Exception as e:
             self.log.fatal(f"trigger to add: {trigger}")
             raise e
@@ -34,7 +45,13 @@ class StateTransition:
 
     def transition(self, trigger: Trigger) -> State:
         try:
-            return self.state_transition[trigger]
+            next_state = self.state_transition[trigger]
+            destination_state = next_state[0]
+            if next_state[1]:
+                next_state[1](self.source_state)
+            if next_state[2]:
+                next_state[2](destination_state)
+            return destination_state
         except Exception as e:
             return None
 
@@ -59,8 +76,8 @@ class StateMachine:
                 f"state transition from {self.current_state} with trigger {trigger} not defined!"
             ) from e
 
-    def add_definition(self, source_state: State, transition: StateTransition):
-        self.state_definition[source_state] = transition
+    def add_definition(self, transition: StateTransition):
+        self.state_definition[transition.source_state] = transition
         return self
 
 

@@ -7,13 +7,10 @@ from core.domain import (
     TACEvent,
     PlaybackContent,
 )
+from core.interface.format import DisplayFormatter
 from core.interface.presenter import (
     AlarmEditorPresenter,
-    BackgroundPresenter,
     DefaultPresenter,
-    DisplayFormatter,
-    Presenter,
-    RefreshPresenter,
     ScrollingPresenter,
 )
 from utils.analog_clock import AnalogClockGenerator
@@ -29,7 +26,7 @@ from resources.resources import weather_icons_dir
 logger = logging.getLogger("tac.display.default")
 
 
-class AlarmDefinitionPresenter(AlarmEditorPresenter):
+class AlarmNamePresenter(AlarmEditorPresenter):
     def __init__(
         self, formatter: DisplayFormatter, alarm_definition: AlarmDefinition, position
     ) -> None:
@@ -37,7 +34,109 @@ class AlarmDefinitionPresenter(AlarmEditorPresenter):
         self.alarm_definition = alarm_definition
 
     def draw(self) -> Image.Image:
-        pass
+        font = self.formatter.default_font(size=20)
+        return text_to_image(
+            self.alarm_definition.alarm_name,
+            font,
+            fg_color=self.formatter.foreground_color(),
+            bg_color=self.formatter.background_color(),
+        )
+
+
+class AlarmTimePresenter(AlarmEditorPresenter):
+    def __init__(
+        self, formatter: DisplayFormatter, alarm_definition: AlarmDefinition, position
+    ) -> None:
+        super().__init__(formatter, position)
+        self.alarm_definition = alarm_definition
+
+    def draw(self) -> Image.Image:
+        font = self.formatter.default_font(size=20)
+        time_string = self.alarm_definition.to_time_string()
+        return text_to_image(
+            time_string,
+            font,
+            fg_color=self.formatter.foreground_color(),
+            bg_color=self.formatter.background_color(),
+        )
+
+
+class AlarmWeekdaysPresenter(AlarmEditorPresenter):
+    def __init__(
+        self, formatter: DisplayFormatter, alarm_definition: AlarmDefinition, position
+    ) -> None:
+        super().__init__(formatter, position)
+        self.alarm_definition = alarm_definition
+
+    def draw(self) -> Image.Image:
+        font = self.formatter.default_font(size=20)
+        weekdays_string = self.alarm_definition.to_weekdays_string()
+        return text_to_image(
+            weekdays_string,
+            font,
+            fg_color=self.formatter.foreground_color(),
+            bg_color=self.formatter.background_color(),
+        )
+
+
+class AlarmVisualEffectPresenter(AlarmEditorPresenter):
+    def __init__(
+        self, formatter: DisplayFormatter, alarm_definition: AlarmDefinition, position
+    ) -> None:
+        super().__init__(formatter, position)
+        self.alarm_definition = alarm_definition
+
+    def draw(self) -> Image.Image:
+        font = self.formatter.default_font(size=20)
+        visual_effect = (
+            "None" if self.alarm_definition.visual_effect is None else "Active"
+        )
+        return text_to_image(
+            visual_effect,
+            font,
+            fg_color=self.formatter.foreground_color(),
+            bg_color=self.formatter.background_color(),
+        )
+
+
+class AlarmAudioEffectPresenter(AlarmEditorPresenter):
+    def __init__(
+        self, formatter: DisplayFormatter, alarm_definition: AlarmDefinition, position
+    ) -> None:
+        super().__init__(formatter, position)
+        self.alarm_definition = alarm_definition
+
+    def draw(self) -> Image.Image:
+        font = self.formatter.default_font(size=20)
+        audio_effect = (
+            "None"
+            if self.alarm_definition.audio_effect is None
+            else self.alarm_definition.audio_effect.title()
+        )
+        return text_to_image(
+            audio_effect,
+            font,
+            fg_color=self.formatter.foreground_color(),
+            bg_color=self.formatter.background_color(),
+        )
+
+
+class AlarmActiveStatusPresenter(AlarmEditorPresenter):
+    def __init__(
+        self, formatter: DisplayFormatter, alarm_definition: AlarmDefinition, position
+    ) -> None:
+        super().__init__(formatter, position)
+        self.alarm_definition = alarm_definition
+
+    def draw(self) -> Image.Image:
+        font = self.formatter.default_font(size=20)
+        status = "Active" if self.alarm_definition.is_active else "Inactive"
+        return text_to_image(
+            status,
+            font,
+            fg_color=self.formatter.foreground_color(),
+            bg_color=self.formatter.background_color(),
+        )
 
 
 class ClockPresenter(DefaultPresenter):

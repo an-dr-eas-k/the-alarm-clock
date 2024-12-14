@@ -53,12 +53,20 @@ def grayscale_to_color(grayscale_value: int):
 
 class ComposableImage(object):
     empty_image = Image.new("RGBA", (0, 0))
+    _bounding_box = (None, None, None, None)
 
     def __init__(self, position: callable = None):
         self._position: callable = position if position else lambda _, _1: (0, 0)
 
     def position(self, width, height) -> tuple[int, int]:
-        return self._position(width, height)
+        self._bounding_box = self._position(width, height) + (
+            self._bounding_box[2],
+            self._bounding_box[3],
+        )
+        return (self._bounding_box[0], self._bounding_box[1])
+
+    def set_dimensions(self, width, height):
+        self._bounding_box = self._bounding_box[:2] + (width, height)
 
     def is_present(self) -> bool:
         return False
@@ -71,6 +79,9 @@ class ComposableImage(object):
             return self.empty_image
         image = self.draw()
         return image
+
+    def get_bounding_box(self) -> tuple[int, int, int, int]:
+        return self._bounding_box
 
 
 class ImageComposition(object):
@@ -107,6 +118,7 @@ class ImageComposition(object):
 
     def draw(self, comp_img: ComposableImage):
         pil_img = comp_img.draw()
+        comp_img.set_dimensions(pil_img.width, pil_img.height)
         logger.debug(
             f"refresh ({comp_img.__class__.__name__}): {pil_img.width}x{pil_img.height}"
         )
