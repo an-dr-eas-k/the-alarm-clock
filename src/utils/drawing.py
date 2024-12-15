@@ -74,12 +74,6 @@ class ComposableImage(object):
     def draw(self) -> Image.Image:
         raise ValueError("no image available")
 
-    def draw_if_present(self) -> Image.Image:
-        if not self.is_present():
-            return self.empty_image
-        image = self.draw()
-        return image
-
     def get_bounding_box(self) -> tuple[int, int, int, int]:
         return self._bounding_box
 
@@ -109,7 +103,7 @@ class ImageComposition(object):
         return self._background_image
 
     def refresh(self):
-        self._clear()
+        self._clear_screen()
         for comp_img in self.composed_images:
             comp_img: ComposableImage = comp_img
             if comp_img.is_present():
@@ -131,7 +125,10 @@ class ImageComposition(object):
             pil_img, comp_img.position(pil_img.width, pil_img.height)
         )
 
-    def _clear(self):
+    def clear(self):
+        self.composed_images.clear()
+
+    def _clear_screen(self):
         draw = ImageDraw.Draw(self._background_image)
         draw.rectangle(self._bounding_box, fill="black")
         del draw

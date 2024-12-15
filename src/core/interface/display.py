@@ -58,6 +58,7 @@ class ModeComposer:
 
     def compose(self, composition: ImageComposition):
         current_state = self.display_content.state.state_machine.current_state
+        composition.clear()
         if isinstance(current_state, DefaultMode):
             self.compose_default(composition, current_state)
 
