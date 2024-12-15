@@ -6,7 +6,8 @@ from core.domain import AlarmClockState, AlarmDefinition, DisplayContent, Visual
 from resources.resources import fonts_dir, display_shot_file
 from utils.drawing import grayscale_to_color
 from utils.extensions import get_job_arg, get_timedelta_to_alarm, respect_ranges
-
+from typing import Dict, BinaryIO
+import io
 
 logger = logging.getLogger("tac.display")
 
@@ -18,11 +19,22 @@ class ColorType(Enum):
 
 
 class PresentationFont:
+    _font_cache: Dict[str, BinaryIO] = {}
+
     def __init__(self, formatter: "DisplayFormatter"):
         self.formatter = formatter
         self._bold_clock_font_path = f"{fonts_dir}/DSEG7Classic-Regular.ttf"
         self._light_clock_font_path = f"{fonts_dir}/DSEG7ClassicMini-Light.ttf"
         self._default_font_path = f"{fonts_dir}/CousineNerdFontMono-Regular.ttf"
+
+    def _get_cached_font_file(self, font_path: str) -> BinaryIO:
+        if font_path not in self._font_cache:
+            with open(font_path, "rb") as f:
+                font_data = io.BytesIO(f.read())
+                self._font_cache[font_path] = font_data
+        else:
+            self._font_cache[font_path].seek(0)
+        return self._font_cache[font_path]
 
     def get_clock_font(self, size: int = 50) -> ImageFont:
         font_path = (
@@ -30,21 +42,18 @@ class PresentationFont:
             if self.formatter.highly_dimmed()
             else self._bold_clock_font_path
         )
-        return ImageFont.truetype(font_path, size)
+        return ImageFont.truetype(self._get_cached_font_file(font_path), size)
 
     def get_default_font(self, size: int = 18) -> ImageFont:
-        return ImageFont.truetype(self._default_font_path, size)
+        return ImageFont.truetype(
+            self._get_cached_font_file(self._default_font_path), size
+        )
 
 
 class DisplayFormatter:
-    _bold_clock_font = ImageFont.truetype(f"{fonts_dir}/DSEG7Classic-Regular.ttf", 50)
-    _light_clock_font = ImageFont.truetype(
-        f"{fonts_dir}/DSEG7ClassicMini-Light.ttf", 20
-    )
 
     _foreground_grayscale_16: int
     _background_grayscale_16: int
-    _clock_font: ImageFont
 
     _visual_effect_active: bool = False
     _clear_display: bool = False
@@ -114,9 +123,6 @@ class DisplayFormatter:
         self._foreground_grayscale_16 = self.state.room_brightness.get_grayscale_value(
             min_value=1
         )
-        self._clock_font = (
-            self._light_clock_font if self.highly_dimmed() else self._bold_clock_font
-        )
 
     def adjust_display_by_alarm(self):
         next_alarm_job = (
@@ -152,9 +158,6 @@ class DisplayFormatter:
         style = visual_effect.get_style(alarm_in_minutes)
         self._background_grayscale_16 = style.background_grayscale_16
         self._foreground_grayscale_16 = style.foreground_grayscale_16
-        self._clock_font = (
-            self._bold_clock_font if style.be_bold else self._light_clock_font
-        )
 
     def format_clock_string(
         self, clock: datetime, show_blink_segment: bool = True
