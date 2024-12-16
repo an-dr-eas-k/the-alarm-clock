@@ -1,5 +1,7 @@
 import logging
 
+logger = logging.getLogger("utils.state_machine")
+
 
 class StateMachineIdentifier:
     def __eq__(self, other):
@@ -69,6 +71,9 @@ class StateMachine:
             next_state = st.transition(trigger)
             if not next_state:
                 return self.current_state
+            logger.debug(
+                f"state transition from {self.current_state.__class__.__name__} triggered by {trigger.__class__.__name__} to {next_state.__class__.__name__}"
+            )
             self.current_state = next_state
             return self.current_state
         except Exception as e:
