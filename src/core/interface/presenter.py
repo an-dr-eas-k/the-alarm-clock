@@ -3,7 +3,14 @@ import logging
 from luma.core.device import device as luma_device
 from PIL import ImageFont, Image
 
-from core.domain import DisplayContent, TACEventSubscriber
+from core.domain import (
+    AlarmDefinition,
+    AlarmEditorMode,
+    AlarmViewMode,
+    DefaultMode,
+    DisplayContent,
+    TACEventSubscriber,
+)
 from utils.drawing import (
     text_to_image,
     ComposableImage,
@@ -32,26 +39,43 @@ class Presenter(TACEventSubscriber, ComposableImage):
     def __init__(
         self,
         formatter: DisplayFormatter,
+        content: DisplayContent,
         position: callable = None,
     ) -> None:
         super().__init__(position)
         self.formatter = formatter
+        self.content = content
+
+    def machine_state(self):
+        return self.content.state.state_machine.current_state
 
 
 class DefaultPresenter(Presenter):
     def __init__(
         self, formatter: DisplayFormatter, content: DisplayContent, position
     ) -> None:
-        super().__init__(formatter, position)
-        self.content = content
+        super().__init__(formatter, content, position)
+
+    def is_present(self) -> bool:
+        return isinstance(self.machine_state(), DefaultMode)
 
 
 class AlarmEditorPresenter(Presenter):
-    def __init__(self, formatter: DisplayFormatter, position) -> None:
-        super().__init__(formatter, position)
+    def __init__(
+        self, formatter: DisplayFormatter, content: DisplayContent, position
+    ) -> None:
+        super().__init__(formatter, content, position)
+
+    def get_alarm_definition(self) -> AlarmDefinition:
+        if isinstance(self.machine_state(), AlarmViewMode):
+            return self.content.state.config.alarm_definitions[
+                self.machine_state().alarm_index
+            ]
+        else:
+            return None
 
     def is_present(self) -> bool:
-        return True
+        return isinstance(self.machine_state(), AlarmViewMode)
 
 
 class ScrollingPresenter(DefaultPresenter):
@@ -82,10 +106,10 @@ class BackgroundPresenter(Presenter):
     def __init__(
         self,
         formatter: DisplayFormatter,
-        _: DisplayContent,
+        content: DisplayContent,
         size: tuple[int, int],
     ) -> None:
-        super().__init__(formatter)
+        super().__init__(formatter, content)
         self._size = size
 
     def is_present(self) -> bool:
@@ -119,4 +143,5 @@ class RefreshPresenter(DefaultPresenter):
             font,
             fg_color=self.formatter.foreground_color(),
             bg_color=self.formatter.background_color(),
+            anchor="mm",
         )

@@ -28,15 +28,18 @@ logger = logging.getLogger("tac.display.default")
 
 class AlarmNamePresenter(AlarmEditorPresenter):
     def __init__(
-        self, formatter: DisplayFormatter, alarm_definition: AlarmDefinition, position
+        self,
+        formatter: DisplayFormatter,
+        content: DisplayContent,
+        position,
     ) -> None:
-        super().__init__(formatter, position)
-        self.alarm_definition = alarm_definition
+        super().__init__(formatter, content, position)
 
     def draw(self) -> Image.Image:
         font = self.formatter.default_font(size=20)
+
         return text_to_image(
-            self.alarm_definition.alarm_name,
+            self.get_alarm_definition().alarm_name,
             font,
             fg_color=self.formatter.foreground_color(),
             bg_color=self.formatter.background_color(),
@@ -45,14 +48,13 @@ class AlarmNamePresenter(AlarmEditorPresenter):
 
 class AlarmTimePresenter(AlarmEditorPresenter):
     def __init__(
-        self, formatter: DisplayFormatter, alarm_definition: AlarmDefinition, position
+        self, formatter: DisplayFormatter, content: DisplayContent, position
     ) -> None:
-        super().__init__(formatter, position)
-        self.alarm_definition = alarm_definition
+        super().__init__(formatter, content, position)
 
     def draw(self) -> Image.Image:
         font = self.formatter.default_font(size=20)
-        time_string = self.alarm_definition.to_time_string()
+        time_string = self.get_alarm_definition().to_time_string()
         return text_to_image(
             time_string,
             font,
@@ -63,14 +65,13 @@ class AlarmTimePresenter(AlarmEditorPresenter):
 
 class AlarmWeekdaysPresenter(AlarmEditorPresenter):
     def __init__(
-        self, formatter: DisplayFormatter, alarm_definition: AlarmDefinition, position
+        self, formatter: DisplayFormatter, content: DisplayContent, position
     ) -> None:
-        super().__init__(formatter, position)
-        self.alarm_definition = alarm_definition
+        super().__init__(formatter, content, position)
 
     def draw(self) -> Image.Image:
         font = self.formatter.default_font(size=20)
-        weekdays_string = self.alarm_definition.to_weekdays_string()
+        weekdays_string = self.get_alarm_definition().to_weekdays_string()
         return text_to_image(
             weekdays_string,
             font,
@@ -81,15 +82,14 @@ class AlarmWeekdaysPresenter(AlarmEditorPresenter):
 
 class AlarmVisualEffectPresenter(AlarmEditorPresenter):
     def __init__(
-        self, formatter: DisplayFormatter, alarm_definition: AlarmDefinition, position
+        self, formatter: DisplayFormatter, content: DisplayContent, position
     ) -> None:
         super().__init__(formatter, position)
-        self.alarm_definition = alarm_definition
 
     def draw(self) -> Image.Image:
         font = self.formatter.default_font(size=20)
         visual_effect = (
-            "None" if self.alarm_definition.visual_effect is None else "Active"
+            "None" if self.get_alarm_definition().visual_effect is None else "Active"
         )
         return text_to_image(
             visual_effect,
@@ -101,17 +101,16 @@ class AlarmVisualEffectPresenter(AlarmEditorPresenter):
 
 class AlarmAudioEffectPresenter(AlarmEditorPresenter):
     def __init__(
-        self, formatter: DisplayFormatter, alarm_definition: AlarmDefinition, position
+        self, formatter: DisplayFormatter, content: DisplayContent, position
     ) -> None:
-        super().__init__(formatter, position)
-        self.alarm_definition = alarm_definition
+        super().__init__(formatter, content, position)
 
     def draw(self) -> Image.Image:
         font = self.formatter.default_font(size=20)
         audio_effect = (
             "None"
-            if self.alarm_definition.audio_effect is None
-            else self.alarm_definition.audio_effect.title()
+            if self.get_alarm_definition().audio_effect is None
+            else self.get_alarm_definition().audio_effect.title()
         )
         return text_to_image(
             audio_effect,
@@ -123,14 +122,13 @@ class AlarmAudioEffectPresenter(AlarmEditorPresenter):
 
 class AlarmActiveStatusPresenter(AlarmEditorPresenter):
     def __init__(
-        self, formatter: DisplayFormatter, alarm_definition: AlarmDefinition, position
+        self, formatter: DisplayFormatter, content: DisplayContent, position
     ) -> None:
-        super().__init__(formatter, position)
-        self.alarm_definition = alarm_definition
+        super().__init__(formatter, content, position)
 
     def draw(self) -> Image.Image:
         font = self.formatter.default_font(size=20)
-        status = "Active" if self.alarm_definition.is_active else "Inactive"
+        status = "Active" if self.get_alarm_definition().is_active else "Inactive"
         return text_to_image(
             status,
             font,
@@ -151,9 +149,6 @@ class ClockPresenter(DefaultPresenter):
             minute_hand_width=2,
             second_hand_width=0,
         )
-
-    def is_present(self) -> bool:
-        return True
 
     def draw_analog_clock(self) -> Image.Image:
         day = GeoLocation().now().day
@@ -210,7 +205,7 @@ class VolumeMeterPresenter(DefaultPresenter):
         self.size = size
 
     def is_present(self):
-        return self.content.show_volume_meter
+        return super().is_present() and self.content.show_volume_meter
 
     def draw(self) -> Image.Image:
         if not self.content.show_volume_meter:
@@ -237,7 +232,7 @@ class WifiStatusPresenter(DefaultPresenter):
 
     def is_present(self):
         return (
-            True
+            super().is_present()
             and not self.content.show_volume_meter
             and not self.content.get_is_online()
         )
@@ -283,7 +278,7 @@ class PlaybackTitlePresenter(ScrollingPresenter):
 
     def is_present(self) -> bool:
         return (
-            True
+            super().is_present()
             and not self.content.show_volume_meter
             and self.content.current_playback_title() is not None
         )
@@ -329,7 +324,7 @@ class NextAlarmPresenter(DefaultPresenter):
 
     def is_present(self) -> bool:
         return (
-            True
+            super().is_present()
             and self.content.current_playback_title() is None
             and not self.content.show_volume_meter
             and self.content.get_timedelta_to_alarm().total_seconds() / 3600
@@ -376,7 +371,7 @@ class WeatherStatusPresenter(DefaultPresenter):
 
     def is_present(self):
         return (
-            True
+            super().is_present()
             and not self.content.show_volume_meter
             and not self.formatter.highly_dimmed()
             and self.content.get_is_online()

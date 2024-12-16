@@ -40,10 +40,22 @@ def text_to_image(
     fg_color,
     bg_color="black",
     mode: str = "RGB",
+    **kwargs,
 ) -> Image.Image:
     box = font.getbbox(text)
-    img = Image.new(mode, (box[2] - box[0], box[3] - box[1]), bg_color)
-    ImageDraw.Draw(img).text([-box[0], -box[1]], text, font=font, fill=fg_color)
+    text_width = box[2] - box[0]
+    text_height = box[3] - box[1]
+
+    img_width = text_width
+    img_height = font.size
+    img = Image.new(mode, (img_width, img_height), bg_color)
+
+    text_x = -box[0]
+    text_y = (img_height - text_height) // 2 - box[1]
+
+    draw = ImageDraw.Draw(img)
+    draw.text((text_x, text_y), text, font=font, fill=fg_color)
+
     return img
 
 

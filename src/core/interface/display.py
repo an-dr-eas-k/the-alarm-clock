@@ -45,133 +45,6 @@ from resources.resources import display_shot_file
 logger = logging.getLogger("tac.display")
 
 
-class ModeComposer:
-    def __init__(
-        self,
-        formatter: DisplayFormatter,
-        content: DisplayContent,
-        size: tuple[int, int],
-    ) -> None:
-        self.formatter = formatter
-        self.display_content = content
-        self.size = size
-
-    def compose(self, composition: ImageComposition):
-        current_state = self.display_content.state.state_machine.current_state
-        composition.clear()
-        if isinstance(current_state, DefaultMode):
-            self.compose_default(composition, current_state)
-
-        elif isinstance(current_state, AlarmViewMode):
-            self.compose_alarm_changer(composition, current_state)
-
-    def compose_alarm_changer(self, composition: ImageComposition, mode: AlarmViewMode):
-        composition.add_image(
-            BackgroundPresenter(self.formatter, self.display_content, self.size)
-        )
-
-        alarm_definition: AlarmDefinition = (
-            self.display_content.state.config.alarm_definitions[mode.alarm_index]
-        )
-
-        composition.add_image(
-            AlarmNamePresenter(
-                self.formatter,
-                alarm_definition,
-                lambda _, _2: (2, 2),
-            )
-        )
-        atp = AlarmTimePresenter(
-            self.formatter, alarm_definition, lambda _, _2: (2, 22)
-        )
-        composition.add_image(atp)
-
-        composition.add_image(
-            AlarmWeekdaysPresenter(
-                self.formatter,
-                alarm_definition,
-                lambda _, _2: (atp.get_bounding_box()[2] + 5, 22),
-            )
-        )
-        # composition.add_image(
-        #     AlarmVisualEffectPresenter(
-        #         self.formatter,
-        #         alarm_definition,
-        #         lambda _, _2: (100, 22),
-        #     )
-        # )
-        composition.add_image(
-            AlarmAudioEffectPresenter(
-                self.formatter,
-                alarm_definition,
-                lambda _, _2: (2, 42),
-            )
-        )
-        # composition.add_image(
-        #     AlarmActiveStatusPresenter(
-        #         self.formatter,
-        #         alarm_definition,
-        #         lambda _, height: (2, height + 12),
-        #     )
-        # )
-
-    def compose_default(self, composition: ImageComposition, mode: DefaultMode):
-        composition.add_image(
-            BackgroundPresenter(self.formatter, self.display_content, self.size)
-        )
-
-        composition.add_image(
-            ClockPresenter(
-                self.formatter,
-                self.display_content,
-                lambda width, height: (
-                    (self.size[0] - width),
-                    int((self.size[1] - height) / 2),
-                ),
-            )
-        )
-        composition.add_image(
-            NextAlarmPresenter(
-                self.formatter,
-                self.display_content,
-                lambda _, height: (2, self.size[1] - height - 2),
-            )
-        )
-        composition.add_image(
-            PlaybackTitlePresenter(
-                self.formatter,
-                self.display_content,
-                lambda _, height: (2, self.size[1] - height - 2),
-            )
-        )
-        composition.add_image(
-            WeatherStatusPresenter(
-                self.formatter,
-                self.display_content,
-                lambda _, _1: (2, 4),
-            )
-        )
-        composition.add_image(
-            WifiStatusPresenter(
-                self.formatter,
-                self.display_content,
-                lambda _, _1: (2, 2),
-            )
-        )
-        composition.add_image(
-            RefreshPresenter(
-                self.formatter,
-                self.display_content,
-                lambda width, _1: (self.size[0] - width, 2),
-            )
-        )
-        composition.add_image(
-            VolumeMeterPresenter(
-                self.formatter, self.display_content, (10, self.size[1])
-            )
-        )
-
-
 class Display(TACEventSubscriber):
 
     device: luma_device
@@ -195,8 +68,106 @@ class Display(TACEventSubscriber):
             Image.new(mode=self.device.mode, size=self.device.size, color="black")
         )
 
-        self.mode_presenter = ModeComposer(
-            self.formatter, self.display_content, self.device.size
+        self.composable_presenters.add_image(
+            BackgroundPresenter(self.formatter, self.display_content, self.device.size)
+        )
+        self.compose_default()
+        self.compose_alarm_changer()
+        self.composable_presenters.add_image(
+            RefreshPresenter(
+                self.formatter,
+                self.display_content,
+                lambda width, _1: (self.device.size[0] - width, 2),
+            )
+        )
+
+    def compose_alarm_changer(self):
+
+        self.composable_presenters.add_image(
+            AlarmNamePresenter(
+                self.formatter,
+                self.display_content,
+                lambda _, _2: (2, 2),
+            )
+        )
+        atp = AlarmTimePresenter(
+            self.formatter, self.display_content, lambda _, _2: (2, 22)
+        )
+        self.composable_presenters.add_image(atp)
+
+        self.composable_presenters.add_image(
+            AlarmWeekdaysPresenter(
+                self.formatter,
+                self.display_content,
+                lambda _, _2: (atp.get_bounding_box()[2] + 5, 22),
+            )
+        )
+        # composition.add_image(
+        #     AlarmVisualEffectPresenter(
+        #         self.formatter,
+        #         alarm_definition,
+        #         lambda _, _2: (100, 22),
+        #     )
+        # )
+        self.composable_presenters.add_image(
+            AlarmAudioEffectPresenter(
+                self.formatter,
+                self.display_content,
+                lambda _, _2: (2, 42),
+            )
+        )
+        # composition.add_image(
+        #     AlarmActiveStatusPresenter(
+        #         self.formatter,
+        #         alarm_definition,
+        #         lambda _, height: (2, height + 12),
+        #     )
+        # )
+
+    def compose_default(self):
+
+        self.composable_presenters.add_image(
+            ClockPresenter(
+                self.formatter,
+                self.display_content,
+                lambda width, height: (
+                    (self.device.size[0] - width),
+                    int((self.device.size[1] - height) / 2),
+                ),
+            )
+        )
+        self.composable_presenters.add_image(
+            NextAlarmPresenter(
+                self.formatter,
+                self.display_content,
+                lambda _, height: (2, self.device.size[1] - height - 2),
+            )
+        )
+        self.composable_presenters.add_image(
+            PlaybackTitlePresenter(
+                self.formatter,
+                self.display_content,
+                lambda _, height: (2, self.device.size[1] - height - 2),
+            )
+        )
+        self.composable_presenters.add_image(
+            WeatherStatusPresenter(
+                self.formatter,
+                self.display_content,
+                lambda _, _1: (2, 4),
+            )
+        )
+        self.composable_presenters.add_image(
+            WifiStatusPresenter(
+                self.formatter,
+                self.display_content,
+                lambda _, _1: (2, 2),
+            )
+        )
+        self.composable_presenters.add_image(
+            VolumeMeterPresenter(
+                self.formatter, self.display_content, (10, self.device.size[1])
+            )
         )
 
     def handle(self, observation: TACEvent):
@@ -238,7 +209,6 @@ class Display(TACEventSubscriber):
         )
 
     def present(self) -> Image.Image:
-        self.mode_presenter.compose(self.composable_presenters)
         self.composable_presenters.refresh()
         return self.composable_presenters()
 
