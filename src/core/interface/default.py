@@ -1,9 +1,11 @@
 import logging
-from PIL import ImageFont, Image
+from PIL import ImageFont, Image, ImageOps
 
 from core.domain import (
     AlarmDefinition,
+    AlarmEditorMode,
     DisplayContent,
+    PropertyToEdit,
     TACEvent,
     PlaybackContent,
 )
@@ -53,13 +55,49 @@ class AlarmTimePresenter(AlarmEditorPresenter):
         super().__init__(formatter, content, position)
 
     def draw(self) -> Image.Image:
+        state = self.machine_state(AlarmEditorMode)
         font = self.formatter.default_font(size=20)
-        time_string = self.get_alarm_definition().to_time_string()
-        return text_to_image(
-            time_string,
+        alarm_def = self.get_alarm_definition()
+        if state is None or not state.is_in_edit_mode(
+            [PropertyToEdit.Hour, PropertyToEdit.Minute]
+        ):
+            return text_to_image(
+                alarm_def.to_time_string(),
+                font,
+                fg_color=self.formatter.foreground_color(),
+                bg_color=self.formatter.background_color(),
+            )
+
+        hour_image = text_to_image(
+            f"{alarm_def.hour:02}",
             font,
             fg_color=self.formatter.foreground_color(),
             bg_color=self.formatter.background_color(),
+        )
+        if state is not None and state.is_in_edit_mode([PropertyToEdit.Hour]):
+            hour_image = ImageOps.expand(hour_image, border=1, fill="white")
+
+        minute_image = text_to_image(
+            f"{alarm_def.min:02}",
+            font,
+            fg_color=self.formatter.foreground_color(),
+            bg_color=self.formatter.background_color(),
+        )
+        if state is not None and state.is_in_edit_mode([PropertyToEdit.Minute]):
+            minute_image = ImageOps.expand(minute_image, border=1, fill="white")
+
+        return get_concat_h_multi_blank(
+            [
+                hour_image,
+                text_to_image(
+                    ":",
+                    font,
+                    fg_color=self.formatter.foreground_color(),
+                    bg_color=self.formatter.background_color(),
+                ),
+                minute_image,
+            ],
+            self.formatter.background_color(),
         )
 
 

@@ -10,6 +10,9 @@ class StateMachineIdentifier:
     def __hash__(self):
         raise NotImplementedError("hash not implemented")
 
+    def __str__(self):
+        return self.__class__.__name__
+
 
 class Trigger(StateMachineIdentifier):
     pass
@@ -72,7 +75,7 @@ class StateMachine:
             if not next_state:
                 return self.current_state
             logger.debug(
-                f"state transition from {self.current_state.__class__.__name__} triggered by {trigger.__class__.__name__} to {next_state.__class__.__name__}"
+                f"state transition from {self.current_state} triggered by {trigger} to {next_state}"
             )
             self.current_state = next_state
             return self.current_state
