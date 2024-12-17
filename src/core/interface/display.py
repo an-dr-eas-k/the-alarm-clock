@@ -78,25 +78,37 @@ class Display(TACEventSubscriber):
 
     def compose_alarm_changer(self):
 
-        self.composable_presenters.add_image(
-            AlarmNamePresenter(
-                self.formatter,
-                self.display_content,
-                lambda _, _2: (2, 2),
-            )
+        anp = AlarmNamePresenter(
+            self.formatter,
+            self.display_content,
+            lambda _, _2: (2, 2),
         )
         atp = AlarmTimePresenter(
-            self.formatter, self.display_content, lambda _, _2: (2, 22)
+            self.formatter,
+            self.display_content,
+            lambda _, _2: (2, anp.get_bounding_box()[3] + 2),
         )
+        awp = AlarmWeekdaysPresenter(
+            self.formatter,
+            self.display_content,
+            lambda _, _2: (
+                atp.get_bounding_box()[2] + 5,
+                anp.get_bounding_box()[3] + 2,
+            ),
+        )
+        aep = AlarmAudioEffectPresenter(
+            self.formatter,
+            self.display_content,
+            lambda _, _2: (
+                2,
+                max(awp.get_bounding_box()[3], atp.get_bounding_box()[3]) + 2,
+            ),
+        )
+        self.composable_presenters.add_image(anp)
         self.composable_presenters.add_image(atp)
+        self.composable_presenters.add_image(awp)
+        self.composable_presenters.add_image(aep)
 
-        self.composable_presenters.add_image(
-            AlarmWeekdaysPresenter(
-                self.formatter,
-                self.display_content,
-                lambda _, _2: (atp.get_bounding_box()[2] + 5, 22),
-            )
-        )
         # composition.add_image(
         #     AlarmVisualEffectPresenter(
         #         self.formatter,
@@ -104,13 +116,6 @@ class Display(TACEventSubscriber):
         #         lambda _, _2: (100, 22),
         #     )
         # )
-        self.composable_presenters.add_image(
-            AlarmAudioEffectPresenter(
-                self.formatter,
-                self.display_content,
-                lambda _, _2: (2, 42),
-            )
-        )
         # composition.add_image(
         #     AlarmActiveStatusPresenter(
         #         self.formatter,
