@@ -388,6 +388,8 @@ class Controls(TACEventSubscriber):
 
 
 class SoftwareControls(Controls):
+    simulated_brightness: int = 10000
+
     def __init__(
         self,
         state: AlarmClockState,
@@ -395,6 +397,24 @@ class SoftwareControls(Controls):
         playback_content: PlaybackContent,
     ) -> None:
         super().__init__(state, display_content, playback_content)
+
+    def update_display(self):
+
+        def do():
+            logger.debug("update display")
+            current_second = GeoLocation().now().second
+            new_blink_state = self.state.show_blink_segment
+            if self._previous_second != current_second:
+                new_blink_state = not self.state.show_blink_segment
+                self._previous_second = current_second
+
+            self.state.update_state(
+                new_blink_state,
+                RoomBrightness(self.simulated_brightness),
+                self.display_content.is_scrolling,
+            )
+
+        Controls.action(do)
 
     def configure(self):
         def key_pressed_action(key):
@@ -411,11 +431,12 @@ class SoftwareControls(Controls):
                 if key.char == "4":
                     self.button4_activated()
                 if key.char == "5":
-                    self.state.update_state(
-                        not self.state.show_blink_segment,
-                        RoomBrightness(0),
-                        self.display_content.is_scrolling,
-                    )
+                    brightness_examples = [0, 1, 3, 10, 10000]
+                    self.simulated_brightness = brightness_examples[
+                        (brightness_examples.index(self.simulated_brightness) + 1)
+                        % len(brightness_examples)
+                    ]
+
             except Exception:
                 logger.warning("%s", traceback.format_exc())
 
