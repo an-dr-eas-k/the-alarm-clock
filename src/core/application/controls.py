@@ -410,6 +410,12 @@ class SoftwareControls(Controls):
                     self.button3_activated()
                 if key.char == "4":
                     self.button4_activated()
+                if key.char == "5":
+                    self.state.update_state(
+                        not self.state.show_blink_segment,
+                        RoomBrightness(0),
+                        self.display_content.is_scrolling,
+                    )
             except Exception:
                 logger.warning("%s", traceback.format_exc())
 

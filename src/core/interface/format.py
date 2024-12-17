@@ -20,12 +20,9 @@ class ColorType(Enum):
 
 class PresentationFont:
     _font_cache: Dict[str, BinaryIO] = {}
-
-    def __init__(self, formatter: "DisplayFormatter"):
-        self.formatter = formatter
-        self._bold_clock_font_path = f"{fonts_dir}/DSEG7Classic-Regular.ttf"
-        self._light_clock_font_path = f"{fonts_dir}/DSEG7ClassicMini-Light.ttf"
-        self._default_font_path = f"{fonts_dir}/CousineNerdFontMono-Regular.ttf"
+    bold_clock_font = f"{fonts_dir}/DSEG7Classic-Regular.ttf"
+    light_clock_font = f"{fonts_dir}/DSEG7ClassicMini-Light.ttf"
+    default_font = f"{fonts_dir}/CousineNerdFontMono-Regular.ttf"
 
     def _get_cached_font_file(self, font_path: str) -> BinaryIO:
         if font_path not in self._font_cache:
@@ -36,18 +33,8 @@ class PresentationFont:
             self._font_cache[font_path].seek(0)
         return self._font_cache[font_path]
 
-    def get_clock_font(self, size: int = 50) -> ImageFont:
-        font_path = (
-            self._light_clock_font_path
-            if self.formatter.highly_dimmed()
-            else self._bold_clock_font_path
-        )
-        return ImageFont.truetype(self._get_cached_font_file(font_path), size)
-
-    def get_default_font(self, size: int = 18) -> ImageFont:
-        return ImageFont.truetype(
-            self._get_cached_font_file(self._default_font_path), size
-        )
+    def get_font(self, font: str, size: int = 50) -> ImageFont:
+        return ImageFont.truetype(self._get_cached_font_file(font), size)
 
 
 class DisplayFormatter:
@@ -61,13 +48,17 @@ class DisplayFormatter:
     def __init__(self, content: DisplayContent, state: AlarmClockState):
         self.display_content = content
         self.state = state
-        self.presentation_font = PresentationFont(self)
+        self.presentation_font = PresentationFont()
 
     def clock_font(self, size: int = 50):
-        return self.presentation_font.get_clock_font(size)
+        if self.highly_dimmed():
+            return self.presentation_font.get_font(
+                PresentationFont.light_clock_font, 20
+            )
+        return self.presentation_font.get_font(PresentationFont.bold_clock_font, size)
 
     def default_font(self, size: int = 18):
-        return self.presentation_font.get_default_font(size)
+        return self.presentation_font.get_font(PresentationFont.default_font, size)
 
     def clear_display(self):
         clear_display = self._clear_display

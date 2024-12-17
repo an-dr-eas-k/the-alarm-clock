@@ -7,10 +7,7 @@ from PIL import Image
 
 from core.domain import (
     AlarmClockState,
-    AlarmDefinition,
-    AlarmViewMode,
     Config,
-    DefaultMode,
     DisplayContent,
     TACEvent,
     TACEventSubscriber,
@@ -27,9 +24,7 @@ from core.interface.default import (
     AlarmNamePresenter,
     AlarmTimePresenter,
     AlarmWeekdaysPresenter,
-    AlarmVisualEffectPresenter,
     AlarmAudioEffectPresenter,
-    AlarmActiveStatusPresenter,
 )
 from core.interface.format import DisplayFormatter
 from core.interface.presenter import (
