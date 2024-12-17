@@ -1,3 +1,4 @@
+from typing import TypeVar, Optional, Type, cast
 from enum import Enum
 import logging
 from luma.core.device import device as luma_device
@@ -20,6 +21,7 @@ from utils.drawing import (
 from resources.resources import fonts_dir
 
 from core.interface.format import DisplayFormatter
+from utils.extensions import T
 
 logger = logging.getLogger("tac.display")
 
@@ -46,8 +48,13 @@ class Presenter(TACEventSubscriber, ComposableImage):
         self.formatter = formatter
         self.content = content
 
-    def machine_state(self):
-        return self.content.state.state_machine.current_state
+    def machine_state(self, expected_type: Type[T] = None) -> Optional[T]:
+        state = self.content.state.state_machine.current_state
+        if expected_type is None:
+            return state
+        if isinstance(state, expected_type):
+            return cast(T, state)
+        return None
 
 
 class DefaultPresenter(Presenter):
