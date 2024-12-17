@@ -7,7 +7,7 @@ from core.domain import (
     TACEvent,
     PlaybackContent,
 )
-from core.interface.format import DisplayFormatter
+from core.interface.format import DisplayFormatter, PresentationFont
 from core.interface.presenter import (
     AlarmEditorPresenter,
     DefaultPresenter,
@@ -381,8 +381,8 @@ class WeatherStatusPresenter(DefaultPresenter):
     def draw(self) -> Image.Image:
         weather = self.content.current_weather
         weather_character = weather.code.to_character()
-        font_weather = ImageFont.truetype(self.font_file_weather, 20)
-        font_7segment = ImageFont.truetype(self.font_file_7segment, 24)
+        font_weather = PresentationFont.get_font(self.font_file_weather, 20)
+        font_7segment = PresentationFont.get_font(self.font_file_7segment, 24)
 
         weather_image = text_to_image(
             weather_character,

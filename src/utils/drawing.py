@@ -1,8 +1,17 @@
+from typing import BinaryIO, Dict
 from PIL import ImageDraw, Image
 from PIL.ImageFont import FreeTypeFont
+from PIL import ImageFont, Image
 from luma.core.image_composition import ComposableImage
 
 import logging
+
+from utils.singleton import singleton
+from resources.resources import fonts_dir, display_shot_file
+from typing import Dict, BinaryIO
+import io
+
+from utils.singleton import singleton
 
 logger = logging.getLogger("utils.drawing")
 
@@ -242,3 +251,28 @@ class Scroller:
             self.ticks = 0
             return False
         return True
+
+
+@singleton
+class PresentationFontSingleton:
+    _font_cache: Dict[str, BinaryIO] = {}
+
+    def _get_cached_font_file(self, font_path: str) -> BinaryIO:
+        if font_path not in self._font_cache:
+            with open(font_path, "rb") as f:
+                font_data = io.BytesIO(f.read())
+                self._font_cache[font_path] = font_data
+        else:
+            self._font_cache[font_path].seek(0)
+        return self._font_cache[font_path]
+
+
+class PresentationFont:
+    bold_clock_font = f"{fonts_dir}/DSEG7Classic-Regular.ttf"
+    light_clock_font = f"{fonts_dir}/DSEG7ClassicMini-Light.ttf"
+    default_font = f"{fonts_dir}/CousineNerdFontMono-Regular.ttf"
+
+    def get_font(font: str, size: int = 50) -> ImageFont:
+        return ImageFont.truetype(
+            PresentationFontSingleton()._get_cached_font_file(font), size
+        )
