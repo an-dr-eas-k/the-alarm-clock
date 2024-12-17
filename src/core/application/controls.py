@@ -225,6 +225,7 @@ class Controls(TACEventSubscriber):
 
         if self.state.mode != Mode.Idle:
             self.stop_generic_trigger(SchedulerJobIds.hide_volume_meter.value)
+            self.display_content.hide_volume_meter()
             self.state.mode = Mode.Idle
             self.state.active_alarm = None
 
