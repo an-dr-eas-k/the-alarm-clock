@@ -29,10 +29,10 @@ from resources.resources import active_alarm_definition_file
 
 logger = logging.getLogger("tac.controls")
 
-button1 = HwButton(1, 1, "button1")
-button2 = HwButton(2, 5, "button2")
-button3 = HwButton(3, 6, "button3")
-button4 = HwButton(4, 13, "button4")
+button1 = 1
+button2 = 5
+button3 = 6
+button4 = 13
 alarm_store = "alarm"
 default_store = "default"
 
@@ -205,16 +205,16 @@ class Controls(TACEventSubscriber):
             logger.error("%s", traceback.format_exc())
 
     def button1_activated(self):
-        self.button_action(HwButton(1, "activated", self.decrease_volume))
+        self.button_action(HwButton(1, "activated", action=self.decrease_volume))
 
     def button1_held(self):
-        self.button_action(HwButton(1, "held", self.decrease_volume))
+        self.button_action(HwButton(1, "held", action=self.decrease_volume))
 
     def button2_activated(self):
-        self.button_action(HwButton(2, "activated", self.increase_volume))
+        self.button_action(HwButton(2, "activated", action=self.increase_volume))
 
     def button2_held(self):
-        self.button_action(HwButton(2, "held", self.increase_volume))
+        self.button_action(HwButton(2, "held", action=self.increase_volume))
 
     def button3_activated(self):
         self.button_action(HwButton(3, "activated"))
@@ -244,7 +244,7 @@ class Controls(TACEventSubscriber):
                 else:
                     self.play_stream_by_id(0)
 
-        self.button_action(HwButton(4, "activated", toggle_stream))
+        self.button_action(HwButton(4, "activated", action=toggle_stream))
 
     def enter_mode(self):
         self.display_content.mode_state.next_mode_0()
@@ -276,19 +276,19 @@ class Controls(TACEventSubscriber):
     def configure(self):
         for button in [
             dict(
-                b=button1.gpio_id,
+                b=button1,
                 ht=0.5,
                 wa=self.button1_activated,
                 wh=self.button1_held,
             ),
             dict(
-                b=button2.gpio_id,
+                b=button2,
                 ht=0.5,
                 wa=self.button2_activated,
                 wh=self.button2_held,
             ),
-            dict(b=button3.gpio_id, wa=self.button3_activated),
-            dict(b=button4.gpio_id, wa=self.button4_activated),
+            dict(b=button3, wa=self.button3_activated),
+            dict(b=button4, wa=self.button4_activated),
         ]:
             b = Button(pin=button["b"], bounce_time=0.2)
             if "ht" in button:
