@@ -29,7 +29,7 @@ from resources.resources import active_alarm_definition_file
 
 logger = logging.getLogger("tac.controls")
 
-button1 = 1
+button1 = 0
 button2 = 5
 button3 = 6
 button4 = 13
