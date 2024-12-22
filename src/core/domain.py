@@ -3,7 +3,7 @@ from datetime import time, timedelta
 import datetime
 import json
 import os
-from typing import List
+from typing import Callable, List, Type
 from apscheduler.job import Job
 from enum import Enum
 import logging
@@ -18,6 +18,7 @@ from resources.resources import alarms_dir, default_volume
 from utils.singleton import singleton
 from utils.sound_device import TACSoundDevice
 from utils.state_machine import State, StateMachine, StateTransition, Trigger
+from typing import TypeVar
 
 logger = logging.getLogger("tac.domain")
 
@@ -333,6 +334,10 @@ class Config(TACEventPublisher):
         self.ensure_valid_config()
         super().__init__()
 
+    def update_alarm_definition(self, alarm_definition: AlarmDefinition):
+        self.remove_alarm_definition(alarm_definition.id)
+        self.add_alarm_definition(alarm_definition)
+
     def add_alarm_definition(self, value: AlarmDefinition):
         self._alarm_definitions = self._append_item_with_id(
             value, self._alarm_definitions
@@ -340,6 +345,8 @@ class Config(TACEventPublisher):
         self.publish(property="alarm_definitions")
 
     def remove_alarm_definition(self, id: int):
+        if id is None:
+            return
         self._alarm_definitions = [
             alarm_def for alarm_def in self._alarm_definitions if alarm_def.id != id
         ]
@@ -464,37 +471,60 @@ class HwButton(Trigger):
     def __hash__(self):
         return f"button.{self.button_id}".__hash__()
 
+    def __str__(self):
+        return super().__str__() + f"({self.button_id})"
+
+
+class PropertyToEdit(Enum):
+    Hour = (0, list(range(24)), "hour")
+    Minute = (1, list(range(60)), "min")
+    Weekdays = (2, list(Weekday), "weekdays")
+    Audio_effect = (3, None, "audio_effect")
+
+    def __init__(self, id: int, value_list: List = None, alarm_property: str = None):
+        self.id = id
+        self.value_list = value_list
+        self.alarm_property = alarm_property
+
+    def get_enum_by_id(id: int) -> "PropertyToEdit":
+        return next((prop for prop in PropertyToEdit if prop.id == id), None)
+
 
 class TacMode(State):
 
-    def __init__(self, state: "AlarmClockState"):
+    state: "AlarmClockState"
+
+    def __init__(
+        self, previous_mode: "TacMode" = None, state: "AlarmClockState" = None
+    ):
         self.state = state
+        if (previous_mode is not None) and (state is None):
+            self.state = previous_mode.state
 
     def __hash__(self):
         return self.__class__.__name__.__hash__()
 
 
 class DefaultMode(TacMode):
-    def __init__(self, state: "AlarmClockState"):
-        super().__init__(state)
+    def __init__(self, previous_mode: TacMode = None, state: "AlarmClockState" = None):
+        super().__init__(previous_mode, state)
 
 
 class AlarmViewMode(TacMode):
-    _alarm_index: int = 0
+    alarm_index: int = 0
 
-    @property
-    def alarm_index(self) -> int:
-        return self._alarm_index
-
-    @alarm_index.setter
-    def alarm_index(self, value: int):
-        self._alarm_index = value
-
-    def __init__(self, state: "AlarmClockState"):
-        super().__init__(state)
+    def __init__(self, previous_mode: TacMode = None):
+        super().__init__(previous_mode)
+        if isinstance(previous_mode, AlarmViewMode):
+            self.alarm_index = previous_mode.alarm_index
 
     def __str__(self):
-        return f"{super().__str__()}({self.alarm_index})"
+        return f"{super().__str__()}(view: {self.alarm_index})"
+
+    def get_active_alarm(self) -> AlarmDefinition:
+        if self.alarm_index >= len(self.state.config.alarm_definitions):
+            return None
+        return self.state.config.alarm_definitions[self.alarm_index]
 
     def activate_next_alarm(self):
         if self.alarm_index < len(self.state.config.alarm_definitions) - 1:
@@ -511,45 +541,35 @@ class AlarmViewMode(TacMode):
         return self.alarm_index
 
 
-class PropertyToEdit(Enum):
-    Hour = 0
-    Minute = 1
-    Weekdays = 2
-    Audio_effect = 3
+class AlarmEditMode(AlarmViewMode):
 
+    property_to_edit: PropertyToEdit = PropertyToEdit.Hour
+    alarm_definition_in_editing: AlarmDefinition = None
 
-class AlarmEditorMode(AlarmViewMode):
-
-    property_to_edit = PropertyToEdit.Hour
-
-    @property
-    def alarm_index(self) -> int:
-        return self._alarm_view_mode.alarm_index
-
-    @alarm_index.setter
-    def alarm_index(self, value: int):
-        self._alarm_view_mode.alarm_index = value
-
-    def __init__(self, alarm_view_mode: AlarmViewMode):
-        super().__init__(alarm_view_mode.state)
-        self._alarm_view_mode = alarm_view_mode
+    def __init__(self, previous_mode: TacMode):
+        super().__init__(previous_mode)
+        if isinstance(previous_mode, AlarmEditMode):
+            self.property_to_edit = previous_mode.property_to_edit
+            self.alarm_definition_in_editing = previous_mode.alarm_definition_in_editing
 
     def __str__(self):
-        return f"{super().__str__()}({self.property_to_edit})"
+        return f"{super().__str__()}(edit: {self.property_to_edit})"
 
     def activate_next_property_to_edit(self):
-        self.property_to_edit = (
-            PropertyToEdit(self.property_to_edit.value + 1)
-            if self.property_to_edit.value < len(PropertyToEdit) - 1
-            else PropertyToEdit.Hour
+        property_id = (
+            self.property_to_edit.id + 1
+            if self.property_to_edit.id < len(PropertyToEdit) - 1
+            else 0
         )
+        self.property_to_edit = PropertyToEdit.get_enum_by_id(property_id)
 
     def activate_previous_property_to_edit(self):
-        self.property_to_edit = (
-            PropertyToEdit(self.property_to_edit.value - 1)
-            if self.property_to_edit.value > 0
-            else PropertyToEdit(len(PropertyToEdit) - 1)
+        property_id = (
+            self.property_to_edit.id - 1
+            if self.property_to_edit.id > 0
+            else len(PropertyToEdit) - 1
         )
+        self.property_to_edit = PropertyToEdit.get_enum_by_id(property_id)
 
     def is_in_edit_mode(self, properties: List[PropertyToEdit]) -> bool:
         for property in properties:
@@ -557,44 +577,116 @@ class AlarmEditorMode(AlarmViewMode):
                 return True
         return False
 
+    def start_editing(self):
+        self.alarm_definition_in_editing = self.get_active_alarm()
+
+    def update_config(self):
+        self.state.config.update_alarm_definition(self.alarm_definition_in_editing)
+        self.alarm_definition_in_editing = None
+
+
+class PropertyEditMode(AlarmEditMode):
+
+    def __init__(self, previous_mode: AlarmEditMode):
+        super().__init__(previous_mode)
+
+    def __str__(self):
+        return f"{super().__str__()}(value: {self.get_value()})"
+
+    def get_value(self):
+        return getattr(
+            self.alarm_definition_in_editing, self.property_to_edit.alarm_property
+        )
+
+    def set_value(self, value):
+        setattr(
+            self.alarm_definition_in_editing,
+            self.property_to_edit.alarm_property,
+            value,
+        )
+
+    def activate_next_value(self):
+        current_index = self.property_to_edit.value_list.index(self.get_value())
+        self.set_value(
+            self.property_to_edit.value_list[
+                (current_index + 1) % len(self.property_to_edit.value_list)
+            ]
+        )
+
+    def activate_previous_value(self):
+        next_index = self.property_to_edit.value_list.index(self.get_value()) - 1
+        if next_index < 0:
+            next_index = len(self.property_to_edit.value_list) - 1
+        self.set_value(self.property_to_edit.value_list[next_index])
+
 
 class AlarmClockStateMachine(StateMachine):
     def __init__(self, state: "AlarmClockState"):
-        default_mode = DefaultMode(state)
-        alarm_view_mode = AlarmViewMode(state)
-        alarm_edit_mode = AlarmEditorMode(alarm_view_mode)
+        default_mode = DefaultMode(state=state)
+        alarm_view_mode = AlarmViewMode(default_mode)
+        alarm_edit_mode = AlarmEditMode(alarm_view_mode)
+        property_edit_mode = PropertyEditMode(alarm_edit_mode)
 
-        super().__init__(default_mode)
+        super().__init__(DefaultMode(state=state))
+
         super().add_definition(
-            StateTransition(default_mode).add_transition(HwButton(3), alarm_view_mode)
-        ).add_definition(
+            StateTransition(default_mode).add_transition(HwButton(3), AlarmViewMode)
+        )
+
+        super().add_definition(
             StateTransition(alarm_view_mode)
-            .add_transition(HwButton(3), default_mode)
+            .add_transition(HwButton(3), DefaultMode)
             .add_transition(
                 HwButton(2),
-                alarm_view_mode,
-                source_state_update=lambda su: su.activate_next_alarm(),
+                AlarmViewMode,
+                source_state_updater=lambda su: su.activate_next_alarm(),
             )
             .add_transition(
                 HwButton(1),
-                alarm_view_mode,
-                source_state_update=lambda su: su.activate_previous_alarm(),
+                AlarmViewMode,
+                source_state_updater=lambda su: su.activate_previous_alarm(),
             )
-            .add_transition(HwButton(4), alarm_edit_mode),
-        ).add_definition(
+            .add_transition(HwButton(4), AlarmEditMode)
+        )
+
+        super().add_definition(
             StateTransition(alarm_edit_mode)
-            .add_transition(HwButton(3), default_mode)
+            .add_transition(HwButton(3), DefaultMode)
             .add_transition(
                 HwButton(2),
-                alarm_edit_mode,
-                source_state_update=lambda su: su.activate_next_property_to_edit(),
+                AlarmEditMode,
+                source_state_updater=lambda su: su.activate_next_property_to_edit(),
             )
             .add_transition(
                 HwButton(1),
-                alarm_edit_mode,
-                source_state_update=lambda su: su.activate_previous_property_to_edit(),
+                AlarmEditMode,
+                source_state_updater=lambda su: su.activate_previous_property_to_edit(),
             )
-            .add_transition(HwButton(4), alarm_view_mode),
+            .add_transition(
+                HwButton(4),
+                PropertyEditMode,
+                source_state_updater=lambda su: su.start_editing(),
+            )
+        )
+
+        super().add_definition(
+            StateTransition(property_edit_mode)
+            .add_transition(HwButton(3), DefaultMode)
+            .add_transition(
+                HwButton(2),
+                PropertyEditMode,
+                source_state_updater=lambda su: su.activate_next_value(),
+            )
+            .add_transition(
+                HwButton(1),
+                PropertyEditMode,
+                source_state_updater=lambda su: su.activate_previous_value(),
+            )
+            .add_transition(
+                HwButton(4),
+                AlarmEditMode,
+                source_state_updater=lambda su: su.update_config(),
+            ),
         )
 
 

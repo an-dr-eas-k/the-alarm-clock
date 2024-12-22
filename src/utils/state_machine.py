@@ -1,4 +1,7 @@
 import logging
+from typing import Callable, Type
+
+from utils.extensions import T
 
 logger = logging.getLogger("utils.state_machine")
 
@@ -33,31 +36,20 @@ class StateTransition:
     def add_transition(
         self,
         trigger: Trigger,
-        new_state: State,
-        source_state_update: callable = None,
-        destination_state_update: callable = None,
+        new_state_type: Type[T],
+        source_state_updater: callable = None,
     ) -> "StateTransition":
         try:
-            self.state_transition[trigger] = (
-                new_state,
-                source_state_update,
-                destination_state_update,
-            )
+            self.state_transition[trigger] = (new_state_type, source_state_updater)
         except Exception as e:
             self.log.fatal(f"trigger to add: {trigger}")
             raise e
         return self
 
-    def transition(self, trigger: Trigger) -> State:
+    def transition(self, trigger: Trigger):
         try:
-            next_state = self.state_transition[trigger]
-            destination_state = next_state[0]
-            if next_state[1]:
-                next_state[1](self.source_state)
-            if next_state[2]:
-                next_state[2](destination_state)
-            return destination_state
-        except Exception as e:
+            return self.state_transition[trigger]
+        except Exception:
             return None
 
 
@@ -68,20 +60,28 @@ class StateMachine:
 
     def do_state_transition(self, trigger: Trigger) -> State:
         try:
+            str_of_current_state = str(self.current_state)
             st: StateTransition = self.state_definition[self.current_state]
             if not st:
                 return self.current_state
-            next_state = st.transition(trigger)
-            if not next_state:
+            transition = st.transition(trigger)
+            if not transition:
+                logger.debug(
+                    f"no transition defined from {str_of_current_state} triggered by {trigger}"
+                )
                 return self.current_state
+            (next_state_type, source_state_updater) = transition
+            if source_state_updater:
+                source_state_updater(self.current_state)
+            next_state = next_state_type(self.current_state)
             logger.debug(
-                f"state transition from {self.current_state} triggered by {trigger} to {next_state}"
+                f"state transition from {str_of_current_state} triggered by {trigger} to {next_state}"
             )
             self.current_state = next_state
             return self.current_state
         except Exception as e:
-            raise (
-                f"state transition from {self.current_state} with trigger {trigger} not defined!"
+            raise Exception(
+                f"state transition from {str_of_current_state} with trigger {trigger} not defined!"
             ) from e
 
     def add_definition(self, transition: StateTransition):
