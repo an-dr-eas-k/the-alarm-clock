@@ -2,8 +2,7 @@ import logging
 from PIL import ImageFont, Image, ImageOps
 
 from core.domain import (
-    AlarmDefinition,
-    AlarmEditorMode,
+    AlarmEditMode,
     DisplayContent,
     PropertyToEdit,
     TACEvent,
@@ -55,7 +54,7 @@ class AlarmTimePresenter(AlarmEditorPresenter):
         super().__init__(formatter, content, position)
 
     def draw(self) -> Image.Image:
-        state = self.machine_state(AlarmEditorMode)
+        state = self.machine_state(AlarmEditMode)
         font = self.formatter.default_font(size=20)
         alarm_def = self.get_alarm_definition()
         if state is None or not state.is_in_edit_mode(
@@ -405,7 +404,7 @@ class WeatherStatusPresenter(DefaultPresenter):
         self, formatter: DisplayFormatter, content: DisplayContent, position
     ) -> None:
         super().__init__(formatter, content, position)
-        self.font_file_weather = f"{weather_icons_dir}/weathericons-regular-webfont.ttf"
+        self.font_file_weather = PresentationFont.weather_font
 
     def is_present(self):
         return (

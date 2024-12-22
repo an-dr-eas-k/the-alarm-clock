@@ -6,13 +6,13 @@ from PIL import ImageFont, Image
 
 from core.domain import (
     AlarmDefinition,
-    AlarmEditorMode,
     AlarmViewMode,
     DefaultMode,
     DisplayContent,
     TACEventSubscriber,
 )
 from utils.drawing import (
+    PresentationFont,
     text_to_image,
     ComposableImage,
     Scroller,
@@ -33,8 +33,8 @@ class ColorType(Enum):
 
 
 class Presenter(TACEventSubscriber, ComposableImage):
-    font_file_7segment = f"{fonts_dir}/DSEG7Classic-Regular.ttf"
-    font_file_nerd = f"{fonts_dir}/CousineNerdFontMono-Regular.ttf"
+    font_file_7segment = PresentationFont.bold_clock_font
+    font_file_nerd = PresentationFont.default_font
 
     content: DisplayContent
 

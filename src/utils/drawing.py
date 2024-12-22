@@ -7,7 +7,7 @@ from luma.core.image_composition import ComposableImage
 import logging
 
 from utils.singleton import singleton
-from resources.resources import fonts_dir, display_shot_file
+from resources.resources import fonts_dir, weather_icons_dir
 from typing import Dict, BinaryIO
 import io
 
@@ -265,8 +265,7 @@ class PresentationFontSingleton:
             with open(font_path, "rb") as f:
                 font_data = io.BytesIO(f.read())
                 self._font_cache[font_path] = font_data
-        else:
-            self._font_cache[font_path].seek(0)
+        self._font_cache[font_path].seek(0)
         return self._font_cache[font_path]
 
 
@@ -274,8 +273,13 @@ class PresentationFont:
     bold_clock_font = f"{fonts_dir}/DSEG7Classic-Regular.ttf"
     light_clock_font = f"{fonts_dir}/DSEG7ClassicMini-Light.ttf"
     default_font = f"{fonts_dir}/CousineNerdFontMono-Regular.ttf"
+    weather_font = f"{weather_icons_dir}/weathericons-regular-webfont.ttf"
 
     def get_font(font: str, size: int = 50) -> ImageFont:
-        return ImageFont.truetype(
-            PresentationFontSingleton()._get_cached_font_file(font), size
-        )
+        try:
+            return ImageFont.truetype(
+                PresentationFontSingleton()._get_cached_font_file(font), size
+            )
+        except Exception as e:
+            logger.error(f"Error loading font {font}: {e}")
+            raise e
