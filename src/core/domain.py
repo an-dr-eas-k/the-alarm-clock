@@ -3,7 +3,7 @@ from datetime import time, timedelta
 import datetime
 import json
 import os
-from typing import Callable, List, Type
+from typing import List
 from apscheduler.job import Job
 from enum import Enum
 import logging
@@ -18,7 +18,6 @@ from resources.resources import alarms_dir, default_volume
 from utils.singleton import singleton
 from utils.sound_device import TACSoundDevice
 from utils.state_machine import State, StateMachine, StateTransition, Trigger
-from typing import TypeVar
 
 logger = logging.getLogger("tac.domain")
 
@@ -554,11 +553,25 @@ class AlarmViewMode(TacMode):
 
     def get_active_alarm(self) -> AlarmDefinition:
         if self.alarm_index >= len(self.state.config.alarm_definitions):
-            return None
+            now = GeoLocation().now()
+            ad = AlarmDefinition()
+            ad.id = None
+            ad.alarm_name = "New Alarm"
+            ad.hour = now.hour
+            ad.min = now.minute
+            ad.is_active = True
+            ad.weekdays = None
+            ad.date = now.date()
+            ad.audio_effect = StreamAudioEffect(
+                stream_definition=self.state.config.audio_streams[0],
+                volume=self.state.config.default_volume,
+            )
+            ad.visual_effect = VisualEffect()
+            return ad
         return self.state.config.alarm_definitions[self.alarm_index]
 
     def activate_next_alarm(self):
-        if self.alarm_index < len(self.state.config.alarm_definitions) - 1:
+        if self.alarm_index < len(self.state.config.alarm_definitions):
             self.alarm_index += 1
         else:
             self.alarm_index = 0
@@ -568,7 +581,7 @@ class AlarmViewMode(TacMode):
         if self.alarm_index > 0:
             self.alarm_index -= 1
         else:
-            self.alarm_index = len(self.state.config.alarm_definitions) - 1
+            self.alarm_index = len(self.state.config.alarm_definitions)
         return self.alarm_index
 
 
@@ -617,7 +630,13 @@ class AlarmEditMode(AlarmViewMode):
         ]
 
     def update_config(self):
-        self.state.config.update_alarm_definition(self.alarm_definition_in_editing)
+        if self.alarm_definition_in_editing.id is None:
+            self.alarm_definition_in_editing.alarm_name = (
+                "Alarm at " + self.alarm_definition_in_editing.to_time_string()
+            )
+            self.state.config.add_alarm_definition(self.alarm_definition_in_editing)
+        else:
+            self.state.config.update_alarm_definition(self.alarm_definition_in_editing)
         self.alarm_definition_in_editing = None
 
 

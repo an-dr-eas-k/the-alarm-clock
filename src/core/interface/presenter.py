@@ -80,7 +80,7 @@ class AlarmEditorPresenter(Presenter):
             return mode.alarm_definition_in_editing
         mode = self.machine_state(AlarmViewMode)
         if mode is not None:
-            return mode.state.config.alarm_definitions[mode.alarm_index]
+            return mode.get_active_alarm()
         return None
 
     def is_present(self) -> bool:
