@@ -6,6 +6,7 @@ from PIL import ImageFont, Image
 
 from core.domain import (
     AlarmDefinition,
+    AlarmEditMode,
     AlarmViewMode,
     DefaultMode,
     DisplayContent,
@@ -74,12 +75,13 @@ class AlarmEditorPresenter(Presenter):
         super().__init__(formatter, content, position)
 
     def get_alarm_definition(self) -> AlarmDefinition:
-        if isinstance(self.machine_state(), AlarmViewMode):
-            return self.content.state.config.alarm_definitions[
-                self.machine_state().alarm_index
-            ]
-        else:
-            return None
+        mode = self.machine_state(AlarmEditMode)
+        if mode is not None and mode.alarm_definition_in_editing is not None:
+            return mode.alarm_definition_in_editing
+        mode = self.machine_state(AlarmViewMode)
+        if mode is not None:
+            return mode.state.config.alarm_definitions[mode.alarm_index]
+        return None
 
     def is_present(self) -> bool:
         return isinstance(self.machine_state(), AlarmViewMode)

@@ -59,30 +59,26 @@ class StateMachine:
         self.current_state = init_state
 
     def do_state_transition(self, trigger: Trigger) -> State:
-        try:
-            str_of_current_state = str(self.current_state)
-            st: StateTransition = self.state_definition[self.current_state]
-            if not st:
-                return self.current_state
-            transition = st.transition(trigger)
-            if not transition:
-                logger.debug(
-                    f"no transition defined from {str_of_current_state} triggered by {trigger}"
-                )
-                return self.current_state
-            (next_state_type, source_state_updater) = transition
-            if source_state_updater:
-                source_state_updater(self.current_state)
-            next_state = next_state_type(self.current_state)
-            logger.debug(
-                f"state transition from {str_of_current_state} triggered by {trigger} to {next_state}"
-            )
-            self.current_state = next_state
+        str_of_current_state = str(self.current_state)
+        st: StateTransition = self.state_definition[self.current_state]
+        if not st:
+            logger.debug(f"no statetransition found for {str_of_current_state}")
             return self.current_state
-        except Exception as e:
-            raise Exception(
-                f"state transition from {str_of_current_state} with trigger {trigger} not defined!"
-            ) from e
+        transition = st.transition(trigger)
+        if not transition:
+            logger.debug(
+                f"no transition defined from {str_of_current_state} triggered by {trigger}"
+            )
+            return self.current_state
+        (next_state_type, source_state_updater) = transition
+        if source_state_updater:
+            source_state_updater(self.current_state)
+        next_state = next_state_type(self.current_state)
+        logger.debug(
+            f"state transition from {str_of_current_state} triggered by {trigger} to {next_state}"
+        )
+        self.current_state = next_state
+        return self.current_state
 
     def add_definition(self, transition: StateTransition):
         self.state_definition[transition.source_state] = transition

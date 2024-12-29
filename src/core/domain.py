@@ -228,7 +228,7 @@ class AlarmDefinition:
     id: int
     hour: int
     min: int
-    weekdays: List[Weekday]
+    weekdays: List[str]
     date: datetime
     alarm_name: str
     is_active: bool
@@ -257,8 +257,8 @@ class AlarmDefinition:
 
     def to_weekdays_string(self) -> str:
         if self.weekdays is not None and len(self.weekdays) > 0:
-            return ", ".join(
-                [Weekday[wd].name.lower().capitalize() for wd in self.weekdays]
+            return ",".join(
+                [Weekday[wd].name.lower().capitalize()[:2] for wd in self.weekdays]
             )
         elif self.date is not None:
             return self.date.strftime("%Y-%m-%d")
@@ -478,7 +478,38 @@ class HwButton(Trigger):
 class PropertyToEdit(Enum):
     Hour = (0, list(range(24)), "hour")
     Minute = (1, list(range(60)), "min")
-    Weekdays = (2, list(Weekday), "weekdays")
+    Weekdays = (
+        2,
+        list(
+            [
+                [Weekday.MONDAY.name],
+                [Weekday.TUESDAY.name],
+                [Weekday.WEDNESDAY.name],
+                [Weekday.THURSDAY.name],
+                [Weekday.FRIDAY.name],
+                [Weekday.SATURDAY.name],
+                [Weekday.SUNDAY.name],
+                [Weekday.SATURDAY.name, Weekday.SUNDAY.name],
+                [
+                    Weekday.MONDAY.name,
+                    Weekday.TUESDAY.name,
+                    Weekday.WEDNESDAY.name,
+                    Weekday.THURSDAY.name,
+                    Weekday.FRIDAY.name,
+                ],
+                [
+                    Weekday.MONDAY.name,
+                    Weekday.TUESDAY.name,
+                    Weekday.WEDNESDAY.name,
+                    Weekday.THURSDAY.name,
+                    Weekday.FRIDAY.name,
+                    Weekday.SATURDAY.name,
+                    Weekday.SUNDAY.name,
+                ],
+            ]
+        ),
+        "weekdays",
+    )
     Audio_effect = (3, None, "audio_effect")
 
     def __init__(self, id: int, value_list: List = None, alarm_property: str = None):
@@ -579,6 +610,11 @@ class AlarmEditMode(AlarmViewMode):
 
     def start_editing(self):
         self.alarm_definition_in_editing = self.get_active_alarm()
+        volume = self.alarm_definition_in_editing.audio_effect.volume
+        PropertyToEdit.Audio_effect.value_list = [
+            StreamAudioEffect(stream_definition=stream, volume=volume)
+            for stream in self.state.config.audio_streams
+        ]
 
     def update_config(self):
         self.state.config.update_alarm_definition(self.alarm_definition_in_editing)
@@ -606,7 +642,12 @@ class PropertyEditMode(AlarmEditMode):
         )
 
     def activate_next_value(self):
-        current_index = self.property_to_edit.value_list.index(self.get_value())
+        current_index = 0
+        try:
+            current_index = self.property_to_edit.value_list.index(self.get_value())
+        except ValueError:
+            pass
+
         self.set_value(
             self.property_to_edit.value_list[
                 (current_index + 1) % len(self.property_to_edit.value_list)

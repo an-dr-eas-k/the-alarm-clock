@@ -54,10 +54,10 @@ class AlarmTimePresenter(AlarmEditorPresenter):
         super().__init__(formatter, content, position)
 
     def draw(self) -> Image.Image:
-        state = self.machine_state(AlarmEditMode)
+        machine_state = self.machine_state(AlarmEditMode)
         font = self.formatter.default_font(size=20)
         alarm_def = self.get_alarm_definition()
-        if state is None or not state.is_in_edit_mode(
+        if machine_state is None or not machine_state.is_in_edit_mode(
             [PropertyToEdit.Hour, PropertyToEdit.Minute]
         ):
             return text_to_image(
@@ -73,7 +73,9 @@ class AlarmTimePresenter(AlarmEditorPresenter):
             fg_color=self.formatter.foreground_color(),
             bg_color=self.formatter.background_color(),
         )
-        if state is not None and state.is_in_edit_mode([PropertyToEdit.Hour]):
+        if machine_state is not None and machine_state.is_in_edit_mode(
+            [PropertyToEdit.Hour]
+        ):
             hour_image = ImageOps.expand(hour_image, border=1, fill="white")
 
         minute_image = text_to_image(
@@ -82,7 +84,9 @@ class AlarmTimePresenter(AlarmEditorPresenter):
             fg_color=self.formatter.foreground_color(),
             bg_color=self.formatter.background_color(),
         )
-        if state is not None and state.is_in_edit_mode([PropertyToEdit.Minute]):
+        if machine_state is not None and machine_state.is_in_edit_mode(
+            [PropertyToEdit.Minute]
+        ):
             minute_image = ImageOps.expand(minute_image, border=1, fill="white")
 
         return get_concat_h_multi_blank(
@@ -107,14 +111,22 @@ class AlarmWeekdaysPresenter(AlarmEditorPresenter):
         super().__init__(formatter, content, position)
 
     def draw(self) -> Image.Image:
-        font = self.formatter.default_font(size=20)
-        weekdays_string = self.get_alarm_definition().to_weekdays_string()
-        return text_to_image(
+        machine_state = self.machine_state(AlarmEditMode)
+        font = self.formatter.default_font(size=15)
+        alarm_def = self.get_alarm_definition()
+        weekdays_string = alarm_def.to_weekdays_string()
+        weekdays_image = text_to_image(
             weekdays_string,
             font,
             fg_color=self.formatter.foreground_color(),
             bg_color=self.formatter.background_color(),
         )
+        if machine_state is None or not machine_state.is_in_edit_mode(
+            [PropertyToEdit.Weekdays]
+        ):
+            return weekdays_image
+
+        return ImageOps.expand(weekdays_image, border=1, fill="white")
 
 
 class AlarmVisualEffectPresenter(AlarmEditorPresenter):
@@ -143,18 +155,22 @@ class AlarmAudioEffectPresenter(AlarmEditorPresenter):
         super().__init__(formatter, content, position)
 
     def draw(self) -> Image.Image:
+        machine_state = self.machine_state(AlarmEditMode)
         font = self.formatter.default_font(size=20)
-        audio_effect = (
-            "None"
-            if self.get_alarm_definition().audio_effect is None
-            else self.get_alarm_definition().audio_effect.title()
-        )
-        return text_to_image(
-            audio_effect,
+        alarm_def = self.get_alarm_definition()
+        effect_string = alarm_def.audio_effect.title()
+        effect_image = text_to_image(
+            effect_string,
             font,
             fg_color=self.formatter.foreground_color(),
             bg_color=self.formatter.background_color(),
         )
+        if machine_state is None or not machine_state.is_in_edit_mode(
+            [PropertyToEdit.Audio_effect]
+        ):
+            return effect_image
+
+        return ImageOps.expand(effect_image, border=1, fill="white")
 
 
 class AlarmActiveStatusPresenter(AlarmEditorPresenter):
