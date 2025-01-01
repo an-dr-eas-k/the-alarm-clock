@@ -18,6 +18,7 @@ from resources.resources import alarms_dir, default_volume
 from utils.singleton import singleton
 from utils.sound_device import TACSoundDevice
 from utils.state_machine import State, StateMachine, StateTransition, Trigger
+from datetime import datetime, timedelta
 
 logger = logging.getLogger("tac.domain")
 
@@ -240,7 +241,7 @@ class AlarmDefinition:
     _audio_effect: AudioEffect
 
     def to_cron_trigger(self) -> CronTrigger:
-        if self.weekdays is not None and len(self.weekdays) > 0:
+        if self.is_recurring():
             return CronTrigger(
                 day_of_week=",".join(
                     [str(Weekday[wd].value - 1) for wd in self.weekdays]
@@ -248,7 +249,7 @@ class AlarmDefinition:
                 hour=self.hour,
                 minute=self.min,
             )
-        elif self.date is not None:
+        elif self.is_onetime():
             return CronTrigger(
                 start_date=self.date,
                 end_date=self.date + timedelta(days=1),
@@ -256,16 +257,20 @@ class AlarmDefinition:
                 minute=self.min,
             )
 
+        raise ValueError("AlarmDefinition is neither recurring nor onetime")
+
     def to_time_string(self) -> str:
         return time(hour=self.hour, minute=self.min).strftime("%H:%M")
 
-    def to_weekdays_string(self) -> str:
-        if self.weekdays is not None and len(self.weekdays) > 0:
+    def to_day_string(self) -> str:
+        if self.is_recurring():
             return ",".join(
                 [Weekday[wd].name.lower().capitalize()[:2] for wd in self.weekdays]
             )
-        elif self.date is not None:
+        elif self.is_onetime():
             return self.date.strftime("%Y-%m-%d")
+
+        raise ValueError("AlarmDefinition is neither recurring nor onetime")
 
     def set_future_date(self, hour: int, minute: int):
         now = GeoLocation().now()
@@ -275,8 +280,11 @@ class AlarmDefinition:
         self.date = target.date()
         self.weekdays = None
 
-    def is_one_time(self) -> bool:
+    def is_onetime(self) -> bool:
         return self.date is not None
+
+    def is_recurring(self) -> bool:
+        return self.weekdays is not None and len(self.weekdays) > 0
 
     @property
     def audio_effect(self) -> AudioEffect:
@@ -482,10 +490,19 @@ class HwButton(Trigger):
 class PropertyToEdit(Enum):
     Hour = (0, list(range(24)), "hour")
     Minute = (1, list(range(60)), "min")
-    Weekdays = (
+    Date = (
         2,
+        [None]
+        + [
+            (datetime.now() + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(30)
+        ],
+        "date",
+    )
+    Weekdays = (
+        3,
         list(
             [
+                None,
                 [Weekday.MONDAY.name],
                 [Weekday.TUESDAY.name],
                 [Weekday.WEDNESDAY.name],
@@ -514,7 +531,7 @@ class PropertyToEdit(Enum):
         ),
         "weekdays",
     )
-    Audio_effect = (3, None, "audio_effect")
+    Audio_effect = (4, None, "audio_effect")
 
     def __init__(self, id: int, value_list: List = None, alarm_property: str = None):
         self.id = id

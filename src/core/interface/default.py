@@ -104,7 +104,7 @@ class AlarmTimePresenter(AlarmEditorPresenter):
         )
 
 
-class AlarmWeekdaysPresenter(AlarmEditorPresenter):
+class AlarmDatePresenter(AlarmEditorPresenter):
     def __init__(
         self, formatter: DisplayFormatter, content: DisplayContent, position
     ) -> None:
@@ -112,21 +112,21 @@ class AlarmWeekdaysPresenter(AlarmEditorPresenter):
 
     def draw(self) -> Image.Image:
         machine_state = self.machine_state(AlarmEditMode)
-        font = self.formatter.default_font(size=15)
+        font = self.formatter.default_font()
         alarm_def = self.get_alarm_definition()
-        weekdays_string = alarm_def.to_weekdays_string()
-        weekdays_image = text_to_image(
-            weekdays_string,
+        day_string = alarm_def.to_day_string()
+        day_image = text_to_image(
+            day_string,
             font,
             fg_color=self.formatter.foreground_color(),
             bg_color=self.formatter.background_color(),
         )
         if machine_state is None or not machine_state.is_in_edit_mode(
-            [PropertyToEdit.Weekdays]
+            [PropertyToEdit.Weekdays, PropertyToEdit.Date]
         ):
-            return weekdays_image
+            return day_image
 
-        return ImageOps.expand(weekdays_image, border=1, fill="white")
+        return ImageOps.expand(day_image, border=1, fill="white")
 
 
 class AlarmVisualEffectPresenter(AlarmEditorPresenter):

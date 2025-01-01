@@ -362,7 +362,7 @@ class Controls(TACEventSubscriber):
                     )
                 )
 
-            if alarm_definition.is_one_time():
+            if alarm_definition.is_onetime():
                 self.state.config.remove_alarm_definition(alarm_definition.id)
 
             self.set_to_idle_mode()

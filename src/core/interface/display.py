@@ -23,7 +23,7 @@ from core.interface.default import (
     WifiStatusPresenter,
     AlarmNamePresenter,
     AlarmTimePresenter,
-    AlarmWeekdaysPresenter,
+    AlarmDatePresenter,
     AlarmAudioEffectPresenter,
 )
 from core.interface.format import DisplayFormatter
@@ -88,7 +88,7 @@ class Display(TACEventSubscriber):
             self.display_content,
             lambda _, _2: (2, anp.get_bounding_box()[3] + 2),
         )
-        awp = AlarmWeekdaysPresenter(
+        awp = AlarmDatePresenter(
             self.formatter,
             self.display_content,
             lambda _, _2: (
