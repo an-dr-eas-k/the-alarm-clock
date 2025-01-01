@@ -72,10 +72,15 @@ class LibreSpotifyEvent(StreamContent):
     sink_status: str
 
     def is_playback_started(self) -> bool:
-        return self.player_event in ["playing", "started", "changed"]
+        return self.player_event in [
+            "session_connected",
+            "playing",
+            "started",
+            "changed",
+        ]
 
     def is_playback_stopped(self) -> bool:
-        return self.player_event in ["stopped", "paused"]
+        return self.player_event in ["session_disconnected", "stopped", "paused"]
 
     def is_volume_changed(self) -> bool:
         return self.player_event in ["volume_set"]
