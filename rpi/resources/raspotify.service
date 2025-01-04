@@ -18,8 +18,8 @@ SupplementaryGroups=audio
 # raspotify-crash-report-generator.service handles
 # restart logic.
  
-#Restart=on-failure
-#RestartSec=10
+Restart=on-failure
+RestartSec=10
 
 # Some of these may be implied by DynamicUser=yes
 # RestrictRealtime=true
