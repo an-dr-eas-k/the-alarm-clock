@@ -84,7 +84,7 @@ class LibreSpotifyEvent(StreamContent):
         return self.player_event in ["session_disconnected", "stopped", "paused"]
 
     def is_volume_changed(self) -> bool:
-        return self.player_event in ["volume_set"]
+        return self.player_event in ["volume_changed"]
 
     def __str__(self):
         return json.dumps(self.__dict__)
