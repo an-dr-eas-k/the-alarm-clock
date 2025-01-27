@@ -38,7 +38,7 @@ class AlarmNamePresenter(AlarmEditorPresenter):
         super().__init__(formatter, content, position)
 
     def draw(self) -> Image.Image:
-        font = self.formatter.default_font(size=12)
+        font = self.formatter.default_font(size=15)
 
         return text_to_image(
             self.get_alarm_definition().alarm_name,
@@ -107,7 +107,7 @@ class AlarmDatePresenter(AlarmEditorPresenter):
 
     def draw(self) -> Image.Image:
         machine_state = self.machine_state(AlarmEditMode)
-        font = self.formatter.default_font(size=12)
+        font = self.formatter.default_font(size=15)
         alarm_def = self.get_alarm_definition()
         day_string = alarm_def.to_day_string()
         day_image = text_to_image(

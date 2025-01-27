@@ -82,19 +82,19 @@ class Display(TACEventSubscriber):
     def compose_alarm_changer(self):
 
         aup = AlarmUpdatePresenter(
-            self.formatter, self.display_content, lambda _, _2: (2, 2)
+            self.formatter, self.display_content, lambda _, _2: (2, 1)
         )
         acp = AlarmCancelPresenter(
             self.formatter,
             self.display_content,
-            lambda _, _2: (aup.get_bounding_box()[2] + 2, 2),
+            lambda _, _2: (aup.get_bounding_box()[2] + 4, 1),
         )
         anp = AlarmNamePresenter(
             self.formatter,
             self.display_content,
-            lambda _, img_height: (
-                acp.get_bounding_box()[2] + 2,
-                acp.get_bounding_box()[3] - img_height,
+            lambda _, _2: (
+                acp.get_bounding_box()[2] + 10,
+                4,
             ),
         )
         asp = AlarmActiveStatusPresenter(
@@ -112,7 +112,7 @@ class Display(TACEventSubscriber):
             self.display_content,
             lambda _, img_height: (
                 atp.get_bounding_box()[2] + 5,
-                atp.get_bounding_box()[3] - img_height - 6,
+                atp.get_bounding_box()[3] - img_height - 2,
             ),
         )
         aep = AlarmAudioEffectPresenter(

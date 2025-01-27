@@ -272,7 +272,7 @@ class PresentationFontSingleton:
 class PresentationFont:
     bold_clock_font = f"{fonts_dir}/DSEG7Classic-Regular.ttf"
     light_clock_font = f"{fonts_dir}/DSEG7ClassicMini-Light.ttf"
-    default_font = f"{fonts_dir}/CousineNerdFontMono-Regular.ttf"
+    default_font = f"{fonts_dir}/IosevkaNerdFontMono-Regular.ttf"
     weather_font = f"{weather_icons_dir}/weathericons-regular-webfont.ttf"
 
     def get_font(font: str, size: int = 50) -> ImageFont:
