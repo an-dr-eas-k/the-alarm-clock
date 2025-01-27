@@ -15,6 +15,9 @@ from core.domain import (
     SpotifyAudioEffect,
 )
 from core.interface.default import (
+    AlarmActiveStatusPresenter,
+    AlarmCancelPresenter,
+    AlarmUpdatePresenter,
     ClockPresenter,
     NextAlarmPresenter,
     PlaybackTitlePresenter,
@@ -78,22 +81,38 @@ class Display(TACEventSubscriber):
 
     def compose_alarm_changer(self):
 
+        aup = AlarmUpdatePresenter(
+            self.formatter, self.display_content, lambda _, _2: (2, 2)
+        )
+        acp = AlarmCancelPresenter(
+            self.formatter,
+            self.display_content,
+            lambda _, _2: (aup.get_bounding_box()[2] + 2, 2),
+        )
         anp = AlarmNamePresenter(
             self.formatter,
             self.display_content,
-            lambda _, _2: (2, 2),
+            lambda _, img_height: (
+                acp.get_bounding_box()[2] + 2,
+                acp.get_bounding_box()[3] - img_height,
+            ),
+        )
+        asp = AlarmActiveStatusPresenter(
+            self.formatter,
+            self.display_content,
+            lambda img_width, _2: (self.device.width - img_width - 10, 2),
         )
         atp = AlarmTimePresenter(
             self.formatter,
             self.display_content,
-            lambda _, _2: (2, anp.get_bounding_box()[3] + 2),
+            lambda _, _2: (2, aup.get_bounding_box()[3] + 2),
         )
         awp = AlarmDatePresenter(
             self.formatter,
             self.display_content,
-            lambda _, _2: (
+            lambda _, img_height: (
                 atp.get_bounding_box()[2] + 5,
-                anp.get_bounding_box()[3] + 2,
+                atp.get_bounding_box()[3] - img_height - 6,
             ),
         )
         aep = AlarmAudioEffectPresenter(
@@ -104,6 +123,10 @@ class Display(TACEventSubscriber):
                 max(awp.get_bounding_box()[3], atp.get_bounding_box()[3]) + 2,
             ),
         )
+
+        self.composable_presenters.add_image(aup)
+        self.composable_presenters.add_image(acp)
+        self.composable_presenters.add_image(asp)
         self.composable_presenters.add_image(anp)
         self.composable_presenters.add_image(atp)
         self.composable_presenters.add_image(awp)

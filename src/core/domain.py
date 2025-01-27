@@ -3,14 +3,14 @@ from datetime import time, timedelta
 import datetime
 import json
 import os
-from typing import List
+from typing import List, Any, Callable, Type
 from apscheduler.job import Job
 from enum import Enum
 import logging
 
 import jsonpickle
 from apscheduler.triggers.cron import CronTrigger
-from utils.extensions import Value, get_timedelta_to_alarm, respect_ranges
+from utils.extensions import T, Value, get_timedelta_to_alarm, respect_ranges
 
 from utils.events import TACEventPublisher, TACEvent, TACEventSubscriber
 from utils.geolocation import GeoLocation, Weather
@@ -174,6 +174,8 @@ class AudioStream:
 
 class AudioEffect:
 
+    volume: float
+
     def __init__(self, volume: float = None):
         self.volume = volume
 
@@ -238,7 +240,7 @@ class AlarmDefinition:
     alarm_name: str
     is_active: bool
     visual_effect: VisualEffect
-    _audio_effect: AudioEffect
+    audio_effect: AudioEffect
 
     def to_cron_trigger(self) -> CronTrigger:
         if self.is_recurring():
@@ -506,31 +508,31 @@ class AlarmDefinitionToEdit(AlarmDefinition):
     )
     _recurring: EditableProperty = EditableProperty(
         "recurring",
+        [
+            [Weekday.MONDAY.name],
+            [Weekday.TUESDAY.name],
+            [Weekday.WEDNESDAY.name],
+            [Weekday.THURSDAY.name],
+            [Weekday.FRIDAY.name],
+            [Weekday.SATURDAY.name],
+            [Weekday.SUNDAY.name],
+            [Weekday.SATURDAY.name, Weekday.SUNDAY.name],
             [
-                [Weekday.MONDAY.name],
-                [Weekday.TUESDAY.name],
-                [Weekday.WEDNESDAY.name],
-                [Weekday.THURSDAY.name],
-                [Weekday.FRIDAY.name],
-                [Weekday.SATURDAY.name],
-                [Weekday.SUNDAY.name],
-                [Weekday.SATURDAY.name, Weekday.SUNDAY.name],
-                [
-                    Weekday.MONDAY.name,
-                    Weekday.TUESDAY.name,
-                    Weekday.WEDNESDAY.name,
-                    Weekday.THURSDAY.name,
-                    Weekday.FRIDAY.name,
-                ],
-                [
-                    Weekday.MONDAY.name,
-                    Weekday.TUESDAY.name,
-                    Weekday.WEDNESDAY.name,
-                    Weekday.THURSDAY.name,
-                    Weekday.FRIDAY.name,
-                    Weekday.SATURDAY.name,
-                    Weekday.SUNDAY.name,
-                ],
+                Weekday.MONDAY.name,
+                Weekday.TUESDAY.name,
+                Weekday.WEDNESDAY.name,
+                Weekday.THURSDAY.name,
+                Weekday.FRIDAY.name,
+            ],
+            [
+                Weekday.MONDAY.name,
+                Weekday.TUESDAY.name,
+                Weekday.WEDNESDAY.name,
+                Weekday.THURSDAY.name,
+                Weekday.FRIDAY.name,
+                Weekday.SATURDAY.name,
+                Weekday.SUNDAY.name,
+            ],
         ],
     )
     _audio_effect: EditableProperty = EditableProperty("audio_effect", None)
@@ -608,10 +610,15 @@ class AlarmViewMode(TacMode):
     def __str__(self):
         return f"{super().__str__()}(view: {self.alarm_index})"
 
-    def get_active_alarm(self) -> AlarmDefinition:
-        if self.alarm_index >= len(self.state.config.alarm_definitions):
+    def get_active_alarm(self) -> AlarmDefinitionToEdit:
+        ad: AlarmDefinitionToEdit = None
+        if self.alarm_index < len(self.state.config.alarm_definitions):
+            ad = AlarmDefinitionToEdit(
+                self.state.config.alarm_definitions[self.alarm_index]
+            )
+        else:
             now = GeoLocation().now()
-            ad = AlarmDefinition()
+            ad = AlarmDefinitionToEdit()
             ad.id = None
             ad.alarm_name = "New Alarm"
             ad.hour = now.hour
@@ -619,13 +626,13 @@ class AlarmViewMode(TacMode):
             ad.is_active = True
             ad.recurring = None
             ad.onetime = now.date()
-            ad.audio_effect = StreamAudioEffect(
-                stream_definition=self.state.config.audio_streams[0],
-                volume=self.state.config.default_volume,
-            )
+            if len(self.state.config.audio_streams) > 0:
+                ad.audio_effect = StreamAudioEffect(
+                    stream_definition=self.state.config.audio_streams[0],
+                    volume=self.state.config.default_volume,
+                )
             ad.visual_effect = VisualEffect()
-            return ad
-        return self.state.config.alarm_definitions[self.alarm_index]
+        return ad
 
     def activate_next_alarm(self):
         if self.alarm_index < len(self.state.config.alarm_definitions):
@@ -644,47 +651,44 @@ class AlarmViewMode(TacMode):
 
 class AlarmEditMode(AlarmViewMode):
 
-    property_to_edit: PropertyToEdit = PropertyToEdit.Hour
-    alarm_definition_in_editing: AlarmDefinition = None
+    property_to_edit: str = "hour"
+    alarm_definition_in_editing: AlarmDefinitionToEdit = None
 
     def __init__(self, previous_mode: TacMode):
         super().__init__(previous_mode)
         if isinstance(previous_mode, AlarmEditMode):
             self.property_to_edit = previous_mode.property_to_edit
             self.alarm_definition_in_editing = previous_mode.alarm_definition_in_editing
+        elif isinstance(previous_mode, AlarmViewMode):
+            self.alarm_definition_in_editing = self.get_active_alarm()
 
     def __str__(self):
         return f"{super().__str__()}(edit: {self.property_to_edit})"
 
     def activate_next_property_to_edit(self):
-        property_id = (
-            self.property_to_edit.id + 1
-            if self.property_to_edit.id < len(PropertyToEdit) - 1
-            else 0
-        )
-        self.property_to_edit = PropertyToEdit.get_enum_by_id(property_id)
+        properties = self.alarm_definition_in_editing.get_properties_to_edit()
+        current_index = properties.index(self.property_to_edit)
+        self.property_to_edit = properties[(current_index + 1) % len(properties)]
 
     def activate_previous_property_to_edit(self):
-        property_id = (
-            self.property_to_edit.id - 1
-            if self.property_to_edit.id > 0
-            else len(PropertyToEdit) - 1
-        )
-        self.property_to_edit = PropertyToEdit.get_enum_by_id(property_id)
+        properties = self.alarm_definition_in_editing.get_properties_to_edit()
+        current_index = properties.index(self.property_to_edit)
+        self.property_to_edit = properties[(current_index - 1) % len(properties)]
 
-    def is_in_edit_mode(self, properties: List[PropertyToEdit]) -> bool:
-        for property in properties:
-            if self.property_to_edit == property:
-                return True
-        return False
+    def is_in_edit_mode(self, properties: List[str]) -> bool:
+        return self.property_to_edit in properties
 
     def start_editing(self):
-        self.alarm_definition_in_editing = self.get_active_alarm()
-        volume = self.alarm_definition_in_editing.audio_effect.volume
-        PropertyToEdit.Audio_effect.value_list = [
-            StreamAudioEffect(stream_definition=stream, volume=volume)
-            for stream in self.state.config.audio_streams
-        ]
+        if self.property_to_edit == "update":
+            self.update_config()
+            self.proceedingState = AlarmViewMode
+            return
+        if self.property_to_edit == "cancel":
+            self.proceedingState = AlarmViewMode
+            return
+        self.alarm_definition_in_editing.update_value_lists(
+            self.state.config, self.alarm_definition_in_editing.audio_effect.volume
+        )
 
     def update_config(self):
         if self.alarm_definition_in_editing.id is None:
@@ -694,7 +698,6 @@ class AlarmEditMode(AlarmViewMode):
             self.state.config.add_alarm_definition(self.alarm_definition_in_editing)
         else:
             self.state.config.update_alarm_definition(self.alarm_definition_in_editing)
-        self.alarm_definition_in_editing = None
 
 
 class PropertyEditMode(AlarmEditMode):
@@ -706,35 +709,31 @@ class PropertyEditMode(AlarmEditMode):
         return f"{super().__str__()}(value: {self.get_value()})"
 
     def get_value(self):
-        return getattr(
-            self.alarm_definition_in_editing, self.property_to_edit.alarm_property
-        )
+        return getattr(self.alarm_definition_in_editing, self.property_to_edit)
 
     def set_value(self, value):
-        setattr(
-            self.alarm_definition_in_editing,
-            self.property_to_edit.alarm_property,
-            value,
-        )
+        setattr(self.alarm_definition_in_editing, self.property_to_edit, value)
 
     def activate_next_value(self):
+        value_list = self.alarm_definition_in_editing.get_editable_property(
+            self.property_to_edit
+        ).value_list
         current_index = 0
         try:
-            current_index = self.property_to_edit.value_list.index(self.get_value())
+            current_index = value_list.index(self.get_value())
         except ValueError:
             pass
 
-        self.set_value(
-            self.property_to_edit.value_list[
-                (current_index + 1) % len(self.property_to_edit.value_list)
-            ]
-        )
+        self.set_value(value_list[(current_index + 1) % len(value_list)])
 
     def activate_previous_value(self):
-        next_index = self.property_to_edit.value_list.index(self.get_value()) - 1
+        value_list = self.alarm_definition_in_editing.get_editable_property(
+            self.property_to_edit
+        ).value_list
+        next_index = value_list.index(self.get_value()) - 1
         if next_index < 0:
-            next_index = len(self.property_to_edit.value_list) - 1
-        self.set_value(self.property_to_edit.value_list[next_index])
+            next_index = len(value_list) - 1
+        self.set_value(value_list[next_index])
 
 
 class AlarmClockStateMachine(StateMachine):
@@ -799,11 +798,7 @@ class AlarmClockStateMachine(StateMachine):
                 PropertyEditMode,
                 source_state_updater=lambda su: su.activate_previous_value(),
             )
-            .add_transition(
-                HwButton(4),
-                AlarmEditMode,
-                source_state_updater=lambda su: su.update_config(),
-            ),
+            .add_transition(HwButton(4), AlarmEditMode),
         )
 
 

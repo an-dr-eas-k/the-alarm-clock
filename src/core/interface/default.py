@@ -2,9 +2,9 @@ import logging
 from PIL import ImageFont, Image, ImageOps
 
 from core.domain import (
+    AlarmDefinition,
     AlarmEditMode,
     DisplayContent,
-    PropertyToEdit,
     TACEvent,
     PlaybackContent,
 )
@@ -13,6 +13,7 @@ from core.interface.presenter import (
     AlarmEditorPresenter,
     DefaultPresenter,
     ScrollingPresenter,
+    SimpleTextPresenter,
 )
 from utils.analog_clock import AnalogClockGenerator
 from utils.drawing import (
@@ -37,7 +38,7 @@ class AlarmNamePresenter(AlarmEditorPresenter):
         super().__init__(formatter, content, position)
 
     def draw(self) -> Image.Image:
-        font = self.formatter.default_font(size=20)
+        font = self.formatter.default_font(size=12)
 
         return text_to_image(
             self.get_alarm_definition().alarm_name,
@@ -57,9 +58,7 @@ class AlarmTimePresenter(AlarmEditorPresenter):
         machine_state = self.machine_state(AlarmEditMode)
         font = self.formatter.default_font(size=20)
         alarm_def = self.get_alarm_definition()
-        if machine_state is None or not machine_state.is_in_edit_mode(
-            [PropertyToEdit.Hour, PropertyToEdit.Minute]
-        ):
+        if machine_state is None or not machine_state.is_in_edit_mode(["hour", "min"]):
             return text_to_image(
                 alarm_def.to_time_string(),
                 font,
@@ -73,9 +72,7 @@ class AlarmTimePresenter(AlarmEditorPresenter):
             fg_color=self.formatter.foreground_color(),
             bg_color=self.formatter.background_color(),
         )
-        if machine_state is not None and machine_state.is_in_edit_mode(
-            [PropertyToEdit.Hour]
-        ):
+        if machine_state is not None and machine_state.is_in_edit_mode(["hour"]):
             hour_image = ImageOps.expand(hour_image, border=1, fill="white")
 
         minute_image = text_to_image(
@@ -84,9 +81,7 @@ class AlarmTimePresenter(AlarmEditorPresenter):
             fg_color=self.formatter.foreground_color(),
             bg_color=self.formatter.background_color(),
         )
-        if machine_state is not None and machine_state.is_in_edit_mode(
-            [PropertyToEdit.Minute]
-        ):
+        if machine_state is not None and machine_state.is_in_edit_mode(["min"]):
             minute_image = ImageOps.expand(minute_image, border=1, fill="white")
 
         return get_concat_h_multi_blank(
@@ -112,7 +107,7 @@ class AlarmDatePresenter(AlarmEditorPresenter):
 
     def draw(self) -> Image.Image:
         machine_state = self.machine_state(AlarmEditMode)
-        font = self.formatter.default_font()
+        font = self.formatter.default_font(size=12)
         alarm_def = self.get_alarm_definition()
         day_string = alarm_def.to_day_string()
         day_image = text_to_image(
@@ -129,64 +124,60 @@ class AlarmDatePresenter(AlarmEditorPresenter):
         return ImageOps.expand(day_image, border=1, fill="white")
 
 
-class AlarmVisualEffectPresenter(AlarmEditorPresenter):
+class AlarmVisualEffectPresenter(SimpleTextPresenter):
     def __init__(
         self, formatter: DisplayFormatter, content: DisplayContent, position
     ) -> None:
-        super().__init__(formatter, position)
-
-    def draw(self) -> Image.Image:
-        font = self.formatter.default_font(size=20)
-        visual_effect = (
-            "None" if self.get_alarm_definition().visual_effect is None else "Active"
-        )
-        return text_to_image(
-            visual_effect,
-            font,
-            fg_color=self.formatter.foreground_color(),
-            bg_color=self.formatter.background_color(),
+        super().__init__(
+            formatter,
+            content,
+            position,
+            lambda ad: ("N" if ad.visual_effect is None else "A"),
+            "visual_effect",
         )
 
 
-class AlarmAudioEffectPresenter(AlarmEditorPresenter):
+class AlarmAudioEffectPresenter(SimpleTextPresenter):
     def __init__(
         self, formatter: DisplayFormatter, content: DisplayContent, position
     ) -> None:
-        super().__init__(formatter, content, position)
-
-    def draw(self) -> Image.Image:
-        machine_state = self.machine_state(AlarmEditMode)
-        font = self.formatter.default_font(size=20)
-        alarm_def = self.get_alarm_definition()
-        effect_string = alarm_def.audio_effect.title()
-        effect_image = text_to_image(
-            effect_string,
-            font,
-            fg_color=self.formatter.foreground_color(),
-            bg_color=self.formatter.background_color(),
+        super().__init__(
+            formatter,
+            content,
+            position,
+            lambda ad: ad.audio_effect.title(),
+            "audio_effect",
         )
-        if machine_state is None or not machine_state.is_in_edit_mode(
-            [PropertyToEdit.Audio_effect]
-        ):
-            return effect_image
-
-        return ImageOps.expand(effect_image, border=1, fill="white")
 
 
-class AlarmActiveStatusPresenter(AlarmEditorPresenter):
+class AlarmActiveStatusPresenter(SimpleTextPresenter):
     def __init__(
         self, formatter: DisplayFormatter, content: DisplayContent, position
     ) -> None:
-        super().__init__(formatter, content, position)
+        super().__init__(
+            formatter,
+            content,
+            position,
+            lambda ad: ("\U0000f1e2" if ad.is_active else "\U0000eed6"),
+            "is_active",
+        )
 
-    def draw(self) -> Image.Image:
-        font = self.formatter.default_font(size=20)
-        status = "Active" if self.get_alarm_definition().is_active else "Inactive"
-        return text_to_image(
-            status,
-            font,
-            fg_color=self.formatter.foreground_color(),
-            bg_color=self.formatter.background_color(),
+
+class AlarmUpdatePresenter(SimpleTextPresenter):
+    def __init__(
+        self, formatter: DisplayFormatter, content: DisplayContent, position
+    ) -> None:
+        super().__init__(
+            formatter, content, position, lambda _: ("\U0000f058"), "update"
+        )
+
+
+class AlarmCancelPresenter(SimpleTextPresenter):
+    def __init__(
+        self, formatter: DisplayFormatter, content: DisplayContent, position
+    ) -> None:
+        super().__init__(
+            formatter, content, position, lambda _: ("\U000f073a"), "cancel"
         )
 
 
