@@ -95,10 +95,10 @@ class ComposableImage(object):
 
     def get_bounding_box(self) -> tuple[int, int, int, int]:
         return (
-            self._position[0],
-            self._position[1],
-            self._position[0] + self._size[0],
-            self._position[1] + self._size[1],
+            self._position[0],  # left
+            self._position[1],  # top
+            self._position[0] + self._size[0],  # right
+            self._position[1] + self._size[1],  # bottom
         )
 
 
