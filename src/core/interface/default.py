@@ -122,7 +122,7 @@ class AlarmDatePresenter(AlarmEditorPresenter):
             bg_color=self.formatter.background_color(),
         )
         if machine_state is None or not machine_state.is_in_edit_mode(
-            [PropertyToEdit.Weekdays, PropertyToEdit.Date]
+            ["recurring", "onetime"]
         ):
             return day_image
 

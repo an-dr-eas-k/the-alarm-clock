@@ -233,8 +233,8 @@ class AlarmDefinition:
     id: int
     hour: int
     min: int
-    weekdays: List[str]
-    date: datetime
+    recurring: List[str]
+    onetime: datetime
     alarm_name: str
     is_active: bool
     visual_effect: VisualEffect
@@ -244,15 +244,15 @@ class AlarmDefinition:
         if self.is_recurring():
             return CronTrigger(
                 day_of_week=",".join(
-                    [str(Weekday[wd].value - 1) for wd in self.weekdays]
+                    [str(Weekday[wd].value - 1) for wd in self.recurring]
                 ),
                 hour=self.hour,
                 minute=self.min,
             )
         elif self.is_onetime():
             return CronTrigger(
-                start_date=self.date,
-                end_date=self.date + timedelta(days=1),
+                start_date=self.onetime,
+                end_date=self.onetime + timedelta(days=1),
                 hour=self.hour,
                 minute=self.min,
             )
@@ -265,10 +265,10 @@ class AlarmDefinition:
     def to_day_string(self) -> str:
         if self.is_recurring():
             return ",".join(
-                [Weekday[wd].name.lower().capitalize()[:2] for wd in self.weekdays]
+                [Weekday[wd].name.lower().capitalize()[:2] for wd in self.recurring]
             )
         elif self.is_onetime():
-            return self.date.strftime("%Y-%m-%d")
+            return self.onetime.strftime("%Y-%m-%d")
 
         raise ValueError("AlarmDefinition is neither recurring nor onetime")
 
@@ -277,22 +277,18 @@ class AlarmDefinition:
         target = now.replace(hour=hour, minute=minute)
         if target < now:
             target = target + timedelta(days=1)
-        self.date = target.date()
-        self.weekdays = None
+        self.onetime = target.date()
+        self.recurring = None
 
     def is_onetime(self) -> bool:
-        return self.date is not None
+        return self.onetime is not None and self.recurring is None
 
     def is_recurring(self) -> bool:
-        return self.weekdays is not None and len(self.weekdays) > 0
-
-    @property
-    def audio_effect(self) -> AudioEffect:
-        return self._audio_effect
-
-    @audio_effect.setter
-    def audio_effect(self, value: AudioEffect):
-        self._audio_effect = value
+        return (
+            self.recurring is not None
+            and len(self.recurring) > 0
+            and self.onetime is None
+        )
 
     def serialize(self, alarm_definition_file: str):
         with open(alarm_definition_file, "w") as file:
@@ -582,8 +578,8 @@ class AlarmViewMode(TacMode):
             ad.hour = now.hour
             ad.min = now.minute
             ad.is_active = True
-            ad.weekdays = None
-            ad.date = now.date()
+            ad.recurring = None
+            ad.onetime = now.date()
             ad.audio_effect = StreamAudioEffect(
                 stream_definition=self.state.config.audio_streams[0],
                 volume=self.state.config.default_volume,
