@@ -38,7 +38,7 @@
         "alarm_name": "default morning alarm",
         "hour": 6,
         "min": 45,
-        "weekdays": [
+        "recurring": [
           "MONDAY",
           "TUESDAY",
           "WEDNESDAY",
@@ -64,7 +64,7 @@
         "alarm_name": "weekend",
         "hour": 7,
         "min": 45,
-        "weekdays": [
+        "recurring": [
           "SATURDAY",
           "SUNDAY"
         ],
@@ -87,7 +87,7 @@
         "alarm_name": "work on wednesday",
         "hour": 6,
         "min": 25,
-        "weekdays": [
+        "recurring": [
           "WEDNESDAY"
         ],
         "date": null,
@@ -107,7 +107,7 @@
         "alarm_name": "my debugging alarm",
         "hour": 22,
         "min": 35,
-        "weekdays": [
+        "recurring": [
           "MONDAY",
           "TUESDAY",
           "WEDNESDAY",

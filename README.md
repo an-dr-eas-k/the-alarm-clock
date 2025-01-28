@@ -39,3 +39,14 @@ weather symbols are included from https://github.com/erikflowers/weather-icons
 | green   | i2s  (lrclk)  | GPIO19       | 35 |   | 36 | GPIO16  |                 |         |
 |         |               | GPIO26       | 37 |   | 38 | GPIO20  |  i2s (future)   |         |
 |         |               |    GND       | 39 |   | 40 | GPIO21  |  i2s    (din)   |  blue   |
+
+# State Diagram
+
+|State|1|2|3|4| Comment|
+|------|-----|-----|--|--| --|
+|Default|Default,<br>Volume Timer|Default,<br> Volume Timer|AlarmView|Media On, Playing|
+|Volume Timer | 
+|AlarmView | AlarmView,<br>Previous Alarm | AlarmView,<br>Next Alarm | Default|AlarmEdit |There is a `new Alarm` Alarm|
+|AlarmEdit | AlarmEdit,<br>Previous Property|AlarmEdit,<br>Next Property|Default|PropertyEdit|There is a `save` Property|
+|PropertyEdit | PropertyEdit,<br>Value Down | PropertyEdit,<br>Value Up| Default | AlarmEdit|
+

@@ -9,7 +9,8 @@ import tornado
 import tornado.web
 from PIL.Image import Image
 from core.application.controls import Controls
-from core.interface.display import ColorType, Display
+from core.interface.display import Display
+from core.interface.format import ColorType
 from resources.resources import webroot_file, ssl_dir
 
 from core.domain import (
@@ -212,13 +213,13 @@ class ConfigApiHandler(tornado.web.RequestHandler):
         ala = AlarmDefinition()
         ala.alarm_name = form_arguments["alarmName"]
         (ala.hour, ala.min) = map(int, form_arguments["time"].split(":"))
-        ala.weekdays = None
-        ala.date = None
-        if form_arguments.get("weekdays") is not None:
-            weekdays = form_arguments["weekdays"]
+        ala.recurring = None
+        ala.onetime = None
+        if form_arguments.get("recurring") is not None:
+            weekdays = form_arguments["recurring"]
             if not isinstance(weekdays, list):
                 weekdays = [weekdays]
-            ala.weekdays = list(
+            ala.recurring = list(
                 map(lambda weekday: Weekday[weekday.upper()].name, weekdays)
             )
         else:

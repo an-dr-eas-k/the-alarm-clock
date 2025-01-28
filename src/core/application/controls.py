@@ -11,6 +11,7 @@ from core.domain import (
     AlarmClockState,
     AlarmDefinition,
     AudioStream,
+    HwButton,
     PlaybackContent,
     DisplayContent,
     Mode,
@@ -28,10 +29,10 @@ from resources.resources import active_alarm_definition_file
 
 logger = logging.getLogger("tac.controls")
 
-button1Id = 0
-button2Id = 5
-button3Id = 6
-button4Id = 13
+button1 = 0
+button2 = 5
+button3 = 6
+button4 = 13
 alarm_store = "alarm"
 default_store = "default"
 
@@ -186,8 +187,14 @@ class Controls(TACEventSubscriber):
                     job.next_run_time.strftime(f"%Y-%m-%d %H:%M:%S"),
                 )
 
-    def button_action(action, button_id, event_type: str = "unknown event"):
-        Controls.action(action, "button %s %s" % (button_id, event_type))
+    def button_action(self, hwButton: HwButton):
+        self.state.state_machine.do_state_transition(hwButton)
+        if not hwButton.action:
+            return
+        Controls.action(
+            hwButton.action,
+            "button %s %s" % (hwButton.button_id, hwButton.button_name),
+        )
 
     def action(action, info: str = None):
         try:
@@ -198,19 +205,19 @@ class Controls(TACEventSubscriber):
             logger.error("%s", traceback.format_exc())
 
     def button1_activated(self):
-        Controls.button_action(self.decrease_volume, 1, "activated")
+        self.button_action(HwButton(1, "activated", action=self.decrease_volume))
 
     def button1_held(self):
-        Controls.button_action(self.decrease_volume, 1, "held")
+        self.button_action(HwButton(1, "held", action=self.decrease_volume))
 
     def button2_activated(self):
-        Controls.button_action(self.increase_volume, 2, "activated")
+        self.button_action(HwButton(2, "activated", action=self.increase_volume))
 
     def button2_held(self):
-        Controls.button_action(self.increase_volume, 2, "held")
+        self.button_action(HwButton(2, "held", action=self.increase_volume))
 
     def button3_activated(self):
-        Controls.button_action(self.enter_mode, 3, "activated")
+        self.button_action(HwButton(3, "activated"))
 
     def set_to_idle_mode(self):
         if self.state.mode == Mode.Spotify:
@@ -218,6 +225,7 @@ class Controls(TACEventSubscriber):
 
         if self.state.mode != Mode.Idle:
             self.stop_generic_trigger(SchedulerJobIds.hide_volume_meter.value)
+            self.display_content.hide_volume_meter()
             self.state.mode = Mode.Idle
             self.state.active_alarm = None
 
@@ -237,10 +245,10 @@ class Controls(TACEventSubscriber):
                 else:
                     self.play_stream_by_id(0)
 
-        Controls.button_action(toggle_stream, 4, "activated")
+        self.button_action(HwButton(4, "activated", action=toggle_stream))
 
     def enter_mode(self):
-        self.display_content.mode_state.start()
+        self.display_content.mode_state.next_mode_0()
 
     def increase_volume(self):
         self.playback_content.increase_volume()
@@ -269,19 +277,19 @@ class Controls(TACEventSubscriber):
     def configure(self):
         for button in [
             dict(
-                b=button1Id,
+                b=button1,
                 ht=0.5,
                 wa=self.button1_activated,
                 wh=self.button1_held,
             ),
             dict(
-                b=button2Id,
+                b=button2,
                 ht=0.5,
                 wa=self.button2_activated,
                 wh=self.button2_held,
             ),
-            dict(b=button3Id, wa=self.button3_activated),
-            dict(b=button4Id, wa=self.button4_activated),
+            dict(b=button3, wa=self.button3_activated),
+            dict(b=button4, wa=self.button4_activated),
         ]:
             b = Button(pin=button["b"], bounce_time=0.2)
             if "ht" in button:
@@ -354,7 +362,7 @@ class Controls(TACEventSubscriber):
                     )
                 )
 
-            if alarm_definition.is_one_time():
+            if alarm_definition.is_onetime():
                 self.state.config.remove_alarm_definition(alarm_definition.id)
 
             self.set_to_idle_mode()
@@ -381,6 +389,8 @@ class Controls(TACEventSubscriber):
 
 
 class SoftwareControls(Controls):
+    simulated_brightness: int = 10000
+
     def __init__(
         self,
         state: AlarmClockState,
@@ -388,6 +398,24 @@ class SoftwareControls(Controls):
         playback_content: PlaybackContent,
     ) -> None:
         super().__init__(state, display_content, playback_content)
+
+    def update_display(self):
+
+        def do():
+            logger.debug("update display")
+            current_second = GeoLocation().now().second
+            new_blink_state = self.state.show_blink_segment
+            if self._previous_second != current_second:
+                new_blink_state = not self.state.show_blink_segment
+                self._previous_second = current_second
+
+            self.state.update_state(
+                new_blink_state,
+                RoomBrightness(self.simulated_brightness),
+                self.display_content.is_scrolling,
+            )
+
+        Controls.action(do)
 
     def configure(self):
         def key_pressed_action(key):
@@ -400,10 +428,16 @@ class SoftwareControls(Controls):
                 if key.char == "2":
                     self.button2_activated()
                 if key.char == "3":
-                    # self.button3_action()
-                    pass
+                    self.button3_activated()
                 if key.char == "4":
                     self.button4_activated()
+                if key.char == "5":
+                    brightness_examples = [0, 1, 3, 10, 10000]
+                    self.simulated_brightness = brightness_examples[
+                        (brightness_examples.index(self.simulated_brightness) + 1)
+                        % len(brightness_examples)
+                    ]
+
             except Exception:
                 logger.warning("%s", traceback.format_exc())
 

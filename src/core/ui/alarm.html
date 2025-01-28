@@ -175,7 +175,7 @@
         <tr>
           <td>{{ escape(alarm_definition.alarm_name) }}</td>
           <td>{{ escape(f"{alarm_definition.to_time_string()}") }}</td>
-          <td>{{ escape(alarm_definition.to_weekdays_string()) }}</td>
+          <td>{{ escape(alarm_definition.to_day_string()) }}</td>
           <td>stream: {{ escape(alarm_definition.audio_effect.stream_definition.stream_name ) }},
             vol: {{ alarm_definition.audio_effect.volume }},
             {{ 'visuals' if alarm_definition.visual_effect is not None else 'no visuals' }}</td>
@@ -218,7 +218,7 @@
                 </div>
                 <div class="form-group">
                   <label for="daypicker">Weekdays:</label>
-                  <select multiple class="form-control" name="weekdays" id="daypicker" size="7">
+                  <select multiple class="form-control" name="recurring" id="daypicker" size="7">
                     <option value="monday">Monday</option>
                     <option value="tuesday">Tuesday</option>
                     <option value="wednesday">Wednesday</option>
