@@ -6,7 +6,7 @@ import time
 import subprocess
 import threading
 
-from core.domain import (
+from core.domain.model import (
     AlarmClockState,
     Mode,
     PlaybackContent,

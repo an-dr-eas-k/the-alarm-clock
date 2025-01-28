@@ -1,4 +1,4 @@
-from core.domain import AlarmClockState, Mode, TACEvent, TACEventSubscriber
+from core.domain.model import AlarmClockState, Mode, TACEvent, TACEventSubscriber
 from gpiozero import DigitalOutputDevice
 import logging
 

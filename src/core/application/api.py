@@ -9,15 +9,15 @@ import tornado
 import tornado.web
 from PIL.Image import Image
 from core.application.controls import Controls
-from core.interface.display import Display
-from core.interface.format import ColorType
+from core.interface.display.format import ColorType
 from resources.resources import webroot_file, ssl_dir
 
-from core.domain import (
+from core.domain.model import (
     AlarmDefinition,
     AudioEffect,
     AudioStream,
     Config,
+    DisplayContentProvider,
     LibreSpotifyEvent,
     PlaybackContent,
     StreamAudioEffect,
@@ -71,7 +71,7 @@ class LibreSpotifyEventHandler(tornado.web.RequestHandler):
 
 class DisplayHandler(tornado.web.RequestHandler):
 
-    def initialize(self, display: Display) -> None:
+    def initialize(self, display: DisplayContentProvider) -> None:
         self.display = display
 
     def get(self):
@@ -238,7 +238,9 @@ class Api:
 
     app: tornado.web.Application
 
-    def __init__(self, controls: Controls, display: Display, encrypted: bool):
+    def __init__(
+        self, controls: Controls, display: DisplayContentProvider, encrypted: bool
+    ):
         self.controls = controls
         self.display = display
         self.encrypted = encrypted

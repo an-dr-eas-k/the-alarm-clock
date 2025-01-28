@@ -5,16 +5,22 @@ from luma.core.device import dummy as luma_dummy
 from luma.core.render import canvas
 from PIL import Image
 
-from core.domain import (
+from core.domain.model import (
     AlarmClockState,
     Config,
     DisplayContent,
+    DisplayContentProvider,
     TACEvent,
     TACEventSubscriber,
     PlaybackContent,
     SpotifyAudioEffect,
 )
-from core.interface.default import (
+from core.interface.display.format import DisplayFormatter
+from core.interface.display.presenter import (
+    BackgroundPresenter,
+    RefreshPresenter,
+)
+from core.interface.display.editor.default import (
     AlarmActiveStatusPresenter,
     AlarmCancelPresenter,
     AlarmUpdatePresenter,
@@ -29,11 +35,6 @@ from core.interface.default import (
     AlarmDatePresenter,
     AlarmAudioEffectPresenter,
 )
-from core.interface.format import DisplayFormatter
-from core.interface.presenter import (
-    BackgroundPresenter,
-    RefreshPresenter,
-)
 from utils.drawing import ImageComposition
 
 from utils.geolocation import GeoLocation
@@ -43,11 +44,10 @@ from resources.resources import display_shot_file
 logger = logging.getLogger("tac.display")
 
 
-class Display(TACEventSubscriber):
+class Display(TACEventSubscriber, DisplayContentProvider):
 
     device: luma_device
     display_content: DisplayContent
-    current_display_image: Image.Image
 
     def __init__(
         self,

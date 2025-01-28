@@ -10,12 +10,19 @@ from luma.core.device import dummy
 
 import tornado.ioloop
 import tornado.web
+
+from core.domain.mode import AlarmClockStateMachine
+from core.domain.model import (
+    AlarmClockState,
+    Config,
+    DisplayContent,
+    Mode,
+    PlaybackContent,
+)
+from core.interface.display.display import Display
 from core.application.api import Api
 from core.infrastructure.audio import Speaker
 from core.application.controls import Controls, SoftwareControls
-
-from core.interface.display import Display
-from core.domain import AlarmClockState, Config, DisplayContent, Mode, PlaybackContent
 from core.infrastructure.persistence import Persistence
 from resources.resources import init_logging
 from resources.resources import config_file
@@ -44,6 +51,7 @@ class ClockApp:
         signal.signal(signal.SIGTERM, self.shutdown_function)
 
         self.state = AlarmClockState(Config())
+        self.state.state_machine = AlarmClockStateMachine(self.state)
         if os.path.exists(config_file):
             self.state.config = Config.deserialize(config_file)
 

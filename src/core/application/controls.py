@@ -7,7 +7,7 @@ from gpiozero import Button, Device
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
-from core.domain import (
+from core.domain.model import (
     AlarmClockState,
     AlarmDefinition,
     AudioStream,

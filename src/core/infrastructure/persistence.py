@@ -1,5 +1,5 @@
 import os
-from core.domain import (
+from core.domain.model import (
     AlarmClockState,
     AlarmDefinition,
     AudioEffect,
