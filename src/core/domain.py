@@ -1,0 +1,1057 @@
+from dataclasses import dataclass
+from datetime import time, timedelta
+import datetime
+import json
+import os
+from typing import List, Any, Callable, Type
+from apscheduler.job import Job
+from enum import Enum
+import logging
+
+import jsonpickle
+from apscheduler.triggers.cron import CronTrigger
+from utils.extensions import T, Value, get_timedelta_to_alarm, respect_ranges
+
+from utils.events import TACEventPublisher, TACEvent, TACEventSubscriber
+from utils.geolocation import GeoLocation, Weather
+from resources.resources import alarms_dir, default_volume
+from utils.singleton import singleton
+from utils.sound_device import TACSoundDevice
+from utils.state_machine import State, StateMachine, StateTransition, Trigger
+from datetime import datetime, timedelta
+
+logger = logging.getLogger("tac.domain")
+
+
+def try_update(object, property_name: str, value: str) -> bool:
+    if hasattr(object, property_name):
+        attr_value = getattr(object, property_name)
+        attr_type = type(attr_value)
+        if attr_type == bool:
+            value = value.lower() in ["on", "yes", "true", "t", "1"]
+        else:
+            value = attr_type(value) if len(value) > 0 else None
+        if value != attr_value:
+            setattr(object, property_name, value)
+            if isinstance(object, TACEventPublisher):
+                object.publish(property=property_name)
+        return True
+    return False
+
+
+class StreamContent:
+
+    name: str
+
+    def __init__(self, dict: dict):
+        for key, value in dict.items():
+            setattr(self, key, value)
+
+
+class SpotifyAlbum(StreamContent):
+    pass
+
+
+class SpotifyArtist(StreamContent):
+    pass
+
+
+class SpotifyTrack(StreamContent):
+
+    album: SpotifyAlbum
+    artists: List[SpotifyArtist]
+
+
+class LibreSpotifyEvent(StreamContent):
+
+    player_event: str = None
+    track_id: str
+    old_track_id: str
+    duration_ms: str
+    position_ms: str
+    volume: str
+    sink_status: str
+
+    def is_playback_started(self) -> bool:
+        return self.player_event in [
+            "session_connected",
+            "playing",
+            "started",
+            "changed",
+        ]
+
+    def is_playback_stopped(self) -> bool:
+        return self.player_event in ["session_disconnected", "stopped", "paused"]
+
+    def is_volume_changed(self) -> bool:
+        return self.player_event in ["volume_changed"]
+
+    def __str__(self):
+        return json.dumps(self.__dict__)
+
+
+class Mode(Enum):
+    Boot = 0
+    Idle = 1
+    Alarm = 2
+    Music = 3
+    Spotify = 4
+
+
+class Weekday(Enum):
+    MONDAY = 1
+    TUESDAY = 2
+    WEDNESDAY = 3
+    THURSDAY = 4
+    FRIDAY = 5
+    SATURDAY = 6
+    SUNDAY = 7
+
+
+class RoomBrightness(Value[float]):
+    def __init__(self, room_brightness: float):
+        super().__init__(room_brightness)
+
+    def is_highly_dimmed(self) -> bool:
+        return self.value < 0.01
+
+    def __ne__(self, other: "RoomBrightness"):
+        return not self == other
+
+    def __eq__(self, other: "RoomBrightness"):
+        return self.get_grayscale_value() == other.get_grayscale_value()
+
+    def get_grayscale_value(self, min_value: int = 0, max_value: int = 15) -> int:
+        x = max_value
+        if self.value < 15:
+            x = 10
+        if self.value < 6:
+            x = 7
+        if self.value < 2:
+            x = 3
+
+        if self.is_highly_dimmed():
+            x = 0
+        return respect_ranges(x, min_value, max_value)
+
+
+@dataclass
+class Style:
+    background_grayscale_16: int
+    foreground_grayscale_16: int
+    be_bold: bool
+
+
+class VisualEffect:
+
+    def is_active(self, alarm_in_minutes: int) -> bool:
+        return alarm_in_minutes <= 8
+
+    def get_style(self, alarm_in_minutes: int):
+        if alarm_in_minutes <= 2:
+            return Style(
+                background_grayscale_16=15, foreground_grayscale_16=0, be_bold=True
+            )
+        if alarm_in_minutes <= 4:
+            return Style(
+                background_grayscale_16=7, foreground_grayscale_16=0, be_bold=True
+            )
+
+        return Style(
+            background_grayscale_16=0, foreground_grayscale_16=15, be_bold=True
+        )
+
+
+@dataclass
+class AudioStream:
+    stream_name: str
+    stream_url: str
+    id: int = -1
+
+    def __str__(self):
+        return f"stream_name: {self.stream_name}, stream_url: {self.stream_url}"
+
+
+class AudioEffect:
+
+    volume: float
+
+    def __init__(self, volume: float = None):
+        self.volume = volume
+
+    def __str__(self):
+        return f"volume: {self.volume}"
+
+    def title(self):
+        return None
+
+
+class StreamAudioEffect(AudioEffect):
+    stream_definition: AudioStream = None
+
+    def __init__(self, stream_definition: AudioStream = None, volume: float = None):
+        super().__init__(volume)
+        self.stream_definition = stream_definition
+
+    def __str__(self):
+        return f"stream_definition: {self.stream_definition} {super().__str__()}"
+
+    def title(self):
+        return self.stream_definition.stream_name
+
+
+@singleton
+class OfflineAlarmEffect(StreamAudioEffect):
+
+    def title(self):
+        return "Offline Alarm"
+
+
+class SpotifyAudioEffect(TACEventPublisher, AudioEffect):
+    spotify_event: LibreSpotifyEvent = None
+    track_name: str = "Spotify"
+
+    @property
+    def track_id(self) -> str:
+        return self._track_id
+
+    @track_id.setter
+    def track_id(self, value: str):
+        self._track_id = value
+        self.publish(property="track_id")
+
+    def __init__(self, volume: float = None):
+        TACEventPublisher.__init__(self)
+        AudioEffect.__init__(self, volume)
+
+    def __str__(self):
+        return f"track_id: {self.track_id}, spotify_event: {self.spotify_event} {super().__str__()}"
+
+    def title(self):
+        return self.track_name
+
+
+class AlarmDefinition:
+    id: int
+    hour: int
+    min: int
+    recurring: List[str]
+    onetime: datetime
+    alarm_name: str
+    is_active: bool
+    visual_effect: VisualEffect
+    audio_effect: AudioEffect
+
+    def to_cron_trigger(self) -> CronTrigger:
+        if self.is_recurring():
+            return CronTrigger(
+                day_of_week=",".join(
+                    [str(Weekday[wd].value - 1) for wd in self.recurring]
+                ),
+                hour=self.hour,
+                minute=self.min,
+            )
+        elif self.is_onetime():
+            return CronTrigger(
+                start_date=self.onetime,
+                end_date=self.onetime + timedelta(days=1),
+                hour=self.hour,
+                minute=self.min,
+            )
+
+        raise ValueError("AlarmDefinition is neither recurring nor onetime")
+
+    def to_time_string(self) -> str:
+        return time(hour=self.hour, minute=self.min).strftime("%H:%M")
+
+    def to_day_string(self) -> str:
+        if self.is_recurring():
+            return ",".join(
+                [Weekday[wd].name.lower().capitalize()[:2] for wd in self.recurring]
+            )
+        elif self.is_onetime():
+            return self.onetime.strftime("%Y-%m-%d")
+
+        raise ValueError("AlarmDefinition is neither recurring nor onetime")
+
+    def set_future_date(self, hour: int, minute: int):
+        now = GeoLocation().now()
+        target = now.replace(hour=hour, minute=minute)
+        if target < now:
+            target = target + timedelta(days=1)
+        self.onetime = target.date()
+        self.recurring = None
+
+    def is_onetime(self) -> bool:
+        return self.onetime is not None and self.recurring is None
+
+    def is_recurring(self) -> bool:
+        return (
+            self.recurring is not None
+            and len(self.recurring) > 0
+            and self.onetime is None
+        )
+
+    def serialize(self, alarm_definition_file: str):
+        with open(alarm_definition_file, "w") as file:
+            file.write(jsonpickle.encode(self, indent=2))
+
+    def deserialize(alarm_definition_file: str):
+        logger.debug(
+            "initializing AlarmDefinition from file: %s", alarm_definition_file
+        )
+        with open(alarm_definition_file, "r") as file:
+            file_contents = file.read()
+
+        persisted_alarm_definition: AlarmDefinition = jsonpickle.decode(file_contents)
+        return persisted_alarm_definition
+
+
+class Config(TACEventPublisher):
+
+    clock_format_string: str
+    blink_segment: str
+    offline_alarm: AudioStream
+    alarm_duration_in_mins: int
+    refresh_timeout_in_secs: float
+    powernap_duration_in_mins: int
+    default_volume: float = default_volume
+    use_analog_clock: bool
+    alarm_preview_hours: int
+    debug_level: int
+
+    @property
+    def alarm_definitions(self) -> List[AlarmDefinition]:
+        return self._alarm_definitions
+
+    @property
+    def audio_streams(self) -> List[AudioStream]:
+        return self._audio_streams
+
+    @property
+    def local_alarm_file(self) -> str:
+        return self.offline_alarm.stream_url
+
+    @local_alarm_file.setter
+    def local_alarm_file(self, value: str):
+        self.offline_alarm = AudioStream(stream_name="Offline Alarm", stream_url=value)
+        self.publish(property="blink_segment")
+
+    def __init__(self):
+        logger.debug("initializing default config")
+        self._alarm_definitions = []
+        self._audio_streams = []
+        self.ensure_valid_config()
+        super().__init__()
+
+    def update_alarm_definition(self, alarm_definition: AlarmDefinition):
+        self.remove_alarm_definition(alarm_definition.id)
+        self.add_alarm_definition(alarm_definition)
+
+    def add_alarm_definition(self, value: AlarmDefinition):
+        self._alarm_definitions = self._append_item_with_id(
+            value, self._alarm_definitions
+        )
+        self.publish(property="alarm_definitions")
+
+    def remove_alarm_definition(self, id: int):
+        if id is None:
+            return
+        self._alarm_definitions = [
+            alarm_def for alarm_def in self._alarm_definitions if alarm_def.id != id
+        ]
+        self.publish(property="alarm_definitions")
+
+    def get_alarm_definition(self, id: int) -> AlarmDefinition:
+        return next(
+            (alarm for alarm in self._alarm_definitions if alarm.id == id), None
+        )
+
+    def get_audio_stream(self, id: int) -> AudioStream:
+        return next((stream for stream in self._audio_streams if stream.id == id), None)
+
+    def add_audio_stream(self, value: AudioStream):
+        self._audio_streams = self._append_item_with_id(value, self._audio_streams)
+        self.publish(property="audio_streams")
+
+    def remove_audio_stream(self, id: int):
+        self._audio_streams = [
+            stream_def for stream_def in self._audio_streams if stream_def.id != id
+        ]
+        self.publish(property="audio_streams")
+
+    def _append_item_with_id(self, item_with_id, list) -> List[object]:
+        self._assure_item_id(item_with_id, list)
+        list.append(item_with_id)
+        return sorted(list, key=lambda x: x.id)
+
+    def _assure_item_id(self, item_with_id, list):
+        if (
+            not hasattr(item_with_id, "id")
+            or item_with_id.id is None
+            or item_with_id.id < 0
+        ):
+            item_with_id.id = self._get_next_id(list)
+
+    def _get_next_id(self, array_with_ids: List[object]) -> int:
+        return (
+            sorted(array_with_ids, key=lambda x: x.id, reverse=True)[0].id + 1
+            if len(array_with_ids) > 0
+            else 0
+        )
+
+    def add_alarm_definition_for_powernap(self):
+
+        duration = GeoLocation().now() + timedelta(
+            minutes=(1 + self.powernap_duration_in_mins)
+        )
+        audio_effect = StreamAudioEffect(
+            stream_definition=self.audio_streams[0], volume=self.default_volume
+        )
+
+        powernap_alarm_def = AlarmDefinition()
+        powernap_alarm_def.alarm_name = "Powernap"
+        powernap_alarm_def.hour = duration.hour
+        powernap_alarm_def.min = duration.minute
+        powernap_alarm_def.is_active = True
+        powernap_alarm_def.set_future_date(duration.hour, duration.minute)
+        powernap_alarm_def.audio_effect = audio_effect
+        powernap_alarm_def.visual_effect = None
+
+        self.add_alarm_definition(powernap_alarm_def)
+
+    def get_offline_alarm_effect(
+        self, volume: float = default_volume
+    ) -> OfflineAlarmEffect:
+        full_path = os.path.join(alarms_dir, self.offline_alarm.stream_url)
+        return OfflineAlarmEffect(
+            stream_definition=AudioStream(
+                stream_name="Offline Alarm", stream_url=full_path
+            ),
+            volume=volume,
+        )
+
+    def ensure_valid_config(self):
+        for conf_prop in [
+            dict(key="alarm_duration_in_mins", value=60),
+            dict(
+                key="offline_alarm",
+                value=AudioStream(
+                    stream_name="Offline Alarm", stream_url="Enchantment.ogg"
+                ),
+            ),
+            dict(key="clock_format_string", value="%-H<blinkSegment>%M"),
+            dict(key="blink_segment", value=":"),
+            dict(key="refresh_timeout_in_secs", value=0.25),
+            dict(key="powernap_duration_in_mins", value=18),
+            dict(key="default_volume", value=default_volume),
+            dict(key="use_analog_clock", value=False),
+            dict(key="alarm_preview_hours", value=12),
+            dict(key="debug_level", value=0),
+        ]:
+            if not hasattr(self, conf_prop["key"]):
+                logger.debug(
+                    "key not found: %s, adding default value: %s",
+                    conf_prop["key"],
+                    conf_prop["value"],
+                )
+                setattr(self, conf_prop["key"], conf_prop["value"])
+
+    def serialize(self):
+        return jsonpickle.encode(self, indent=2)
+
+    def deserialize(config_file):
+        logger.debug("initializing config from file: %s", config_file)
+        with open(config_file, "r") as file:
+            file_contents = file.read()
+            persisted_config: Config = jsonpickle.decode(file_contents)
+            persisted_config.ensure_valid_config()
+            return persisted_config
+
+
+class HwButton(Trigger):
+    def __init__(
+        self, button_id: int, gpio_id: int = None, button_name: str = None, action=None
+    ):
+        self.button_id = button_id
+        self.gpio_id = gpio_id
+        self.button_name = button_name
+        self.action = action
+
+    def __hash__(self):
+        return f"button.{self.button_id}".__hash__()
+
+    def __str__(self):
+        return super().__str__() + f"({self.button_id})"
+
+
+class EditableProperty:
+
+    def __init__(self, name: str, value_list: List = None):
+        self.name = name
+        self.value_list = value_list
+
+
+class AlarmDefinitionToEdit(AlarmDefinition):
+
+    day_type: str = "onetime"
+
+    _hour: EditableProperty = EditableProperty("hour", list(range(24)))
+    _min: EditableProperty = EditableProperty("min", list(range(60)))
+    _day_type: EditableProperty = EditableProperty("day_type", ["onetime", "recurring"])
+    _onetime: EditableProperty = EditableProperty(
+        "onetime",
+        [None]
+        + [
+            (datetime.now() + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(30)
+        ],
+    )
+    _recurring: EditableProperty = EditableProperty(
+        "recurring",
+        [
+            [Weekday.MONDAY.name],
+            [Weekday.TUESDAY.name],
+            [Weekday.WEDNESDAY.name],
+            [Weekday.THURSDAY.name],
+            [Weekday.FRIDAY.name],
+            [Weekday.SATURDAY.name],
+            [Weekday.SUNDAY.name],
+            [Weekday.SATURDAY.name, Weekday.SUNDAY.name],
+            [
+                Weekday.MONDAY.name,
+                Weekday.TUESDAY.name,
+                Weekday.WEDNESDAY.name,
+                Weekday.THURSDAY.name,
+                Weekday.FRIDAY.name,
+            ],
+            [
+                Weekday.MONDAY.name,
+                Weekday.TUESDAY.name,
+                Weekday.WEDNESDAY.name,
+                Weekday.THURSDAY.name,
+                Weekday.FRIDAY.name,
+                Weekday.SATURDAY.name,
+                Weekday.SUNDAY.name,
+            ],
+        ],
+    )
+    _audio_effect: EditableProperty = EditableProperty("audio_effect", None)
+    _is_active: EditableProperty = EditableProperty("is_active", [True, False])
+
+    def __init__(self, alarm_definition: AlarmDefinition = None):
+        if alarm_definition is None:
+            return
+        self.id = alarm_definition.id
+        self.alarm_name = alarm_definition.alarm_name
+        self.is_active = alarm_definition.is_active
+        self.hour = alarm_definition.hour
+        self.min = alarm_definition.min
+        self.onetime = alarm_definition.onetime
+        self.recurring = alarm_definition.recurring
+        self.day_type = "onetime" if alarm_definition.is_onetime() else "recurring"
+        self.visual_effect = alarm_definition.visual_effect
+        self.audio_effect = alarm_definition.audio_effect
+
+    def get_editable_property(self, property_name: str) -> EditableProperty:
+        ep: EditableProperty = getattr(self, "_" + property_name)
+        return ep
+
+    def get_properties_to_edit(self) -> List[str]:
+        pes = ["hour", "min"]
+        if not super().is_onetime() and not super().is_recurring():
+            pes.append("dayType")
+
+        if self.day_type == "onetime":
+            pes.append("onetime")
+        else:
+            pes.append("recurring")
+
+        pes.append("audio_effect")
+        pes.append("is_active")
+        pes.append("update")
+        pes.append("cancel")
+        return pes
+
+    def update_value_lists(self, config: Config, volume: float):
+        self._audio_effect.value_list = [
+            StreamAudioEffect(stream_definition=stream, volume=volume)
+            for stream in config.audio_streams
+        ]
+
+
+class TacMode(State):
+
+    state: "AlarmClockState"
+
+    def __init__(
+        self, previous_mode: "TacMode" = None, state: "AlarmClockState" = None
+    ):
+        self.state = state
+        if (previous_mode is not None) and (state is None):
+            self.state = previous_mode.state
+
+    def __hash__(self):
+        return self.__class__.__name__.__hash__()
+
+
+class DefaultMode(TacMode):
+    def __init__(self, previous_mode: TacMode = None, state: "AlarmClockState" = None):
+        super().__init__(previous_mode, state)
+
+
+class AlarmViewMode(TacMode):
+    alarm_index: int = 0
+
+    def __init__(self, previous_mode: TacMode = None):
+        super().__init__(previous_mode)
+        if isinstance(previous_mode, AlarmViewMode):
+            self.alarm_index = previous_mode.alarm_index
+
+    def __str__(self):
+        return f"{super().__str__()}(view: {self.alarm_index})"
+
+    def get_active_alarm(self) -> AlarmDefinitionToEdit:
+        ad: AlarmDefinitionToEdit = None
+        if self.alarm_index < len(self.state.config.alarm_definitions):
+            ad = AlarmDefinitionToEdit(
+                self.state.config.alarm_definitions[self.alarm_index]
+            )
+        else:
+            now = GeoLocation().now()
+            ad = AlarmDefinitionToEdit()
+            ad.id = None
+            ad.alarm_name = "New Alarm"
+            ad.hour = now.hour
+            ad.min = now.minute
+            ad.is_active = True
+            ad.recurring = None
+            ad.onetime = now.date()
+            if len(self.state.config.audio_streams) > 0:
+                ad.audio_effect = StreamAudioEffect(
+                    stream_definition=self.state.config.audio_streams[0],
+                    volume=self.state.config.default_volume,
+                )
+            ad.visual_effect = VisualEffect()
+        return ad
+
+    def activate_next_alarm(self):
+        if self.alarm_index < len(self.state.config.alarm_definitions):
+            self.alarm_index += 1
+        else:
+            self.alarm_index = 0
+        return self.alarm_index
+
+    def activate_previous_alarm(self):
+        if self.alarm_index > 0:
+            self.alarm_index -= 1
+        else:
+            self.alarm_index = len(self.state.config.alarm_definitions)
+        return self.alarm_index
+
+
+class AlarmEditMode(AlarmViewMode):
+
+    property_to_edit: str = "hour"
+    alarm_definition_in_editing: AlarmDefinitionToEdit = None
+
+    def __init__(self, previous_mode: TacMode):
+        super().__init__(previous_mode)
+        if isinstance(previous_mode, AlarmEditMode):
+            self.property_to_edit = previous_mode.property_to_edit
+            self.alarm_definition_in_editing = previous_mode.alarm_definition_in_editing
+        elif isinstance(previous_mode, AlarmViewMode):
+            self.alarm_definition_in_editing = self.get_active_alarm()
+
+    def __str__(self):
+        return f"{super().__str__()}(edit: {self.property_to_edit})"
+
+    def activate_next_property_to_edit(self):
+        properties = self.alarm_definition_in_editing.get_properties_to_edit()
+        current_index = properties.index(self.property_to_edit)
+        self.property_to_edit = properties[(current_index + 1) % len(properties)]
+
+    def activate_previous_property_to_edit(self):
+        properties = self.alarm_definition_in_editing.get_properties_to_edit()
+        current_index = properties.index(self.property_to_edit)
+        self.property_to_edit = properties[(current_index - 1) % len(properties)]
+
+    def is_in_edit_mode(self, properties: List[str]) -> bool:
+        return self.property_to_edit in properties
+
+    def start_editing(self):
+        if self.property_to_edit == "update":
+            self.update_config()
+            self.proceedingState = AlarmViewMode
+            return
+        if self.property_to_edit == "cancel":
+            self.proceedingState = AlarmViewMode
+            return
+        self.alarm_definition_in_editing.update_value_lists(
+            self.state.config, self.alarm_definition_in_editing.audio_effect.volume
+        )
+
+    def update_config(self):
+        if self.alarm_definition_in_editing.id is None:
+            self.alarm_definition_in_editing.alarm_name = (
+                "Alarm at " + self.alarm_definition_in_editing.to_time_string()
+            )
+            self.state.config.add_alarm_definition(self.alarm_definition_in_editing)
+        else:
+            self.state.config.update_alarm_definition(self.alarm_definition_in_editing)
+
+
+class PropertyEditMode(AlarmEditMode):
+
+    def __init__(self, previous_mode: AlarmEditMode):
+        super().__init__(previous_mode)
+
+    def __str__(self):
+        return f"{super().__str__()}(value: {self.get_value()})"
+
+    def get_value(self):
+        return getattr(self.alarm_definition_in_editing, self.property_to_edit)
+
+    def set_value(self, value):
+        setattr(self.alarm_definition_in_editing, self.property_to_edit, value)
+
+    def activate_next_value(self):
+        value_list = self.alarm_definition_in_editing.get_editable_property(
+            self.property_to_edit
+        ).value_list
+        current_index = 0
+        try:
+            current_index = value_list.index(self.get_value())
+        except ValueError:
+            pass
+
+        self.set_value(value_list[(current_index + 1) % len(value_list)])
+
+    def activate_previous_value(self):
+        value_list = self.alarm_definition_in_editing.get_editable_property(
+            self.property_to_edit
+        ).value_list
+        next_index = value_list.index(self.get_value()) - 1
+        if next_index < 0:
+            next_index = len(value_list) - 1
+        self.set_value(value_list[next_index])
+
+
+class AlarmClockStateMachine(StateMachine):
+    def __init__(self, state: "AlarmClockState"):
+        default_mode = DefaultMode(state=state)
+        alarm_view_mode = AlarmViewMode(default_mode)
+        alarm_edit_mode = AlarmEditMode(alarm_view_mode)
+        property_edit_mode = PropertyEditMode(alarm_edit_mode)
+
+        super().__init__(DefaultMode(state=state))
+
+        super().add_definition(
+            StateTransition(default_mode).add_transition(HwButton(3), AlarmViewMode)
+        )
+
+        super().add_definition(
+            StateTransition(alarm_view_mode)
+            .add_transition(HwButton(3), DefaultMode)
+            .add_transition(
+                HwButton(2),
+                AlarmViewMode,
+                source_state_updater=lambda su: su.activate_next_alarm(),
+            )
+            .add_transition(
+                HwButton(1),
+                AlarmViewMode,
+                source_state_updater=lambda su: su.activate_previous_alarm(),
+            )
+            .add_transition(HwButton(4), AlarmEditMode)
+        )
+
+        super().add_definition(
+            StateTransition(alarm_edit_mode)
+            .add_transition(HwButton(3), DefaultMode)
+            .add_transition(
+                HwButton(2),
+                AlarmEditMode,
+                source_state_updater=lambda su: su.activate_next_property_to_edit(),
+            )
+            .add_transition(
+                HwButton(1),
+                AlarmEditMode,
+                source_state_updater=lambda su: su.activate_previous_property_to_edit(),
+            )
+            .add_transition(
+                HwButton(4),
+                PropertyEditMode,
+                source_state_updater=lambda su: su.start_editing(),
+            )
+        )
+
+        super().add_definition(
+            StateTransition(property_edit_mode)
+            .add_transition(HwButton(3), DefaultMode)
+            .add_transition(
+                HwButton(2),
+                PropertyEditMode,
+                source_state_updater=lambda su: su.activate_next_value(),
+            )
+            .add_transition(
+                HwButton(1),
+                PropertyEditMode,
+                source_state_updater=lambda su: su.activate_previous_value(),
+            )
+            .add_transition(HwButton(4), AlarmEditMode),
+        )
+
+
+class AlarmClockState(TACEventPublisher):
+
+    config: Config
+    room_brightness: RoomBrightness = RoomBrightness(1.0)
+    show_blink_segment: bool = False
+    state_machine: StateMachine = None
+
+    @property
+    def is_online(self) -> bool:
+        return self._is_online
+
+    @is_online.setter
+    def is_online(self, value: bool):
+        self._is_online = value
+        self.publish(property="is_online")
+
+    @property
+    def is_daytime(self) -> bool:
+        return self._is_daytime
+
+    @is_daytime.setter
+    def is_daytime(self, value: bool):
+        self._is_daytime = value
+        self.publish(property="is_daytime")
+
+    @property
+    def mode(self) -> Mode:
+        return self._mode
+
+    @mode.setter
+    def mode(self, value: Mode):
+        self._mode = value
+        logger.info("new mode: %s", self.mode.name)
+        self.publish(property="mode")
+
+    @property
+    def spotify_event(self) -> LibreSpotifyEvent:
+        return self._spotify_event
+
+    @spotify_event.setter
+    def spotify_event(self, value: LibreSpotifyEvent):
+        self._spotify_event = value
+        self.publish(property="spotify_event")
+
+    @property
+    def active_alarm(self) -> AlarmDefinition:
+        return self._active_alarm
+
+    @active_alarm.setter
+    def active_alarm(self, value: AlarmDefinition):
+        self._active_alarm = value
+        self.publish(property="active_alarm")
+
+    def __init__(self, c: Config) -> None:
+        super().__init__()
+        self.config = c
+        self.mode = Mode.Boot
+        self.geo_location = GeoLocation()
+        self.is_online = True
+        self.show_blink_segment = True
+        self.state_machine: StateMachine = AlarmClockStateMachine(self)
+
+    def update_state(
+        self, show_blink_segment: bool, brightness: RoomBrightness, is_scrolling: bool
+    ):
+        if any(
+            (
+                self.show_blink_segment != show_blink_segment,
+                self.room_brightness != brightness,
+                is_scrolling,
+            )
+        ):
+            self.show_blink_segment = show_blink_segment
+            self.room_brightness = brightness
+            self.publish(property="update_state")
+
+
+class MediaContent(TACEventPublisher, TACEventSubscriber):
+
+    def __init__(self, state: AlarmClockState):
+        super().__init__()
+        self.state = state
+
+
+class PlaybackContent(MediaContent):
+
+    @property
+    def audio_effect(self) -> AudioEffect:
+        return self._audio_effect
+
+    @audio_effect.setter
+    def audio_effect(self, value: AudioEffect):
+
+        self._audio_effect = value
+        if (
+            value is not None
+            and value.volume is not None
+            and value.volume != self.volume
+        ):
+            self.volume = value.volume
+        self.publish(property="audio_effect")
+
+    @property
+    def volume(self) -> float:
+        return TACSoundDevice().get_system_volume()
+
+    @volume.setter
+    def volume(self, value: float):
+        TACSoundDevice().set_system_volume(value)
+        self.publish(property="volume")
+
+    @property
+    def is_streaming(self) -> str:
+        return self._is_streaming
+
+    @is_streaming.setter
+    def is_streaming(self, value: bool):
+        self._is_streaming = value
+        self.publish(property="is_streaming")
+
+    def __init__(self, state: AlarmClockState):
+        super().__init__(state)
+        self.audio_effect = None
+        self.volume = default_volume
+        self.is_streaming = False
+
+    def handle(self, observation: TACEvent):
+        super().handle(observation)
+        if isinstance(observation.subscriber, AlarmClockState):
+            self.update_from_state(observation, observation.subscriber)
+
+    def update_from_state(self, observation: TACEvent, state: AlarmClockState):
+        if observation.property_name == "mode":
+            self.is_streaming = state.mode in [Mode.Alarm, Mode.Music, Mode.Spotify]
+
+        if observation.property_name == "is_online":
+            self.wifi_availability_changed(state.is_online)
+
+        if (
+            observation.property_name == "active_alarm"
+            and state.active_alarm is not None
+        ):
+            self.audio_effect = state.active_alarm.audio_effect
+
+    def wifi_availability_changed(self, is_online: bool):
+        if self.state.mode == Mode.Alarm:
+            if not is_online:
+                self.audio_effect = self.state.config.get_offline_alarm_effect(
+                    self.volume
+                )
+            else:
+                self.audio_effect = self.state.active_alarm.audio_effect
+
+    def increase_volume(self):
+        self.volume = min(self.volume + 0.05, 1.0)
+
+    def decrease_volume(self):
+        self.volume = max(self.volume - 0.05, 0.0)
+
+    def set_spotify_event(self, spotify_event: LibreSpotifyEvent):
+
+        spotify_audio_effect = (
+            self.audio_effect
+            if isinstance(self.audio_effect, SpotifyAudioEffect)
+            else SpotifyAudioEffect()
+        )
+
+        spotify_audio_effect.spotify_event = spotify_event
+        if hasattr(spotify_event, "track_id"):
+            spotify_audio_effect.track_id = spotify_event.track_id
+
+        if spotify_event.is_playback_started() and self.state.mode != Mode.Spotify:
+            self.audio_effect = spotify_audio_effect
+            self.state.mode = Mode.Spotify
+
+        if spotify_event.is_playback_stopped() and self.state.mode != Mode.Idle:
+            self.state.mode = Mode.Idle
+
+        if spotify_event.is_volume_changed() and self.state.mode == Mode.Spotify:
+            self.publish(property="volume")
+
+
+class DisplayContent(MediaContent):
+    _show_volume_meter: bool = False
+    next_alarm_job: Job = None
+    current_weather: Weather = None
+    show_blink_segment: bool
+    room_brightness: float
+    is_scrolling: bool = False
+
+    def __init__(self, state: AlarmClockState, playback_content: PlaybackContent):
+        super().__init__(state)
+        self.playback_content = playback_content
+
+    def get_is_online(self) -> bool:
+        return self.state.is_online
+
+    def publish(self):
+        super().publish(reason="display_changed")
+
+    def handle(self, observation: TACEvent):
+        super().handle(observation)
+        if isinstance(observation.subscriber, AlarmClockState):
+            self.update_from_state(observation, observation.subscriber)
+        if isinstance(observation.subscriber, PlaybackContent):
+            self.update_from_playback_content(observation, observation.subscriber)
+
+    def update_from_playback_content(
+        self, observation: TACEvent, playback_content: PlaybackContent
+    ):
+        pass
+
+    def update_from_state(self, observation: TACEvent, state: AlarmClockState):
+        if observation.property_name == "update_state":
+            self.show_blink_segment = state.show_blink_segment
+            self.room_brightness = state.room_brightness
+            if not observation.during_registration:
+                self.publish()
+
+    def hide_volume_meter(self):
+        self.show_volume_meter = False
+
+    @property
+    def show_volume_meter(self) -> bool:
+        return self._show_volume_meter
+
+    @show_volume_meter.setter
+    def show_volume_meter(self, value: bool):
+        logger.info("volume bar shown: %s", value)
+        self._show_volume_meter = value
+        self.publish()
+
+    def get_timedelta_to_alarm(self) -> timedelta:
+        if self.next_alarm_job is None:
+            return timedelta.max
+        return get_timedelta_to_alarm(self.next_alarm_job)
+
+    def get_next_alarm(self) -> datetime:
+        return (
+            None if self.next_alarm_job is None else self.next_alarm_job.next_run_time
+        )
+
+    def current_playback_title(self):
+        return (
+            self.playback_content.audio_effect.title()
+            if True
+            and self.playback_content.is_streaming
+            and self.playback_content.audio_effect is not None
+            else None
+        )
+
+    def current_volume(self) -> float:
+        return self.playback_content.volume

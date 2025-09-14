@@ -1,8 +1,17 @@
+from typing import BinaryIO, Dict
 from PIL import ImageDraw, Image
 from PIL.ImageFont import FreeTypeFont
+from PIL import ImageFont, Image
 from luma.core.image_composition import ComposableImage
 
 import logging
+
+from utils.singleton import singleton
+from resources.resources import fonts_dir, weather_icons_dir
+from typing import Dict, BinaryIO
+import io
+
+from utils.singleton import singleton
 
 logger = logging.getLogger("utils.drawing")
 
@@ -40,10 +49,22 @@ def text_to_image(
     fg_color,
     bg_color="black",
     mode: str = "RGB",
+    **kwargs,
 ) -> Image.Image:
     box = font.getbbox(text)
-    img = Image.new(mode, (box[2] - box[0], box[3] - box[1]), bg_color)
-    ImageDraw.Draw(img).text([-box[0], -box[1]], text, font=font, fill=fg_color)
+    text_width = box[2] - box[0]
+    text_height = box[3] - box[1]
+
+    img_width = text_width
+    img_height = font.size
+    img = Image.new(mode, (img_width, img_height), bg_color)
+
+    text_x = -box[0]
+    text_y = (img_height - text_height) // 2 - box[1]
+
+    draw = ImageDraw.Draw(img)
+    draw.text((text_x, text_y), text, font=font, fill=fg_color)
+
     return img
 
 
@@ -53,12 +74,18 @@ def grayscale_to_color(grayscale_value: int):
 
 class ComposableImage(object):
     empty_image = Image.new("RGBA", (0, 0))
+    _position = (None, None)
+    _size = (None, None)
 
     def __init__(self, position: callable = None):
-        self._position: callable = position if position else lambda _, _1: (0, 0)
+        self._position_func: callable = position if position else lambda _, _1: (0, 0)
 
     def position(self, width, height) -> tuple[int, int]:
-        return self._position(width, height)
+        self._position = self._position_func(width, height)
+        return self._position
+
+    def set_dimensions(self, width, height):
+        self._size = (width, height)
 
     def is_present(self) -> bool:
         return False
@@ -66,11 +93,13 @@ class ComposableImage(object):
     def draw(self) -> Image.Image:
         raise ValueError("no image available")
 
-    def draw_if_present(self) -> Image.Image:
-        if not self.is_present():
-            return self.empty_image
-        image = self.draw()
-        return image
+    def get_bounding_box(self) -> tuple[int, int, int, int]:
+        return (
+            self._position[0],  # left
+            self._position[1],  # top
+            self._position[0] + self._size[0],  # right
+            self._position[1] + self._size[1],  # bottom
+        )
 
 
 class ImageComposition(object):
@@ -98,7 +127,7 @@ class ImageComposition(object):
         return self._background_image
 
     def refresh(self):
-        self._clear()
+        self._clear_screen()
         for comp_img in self.composed_images:
             comp_img: ComposableImage = comp_img
             if comp_img.is_present():
@@ -107,6 +136,7 @@ class ImageComposition(object):
 
     def draw(self, comp_img: ComposableImage):
         pil_img = comp_img.draw()
+        comp_img.set_dimensions(pil_img.width, pil_img.height)
         logger.debug(
             f"refresh ({comp_img.__class__.__name__}): {pil_img.width}x{pil_img.height}"
         )
@@ -119,7 +149,10 @@ class ImageComposition(object):
             pil_img, comp_img.position(pil_img.width, pil_img.height)
         )
 
-    def _clear(self):
+    def clear(self):
+        self.composed_images.clear()
+
+    def _clear_screen(self):
         draw = ImageDraw.Draw(self._background_image)
         draw.rectangle(self._bounding_box, fill="black")
         del draw
@@ -221,3 +254,32 @@ class Scroller:
             self.ticks = 0
             return False
         return True
+
+
+@singleton
+class PresentationFontSingleton:
+    _font_cache: Dict[str, BinaryIO] = {}
+
+    def _get_cached_font_file(self, font_path: str) -> BinaryIO:
+        if font_path not in self._font_cache:
+            with open(font_path, "rb") as f:
+                font_data = io.BytesIO(f.read())
+                self._font_cache[font_path] = font_data
+        self._font_cache[font_path].seek(0)
+        return self._font_cache[font_path]
+
+
+class PresentationFont:
+    bold_clock_font = f"{fonts_dir}/DSEG7Classic-Regular.ttf"
+    light_clock_font = f"{fonts_dir}/DSEG7ClassicMini-Light.ttf"
+    default_font = f"{fonts_dir}/IosevkaNerdFontMono-Regular.ttf"
+    weather_font = f"{weather_icons_dir}/weathericons-regular-webfont.ttf"
+
+    def get_font(font: str, size: int = 50) -> ImageFont:
+        try:
+            return ImageFont.truetype(
+                PresentationFontSingleton()._get_cached_font_file(font), size
+            )
+        except Exception as e:
+            logger.error(f"Error loading font {font}: {e}")
+            raise e

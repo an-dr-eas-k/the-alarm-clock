@@ -11,9 +11,9 @@ logger = logging.getLogger("tac.librespot_ev")
 
 class LibreSpotifyEventListenerApp:
 
-    alarm_clock_protocol = "http"
+    alarm_clock_protocol = "https"
     alarm_clock_hostname = "localhost"
-    alarm_clock_port = 80
+    alarm_clock_port = 443
     alarm_clock_route = "/api/librespotify"
 
     def __init__(self) -> None:
@@ -23,6 +23,7 @@ class LibreSpotifyEventListenerApp:
 
     def go(self):
         if self.args.software:
+            self.alarm_clock_protocol = "http"
             self.alarm_clock_port = 8080
 
         envs = self.get_environment_variables()
