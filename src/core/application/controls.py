@@ -21,7 +21,7 @@ from core.domain.model import (
     Config,
 )
 from core.infrastructure.gpi import get_room_brightness
-from core.infrastructure.gpiozero_buttons import GpioZeroButtonManager
+from core.infrastructure.rpigpio_buttons import RpiGpioButtonManager
 from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon
@@ -291,7 +291,7 @@ class Controls(TACEventSubscriber):
             dict(pin=button3, when_activated=self.button3_activated),
             dict(pin=button4, when_activated=self.button4_activated),
         ]
-        self.gpio_button_manager = GpioZeroButtonManager(button_configs)
+        self.gpio_button_manager = RpiGpioButtonManager(button_configs)
         self.buttons = self.gpio_button_manager.buttons
 
     def update_display(self):

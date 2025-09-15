@@ -4,7 +4,6 @@ python-vlc
 spidev
 tornado
 pynput
-gpiozero
 apscheduler
 jsonpickle
 astral
