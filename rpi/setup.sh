@@ -14,7 +14,7 @@ curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
 apt-get -y autoremove
 
 echo "configure system"
-ln -fs $app/rpi/resources/raspotify.service /lib/systemd/system/pigpiod.service
+ln -fs $app/rpi/resources/pigpiod.service /lib/systemd/system/pigpiod.service
 systemctl daemon-reload
 systemctl enable pigpiod
 # systemctl disable aplay.service

@@ -50,3 +50,8 @@ weather symbols are included from https://github.com/erikflowers/weather-icons
 |AlarmEdit | AlarmEdit,<br>Previous Property|AlarmEdit,<br>Next Property|Default|PropertyEdit|There is a `save` Property|
 |PropertyEdit | PropertyEdit,<br>Value Down | PropertyEdit,<br>Value Up| Default | AlarmEdit|
 
+# Devices
+## Rotary Encoder
+## Light Sensor BH1750
+## Port Expander 16-Bit-I/O MCP23017 
+## Sound card DigiAMP+
