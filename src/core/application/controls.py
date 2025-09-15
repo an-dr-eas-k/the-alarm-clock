@@ -3,7 +3,6 @@ from enum import Enum
 import logging
 import os
 import traceback
-from gpiozero import Button, Device
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
@@ -22,6 +21,7 @@ from core.domain.model import (
     Config,
 )
 from core.infrastructure.gpi import get_room_brightness
+from core.infrastructure.gpio_buttons import GpioButtonManager
 from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon
@@ -275,33 +275,24 @@ class Controls(TACEventSubscriber):
         self.state.mode = Mode.Music
 
     def configure(self):
-        for button in [
+        button_configs = [
             dict(
-                b=button1,
-                ht=0.5,
-                wa=self.button1_activated,
-                wh=self.button1_held,
+                pin=button1,
+                hold_time=0.5,
+                when_activated=self.button1_activated,
+                when_held=self.button1_held,
             ),
             dict(
-                b=button2,
-                ht=0.5,
-                wa=self.button2_activated,
-                wh=self.button2_held,
+                pin=button2,
+                hold_time=0.5,
+                when_activated=self.button2_activated,
+                when_held=self.button2_held,
             ),
-            dict(b=button3, wa=self.button3_activated),
-            dict(b=button4, wa=self.button4_activated),
-        ]:
-            b = Button(pin=button["b"], bounce_time=0.2)
-            if "ht" in button:
-                b.hold_time = button["ht"]
-                b.hold_repeat = True
-            if "wh" in button:
-                b.when_held = button["wh"]
-            if "wa" in button:
-                b.when_activated = button["wa"]
-            self.buttons.append(b)
-
-        logger.info("pin factory: %s", Device.pin_factory)
+            dict(pin=button3, when_activated=self.button3_activated),
+            dict(pin=button4, when_activated=self.button4_activated),
+        ]
+        self.gpio_button_manager = GpioButtonManager(button_configs)
+        self.buttons = self.gpio_button_manager.buttons
 
     def update_display(self):
 
