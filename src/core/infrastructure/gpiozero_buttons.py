@@ -4,7 +4,7 @@ from gpiozero import Button, Device
 logger = logging.getLogger("tac.gpio_buttons")
 
 
-class GpioButtonManager:
+class GpioZeroButtonManager:
     def __init__(self, button_configs):
         """
         button_configs: list of dicts, each dict should have:
