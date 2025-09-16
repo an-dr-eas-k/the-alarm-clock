@@ -8,5 +8,6 @@ apscheduler
 jsonpickle
 astral
 adafruit-circuitpython-bh1750
+adafruit-circuitpython-mcp230xx
 spotify
 pyalsaaudio

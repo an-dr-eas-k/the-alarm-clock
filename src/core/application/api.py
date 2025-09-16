@@ -25,7 +25,7 @@ from core.domain.model import (
     Weekday,
     try_update,
 )
-from core.infrastructure.gpi import get_room_brightness
+from core.infrastructure.bh1750 import get_room_brightness
 from utils.os import reboot_system, shutdown_system
 
 logger = logging.getLogger("tac.api")

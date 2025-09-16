@@ -20,8 +20,10 @@ from core.domain.model import (
     TACEventSubscriber,
     Config,
 )
-from core.infrastructure.gpi import get_room_brightness
-from core.infrastructure.rpigpio_buttons import RpiGpioButtonManager
+from core.infrastructure.bh1750 import get_room_brightness
+from core.infrastructure.i2c_devices import get_mcp
+from core.infrastructure.mcp23017.buttons import ButtonsManager
+from core.infrastructure.mcp23017.rotary_encoder import RotaryEncoderManager
 from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon
@@ -47,6 +49,7 @@ class Controls(TACEventSubscriber):
     scheduler = BackgroundScheduler(jobstores=jobstores)
     buttons = []
     state: AlarmClockState
+    rotary_encoder_manager = None
     _previous_second = GeoLocation().now().second
 
     def __init__(
@@ -204,18 +207,6 @@ class Controls(TACEventSubscriber):
         except:
             logger.error("%s", traceback.format_exc())
 
-    def button1_activated(self):
-        self.button_action(HwButton(1, "activated", action=self.decrease_volume))
-
-    def button1_held(self):
-        self.button_action(HwButton(1, "held", action=self.decrease_volume))
-
-    def button2_activated(self):
-        self.button_action(HwButton(2, "activated", action=self.increase_volume))
-
-    def button2_held(self):
-        self.button_action(HwButton(2, "held", action=self.increase_volume))
-
     def button3_activated(self):
         self.button_action(HwButton(3, "activated"))
 
@@ -276,23 +267,15 @@ class Controls(TACEventSubscriber):
 
     def configure(self):
         button_configs = [
-            dict(
-                pin=button1,
-                hold_time=0.5,
-                when_activated=self.button1_activated,
-                when_held=self.button1_held,
-            ),
-            dict(
-                pin=button2,
-                hold_time=0.5,
-                when_activated=self.button2_activated,
-                when_held=self.button2_held,
-            ),
             dict(pin=button3, when_activated=self.button3_activated),
             dict(pin=button4, when_activated=self.button4_activated),
         ]
-        self.gpio_button_manager = RpiGpioButtonManager(button_configs)
-        self.buttons = self.gpio_button_manager.buttons
+        self.gpio_button_manager = ButtonsManager(button_configs)
+        self.buttons = self.gpio_button_manager.button_configs
+        self.rotary_encoder_manager = RotaryEncoderManager(
+            on_clockwise=self.increase_volume,
+            on_counter_clockwise=self.decrease_volume,
+        )
 
     def update_display(self):
 
@@ -428,6 +411,10 @@ class SoftwareControls(Controls):
                         (brightness_examples.index(self.simulated_brightness) + 1)
                         % len(brightness_examples)
                     ]
+                if key.char == "+":
+                    self.increase_volume()
+                if key.char == "-":
+                    self.decrease_volume()
 
             except Exception:
                 logger.warning("%s", traceback.format_exc())
