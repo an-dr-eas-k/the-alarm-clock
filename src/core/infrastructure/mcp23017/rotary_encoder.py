@@ -1,22 +1,23 @@
 from i2c_devices import MCPManager
 import logging
 
-logger = logging.getLogger("tac.rotary_encoder")
+logger = logging.getLogger("tac.mcp_rotary_encoder")
 
 
 class RotaryEncoderManager:
-    channel_a: int = 8
-    channel_b: int = 9
 
     def __init__(self, on_clockwise, on_counter_clockwise):
         self.on_clockwise = on_clockwise
         self.on_counter_clockwise = on_counter_clockwise
         self.mcpManager = MCPManager()
         self.mcpManager.add_callback(
-            self.mcpManager.rotary_encoder_channel_a, self._pin_callback
+            MCPManager.rotary_encoder_channel_a, self._pin_callback
         )
         self.mcpManager.add_callback(
-            self.mcpManager.rotary_encoder_channel_b, self._pin_callback
+            MCPManager.rotary_encoder_channel_b, self._pin_callback
+        )
+        logger.info(
+            "MCP23017 initialized for rotary encoder input with event interrupts."
         )
 
     def _pin_callback(self, pin):

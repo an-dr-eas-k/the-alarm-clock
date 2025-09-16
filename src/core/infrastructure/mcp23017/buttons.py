@@ -1,9 +1,7 @@
 from i2c_devices import MCPManager
 import logging
-import threading
-import time
 
-logger = logging.getLogger("tac.gpio_buttons")
+logger = logging.getLogger("tac.mcp_buttons")
 
 
 class ButtonsManager:
@@ -11,8 +9,6 @@ class ButtonsManager:
         self.button_configs = button_configs
         self.mcpManager = MCPManager()
         for cfg in button_configs:
-            pin_num = cfg["pin"]
-            pin_callback = cfg["when_activated"]
-            self.mcpManager.add_callback(pin_num, pin_callback)
+            self.mcpManager.add_callback(cfg["pin"], cfg["when_activated"])
 
         logger.info("MCP23017 initialized for button input with event interrupts.")

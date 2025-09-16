@@ -1,3 +1,4 @@
+import logging
 from RPi import GPIO
 import board
 import busio
@@ -11,12 +12,15 @@ class I2CManager:
         self.i2c = busio.I2C(board.SCL, board.SDA)
 
 
+logger = logging.getLogger("tac.mcp")
+
+
 @singleton
 class MCPManager:
     rotary_encoder_channel_a: int = 8
     rotary_encoder_channel_b: int = 9
-    button_1_pin: int = 0
-    button_2_pin: int = 1
+    mode_button_pin: int = 0
+    invoke_button_pin: int = 1
 
     def __init__(self):
         self.mcp = MCP23017(I2CManager().i2c)
@@ -36,7 +40,7 @@ class MCPManager:
         self.pin_callbacks[pin_num] = callback
 
     def invoke_pin_callback(self, pin):
-        print("interrupt occurred")
+        logger.debug("interrupt occurred on mcp pin %s", pin)
         if pin in self.pin_callbacks:
             self.pin_callbacks[pin]()
 

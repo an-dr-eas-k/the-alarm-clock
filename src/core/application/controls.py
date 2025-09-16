@@ -21,7 +21,7 @@ from core.domain.model import (
     Config,
 )
 from core.infrastructure.bh1750 import get_room_brightness
-from core.infrastructure.i2c_devices import get_mcp
+from core.infrastructure.i2c_devices import MCPManager, get_mcp
 from core.infrastructure.mcp23017.buttons import ButtonsManager
 from core.infrastructure.mcp23017.rotary_encoder import RotaryEncoderManager
 from utils.geolocation import GeoLocation, SunEvent
@@ -47,7 +47,6 @@ class SchedulerJobIds(Enum):
 class Controls(TACEventSubscriber):
     jobstores = {alarm_store: {"type": "memory"}, default_store: {"type": "memory"}}
     scheduler = BackgroundScheduler(jobstores=jobstores)
-    buttons = []
     state: AlarmClockState
     rotary_encoder_manager = None
     _previous_second = GeoLocation().now().second
@@ -267,11 +266,12 @@ class Controls(TACEventSubscriber):
 
     def configure(self):
         button_configs = [
-            dict(pin=button3, when_activated=self.button3_activated),
-            dict(pin=button4, when_activated=self.button4_activated),
+            dict(pin=MCPManager.mode_button_pin, when_activated=self.button3_activated),
+            dict(
+                pin=MCPManager.invoke_button_pin, when_activated=self.button4_activated
+            ),
         ]
-        self.gpio_button_manager = ButtonsManager(button_configs)
-        self.buttons = self.gpio_button_manager.button_configs
+        self.button_manager = ButtonsManager(button_configs)
         self.rotary_encoder_manager = RotaryEncoderManager(
             on_clockwise=self.increase_volume,
             on_counter_clockwise=self.decrease_volume,
