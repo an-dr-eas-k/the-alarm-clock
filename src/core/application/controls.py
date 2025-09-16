@@ -266,9 +266,12 @@ class Controls(TACEventSubscriber):
 
     def configure(self):
         button_configs = [
-            dict(pin=MCPManager.mode_button_pin, when_activated=self.button3_activated),
             dict(
-                pin=MCPManager.invoke_button_pin, when_activated=self.button4_activated
+                pin=MCPManager().mode_button_pin, when_activated=self.button3_activated
+            ),
+            dict(
+                pin=MCPManager().invoke_button_pin,
+                when_activated=self.button4_activated,
             ),
         ]
         self.button_manager = ButtonsManager(button_configs)
