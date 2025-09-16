@@ -1,41 +1,39 @@
 from i2c_devices import MCPManager
 import logging
-import threading
-import time
 
 logger = logging.getLogger("tac.rotary_encoder")
 
 
 class RotaryEncoderManager:
+    channel_a: int = 8
+    channel_b: int = 9
+
     def __init__(self, on_clockwise, on_counter_clockwise):
         self.on_clockwise = on_clockwise
         self.on_counter_clockwise = on_counter_clockwise
-        self.mcp = MCPManager().mcp
-        self._stop_event = threading.Event()
-        self._thread = threading.Thread(target=self._monitor)
-        self._thread.daemon = True
-        self._thread.start()
+        self.mcpManager = MCPManager()
+        self.mcpManager.add_callback(
+            self.mcpManager.rotary_encoder_channel_a, self._pin_callback
+        )
+        self.mcpManager.add_callback(
+            self.mcpManager.rotary_encoder_channel_b, self._pin_callback
+        )
 
-    def _monitor(self):
-        pin_a = self.mcp.get_pin(8)  # B0
-        pin_b = self.mcp.get_pin(9)  # B1
-        pin_a.direction = 1  # input
-        pin_b.direction = 1  # input
-        pin_a.pull_up = True
-        pin_b.pull_up = True
-        last_state = (pin_a.value, pin_b.value)
-        while not self._stop_event.is_set():
-            state = (pin_a.value, pin_b.value)
-            if state != last_state:
-                if last_state == (1, 0) and state == (1, 1):
-                    logger.debug("Rotary clockwise detected")
-                    self.on_clockwise()
-                elif last_state == (0, 1) and state == (1, 1):
-                    logger.debug("Rotary counter-clockwise detected")
-                    self.on_counter_clockwise()
-                last_state = state
-            time.sleep(0.005)
+    def _pin_callback(self, pin):
+        channel_a_value = self.mcpManager.mcp.get_pin(
+            self.mcpManager.rotary_encoder_channel_a
+        ).value
+        channel_b_value = self.mcpManager.mcp.get_pin(
+            self.mcpManager.rotary_encoder_channel_b
+        ).value
 
-    def close(self):
-        self._stop_event.set()
-        self._thread.join()
+        state = (channel_a_value, channel_b_value)
+        last_state = self.last_state
+        if state != last_state:
+            if last_state == (1, 0) and state == (1, 1):
+                logger.debug("Rotary clockwise detected")
+                self.on_clockwise()
+            elif last_state == (0, 1) and state == (1, 1):
+                logger.debug("Rotary counter-clockwise detected")
+                self.on_counter_clockwise()
+            self.last_state = state
