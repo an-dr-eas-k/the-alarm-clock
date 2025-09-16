@@ -21,7 +21,7 @@ from core.domain.model import (
     Config,
 )
 from core.infrastructure.bh1750 import get_room_brightness
-from core.infrastructure.i2c_devices import MCPManager, get_mcp
+from core.infrastructure.i2c_devices import MCPManager
 from core.infrastructure.mcp23017.buttons import ButtonsManager
 from core.infrastructure.mcp23017.rotary_encoder import RotaryEncoderManager
 from utils.geolocation import GeoLocation, SunEvent
