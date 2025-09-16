@@ -1,4 +1,4 @@
-from i2c_devices import MCPManager
+from core.infrastructure.i2c_devices import MCPManager
 import logging
 
 logger = logging.getLogger("tac.mcp_buttons")
