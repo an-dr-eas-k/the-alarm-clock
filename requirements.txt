@@ -1,3 +1,4 @@
+# note, RPi.GPIO is forcefully uninstalled in run.sh
 luma.core
 luma.oled
 python-vlc
