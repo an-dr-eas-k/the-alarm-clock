@@ -8,15 +8,21 @@ killall -u the-alarm-clock
 echo "update system and install dependencies"
 apt-get -y update
 apt-get -y dist-upgrade
+apt-get -y install git python3 vlc python3-pip curl libasound2-plugin-equal python3-dbus python3-alsaaudio libasound2-dev
+
 apt-get -y remove python3-rpi.gpio
-apt-get -y install git python3 vlc python3-pip curl libasound2-plugin-equal python3-dbus python3-rpi-lgpio python3-alsaaudio libasound2-dev
+apt-get -y install python3-rpi-lgpio 
+
+# apt-get -y remove python3-rpi-lgpio 
+# apt-get -y install python3-rpi.gpio
+
 curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
 apt-get -y autoremove
 
 echo "configure system"
 ln -fs $app/rpi/resources/pigpiod.service /lib/systemd/system/pigpiod.service
 systemctl daemon-reload
-systemctl enable pigpiod
+systemctl disable pigpiod
 # systemctl disable aplay.service
 
 
