@@ -3,7 +3,7 @@
 if [ $(find requirements.txt -mmin -720) ]; then
   echo "installing requirements"
   pip3 install --break-system-packages -r requirements.txt
-  pip3 uninstall RPI.GPIO
+  pip3 uninstall --break-system-packages RPi.GPIO
 fi
 
 echo "restore asound state"
