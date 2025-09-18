@@ -48,7 +48,10 @@ class MCPManager:
         logger.debug("interrupt occurred on gpio pin %s", gpio_pin)
 
         for mcp_pin in self.mcp.int_flag:
-            print(f"mcp pin {mcp_pin} changed to: {self.mcp.get_pin(mcp_pin).value}")
+            mcp_pin_value = self.mcp.get_pin(mcp_pin).value
+            print(f"mcp pin {mcp_pin} changed to: {mcp_pin_value}")
+            if not mcp_pin_value:
+                return
 
             if mcp_pin in self.mcp_callbacks:
                 self.mcp_callbacks[mcp_pin]()
