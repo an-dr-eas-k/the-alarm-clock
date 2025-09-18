@@ -36,18 +36,24 @@ class MCPManager:
         GPIO.add_event_detect(
             interrupt_pin,
             GPIO.FALLING,
-            callback=self.invoke_pin_callback,
+            callback=self.invoke_gpio_callback,
             bouncetime=10,
         )
-        self.pin_callbacks = {}
+        self.mcp_callbacks = {}
 
     def add_callback(self, pin_num, callback):
-        self.pin_callbacks[pin_num] = callback
+        self.mcp_callbacks[pin_num] = callback
 
-    def invoke_pin_callback(self, pin):
-        logger.debug("interrupt occurred on mcp pin %s", pin)
-        if pin in self.pin_callbacks:
-            self.pin_callbacks[pin]()
+    def invoke_gpio_callback(self, gpio_pin):
+        logger.debug("interrupt occurred on gpio pin %s", gpio_pin)
+
+        for mcp_pin in self.mcp.int_flag:
+            print(f"mcp pin {mcp_pin} changed to: {self.mcp.get_pin(mcp_pin).value}")
+
+            if mcp_pin in self.mcp_callbacks:
+                self.mcp_callbacks[mcp_pin]()
+
+        self.mcp.clear_ints()
 
     def close(self):
         GPIO.cleanup()
