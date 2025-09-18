@@ -1,4 +1,8 @@
-from core.infrastructure.i2c_devices import MCPManager
+from core.infrastructure.i2c_devices import (
+    MCPManager,
+    rotary_encoder_channel_a,
+    rotary_encoder_channel_b,
+)
 import logging
 
 logger = logging.getLogger("tac.mcp_rotary_encoder")
@@ -10,23 +14,15 @@ class RotaryEncoderManager:
         self.on_clockwise = on_clockwise
         self.on_counter_clockwise = on_counter_clockwise
         self.mcpManager = MCPManager()
-        self.mcpManager.add_callback(
-            MCPManager().rotary_encoder_channel_a, self._pin_callback
-        )
-        self.mcpManager.add_callback(
-            MCPManager().rotary_encoder_channel_b, self._pin_callback
-        )
+        self.mcpManager.add_callback(rotary_encoder_channel_a, self._pin_callback)
+        self.mcpManager.add_callback(rotary_encoder_channel_b, self._pin_callback)
         logger.info(
             "MCP23017 initialized for rotary encoder input with event interrupts."
         )
 
     def _pin_callback(self, pin):
-        channel_a_value = self.mcpManager.mcp.get_pin(
-            MCPManager().rotary_encoder_channel_a
-        ).value
-        channel_b_value = self.mcpManager.mcp.get_pin(
-            MCPManager().rotary_encoder_channel_b
-        ).value
+        channel_a_value = self.mcpManager.mcp.get_pin(rotary_encoder_channel_a).value
+        channel_b_value = self.mcpManager.mcp.get_pin(rotary_encoder_channel_b).value
 
         state = (channel_a_value, channel_b_value)
         last_state = self.last_state
