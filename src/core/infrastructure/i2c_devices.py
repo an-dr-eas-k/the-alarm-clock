@@ -53,8 +53,8 @@ class MCPManager:
             if not mcp_pin_value:
                 return
 
-            if mcp_pin in self.mcp_callbacks:
-                self.mcp_callbacks[mcp_pin]()
+            # if mcp_pin in self.mcp_callbacks:
+            #     self.mcp_callbacks[mcp_pin]()
 
         self.mcp.clear_ints()
 
