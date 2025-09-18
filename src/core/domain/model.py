@@ -478,11 +478,8 @@ class Config(TACEventPublisher):
 
 
 class HwButton(Trigger):
-    def __init__(
-        self, button_id: int, gpio_id: int = None, button_name: str = None, action=None
-    ):
+    def __init__(self, button_id: str, button_name: str = None, action=None):
         self.button_id = button_id
-        self.gpio_id = gpio_id
         self.button_name = button_name
         self.action = action
 
@@ -490,7 +487,7 @@ class HwButton(Trigger):
         return f"button.{self.button_id}".__hash__()
 
     def __str__(self):
-        return super().__str__() + f"({self.button_id})"
+        return f"{super().__str__()} {self.button_name} ({self.button_id})"
 
 
 class AlarmClockState(TACEventPublisher):

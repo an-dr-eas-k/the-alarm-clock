@@ -22,7 +22,7 @@ from core.domain.model import (
 from core.interface.display.display import Display
 from core.application.api import Api
 from core.infrastructure.audio import Speaker
-from core.application.controls import Controls, SoftwareControls
+from core.application.controls import HardwareControls, SoftwareControls
 from core.infrastructure.persistence import Persistence
 from resources.resources import init_logging
 from resources.resources import config_file
@@ -65,7 +65,9 @@ class ClockApp:
         device: luma_device
 
         if self.is_on_hardware():
-            self.controls = Controls(self.state, display_content, playback_content)
+            self.controls = HardwareControls(
+                self.state, display_content, playback_content
+            )
             # self.state.attach(GeneralPurposeOutput())
             device = ssd1322(serial_interface=spi(device=0, port=0))
         else:

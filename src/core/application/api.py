@@ -25,7 +25,6 @@ from core.domain.model import (
     Weekday,
     try_update,
 )
-from core.infrastructure.bh1750 import get_room_brightness
 from utils.os import reboot_system, shutdown_system
 
 logger = logging.getLogger("tac.api")
@@ -278,7 +277,7 @@ class Api:
     def get_state_as_json(self) -> str:
         return json.dumps(
             obj=dict(
-                room_brightness=get_room_brightness(),
+                room_brightness=self.controls.get_room_brightness(),
                 display=dict(
                     foreground_color=self.display.formatter.foreground_color(
                         color_type=ColorType.IN16

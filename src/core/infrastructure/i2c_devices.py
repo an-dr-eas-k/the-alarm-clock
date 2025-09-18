@@ -5,6 +5,13 @@ import busio
 from adafruit_mcp230xx.mcp23017 import MCP23017
 from utils.singleton import singleton
 
+rotary_encoder_channel_a: int = 8
+rotary_encoder_channel_b: int = 9
+mode_button_channel: int = 0
+invoke_button_channel: int = 1
+
+interrupt_pin: int = 4
+
 
 @singleton
 class I2CManager:
@@ -17,10 +24,6 @@ logger = logging.getLogger("tac.mcp")
 
 @singleton
 class MCPManager:
-    rotary_encoder_channel_a: int = 8
-    rotary_encoder_channel_b: int = 9
-    mode_button_pin: int = 0
-    invoke_button_pin: int = 1
 
     def __init__(self):
         self.mcp = MCP23017(I2CManager().i2c)
@@ -29,10 +32,12 @@ class MCPManager:
         self.mcp.io_control = 0x44
         self.mcp.clear_ints()
         GPIO.setmode(GPIO.BCM)
-        interrupt = 17
-        GPIO.setup(interrupt, GPIO.IN, GPIO.PUD_UP)
+        GPIO.setup(interrupt_pin, GPIO.IN, GPIO.PUD_UP)
         GPIO.add_event_detect(
-            interrupt, GPIO.FALLING, callback=self.invoke_pin_callback, bouncetime=10
+            interrupt_pin,
+            GPIO.FALLING,
+            callback=self.invoke_pin_callback,
+            bouncetime=10,
         )
         self.pin_callbacks = {}
 

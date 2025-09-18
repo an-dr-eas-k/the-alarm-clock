@@ -182,40 +182,42 @@ class AlarmClockStateMachine(StateMachine):
         super().__init__(DefaultMode(state=state))
 
         super().add_definition(
-            StateTransition(default_mode).add_transition(HwButton(3), AlarmViewMode)
+            StateTransition(default_mode).add_transition(
+                HwButton("mode_button"), AlarmViewMode
+            )
         )
 
         super().add_definition(
             StateTransition(alarm_view_mode)
-            .add_transition(HwButton(3), DefaultMode)
+            .add_transition(HwButton("default_button"), DefaultMode)
             .add_transition(
-                HwButton(2),
+                HwButton("rotary_right"),
                 AlarmViewMode,
                 source_state_updater=lambda su: su.activate_next_alarm(),
             )
             .add_transition(
-                HwButton(1),
+                HwButton("rotary_left"),
                 AlarmViewMode,
                 source_state_updater=lambda su: su.activate_previous_alarm(),
             )
-            .add_transition(HwButton(4), AlarmEditMode)
+            .add_transition(HwButton("invoke_button"), AlarmEditMode)
         )
 
         super().add_definition(
             StateTransition(alarm_edit_mode)
-            .add_transition(HwButton(3), DefaultMode)
+            .add_transition(HwButton("mode_button"), DefaultMode)
             .add_transition(
-                HwButton(2),
+                HwButton("rotary_right"),
                 AlarmEditMode,
                 source_state_updater=lambda su: su.activate_next_property_to_edit(),
             )
             .add_transition(
-                HwButton(1),
+                HwButton("rotary_left"),
                 AlarmEditMode,
                 source_state_updater=lambda su: su.activate_previous_property_to_edit(),
             )
             .add_transition(
-                HwButton(4),
+                HwButton("invoke_button"),
                 PropertyEditMode,
                 source_state_updater=lambda su: su.start_editing(),
             )
@@ -223,16 +225,16 @@ class AlarmClockStateMachine(StateMachine):
 
         super().add_definition(
             StateTransition(property_edit_mode)
-            .add_transition(HwButton(3), DefaultMode)
+            .add_transition(HwButton("mode_button"), DefaultMode)
             .add_transition(
-                HwButton(2),
+                HwButton("rotary_right"),
                 PropertyEditMode,
                 source_state_updater=lambda su: su.activate_next_value(),
             )
             .add_transition(
-                HwButton(1),
+                HwButton("rotary_left"),
                 PropertyEditMode,
                 source_state_updater=lambda su: su.activate_previous_value(),
             )
-            .add_transition(HwButton(4), AlarmEditMode),
+            .add_transition(HwButton("invoke_button"), AlarmEditMode),
         )

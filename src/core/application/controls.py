@@ -20,10 +20,6 @@ from core.domain.model import (
     TACEventSubscriber,
     Config,
 )
-from core.infrastructure.bh1750 import get_room_brightness
-from core.infrastructure.i2c_devices import MCPManager
-from core.infrastructure.mcp23017.buttons import ButtonsManager
-from core.infrastructure.mcp23017.rotary_encoder import RotaryEncoderManager
 from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon
@@ -31,10 +27,6 @@ from resources.resources import active_alarm_definition_file
 
 logger = logging.getLogger("tac.controls")
 
-button1 = 0
-button2 = 5
-button3 = 6
-button4 = 13
 alarm_store = "alarm"
 default_store = "default"
 
@@ -193,10 +185,7 @@ class Controls(TACEventSubscriber):
         self.state.state_machine.do_state_transition(hwButton)
         if not hwButton.action:
             return
-        Controls.action(
-            hwButton.action,
-            "button %s %s" % (hwButton.button_id, hwButton.button_name),
-        )
+        Controls.action(hwButton.action, hwButton.__str__())
 
     def action(action, info: str = None):
         try:
@@ -206,23 +195,22 @@ class Controls(TACEventSubscriber):
         except:
             logger.error("%s", traceback.format_exc())
 
-    def button3_activated(self):
-        self.button_action(HwButton(3, "activated"))
+    def rotary_counter_clockwise(self):
+        self.button_action(
+            HwButton("rotary_left", "activated", action=self.decrease_volume)
+        )
 
-    def set_to_idle_mode(self):
-        if self.state.mode == Mode.Spotify:
-            restart_spotify_daemon()
+    def rotary_clockwise(self):
+        self.button_action(
+            HwButton("rotary_right", "activated", action=self.increase_volume)
+        )
 
-        if self.state.mode != Mode.Idle:
-            self.stop_generic_trigger(SchedulerJobIds.hide_volume_meter.value)
-            self.display_content.hide_volume_meter()
-            self.state.mode = Mode.Idle
-            self.state.active_alarm = None
+    def mode_button_triggered(self):
+        self.button_action(HwButton("mode_button", "activated"))
 
-    def button4_activated(self):
+    def invoke_button_triggered(self):
 
         def toggle_stream():
-
             if self.state.mode in [Mode.Alarm, Mode.Music, Mode.Spotify]:
                 self.set_to_idle_mode()
             else:
@@ -235,7 +223,17 @@ class Controls(TACEventSubscriber):
                 else:
                     self.play_stream_by_id(0)
 
-        self.button_action(HwButton(4, "activated", action=toggle_stream))
+        self.button_action(HwButton("invoke_button", "activated", action=toggle_stream))
+
+    def set_to_idle_mode(self):
+        if self.state.mode == Mode.Spotify:
+            restart_spotify_daemon()
+
+        if self.state.mode != Mode.Idle:
+            self.stop_generic_trigger(SchedulerJobIds.hide_volume_meter.value)
+            self.display_content.hide_volume_meter()
+            self.state.mode = Mode.Idle
+            self.state.active_alarm = None
 
     def enter_mode(self):
         self.display_content.mode_state.next_mode_0()
@@ -265,20 +263,10 @@ class Controls(TACEventSubscriber):
         self.state.mode = Mode.Music
 
     def configure(self):
-        button_configs = [
-            dict(
-                pin=MCPManager().mode_button_pin, when_activated=self.button3_activated
-            ),
-            dict(
-                pin=MCPManager().invoke_button_pin,
-                when_activated=self.button4_activated,
-            ),
-        ]
-        self.button_manager = ButtonsManager(button_configs)
-        self.rotary_encoder_manager = RotaryEncoderManager(
-            on_clockwise=self.increase_volume,
-            on_counter_clockwise=self.decrease_volume,
-        )
+        pass
+
+    def get_room_brightness(self):
+        pass
 
     def update_display(self):
 
@@ -292,7 +280,7 @@ class Controls(TACEventSubscriber):
 
             self.state.update_state(
                 new_blink_state,
-                RoomBrightness(get_room_brightness()),
+                RoomBrightness(self.get_room_brightness()),
                 self.display_content.is_scrolling,
             )
 
@@ -365,6 +353,35 @@ class Controls(TACEventSubscriber):
                 self.state.config.remove_alarm_definition(int(job.id))
 
 
+class HardwareControls(Controls):
+    def __init__(
+        self,
+        state: AlarmClockState,
+        display_content: DisplayContent,
+        playback_content: PlaybackContent,
+    ) -> None:
+
+        super().__init__(state, display_content, playback_content)
+
+    def configure(self):
+        from core.infrastructure.mcp23017.buttons import ButtonsManager
+        from core.infrastructure.mcp23017.rotary_encoder import RotaryEncoderManager
+
+        self.button_manager = ButtonsManager(
+            mode_channel_callback=self.mode_button_triggered,
+            invoke_channel_callback=self.invoke_button_triggered,
+        )
+        self.rotary_encoder_manager = RotaryEncoderManager(
+            on_clockwise=self.rotary_clockwise,
+            on_counter_clockwise=self.rotary_counter_clockwise,
+        )
+
+    def get_room_brightness(self):
+        from core.infrastructure.bh1750 import get_room_brightness
+
+        return get_room_brightness()
+
+
 class SoftwareControls(Controls):
     simulated_brightness: int = 10000
 
@@ -376,23 +393,8 @@ class SoftwareControls(Controls):
     ) -> None:
         super().__init__(state, display_content, playback_content)
 
-    def update_display(self):
-
-        def do():
-            logger.debug("update display")
-            current_second = GeoLocation().now().second
-            new_blink_state = self.state.show_blink_segment
-            if self._previous_second != current_second:
-                new_blink_state = not self.state.show_blink_segment
-                self._previous_second = current_second
-
-            self.state.update_state(
-                new_blink_state,
-                RoomBrightness(self.simulated_brightness),
-                self.display_content.is_scrolling,
-            )
-
-        Controls.action(do)
+    def get_room_brightness(self):
+        return self.simulated_brightness
 
     def configure(self):
         def key_pressed_action(key):
@@ -401,23 +403,20 @@ class SoftwareControls(Controls):
                 return
             try:
                 if key.char == "1":
-                    self.button1_activated()
+                    self.rotary_counter_clockwise()
                 if key.char == "2":
-                    self.button2_activated()
+                    self.rotary_clockwise()
                 if key.char == "3":
-                    self.button3_activated()
+                    self.mode_button_triggered()
                 if key.char == "4":
-                    self.button4_activated()
+                    self.invoke_button_triggered()
                 if key.char == "5":
                     brightness_examples = [0, 1, 3, 10, 10000]
                     self.simulated_brightness = brightness_examples[
                         (brightness_examples.index(self.simulated_brightness) + 1)
                         % len(brightness_examples)
                     ]
-                if key.char == "+":
-                    self.increase_volume()
-                if key.char == "-":
-                    self.decrease_volume()
+                    logger.info("simulated brightness: %s", self.simulated_brightness)
 
             except Exception:
                 logger.warning("%s", traceback.format_exc())
