@@ -49,7 +49,7 @@ class MCPManager:
         self.mcp_callbacks[pin_num] = callback
 
     def invoke_gpio_callback(self, gpio_pin):
-#        logger.debug("interrupt occurred on gpio pin %s", gpio_pin)
+        logger.debug("interrupt occurred on gpio pin %s", gpio_pin)
 
         for mcp_pin in self.mcp.int_flag:
             mcp_pin_value = self.mcp.get_pin(mcp_pin).value
