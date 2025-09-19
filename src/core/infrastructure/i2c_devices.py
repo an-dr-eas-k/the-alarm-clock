@@ -2,6 +2,7 @@ import logging
 from RPi import GPIO
 import board
 import busio
+from digitalio import Direction, Pull
 from adafruit_mcp230xx.mcp23017 import MCP23017
 from utils.singleton import singleton
 
@@ -27,7 +28,11 @@ class MCPManager:
 
     def __init__(self):
         self.mcp = MCP23017(I2CManager().i2c)
-        
+        for i in range(0, 16):
+            pin = mcp.get_pin(i)
+            pin.direction = Direction.INPUT
+            pin.pull = Pull.UP
+            
         self.mcp.interrupt_enable = 0xC0E0 # only get interrupts for 1100000111000000 
         self.mcp.interrupt_configuration = 0xFFFF # only get notified, when any pin goes low
         self.mcp.io_control = 0x44
