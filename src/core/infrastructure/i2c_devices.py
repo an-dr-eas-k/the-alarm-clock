@@ -27,7 +27,7 @@ class MCPManager:
 
     def __init__(self):
         self.mcp = MCP23017(I2CManager().i2c)
-        self.mcp.interrupt_enable = 0xFFFF
+        self.mcp.interrupt_enable = 0xE0C0
         self.mcp.interrupt_configuration = 0x0000
         self.mcp.io_control = 0x44
         self.mcp.clear_ints()
