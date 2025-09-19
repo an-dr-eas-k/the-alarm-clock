@@ -29,7 +29,7 @@ class MCPManager:
     def __init__(self):
         self.mcp = MCP23017(I2CManager().i2c)
         for i in range(0, 16):
-            pin = mcp.get_pin(i)
+            pin = self.mcp.get_pin(i)
             pin.direction = Direction.INPUT
             pin.pull = Pull.UP
             
