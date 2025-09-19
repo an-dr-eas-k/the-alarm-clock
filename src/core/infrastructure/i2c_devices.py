@@ -27,10 +27,14 @@ class MCPManager:
 
     def __init__(self):
         self.mcp = MCP23017(I2CManager().i2c)
-        self.mcp.interrupt_enable = 0xE0C0
-        self.mcp.interrupt_configuration = 0x0000
+        
+        self.mcp.interrupt_enable = 0xC0E0 # only get interrupts for 1100000111000000 
+        self.mcp.interrupt_configuration = 0xFFFF # only get notified, when any pin goes low
         self.mcp.io_control = 0x44
+        self.mcp.default_value = 0xFFFF  # notify me, when any value gets low
+        
         self.mcp.clear_ints()
+        
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(interrupt_pin, GPIO.IN, GPIO.PUD_UP)
         GPIO.add_event_detect(
