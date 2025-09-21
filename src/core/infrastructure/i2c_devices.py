@@ -1,4 +1,5 @@
 import logging
+import threading
 import time
 from RPi import GPIO
 import board
@@ -8,8 +9,8 @@ from adafruit_mcp230xx.mcp23017 import MCP23017
 from utils.singleton import singleton
 
 rotary_encoder_channel_press: int = 8
-rotary_encoder_channel_a: int = 9
-rotary_encoder_channel_b: int = 10
+rotary_encoder_channel_a: int = 10
+rotary_encoder_channel_b: int = 9
 mode_button_channel: int = 0
 invoke_button_channel: int = 1
 
@@ -37,16 +38,12 @@ class MCPManager:
             pin.direction = Direction.INPUT
             pin.pull = Pull.UP
 
-        # self.mcp.interrupt_enable = 0xC0E0  # only get interrupts for 1100000111000000
-        self.mcp.interrupt_enable = 0xFFFF  # get interrupts for all pins
-        self.mcp.interrupt_configuration = (
-            # 0xFFFF  # only get notified, when any pin goes low
-            0x0000  # notify me, when any value changes
-        )
+        self.mcp.interrupt_enable = 0xC0E0  # only get interrupts for 1100000111000000
+        # self.mcp.interrupt_enable = 0xFFFF  # get interrupts for all pins
+        self.mcp.interrupt_configuration = 0x0000  # notify me, when any value changes
         self.mcp.io_control = (
             0x44  # 0100 0100 # mirroring INT pins, open drain, active low
         )
-        # self.mcp.default_value = 0xFFFF  # notify me, when any value gets low
 
         self.mcp.clear_ints()
 
@@ -60,10 +57,10 @@ class MCPManager:
         )
         self.mcp_callbacks = {}
 
-        # if logger.level == logging.DEBUG:
-        #     self.log_thread = threading.Thread(target=self._log_thread_callback)
-        #     self.log_thread.daemon = True
-        #     self.log_thread.start()
+        if logger.level == logging.DEBUG:
+            self.log_thread = threading.Thread(target=self._log_thread_callback)
+            self.log_thread.daemon = True
+            self.log_thread.start()
 
     def add_callback(self, pin_num, callback):
         self.mcp_callbacks[pin_num] = callback
