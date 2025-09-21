@@ -29,14 +29,15 @@ class RotaryEncoderManager:
         logger.debug(
             f"Rotary encoder current state: {state}, last state: {self.last_state}"
         )
-        if state == (0, 0):
+        if state == (0, 0) or state == self.last_state:
             return
+
         last_state = self.last_state
-        if state != last_state:
-            if last_state == (1, 0) and state == (1, 1):
-                logger.debug("Rotary clockwise detected")
-                self.on_clockwise()
-            elif last_state == (0, 1) and state == (1, 1):
-                logger.debug("Rotary counter-clockwise detected")
-                self.on_counter_clockwise()
-            self.last_state = state
+        self.last_state = state
+
+        if last_state == (1, 0) and state == (1, 1):
+            logger.debug("Rotary clockwise detected")
+            self.on_clockwise()
+        elif last_state == (0, 1) and state == (1, 1):
+            logger.debug("Rotary counter-clockwise detected")
+            self.on_counter_clockwise()
