@@ -33,8 +33,9 @@ class RotaryEncoderManager:
         last_state = self.last_states[0]
         if state != last_state:
             if state == (0, 0) and self.last_states[0] == (self.last_states[1])[::-1]:
-                logger.debug("Rotary bouncing detected, ignoring")
                 state = (1, 1)
+                last_state = self.last_states[1]
+                logger.debug("bouncing detected, new states are {state}, {last_state}")
             if last_state == (1, 0) and state == (1, 1):
                 logger.debug("Rotary clockwise detected")
                 self.on_clockwise()
