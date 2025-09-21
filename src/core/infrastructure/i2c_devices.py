@@ -32,14 +32,18 @@ class MCPManager:
             pin = self.mcp.get_pin(i)
             pin.direction = Direction.INPUT
             pin.pull = Pull.UP
-            
-        self.mcp.interrupt_enable = 0xC0E0 # only get interrupts for 1100000111000000 
-        self.mcp.interrupt_configuration = 0xFFFF # only get notified, when any pin goes low
-        self.mcp.io_control = 0x44
+
+        self.mcp.interrupt_enable = 0xC0E0  # only get interrupts for 1100000111000000
+        self.mcp.interrupt_configuration = (
+            0xFFFF  # only get notified, when any pin goes low
+        )
+        self.mcp.io_control = (
+            0x44  # 0100 0100 # mirroring INT pins, open drain, active low
+        )
         self.mcp.default_value = 0xFFFF  # notify me, when any value gets low
-        
+
         self.mcp.clear_ints()
-        
+
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(interrupt_pin, GPIO.IN, GPIO.PUD_UP)
         GPIO.add_event_detect(
@@ -69,3 +73,24 @@ class MCPManager:
 
     def close(self):
         GPIO.cleanup()
+
+
+if __name__ == "__main__":
+    import time
+
+    i2c = I2CManager().i2c
+
+    mcp = MCP23017(i2c)
+    connected_pins = [0, 1, 8, 9, 10]
+    for i in connected_pins:
+        pin = mcp.get_pin(i)
+        pin.direction = Direction.INPUT
+        pin.pull = Pull.UP
+
+    while True:
+        for i in connected_pins:
+            pin = mcp.get_pin(i)
+            print(f"Pin {i} is at level: {pin.value}")
+
+        print("-----")
+        time.sleep(1)
