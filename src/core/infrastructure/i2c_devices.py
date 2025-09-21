@@ -80,7 +80,7 @@ class MCPManager:
                     )
                 )
 
-    def invoke_gpio_callback(self, gpio_pin):
+    def invoke_gpio_callback(self):
 
         for mcp_pin in self.mcp.int_flag:
             mcp_pin_value = self.mcp.get_pin(mcp_pin).value
@@ -88,8 +88,8 @@ class MCPManager:
                 continue
             logger.debug(f"mcp pin {mcp_pin} changed to: {mcp_pin_value}")
 
-            # if mcp_pin in self.mcp_callbacks:
-            #     self.mcp_callbacks[mcp_pin]()
+            if mcp_pin in self.mcp_callbacks:
+                self.mcp_callbacks[mcp_pin]()
 
         self.mcp.clear_ints()
 
