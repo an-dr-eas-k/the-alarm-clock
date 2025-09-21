@@ -1,4 +1,6 @@
-from core.domain import AlarmDefinition, Config, AudioStream
+from core.domain.model import AlarmDefinition, Config, AudioStream
+
+
 class ConfigRepository:
     def save(self, config: Config):
         raise NotImplementedError

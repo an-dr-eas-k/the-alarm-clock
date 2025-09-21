@@ -1,13 +1,14 @@
+# note, RPi.GPIO is forcefully uninstalled in run.sh
 luma.core
 luma.oled
 python-vlc
 spidev
 tornado
 pynput
-gpiozero
 apscheduler
 jsonpickle
 astral
 adafruit-circuitpython-bh1750
+adafruit-circuitpython-mcp230xx
 spotify
 pyalsaaudio

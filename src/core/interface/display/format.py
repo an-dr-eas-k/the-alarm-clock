@@ -1,8 +1,13 @@
 import datetime
 from enum import Enum
 import logging
-from PIL import ImageFont, Image
-from core.domain import AlarmClockState, AlarmDefinition, DisplayContent, VisualEffect
+from PIL import Image
+from core.domain.model import (
+    AlarmClockState,
+    AlarmDefinition,
+    DisplayContent,
+    VisualEffect,
+)
 from utils.drawing import PresentationFont, grayscale_to_color
 from utils.extensions import get_job_arg, get_timedelta_to_alarm, respect_ranges
 

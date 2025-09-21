@@ -9,15 +9,15 @@ import tornado
 import tornado.web
 from PIL.Image import Image
 from core.application.controls import Controls
-from core.interface.display import Display
-from core.interface.format import ColorType
+from core.interface.display.format import ColorType
 from resources.resources import webroot_file, ssl_dir
 
-from core.domain import (
+from core.domain.model import (
     AlarmDefinition,
     AudioEffect,
     AudioStream,
     Config,
+    DisplayContentProvider,
     LibreSpotifyEvent,
     PlaybackContent,
     StreamAudioEffect,
@@ -25,7 +25,6 @@ from core.domain import (
     Weekday,
     try_update,
 )
-from core.infrastructure.gpi import get_room_brightness
 from utils.os import reboot_system, shutdown_system
 
 logger = logging.getLogger("tac.api")
@@ -71,7 +70,7 @@ class LibreSpotifyEventHandler(tornado.web.RequestHandler):
 
 class DisplayHandler(tornado.web.RequestHandler):
 
-    def initialize(self, display: Display) -> None:
+    def initialize(self, display: DisplayContentProvider) -> None:
         self.display = display
 
     def get(self):
@@ -238,7 +237,9 @@ class Api:
 
     app: tornado.web.Application
 
-    def __init__(self, controls: Controls, display: Display, encrypted: bool):
+    def __init__(
+        self, controls: Controls, display: DisplayContentProvider, encrypted: bool
+    ):
         self.controls = controls
         self.display = display
         self.encrypted = encrypted
@@ -276,7 +277,7 @@ class Api:
     def get_state_as_json(self) -> str:
         return json.dumps(
             obj=dict(
-                room_brightness=get_room_brightness(),
+                room_brightness=self.controls.get_room_brightness(),
                 display=dict(
                     foreground_color=self.display.formatter.foreground_color(
                         color_type=ColorType.IN16

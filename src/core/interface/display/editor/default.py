@@ -1,15 +1,14 @@
 import logging
 from PIL import ImageFont, Image, ImageOps
 
-from core.domain import (
-    AlarmDefinition,
-    AlarmEditMode,
+from core.domain.mode import AlarmEditMode
+from core.domain.model import (
     DisplayContent,
     TACEvent,
     PlaybackContent,
 )
-from core.interface.format import DisplayFormatter, PresentationFont
-from core.interface.presenter import (
+from core.interface.display.display import DisplayFormatter
+from core.interface.display.presenter import (
     AlarmEditorPresenter,
     DefaultPresenter,
     ScrollingPresenter,
@@ -17,6 +16,7 @@ from core.interface.presenter import (
 )
 from utils.analog_clock import AnalogClockGenerator
 from utils.drawing import (
+    PresentationFont,
     get_concat_h_multi_blank,
     get_concat_v,
     text_to_image,

@@ -1,14 +1,12 @@
-from typing import TypeVar, Optional, Type, cast
+from typing import Optional, Type, cast
 from enum import Enum
 import logging
 from luma.core.device import device as luma_device
 from PIL import ImageFont, Image, ImageOps
 
-from core.domain import (
+from core.domain.mode import AlarmEditMode, AlarmViewMode, DefaultMode
+from core.domain.model import (
     AlarmDefinition,
-    AlarmEditMode,
-    AlarmViewMode,
-    DefaultMode,
     DisplayContent,
     TACEventSubscriber,
 )
@@ -19,9 +17,8 @@ from utils.drawing import (
     Scroller,
 )
 
-from resources.resources import fonts_dir
 
-from core.interface.format import DisplayFormatter
+from core.interface.display.format import DisplayFormatter
 from utils.extensions import T
 
 logger = logging.getLogger("tac.display")
