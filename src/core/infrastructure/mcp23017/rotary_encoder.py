@@ -21,8 +21,8 @@ class RotaryEncoderManager:
         )
 
     def _pin_callback(self, mcp, pin):
-        channel_a_value = mcp.get_pin(rotary_encoder_channel_a).value
-        channel_b_value = mcp.get_pin(rotary_encoder_channel_b).value
+        channel_a_value = not mcp.get_pin(rotary_encoder_channel_a).value
+        channel_b_value = not mcp.get_pin(rotary_encoder_channel_b).value
 
         state = (channel_a_value, channel_b_value)
         last_state = self.last_state
