@@ -60,10 +60,10 @@ class MCPManager:
         )
         self.mcp_callbacks = {}
 
-        if logger.level == logging.DEBUG:
-            self.log_thread = threading.Thread(target=self._log_thread_callback)
-            self.log_thread.daemon = True
-            self.log_thread.start()
+        # if logger.level == logging.DEBUG:
+        #     self.log_thread = threading.Thread(target=self._log_thread_callback)
+        #     self.log_thread.daemon = True
+        #     self.log_thread.start()
 
     def add_callback(self, pin_num, callback):
         self.mcp_callbacks[pin_num] = callback
@@ -81,12 +81,13 @@ class MCPManager:
                 )
 
     def invoke_gpio_callback(self, gpio_pin):
+        logger.debug(f"GPIO interrupt on pin {gpio_pin} detected.")
 
         for mcp_pin in self.mcp.int_flag:
             mcp_pin_value = self.mcp.get_pin(mcp_pin).value
+            logger.debug(f"mcp pin {mcp_pin} changed to: {mcp_pin_value}")
             if not mcp_pin_value:
                 continue
-            logger.debug(f"mcp pin {mcp_pin} changed to: {mcp_pin_value}")
 
             if mcp_pin in self.mcp_callbacks:
                 self.mcp_callbacks[mcp_pin]()
