@@ -1,4 +1,5 @@
 import logging
+import threading
 from RPi import GPIO
 import board
 import busio
@@ -25,8 +26,13 @@ logger = logging.getLogger("tac.mcp")
 
 @singleton
 class MCPManager:
+    last_log_time = 0
 
     def __init__(self):
+        if logger.level == logging.DEBUG:
+            self.log_thread = threading.Thread(target=self.log_thread_callback)
+            self.log_thread.start()
+
         self.mcp = MCP23017(I2CManager().i2c)
         for i in range(0, 16):
             pin = self.mcp.get_pin(i)
@@ -57,8 +63,15 @@ class MCPManager:
     def add_callback(self, pin_num, callback):
         self.mcp_callbacks[pin_num] = callback
 
+    def log_thread_callback(self):
+        current_time = time.time()
+        if self.last_log_time < current_time - 1:
+            self.last_log_time = current_time
+            logger.debug(
+                f"interrupt state: {int(GPIO.input(interrupt_pin))}, mcp pin states: {[f'{p:02}: {int(self.mcp.get_pin(p).value)}' for p in range(16)]}"
+            )
+
     def invoke_gpio_callback(self, gpio_pin):
-        logger.debug("interrupt occurred on gpio pin %s", gpio_pin)
 
         for mcp_pin in self.mcp.int_flag:
             mcp_pin_value = self.mcp.get_pin(mcp_pin).value
