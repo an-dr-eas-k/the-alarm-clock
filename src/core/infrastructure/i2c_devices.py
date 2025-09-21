@@ -9,8 +9,8 @@ from adafruit_mcp230xx.mcp23017 import MCP23017
 from utils.singleton import singleton
 
 rotary_encoder_channel_press: int = 8
-rotary_encoder_channel_a: int = 10
-rotary_encoder_channel_b: int = 9
+rotary_encoder_channel_a: int = 9
+botary_encoder_channel_b: int = 10
 mode_button_channel: int = 0
 invoke_button_channel: int = 1
 
