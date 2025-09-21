@@ -1,4 +1,5 @@
 import logging
+import time
 import threading
 from RPi import GPIO
 import board
@@ -89,7 +90,6 @@ class MCPManager:
 
 
 if __name__ == "__main__":
-    import time
 
     i2c = I2CManager().i2c
 
