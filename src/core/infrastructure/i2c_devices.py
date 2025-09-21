@@ -1,6 +1,5 @@
 import logging
 import time
-import threading
 from RPi import GPIO
 import board
 import busio
