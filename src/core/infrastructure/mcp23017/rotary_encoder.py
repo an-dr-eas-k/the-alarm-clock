@@ -32,7 +32,9 @@ class RotaryEncoderManager:
 
         last_state = self.last_states[0]
         if state != last_state:
-            if state == (0, 0) and self.last_states[0] == reversed(self.last_states[1]):
+            if state == (0, 0) and self.last_states[0] == list(
+                reversed(self.last_states[1])
+            ):
                 logger.debug("Rotary bouncing detected, ignoring")
                 state = (1, 1)
             if last_state == (1, 0) and state == (1, 1):
