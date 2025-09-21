@@ -27,7 +27,7 @@ class RotaryEncoderManager:
 
         state = (channel_a_value, channel_b_value)
         logger.debug(
-            f"Rotary encoder current state: {state}, last state: {self.last_state}"
+            f"Rotary encoder current state: {state}, last state: {self.last_states[0]}"
         )
 
         last_state = self.last_states[0]
