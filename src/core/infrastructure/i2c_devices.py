@@ -80,7 +80,7 @@ class MCPManager:
                     )
                 )
 
-    def invoke_gpio_callback(self):
+    def invoke_gpio_callback(self, gpio_pin):
 
         for mcp_pin in self.mcp.int_flag:
             mcp_pin_value = self.mcp.get_pin(mcp_pin).value
