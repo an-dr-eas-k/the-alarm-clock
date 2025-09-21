@@ -9,6 +9,7 @@ logger = logging.getLogger("tac.mcp_rotary_encoder")
 
 
 class RotaryEncoderManager:
+    last_state = (0, 0)
 
     def __init__(self, on_clockwise, on_counter_clockwise):
         self.on_clockwise = on_clockwise
@@ -25,6 +26,9 @@ class RotaryEncoderManager:
         channel_b_value = not mcp.get_pin(rotary_encoder_channel_b).value
 
         state = (channel_a_value, channel_b_value)
+        logger.debug(
+            f"Rotary encoder current state: {state}, and last state: {self.last_state}"
+        )
         last_state = self.last_state
         if state != last_state:
             if last_state == (1, 0) and state == (1, 1):
