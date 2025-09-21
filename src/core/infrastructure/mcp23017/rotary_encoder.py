@@ -29,7 +29,11 @@ class RotaryEncoderManager:
         logger.debug(
             f"Rotary encoder current state: {state}, last state: {self.last_state}"
         )
-        if state == (0, 0) or state == self.last_state:
+        if (
+            state == (0, 0)
+            or state == self.last_state
+            or state == reversed(self.last_state)
+        ):
             return
 
         last_state = self.last_state
