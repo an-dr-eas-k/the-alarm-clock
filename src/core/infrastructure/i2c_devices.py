@@ -30,9 +30,6 @@ class MCPManager:
     last_log_time = 0
 
     def __init__(self):
-        if logger.level == logging.DEBUG:
-            self.log_thread = threading.Thread(target=self.log_thread_callback)
-            self.log_thread.start()
 
         self.mcp = MCP23017(I2CManager().i2c)
         for i in range(0, 16):
@@ -61,10 +58,14 @@ class MCPManager:
         )
         self.mcp_callbacks = {}
 
+        if logger.level == logging.DEBUG:
+            self.log_thread = threading.Thread(target=self._log_thread_callback)
+            self.log_thread.start()
+
     def add_callback(self, pin_num, callback):
         self.mcp_callbacks[pin_num] = callback
 
-    def log_thread_callback(self):
+    def _log_thread_callback(self):
         current_time = time.time()
         if self.last_log_time < current_time - 1:
             self.last_log_time = current_time
