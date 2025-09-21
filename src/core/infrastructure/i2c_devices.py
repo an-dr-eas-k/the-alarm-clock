@@ -37,7 +37,8 @@ class MCPManager:
             pin.direction = Direction.INPUT
             pin.pull = Pull.UP
 
-        self.mcp.interrupt_enable = 0xC0E0  # only get interrupts for 1100000111000000
+        # self.mcp.interrupt_enable = 0xC0E0  # only get interrupts for 1100000111000000
+        self.mcp.interrupt_enable = 0xFFFF  # get interrupts for all pins
         self.mcp.interrupt_configuration = (
             # 0xFFFF  # only get notified, when any pin goes low
             0x0000  # notify me, when any value changes
