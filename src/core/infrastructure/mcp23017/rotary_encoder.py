@@ -9,7 +9,7 @@ logger = logging.getLogger("tac.mcp_rotary_encoder")
 
 
 class RotaryEncoderManager:
-    last_state = (0, 0)
+    last_states = [(0, 0), (0, 0)]
 
     def __init__(self, on_clockwise, on_counter_clockwise):
         self.on_clockwise = on_clockwise
@@ -30,12 +30,16 @@ class RotaryEncoderManager:
             f"Rotary encoder current state: {state}, last state: {self.last_state}"
         )
 
-        last_state = self.last_state
+        last_state = self.last_states[0]
         if state != last_state:
+            if state == (0, 0) and self.last_states[0] == reversed(self.last_states[1]):
+                logger.debug("Rotary bouncing detected, ignoring")
+                state = (1, 1)
             if last_state == (1, 0) and state == (1, 1):
                 logger.debug("Rotary clockwise detected")
                 self.on_clockwise()
             elif last_state == (0, 1) and state == (1, 1):
                 logger.debug("Rotary counter-clockwise detected")
                 self.on_counter_clockwise()
-            self.last_state = state
+            self.last_states[1] = self.last_states[0]
+            self.last_states[0] = state
