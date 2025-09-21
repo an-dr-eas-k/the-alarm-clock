@@ -45,7 +45,7 @@ class MCPManager:
         self.mcp.io_control = (
             0x44  # 0100 0100 # mirroring INT pins, open drain, active low
         )
-        self.mcp.default_value = 0xFFFF  # notify me, when any value gets low
+        # self.mcp.default_value = 0xFFFF  # notify me, when any value gets low
 
         self.mcp.clear_ints()
 
