@@ -66,12 +66,13 @@ class MCPManager:
         self.mcp_callbacks[pin_num] = callback
 
     def _log_thread_callback(self):
-        current_time = time.time()
-        if self.last_log_time < current_time - 1:
-            self.last_log_time = current_time
-            logger.debug(
-                f"interrupt state: {int(GPIO.input(interrupt_pin))}, mcp pin states: {[f'{p:02}: {int(self.mcp.get_pin(p).value)}' for p in range(16)]}"
-            )
+        while True:
+            current_time = time.time()
+            if self.last_log_time < current_time - 1:
+                self.last_log_time = current_time
+                logger.debug(
+                    f"interrupt state: {int(GPIO.input(interrupt_pin))}, mcp pin states: {[f'{p:02}: {int(self.mcp.get_pin(p).value)}' for p in range(16)]}"
+                )
 
     def invoke_gpio_callback(self, gpio_pin):
 
