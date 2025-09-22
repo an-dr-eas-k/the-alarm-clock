@@ -20,7 +20,6 @@ from core.domain.model import (
     TACEventSubscriber,
     Config,
 )
-from core.infrastructure.keyboardbuttons import KeyboardButtons
 from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon
@@ -376,6 +375,9 @@ class SoftwareControls(Controls):
         return self.button_manager.simulated_brightness
 
     def configure(self):
+        from core.infrastructure.keyboardbuttons import KeyboardButtons
+
         super().configure()
+
         self.button_manager = KeyboardButtons()
         self.button_manager.subscribe(self.state.state_machine)
