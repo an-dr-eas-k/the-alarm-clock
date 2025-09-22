@@ -189,7 +189,7 @@ class AlarmClockStateMachine(StateMachine):
 
         super().add_definition(
             StateTransition(alarm_view_mode)
-            .add_transition(HwButton("default_button"), DefaultMode)
+            .add_transition(HwButton("mode_button"), DefaultMode)
             .add_transition(
                 HwButton("rotary_right"),
                 AlarmViewMode,
