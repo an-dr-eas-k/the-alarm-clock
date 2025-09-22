@@ -52,7 +52,6 @@ class MCPManager:
             interrupt_pin,
             GPIO.FALLING,
             callback=self.invoke_gpio_callback,
-            bouncetime=10,
         )
         self.mcp_callbacks = {}
 
