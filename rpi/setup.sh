@@ -64,7 +64,7 @@ systemctl enable raspotify
 ln -fs $app/rpi/resources/raspotify.conf /etc/raspotify/conf
 touch /var/log/the-alarm-clock.spotify-event.stdout
 touch /var/log/the-alarm-clock.spotify-event.errout
-chown $uid:$uid -R /var/log/the-alarm-clock.spotify-event.*
+chown $uid:$uid -R /var/log/the-alarm-clock.*
 
 
 echo "setup the-alarm-clock app"
