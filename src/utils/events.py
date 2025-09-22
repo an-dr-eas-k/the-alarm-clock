@@ -7,7 +7,7 @@ logger = logging.getLogger("tac.events")
 
 class TACEvent:
     during_registration: bool
-    reason: str = None
+    reason: any = None
     property_name: str = None
     new_value: any = None
     subscriber: "TACEventSubscriber" = None

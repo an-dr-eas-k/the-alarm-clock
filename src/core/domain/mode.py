@@ -9,6 +9,7 @@ from core.domain.model import (
 )
 from core.interface.display.editor.alarm_definition_editor import AlarmDefinitionToEdit
 
+from utils.events import TACEventPublisher
 from utils.geolocation import GeoLocation
 from utils.state_machine import State, StateMachine, StateTransition
 
@@ -172,18 +173,39 @@ class PropertyEditMode(AlarmEditMode):
         self.set_value(value_list[next_index])
 
 
-class AlarmClockStateMachine(StateMachine):
+class AlarmClockStateMachine(StateMachine, TACEventPublisher):
     def __init__(self, state: "AlarmClockState"):
         default_mode = DefaultMode(state=state)
         alarm_view_mode = AlarmViewMode(default_mode)
         alarm_edit_mode = AlarmEditMode(alarm_view_mode)
         property_edit_mode = PropertyEditMode(alarm_edit_mode)
 
-        super().__init__(DefaultMode(state=state))
+        StateMachine.__init__(self, default_mode)
+        TACEventPublisher.__init__(self)
 
         super().add_definition(
-            StateTransition(default_mode).add_transition(
-                HwButton("mode_button"), AlarmViewMode
+            StateTransition(default_mode)
+            .add_transition(HwButton("mode_button"), AlarmViewMode)
+            .add_transition(
+                HwButton("rotary_clockwise"),
+                DefaultMode,
+                source_state_updater=lambda su: self.publish(
+                    reason="rotary_clockwise", during_registration=False
+                ),
+            )
+            .add_transition(
+                HwButton("rotary_counter_clockwise"),
+                DefaultMode,
+                source_state_updater=lambda su: self.publish(
+                    reason="rotary_counter_clockwise", during_registration=False
+                ),
+            )
+            .add_transition(
+                HwButton("invoke_button"),
+                DefaultMode,
+                source_state_updater=lambda su: self.publish(
+                    reason="invoke_button", during_registration=False
+                ),
             )
         )
 
@@ -191,12 +213,12 @@ class AlarmClockStateMachine(StateMachine):
             StateTransition(alarm_view_mode)
             .add_transition(HwButton("mode_button"), DefaultMode)
             .add_transition(
-                HwButton("rotary_right"),
+                HwButton("rotary_clockwise"),
                 AlarmViewMode,
                 source_state_updater=lambda su: su.activate_next_alarm(),
             )
             .add_transition(
-                HwButton("rotary_left"),
+                HwButton("rotary_counter_clockwise"),
                 AlarmViewMode,
                 source_state_updater=lambda su: su.activate_previous_alarm(),
             )
@@ -207,12 +229,12 @@ class AlarmClockStateMachine(StateMachine):
             StateTransition(alarm_edit_mode)
             .add_transition(HwButton("mode_button"), DefaultMode)
             .add_transition(
-                HwButton("rotary_right"),
+                HwButton("rotary_clockwise"),
                 AlarmEditMode,
                 source_state_updater=lambda su: su.activate_next_property_to_edit(),
             )
             .add_transition(
-                HwButton("rotary_left"),
+                HwButton("rotary_counter_clockwise"),
                 AlarmEditMode,
                 source_state_updater=lambda su: su.activate_previous_property_to_edit(),
             )
@@ -227,12 +249,12 @@ class AlarmClockStateMachine(StateMachine):
             StateTransition(property_edit_mode)
             .add_transition(HwButton("mode_button"), DefaultMode)
             .add_transition(
-                HwButton("rotary_right"),
+                HwButton("rotary_clockwise"),
                 PropertyEditMode,
                 source_state_updater=lambda su: su.activate_next_value(),
             )
             .add_transition(
-                HwButton("rotary_left"),
+                HwButton("rotary_counter_clockwise"),
                 PropertyEditMode,
                 source_state_updater=lambda su: su.activate_previous_value(),
             )

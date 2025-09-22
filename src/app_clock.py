@@ -1,6 +1,5 @@
 import argparse
 import logging
-import logging.config
 import os
 import signal
 from luma.oled.device import ssd1322
@@ -9,7 +8,6 @@ from luma.core.interface.serial import spi
 from luma.core.device import dummy
 
 import tornado.ioloop
-import tornado.web
 
 from core.domain.mode import AlarmClockStateMachine
 from core.domain.model import (
@@ -68,8 +66,8 @@ class ClockApp:
             self.controls = HardwareControls(
                 self.state, display_content, playback_content
             )
-            # self.state.attach(GeneralPurposeOutput())
             device = ssd1322(serial_interface=spi(device=0, port=0))
+
         else:
             self.controls = SoftwareControls(
                 self.state, display_content, playback_content
@@ -86,6 +84,7 @@ class ClockApp:
         playback_content.subscribe(self.speaker)
         self.state.config.subscribe(self.controls)
         playback_content.subscribe(self.controls)
+        self.state.state_machine.subscribe(self.controls)
         self.controls.configure()
 
         self.api = Api(self.controls, self.display, self.is_on_hardware())

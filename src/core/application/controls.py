@@ -6,11 +6,11 @@ import traceback
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
+from core.domain.mode import AlarmClockStateMachine
 from core.domain.model import (
     AlarmClockState,
     AlarmDefinition,
     AudioStream,
-    HwButton,
     PlaybackContent,
     DisplayContent,
     Mode,
@@ -20,6 +20,7 @@ from core.domain.model import (
     TACEventSubscriber,
     Config,
 )
+from core.infrastructure.keyboardbuttons import KeyboardButtons
 from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon
@@ -109,6 +110,13 @@ class Controls(TACEventSubscriber):
             self.update_from_config(observation, observation.subscriber)
         if isinstance(observation.subscriber, PlaybackContent):
             self.update_from_playback_content(observation, observation.subscriber)
+        if isinstance(observation.subscriber, AlarmClockStateMachine):
+            if observation.reason == "rotary_clockwise":
+                self.increase_volume()
+            if observation.reason == "rotary_counter_clockwise":
+                self.decrease_volume()
+            if observation.reason == "invoke_button":
+                self.toggle_stream()
 
     def update_from_playback_content(
         self, observation: TACEvent, playback_content: PlaybackContent
@@ -181,12 +189,6 @@ class Controls(TACEventSubscriber):
                     job.next_run_time.strftime(f"%Y-%m-%d %H:%M:%S"),
                 )
 
-    def button_action(self, hwButton: HwButton):
-        self.state.state_machine.do_state_transition(hwButton)
-        if not hwButton.action:
-            return
-        Controls.action(hwButton.action, hwButton.__str__())
-
     def action(action, info: str = None):
         try:
             if info:
@@ -195,35 +197,16 @@ class Controls(TACEventSubscriber):
         except:
             logger.error("%s", traceback.format_exc())
 
-    def rotary_counter_clockwise(self):
-        self.button_action(
-            HwButton("rotary_left", "activated", action=self.decrease_volume)
-        )
-
-    def rotary_clockwise(self):
-        self.button_action(
-            HwButton("rotary_right", "activated", action=self.increase_volume)
-        )
-
-    def mode_button_triggered(self):
-        self.button_action(HwButton("mode_button", "activated"))
-
-    def invoke_button_triggered(self):
-
-        def toggle_stream():
-            if self.state.mode in [Mode.Alarm, Mode.Music, Mode.Spotify]:
-                self.set_to_idle_mode()
+    def toggle_stream(self):
+        if self.state.mode in [Mode.Alarm, Mode.Music, Mode.Spotify]:
+            self.set_to_idle_mode()
+        else:
+            if self.playback_content.audio_effect and isinstance(
+                self.playback_content.audio_effect, StreamAudioEffect
+            ):
+                self.play_stream(self.playback_content.audio_effect.stream_definition)
             else:
-                if self.playback_content.audio_effect and isinstance(
-                    self.playback_content.audio_effect, StreamAudioEffect
-                ):
-                    self.play_stream(
-                        self.playback_content.audio_effect.stream_definition
-                    )
-                else:
-                    self.play_stream_by_id(0)
-
-        self.button_action(HwButton("invoke_button", "activated", action=toggle_stream))
+                self.play_stream_by_id(0)
 
     def set_to_idle_mode(self):
         if self.state.mode == Mode.Spotify:
@@ -367,14 +350,11 @@ class HardwareControls(Controls):
         from core.infrastructure.mcp23017.buttons import ButtonsManager
         from core.infrastructure.mcp23017.rotary_encoder import RotaryEncoderManager
 
-        self.button_manager = ButtonsManager(
-            mode_channel_callback=self.mode_button_triggered,
-            invoke_channel_callback=self.invoke_button_triggered,
-        )
-        self.rotary_encoder_manager = RotaryEncoderManager(
-            on_clockwise=self.rotary_clockwise,
-            on_counter_clockwise=self.rotary_counter_clockwise,
-        )
+        super().configure()
+        self.button_manager = ButtonsManager()
+        self.button_manager.subscribe(self.state.state_machine)
+        self.rotary_encoder_manager = RotaryEncoderManager()
+        self.rotary_encoder_manager.subscribe(self.state.state_machine)
 
     def get_room_brightness(self):
         from core.infrastructure.bh1750 import get_room_brightness
@@ -383,7 +363,6 @@ class HardwareControls(Controls):
 
 
 class SoftwareControls(Controls):
-    simulated_brightness: int = 10000
 
     def __init__(
         self,
@@ -394,36 +373,9 @@ class SoftwareControls(Controls):
         super().__init__(state, display_content, playback_content)
 
     def get_room_brightness(self):
-        return self.simulated_brightness
+        return self.button_manager.simulated_brightness
 
     def configure(self):
-        def key_pressed_action(key):
-            logger.debug("pressed %s", key)
-            if not hasattr(key, "char"):
-                return
-            try:
-                if key.char == "1":
-                    self.rotary_counter_clockwise()
-                if key.char == "2":
-                    self.rotary_clockwise()
-                if key.char == "3":
-                    self.mode_button_triggered()
-                if key.char == "4":
-                    self.invoke_button_triggered()
-                if key.char == "5":
-                    brightness_examples = [0, 1, 3, 10, 10000]
-                    self.simulated_brightness = brightness_examples[
-                        (brightness_examples.index(self.simulated_brightness) + 1)
-                        % len(brightness_examples)
-                    ]
-                    logger.info("simulated brightness: %s", self.simulated_brightness)
-
-            except Exception:
-                logger.warning("%s", traceback.format_exc())
-
-        try:
-            from pynput.keyboard import Listener
-
-            Listener(on_press=key_pressed_action).start()
-        except:
-            super().configure()
+        super().configure()
+        self.button_manager = KeyboardButtons()
+        self.button_manager.subscribe(self.state.state_machine)
