@@ -13,6 +13,7 @@ logger = logging.getLogger("tac.mcp_buttons")
 
 class ButtonsManager(TACEventPublisher):
     def __init__(self):
+        super().__init__()
         self.mcpManager = MCPManager()
 
         self.mcpManager.add_callback(mode_button_channel, self._mode_button_callback)

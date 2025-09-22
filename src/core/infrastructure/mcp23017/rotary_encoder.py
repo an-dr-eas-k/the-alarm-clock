@@ -15,6 +15,7 @@ class RotaryEncoderManager(TACEventPublisher):
     last_states = [(0, 0), (0, 0)]
 
     def __init__(self):
+        super().__init__()
         self.mcpManager = MCPManager()
         self.mcpManager.add_callback(rotary_encoder_channel_a, self._pin_callback)
         self.mcpManager.add_callback(rotary_encoder_channel_b, self._pin_callback)
