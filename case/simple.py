@@ -1,7 +1,7 @@
 import math
 
-a = 60
-d = 65
+a = 100
+d = 55
 epsilon: float = 75
 
 c = lambda a, d, epsilon: a + d / math.tan(math.radians(epsilon))
