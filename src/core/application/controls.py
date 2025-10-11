@@ -369,15 +369,16 @@ class SoftwareControls(Controls):
         display_content: DisplayContent,
         playback_content: PlaybackContent,
     ) -> None:
+        from core.infrastructure.keyboardbuttons import KeyboardButtons
+
         super().__init__(state, display_content, playback_content)
+        self.button_manager = KeyboardButtons()
 
     def get_room_brightness(self):
         return self.button_manager.simulated_brightness
 
     def configure(self):
-        from core.infrastructure.keyboardbuttons import KeyboardButtons
 
         super().configure()
 
-        self.button_manager = KeyboardButtons()
         self.button_manager.subscribe(self.state.state_machine)

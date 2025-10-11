@@ -541,14 +541,13 @@ class AlarmClockState(TACEventPublisher):
         self._active_alarm = value
         self.publish(property="active_alarm")
 
-    def __init__(self, c: Config) -> None:
+    def __init__(self, config: Config) -> None:
         super().__init__()
-        self.config = c
+        self.config = config
         self.mode = Mode.Boot
         self.geo_location = GeoLocation()
         self.is_online = True
         self.show_blink_segment = True
-        # self.state_machine: StateMachine = AlarmClockStateMachine(self)
 
     def update_state(
         self, show_blink_segment: bool, brightness: RoomBrightness, is_scrolling: bool
