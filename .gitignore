@@ -6,3 +6,4 @@ ca.key
 cert.crt
 cert.key
 ca.pem
+\#*.dxf
