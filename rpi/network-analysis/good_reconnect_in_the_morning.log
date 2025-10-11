@@ -1,0 +1,140 @@
+2025-01-23T23:20:13+0100 the-alarm-clock wpa_supplicant[495]: wlan0: WPA: Group rekeying completed with 3c:37:12:eb:db:f0 [GTK=CCMP]
+2025-01-23T23:30:16+0100 the-alarm-clock kernel: rtlwifi: AP off, try to reconnect now
+2025-01-23T23:30:16+0100 the-alarm-clock kernel: wlan0: Connection to AP 3c:37:12:eb:db:f0 lost
+2025-01-23T23:30:16+0100 the-alarm-clock wpa_supplicant[495]: wlan0: CTRL-EVENT-DISCONNECTED bssid=3c:37:12:eb:db:f0 reason=4 locally_generated=1
+2025-01-23T23:30:16+0100 the-alarm-clock wpa_supplicant[495]: wlan0: CTRL-EVENT-REGDOM-CHANGE init=CORE type=WORLD
+2025-01-23T23:30:16+0100 the-alarm-clock wpa_supplicant[495]: wlan0: CTRL-EVENT-REGDOM-CHANGE init=USER type=COUNTRY alpha2=DE
+2025-01-23T23:30:16+0100 the-alarm-clock NetworkManager[490]: <info>  [1737671416.3257] device (wlan0): supplicant interface state: completed -> disconnected
+2025-01-23T23:30:16+0100 the-alarm-clock NetworkManager[490]: <info>  [1737671416.3260] device (p2p-dev-wlan0): supplicant management interface state: completed -> disconnected
+2025-01-23T23:30:16+0100 the-alarm-clock NetworkManager[490]: <info>  [1737671416.4209] device (wlan0): supplicant interface state: disconnected -> scanning
+2025-01-23T23:30:16+0100 the-alarm-clock NetworkManager[490]: <info>  [1737671416.4211] device (p2p-dev-wlan0): supplicant management interface state: disconnected -> scanning
+2025-01-23T23:30:31+0100 the-alarm-clock NetworkManager[490]: <warn>  [1737671431.7648] device (wlan0): link timed out.
+2025-01-23T23:30:31+0100 the-alarm-clock NetworkManager[490]: <info>  [1737671431.7683] device (wlan0): state change: activated -> failed (reason 'ssid-not-found', sys-iface-state: 'managed')
+2025-01-23T23:30:31+0100 the-alarm-clock NetworkManager[490]: <info>  [1737671431.7725] manager: NetworkManager state is now DISCONNECTED
+2025-01-23T23:30:31+0100 the-alarm-clock NetworkManager[490]: <warn>  [1737671431.7773] device (wlan0): Activation: failed for connection 'preconfigured'
+2025-01-23T23:30:31+0100 the-alarm-clock NetworkManager[490]: <info>  [1737671431.7868] device (wlan0): state change: failed -> disconnected (reason 'none', sys-iface-state: 'managed')
+2025-01-23T23:30:31+0100 the-alarm-clock avahi-daemon[422]: Withdrawing address record for 2001:a61:a20:9e01:27d3:c8fd:c0d5:bd8d on wlan0.
+2025-01-23T23:30:31+0100 the-alarm-clock avahi-daemon[422]: Withdrawing address record for 2001:a61:a20:9e01:6397:1eef:5dce:e84d on wlan0.
+2025-01-23T23:30:31+0100 the-alarm-clock avahi-daemon[422]: Leaving mDNS multicast group on interface wlan0.IPv6 with address 2001:a61:a20:9e01:6397:1eef:5dce:e84d.
+2025-01-23T23:30:31+0100 the-alarm-clock dbus-daemon[426]: [system] Activating via systemd: service name='org.freedesktop.nm_dispatcher' unit='dbus-org.freedesktop.nm-dispatcher.service' requested by ':1.7' (uid=0 pid=490 comm="/usr/sbin/NetworkManager >
+2025-01-23T23:30:31+0100 the-alarm-clock avahi-daemon[422]: Joining mDNS multicast group on interface wlan0.IPv6 with address fe80::27d3:c8fd:c0d5:bd8d.
+2025-01-23T23:30:31+0100 the-alarm-clock avahi-daemon[422]: Registering new address record for fe80::27d3:c8fd:c0d5:bd8d on wlan0.*.
+2025-01-23T23:30:31+0100 the-alarm-clock avahi-daemon[422]: Withdrawing address record for fe80::27d3:c8fd:c0d5:bd8d on wlan0.
+2025-01-23T23:30:31+0100 the-alarm-clock avahi-daemon[422]: Leaving mDNS multicast group on interface wlan0.IPv6 with address fe80::27d3:c8fd:c0d5:bd8d.
+2025-01-23T23:30:31+0100 the-alarm-clock avahi-daemon[422]: Interface wlan0.IPv6 no longer relevant for mDNS.
+2025-01-23T23:30:31+0100 the-alarm-clock NetworkManager[490]: <info>  [1737671431.8734] dhcp4 (wlan0): canceled DHCP transaction
+2025-01-23T23:30:31+0100 the-alarm-clock NetworkManager[490]: <info>  [1737671431.8736] dhcp4 (wlan0): activation: beginning transaction (timeout in 45 seconds)
+2025-01-23T23:30:31+0100 the-alarm-clock NetworkManager[490]: <info>  [1737671431.8737] dhcp4 (wlan0): state changed no lease
+2025-01-23T23:30:31+0100 the-alarm-clock NetworkManager[490]: <info>  [1737671431.8749] dhcp6 (wlan0): canceled DHCP transaction
+2025-01-23T23:30:31+0100 the-alarm-clock NetworkManager[490]: <info>  [1737671431.8750] dhcp6 (wlan0): activation: beginning transaction (timeout in 45 seconds)
+2025-01-23T23:30:31+0100 the-alarm-clock NetworkManager[490]: <info>  [1737671431.8752] dhcp6 (wlan0): state changed no lease
+2025-01-23T23:30:31+0100 the-alarm-clock systemd[1]: Starting NetworkManager-dispatcher.service - Network Manager Script Dispatcher Service...
+2025-01-23T23:30:31+0100 the-alarm-clock dbus-daemon[426]: [system] Successfully activated service 'org.freedesktop.nm_dispatcher'
+2025-01-23T23:30:31+0100 the-alarm-clock systemd[1]: Started NetworkManager-dispatcher.service - Network Manager Script Dispatcher Service.
+2025-01-23T23:30:31+0100 the-alarm-clock avahi-daemon[422]: Withdrawing address record for 192.168.178.44 on wlan0.
+2025-01-23T23:30:31+0100 the-alarm-clock avahi-daemon[422]: Leaving mDNS multicast group on interface wlan0.IPv4 with address 192.168.178.44.
+2025-01-23T23:30:31+0100 the-alarm-clock avahi-daemon[422]: Interface wlan0.IPv4 no longer relevant for mDNS.
+2025-01-23T23:30:35+0100 the-alarm-clock NetworkManager[490]: <info>  [1737671435.1537] device (wlan0): supplicant interface state: scanning -> inactive
+2025-01-23T23:30:35+0100 the-alarm-clock NetworkManager[490]: <info>  [1737671435.1539] device (p2p-dev-wlan0): supplicant management interface state: scanning -> inactive
+2025-01-23T23:30:42+0100 the-alarm-clock systemd[1]: NetworkManager-dispatcher.service: Deactivated successfully.
+2025-01-24T00:00:08+0100 the-alarm-clock systemd[1]: Starting dpkg-db-backup.service - Daily dpkg database backup service...
+2025-01-24T00:00:08+0100 the-alarm-clock systemd[1]: Starting logrotate.service - Rotate log files...
+2025-01-24T00:00:08+0100 the-alarm-clock systemd[1]: dpkg-db-backup.service: Deactivated successfully.
+2025-01-24T00:00:08+0100 the-alarm-clock systemd[1]: Finished dpkg-db-backup.service - Daily dpkg database backup service.
+2025-01-24T00:00:08+0100 the-alarm-clock systemd[1]: logrotate.service: Deactivated successfully.
+2025-01-24T00:00:08+0100 the-alarm-clock systemd[1]: Finished logrotate.service - Rotate log files.
+2025-01-24T00:17:01+0100 the-alarm-clock CRON[20522]: pam_unix(cron:session): session opened for user root(uid=0) by (uid=0)
+2025-01-24T00:17:01+0100 the-alarm-clock CRON[20523]: (root) CMD (cd / && run-parts --report /etc/cron.hourly)
+2025-01-24T00:17:01+0100 the-alarm-clock CRON[20522]: pam_unix(cron:session): session closed for user root
+2025-01-24T01:17:01+0100 the-alarm-clock CRON[20626]: pam_unix(cron:session): session opened for user root(uid=0) by (uid=0)
+2025-01-24T01:17:01+0100 the-alarm-clock CRON[20627]: (root) CMD (cd / && run-parts --report /etc/cron.hourly)
+2025-01-24T01:17:01+0100 the-alarm-clock CRON[20626]: pam_unix(cron:session): session closed for user root
+2025-01-24T02:17:01+0100 the-alarm-clock CRON[20728]: pam_unix(cron:session): session opened for user root(uid=0) by (uid=0)
+2025-01-24T02:17:01+0100 the-alarm-clock CRON[20729]: (root) CMD (cd / && run-parts --report /etc/cron.hourly)
+2025-01-24T02:17:01+0100 the-alarm-clock CRON[20728]: pam_unix(cron:session): session closed for user root
+2025-01-24T03:10:01+0100 the-alarm-clock CRON[20814]: pam_unix(cron:session): session opened for user root(uid=0) by (uid=0)
+2025-01-24T03:10:01+0100 the-alarm-clock CRON[20815]: (root) CMD (test -e /run/systemd/system || SERVICE_MODE=1 /sbin/e2scrub_all -A -r)
+2025-01-24T03:10:01+0100 the-alarm-clock CRON[20814]: pam_unix(cron:session): session closed for user root
+2025-01-24T03:17:01+0100 the-alarm-clock CRON[20827]: pam_unix(cron:session): session opened for user root(uid=0) by (uid=0)
+2025-01-24T03:17:01+0100 the-alarm-clock CRON[20828]: (root) CMD (cd / && run-parts --report /etc/cron.hourly)
+2025-01-24T03:17:01+0100 the-alarm-clock CRON[20827]: pam_unix(cron:session): session closed for user root
+2025-01-24T04:17:02+0100 the-alarm-clock CRON[20931]: pam_unix(cron:session): session opened for user root(uid=0) by (uid=0)
+2025-01-24T04:17:02+0100 the-alarm-clock CRON[20932]: (root) CMD (cd / && run-parts --report /etc/cron.hourly)
+2025-01-24T04:17:02+0100 the-alarm-clock CRON[20931]: pam_unix(cron:session): session closed for user root
+2025-01-24T05:17:01+0100 the-alarm-clock CRON[21030]: pam_unix(cron:session): session opened for user root(uid=0) by (uid=0)
+2025-01-24T05:17:01+0100 the-alarm-clock CRON[21031]: (root) CMD (cd / && run-parts --report /etc/cron.hourly)
+2025-01-24T05:17:01+0100 the-alarm-clock CRON[21030]: pam_unix(cron:session): session closed for user root
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.1415] policy: auto-activating connection 'preconfigured' (252ea738-2f44-49b9-8af6-6a58f07c29dd)
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.1467] device (wlan0): Activation: starting connection 'preconfigured' (252ea738-2f44-49b9-8af6-6a58f07c29dd)
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.1476] device (wlan0): state change: disconnected -> prepare (reason 'none', sys-iface-state: 'managed')
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.1507] manager: NetworkManager state is now CONNECTING
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.1538] device (wlan0): state change: prepare -> config (reason 'none', sys-iface-state: 'managed')
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.1563] device (wlan0): Activation: (wifi) access point 'preconfigured' has security, but secrets are required.
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.1565] device (wlan0): state change: config -> need-auth (reason 'none', sys-iface-state: 'managed')
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.1585] sup-iface[c874bd8ada4dfe98,0,wlan0]: wps: type pbc start...
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.1705] device (wlan0): state change: need-auth -> prepare (reason 'none', sys-iface-state: 'managed')
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.1746] device (wlan0): state change: prepare -> config (reason 'none', sys-iface-state: 'managed')
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.1773] device (wlan0): Activation: (wifi) connection 'preconfigured' has security, and secrets exist.  No new secrets needed.
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.1776] Config: added 'ssid' value '/usr/sbin/ifup wlan2'
+2025-01-24T06:00:36+0100 the-alarm-clock wpa_supplicant[495]: wlan0: WPS-PBC-ACTIVE
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.1777] Config: added 'scan_ssid' value '1'
+2025-01-24T06:00:36+0100 the-alarm-clock wpa_supplicant[495]: wlan0: WPS-CANCEL
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.1779] Config: added 'bgscan' value 'simple:30:-70:86400'
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.1781] Config: added 'key_mgmt' value 'WPA-PSK WPA-PSK-SHA256 FT-PSK SAE FT-SAE'
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.1782] Config: added 'psk' value '<hidden>'
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.1982] device (wlan0): supplicant interface state: inactive -> scanning
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.1984] device (p2p-dev-wlan0): supplicant management interface state: inactive -> scanning
+2025-01-24T06:00:36+0100 the-alarm-clock wpa_supplicant[495]: wlan0: SME: Trying to authenticate with 3c:37:12:eb:db:f0 (SSID='/usr/sbin/ifup wlan2' freq=2412 MHz)
+2025-01-24T06:00:36+0100 the-alarm-clock kernel: wlan0: authenticate with 3c:37:12:eb:db:f0
+2025-01-24T06:00:36+0100 the-alarm-clock kernel: wlan0: 80 MHz not supported, disabling VHT
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.3213] device (wlan0): supplicant interface state: scanning -> authenticating
+2025-01-24T06:00:36+0100 the-alarm-clock kernel: wlan0: send auth to 3c:37:12:eb:db:f0 (try 1/3)
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.3215] device (p2p-dev-wlan0): supplicant management interface state: scanning -> authenticating
+2025-01-24T06:00:36+0100 the-alarm-clock wpa_supplicant[495]: wlan0: Trying to associate with 3c:37:12:eb:db:f0 (SSID='/usr/sbin/ifup wlan2' freq=2412 MHz)
+2025-01-24T06:00:36+0100 the-alarm-clock kernel: wlan0: authenticated
+2025-01-24T06:00:36+0100 the-alarm-clock kernel: wlan0: associate with 3c:37:12:eb:db:f0 (try 1/3)
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.3440] device (wlan0): supplicant interface state: authenticating -> associating
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.3442] device (p2p-dev-wlan0): supplicant management interface state: authenticating -> associating
+2025-01-24T06:00:36+0100 the-alarm-clock kernel: wlan0: RX AssocResp from 3c:37:12:eb:db:f0 (capab=0x1431 status=0 aid=2)
+2025-01-24T06:00:36+0100 the-alarm-clock wpa_supplicant[495]: wlan0: Associated with 3c:37:12:eb:db:f0
+2025-01-24T06:00:36+0100 the-alarm-clock wpa_supplicant[495]: wlan0: CTRL-EVENT-SUBNET-STATUS-UPDATE status=0
+2025-01-24T06:00:36+0100 the-alarm-clock wpa_supplicant[495]: wlan0: CTRL-EVENT-REGDOM-CHANGE init=COUNTRY_IE type=COUNTRY alpha2=DE
+2025-01-24T06:00:36+0100 the-alarm-clock kernel: wlan0: associated
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.3682] device (wlan0): supplicant interface state: associating -> 4way_handshake
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.3684] device (p2p-dev-wlan0): supplicant management interface state: associating -> 4way_handshake
+2025-01-24T06:00:36+0100 the-alarm-clock wpa_supplicant[495]: wlan0: WPA: Key negotiation completed with 3c:37:12:eb:db:f0 [PTK=CCMP GTK=CCMP]
+2025-01-24T06:00:36+0100 the-alarm-clock wpa_supplicant[495]: wlan0: CTRL-EVENT-CONNECTED - Connection to 3c:37:12:eb:db:f0 completed [id=0 id_str=]
+2025-01-24T06:00:36+0100 the-alarm-clock wpa_supplicant[495]: bgscan simple: Failed to enable signal strength monitoring
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.4999] device (wlan0): supplicant interface state: 4way_handshake -> completed
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.5002] device (wlan0): Activation: (wifi) Stage 2 of 5 (Device Configure) successful. Connected to wireless network "/usr/sbin/ifup wlan2"
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.5003] device (p2p-dev-wlan0): supplicant management interface state: 4way_handshake -> completed
+2025-01-24T06:00:36+0100 the-alarm-clock kernel: wlan0: Limiting TX power to 20 (20 - 0) dBm as advertised by 3c:37:12:eb:db:f0
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.5013] device (wlan0): state change: config -> ip-config (reason 'none', sys-iface-state: 'managed')
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.5051] dhcp4 (wlan0): activation: beginning transaction (timeout in 45 seconds)
+2025-01-24T06:00:36+0100 the-alarm-clock avahi-daemon[422]: Joining mDNS multicast group on interface wlan0.IPv6 with address fe80::27d3:c8fd:c0d5:bd8d.
+2025-01-24T06:00:36+0100 the-alarm-clock avahi-daemon[422]: New relevant interface wlan0.IPv6 for mDNS.
+2025-01-24T06:00:36+0100 the-alarm-clock avahi-daemon[422]: Registering new address record for fe80::27d3:c8fd:c0d5:bd8d on wlan0.*.
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.5157] dhcp4 (wlan0): state changed new lease, address=192.168.178.44
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.5223] policy: set 'preconfigured' (wlan0) as default for IPv4 routing and DNS
+2025-01-24T06:00:36+0100 the-alarm-clock avahi-daemon[422]: Joining mDNS multicast group on interface wlan0.IPv4 with address 192.168.178.44.
+2025-01-24T06:00:36+0100 the-alarm-clock avahi-daemon[422]: New relevant interface wlan0.IPv4 for mDNS.
+2025-01-24T06:00:36+0100 the-alarm-clock avahi-daemon[422]: Registering new address record for 192.168.178.44 on wlan0.IPv4.
+2025-01-24T06:00:36+0100 the-alarm-clock dbus-daemon[426]: [system] Activating via systemd: service name='org.freedesktop.nm_dispatcher' unit='dbus-org.freedesktop.nm-dispatcher.service' requested by ':1.7' (uid=0 pid=490 comm="/usr/sbin/NetworkManager >
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.6176] device (wlan0): state change: ip-config -> ip-check (reason 'none', sys-iface-state: 'managed')
+2025-01-24T06:00:36+0100 the-alarm-clock systemd[1]: Starting NetworkManager-dispatcher.service - Network Manager Script Dispatcher Service...
+2025-01-24T06:00:36+0100 the-alarm-clock dbus-daemon[426]: [system] Successfully activated service 'org.freedesktop.nm_dispatcher'
+2025-01-24T06:00:36+0100 the-alarm-clock systemd[1]: Started NetworkManager-dispatcher.service - Network Manager Script Dispatcher Service.
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.7858] device (wlan0): state change: ip-check -> secondaries (reason 'none', sys-iface-state: 'managed')
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.7892] device (wlan0): state change: secondaries -> activated (reason 'none', sys-iface-state: 'managed')
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.7924] manager: NetworkManager state is now CONNECTED_SITE
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.7972] device (wlan0): Activation: successful, device activated.
+2025-01-24T06:00:36+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694836.8012] manager: NetworkManager state is now CONNECTED_GLOBAL
+2025-01-24T06:00:38+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694838.2009] dhcp6 (wlan0): activation: beginning transaction (timeout in 45 seconds)
+2025-01-24T06:00:38+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694838.2069] policy: set 'preconfigured' (wlan0) as default for IPv6 routing and DNS
+2025-01-24T06:00:38+0100 the-alarm-clock avahi-daemon[422]: Leaving mDNS multicast group on interface wlan0.IPv6 with address fe80::27d3:c8fd:c0d5:bd8d.
+2025-01-24T06:00:38+0100 the-alarm-clock avahi-daemon[422]: Joining mDNS multicast group on interface wlan0.IPv6 with address 2001:a61:a20:9e01:6397:1eef:5dce:e84d.
+2025-01-24T06:00:38+0100 the-alarm-clock avahi-daemon[422]: Registering new address record for 2001:a61:a20:9e01:6397:1eef:5dce:e84d on wlan0.*.
+2025-01-24T06:00:38+0100 the-alarm-clock avahi-daemon[422]: Withdrawing address record for fe80::27d3:c8fd:c0d5:bd8d on wlan0.
+2025-01-24T06:00:38+0100 the-alarm-clock NetworkManager[490]: <info>  [1737694838.2999] dhcp6 (wlan0): state changed new lease, address=2001:a61:a20:9e01:27d3:c8fd:c0d5:bd8d
+2025-01-24T06:00:38+0100 the-alarm-clock avahi-daemon[422]: Registering new address record for 2001:a61:a20:9e01:27d3:c8fd:c0d5:bd8d on wlan0.*.
+2025-01-24T06:00:50+0100 the-alarm-clock systemd[1]: NetworkManager-dispatcher.service: Deactivated successfully.
