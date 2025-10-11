@@ -1121,9 +1121,9 @@ AcDbViewportTableRecord
  21
 1
  12
-286.6551608343237
+236.7090290550462
  22
-38.96924997517304
+-0.06951807020706202
  13
 0
  23
@@ -1149,7 +1149,7 @@ AcDbViewportTableRecord
  37
 0
  40
-245.7044235722774
+129.3036105851353
  41
 1.604301075268817
  42
@@ -21077,6 +21077,74 @@ AcDbAlignedDimension
 100
 AcDbRotatedDimension
   0
+LINE
+  5
+2BB
+100
+AcDbEntity
+  8
+3 net-3a.net.dim+
+  6
+ByLayer
+ 62
+  256
+370
+   -1
+100
+AcDbLine
+ 10
+356
+ 20
+-57
+ 11
+350
+ 21
+-100
+  0
+TEXT
+  5
+2BC
+100
+AcDbEntity
+  8
+3 net-3a.net.dim+
+  6
+ByLayer
+ 62
+  256
+370
+   -1
+100
+AcDbText
+ 10
+349.6433576915413
+ 20
+-102.5586775330708
+ 30
+0
+ 40
+5
+  1
+golden ratio
+ 50
+82.05700000000003
+ 41
+1
+ 51
+0
+  7
+standard
+ 71
+    0
+210
+0
+220
+0
+230
+1
+100
+AcDbText
+  0
 ENDSEC
   0
 SECTION
@@ -21099,7 +21167,7 @@ D
   3
 ACAD_IMAGE_DICT
 350
-2BB
+2BD
   0
 DICTIONARY
   5
@@ -21197,7 +21265,7 @@ AcDbRasterImageDefReactor
   0
 DICTIONARY
   5
-2BB
+2BD
 330
 C
 100
@@ -21431,7 +21499,7 @@ AcDbRasterImageDef
   0
 PLOTSETTINGS
   5
-2BC
+2BE
 100
 AcDbPlotSettings
   6
