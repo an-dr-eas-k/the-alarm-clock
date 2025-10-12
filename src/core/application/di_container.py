@@ -2,10 +2,14 @@ import os
 import argparse
 from dependency_injector import containers, providers
 from core.domain.mode import AlarmClockStateMachine
+from core.infrastructure.brightness_sensor import BrightnessSensor
+from core.infrastructure.i2c_devices import I2CManager, MCPManager
+from core.infrastructure.mcp23017.buttons import ButtonsManager
+from core.infrastructure.mcp23017.rotary_encoder import RotaryEncoderManager
 from core.interface.display.display import Display
 from core.application.api import Api
 from core.infrastructure.audio import Speaker
-from core.application.controls import HardwareControls, SoftwareControls
+from core.application.controls import Controls
 from core.infrastructure.persistence import Persistence
 from resources.resources import config_file
 from core.domain.model import (
@@ -56,11 +60,20 @@ class DIContainer(containers.DeclarativeContainer):
         Speaker, playback_content=playback_content, config=config
     )
 
+    i2c_manager = providers.Singleton(I2CManager)
+    brightness_sensor = providers.Singleton(BrightnessSensor, i2c_manager=i2c_manager)
+    mcp_manager = providers.Singleton(MCPManager, i2c_manager=i2c_manager)
+    button_manager = providers.Singleton(ButtonsManager, mcp_manager=mcp_manager)
+    rotary_encoder_manager = providers.Singleton(
+        RotaryEncoderManager, mcp_manager=mcp_manager
+    )
+
     controls = providers.Singleton(
-        HardwareControls,
+        Controls,
         state=alarm_clock_state,
         display_content=display_content,
         playback_content=playback_content,
+        brightness_sensor=brightness_sensor,
     )
 
     serial_interface = providers.Singleton(spi, device=0, port=0)

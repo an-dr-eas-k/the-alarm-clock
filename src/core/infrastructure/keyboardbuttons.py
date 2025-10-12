@@ -2,13 +2,14 @@ import logging
 import traceback
 from pynput import keyboard
 from core.domain.model import HwButton
+from core.infrastructure.brightness_sensor import IBrightnessSensor
 from utils.events import TACEventPublisher
 
 
 logger = logging.getLogger("tac.keyboard_buttons")
 
 
-class KeyboardButtons(TACEventPublisher):
+class ComputerInfrastructure(TACEventPublisher, IBrightnessSensor):
     simulated_brightness: int = 10000
 
     def __init__(self):
@@ -47,3 +48,6 @@ class KeyboardButtons(TACEventPublisher):
 
         except Exception:
             logger.warning("%s", traceback.format_exc())
+
+    def get_room_brightness(self) -> float:
+        return self.simulated_brightness

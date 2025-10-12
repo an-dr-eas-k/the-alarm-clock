@@ -9,6 +9,7 @@ import tornado
 import tornado.web
 from PIL.Image import Image
 from core.application.controls import Controls
+from core.interface.display.display import Display
 from core.interface.display.format import ColorType
 from resources.resources import webroot_file, ssl_dir
 
@@ -237,9 +238,7 @@ class Api:
 
     app: tornado.web.Application
 
-    def __init__(
-        self, controls: Controls, display: DisplayContentProvider, encrypted: bool
-    ):
+    def __init__(self, controls: Controls, display: Display, encrypted: bool):
         self.controls = controls
         self.display = display
         self.encrypted = encrypted

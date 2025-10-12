@@ -10,7 +10,8 @@ from dependency_injector import providers
 from core.domain.model import (
     Mode,
 )
-from core.application.controls import Controls, SoftwareControls
+from core.application.controls import Controls
+from core.infrastructure.keyboardbuttons import ComputerInfrastructure
 from resources.resources import init_logging
 from utils import os as app_os
 
@@ -45,18 +46,16 @@ class ClockApp:
         display_content = self.container.display_content()
         state.subscribe(display_content)
 
-        if not self.is_on_hardware():
-            self.container.controls.override(
-                providers.Singleton(
-                    SoftwareControls,
-                    state=self.container.alarm_clock_state,
-                    display_content=self.container.display_content,
-                    playback_content=self.container.playback_content,
-                )
-            )
+        if self.is_on_hardware():
+            self.container.button_manager().subscribe(state.state_machine)
+            self.container.rotary_encoder_manager().subscribe(state.state_machine)
+        else:
+            ci = ComputerInfrastructure()
+            self.container.brightness_sensor.override(providers.Object(ci))
             self.container.device.override(
                 providers.Singleton(dummy, height=64, width=256, mode="RGB")
             )
+            ci.subscribe(state.state_machine)
 
         controls: Controls = self.container.controls()
         display = self.container.display()

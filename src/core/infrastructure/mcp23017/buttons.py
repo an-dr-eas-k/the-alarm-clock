@@ -6,15 +6,15 @@ from core.infrastructure.i2c_devices import (
 )
 import logging
 
-from utils.events import TACEvent, TACEventPublisher
+from utils.events import TACEventPublisher
 
 logger = logging.getLogger("tac.mcp_buttons")
 
 
 class ButtonsManager(TACEventPublisher):
-    def __init__(self):
+    def __init__(self, mcp_manager: MCPManager):
         super().__init__()
-        self.mcpManager = MCPManager()
+        self.mcpManager = mcp_manager
 
         self.mcpManager.add_callback(mode_button_channel, self._mode_button_callback)
         self.mcpManager.add_callback(

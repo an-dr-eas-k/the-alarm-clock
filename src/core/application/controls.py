@@ -20,6 +20,7 @@ from core.domain.model import (
     TACEventSubscriber,
     Config,
 )
+from core.infrastructure.brightness_sensor import IBrightnessSensor
 from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon
@@ -48,10 +49,13 @@ class Controls(TACEventSubscriber):
         state: AlarmClockState,
         display_content: DisplayContent,
         playback_content: PlaybackContent,
+        brightness_sensor: IBrightnessSensor,
     ) -> None:
         self.state = state
         self.display_content = display_content
         self.playback_content = playback_content
+        self.brightness_sensor = brightness_sensor
+
         self.state.is_daytime = state.geo_location.last_sun_event() == SunEvent.sunrise
         self.update_weather_status()
         self.add_scheduler_jobs()
@@ -250,7 +254,7 @@ class Controls(TACEventSubscriber):
         pass
 
     def get_room_brightness(self):
-        pass
+        return self.brightness_sensor.get_room_brightness()
 
     def update_display(self):
 
@@ -335,52 +339,3 @@ class Controls(TACEventSubscriber):
         for job in self.scheduler.get_jobs(jobstore=alarm_store):
             if job.next_run_time is None:
                 self.state.config.remove_alarm_definition(int(job.id))
-
-
-class HardwareControls(Controls):
-    def __init__(
-        self,
-        state: AlarmClockState,
-        display_content: DisplayContent,
-        playback_content: PlaybackContent,
-    ) -> None:
-
-        super().__init__(state, display_content, playback_content)
-
-    def configure(self):
-        from core.infrastructure.mcp23017.buttons import ButtonsManager
-        from core.infrastructure.mcp23017.rotary_encoder import RotaryEncoderManager
-
-        super().configure()
-        self.button_manager = ButtonsManager()
-        self.button_manager.subscribe(self.state.state_machine)
-        self.rotary_encoder_manager = RotaryEncoderManager()
-        self.rotary_encoder_manager.subscribe(self.state.state_machine)
-
-    def get_room_brightness(self):
-        from core.infrastructure.bh1750 import get_room_brightness
-
-        return get_room_brightness()
-
-
-class SoftwareControls(Controls):
-
-    def __init__(
-        self,
-        state: AlarmClockState,
-        display_content: DisplayContent,
-        playback_content: PlaybackContent,
-    ) -> None:
-        from core.infrastructure.keyboardbuttons import KeyboardButtons
-
-        super().__init__(state, display_content, playback_content)
-        self.button_manager = KeyboardButtons()
-
-    def get_room_brightness(self):
-        return self.button_manager.simulated_brightness
-
-    def configure(self):
-
-        super().configure()
-
-        self.button_manager.subscribe(self.state.state_machine)
