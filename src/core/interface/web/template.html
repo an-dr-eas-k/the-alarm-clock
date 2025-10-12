@@ -266,7 +266,7 @@
             <button type="submit" class="btn btn-primary btn-action" value="{{ audio_stream.id }}"
               onclick="onClickAction('play', event)" title="{{ escape(audio_stream.stream_name) }}">
               <i class="bi bi-play-fill"></i>
-              <span class="stream-name-short">{{ escape(audio_stream.stream_name[:5]) }}</span>
+              <span class="stream-name-short">{{ escape(audio_stream.stream_name[:10]) }}</span>
               <span class="stream-name-full">{{ escape(audio_stream.stream_name) }}</span>
             </button>
           </div>
@@ -310,7 +310,8 @@
           <td>{{ escape(f"{alarm_definition.to_time_string()}") }}</td>
           <td>{{ escape(alarm_definition.to_day_string()) }}</td>
           <td>stream: <span title="{{ escape(alarm_definition.audio_effect.stream_definition.stream_name) }}">
-              <span class="stream-name-short">{{ escape(alarm_definition.audio_effect.stream_definition.stream_name[:5])
+              <span class="stream-name-short">{{
+                escape(alarm_definition.audio_effect.stream_definition.stream_name[:10])
                 }}</span>
               <span class="stream-name-full">{{ escape(alarm_definition.audio_effect.stream_definition.stream_name)
                 }}</span>
@@ -414,8 +415,7 @@
         {% for audio_stream in config.audio_streams %}
         <tr>
           <td title="{{ escape(audio_stream.stream_name) }}">
-            <span class="stream-name-short">{{ escape(audio_stream.stream_name[:5]) }}</span>
-            <span class="stream-name-full">{{ escape(audio_stream.stream_name) }}</span>
+            <span>{{ escape(audio_stream.stream_name) }}</span>
           </td>
           <td>
             <span title="{{ escape(audio_stream.stream_url) }}"
