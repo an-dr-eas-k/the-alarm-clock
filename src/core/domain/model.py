@@ -273,7 +273,7 @@ class AlarmDefinition:
 
     def to_day_string(self) -> str:
         if self.is_recurring():
-            return ",".join(
+            return ", ".join(
                 [Weekday[wd].name.lower().capitalize()[:2] for wd in self.recurring]
             )
         elif self.is_onetime():

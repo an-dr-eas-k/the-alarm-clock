@@ -9,9 +9,25 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="icon" href="/media/favicon.png" type="image/png">
   <style>
+    /* make sizing predictable and avoid accidental overflow */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
     label {
-      width: 200px;
+      width: auto;
+      max-width: 100%;
       margin-top: 1.5rem;
+      display: inline-block;
+    }
+
+    /* prevent accidental horizontal scrolling */
+    html,
+    body {
+      overflow-x: hidden;
+      width: 100%;
     }
 
     .row {
@@ -36,6 +52,115 @@
 
     .btn-column {
       width: 90px;
+    }
+
+    .stream-name-short {
+      display: none;
+    }
+
+    .stream-name-full {
+      display: inline;
+    }
+
+    @media (max-width: 480px) {
+      .stream-name-short {
+        display: inline;
+      }
+
+      .stream-name-full {
+        display: none;
+      }
+    }
+
+    /* Controls layout */
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 0.5rem;
+      align-items: center;
+      /* vertically center all items */
+    }
+
+    /* left side: use a responsive grid so stream buttons form tiles (chessboard-like) */
+    .controls-left {
+      display: grid;
+      /* auto-fit tiles to viewport width to prevent overflow */
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 0.5rem;
+      align-items: center;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .controls-right {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      /* reserve a stable column for stop + volume */
+      flex: 0 0 140px;
+      max-width: 160px;
+      margin-left: 1rem;
+      justify-content: center;
+    }
+
+    /* vertical stack for volume buttons */
+    .volume-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      align-items: center;
+    }
+
+    /* Ensure buttons inside columns expand nicely */
+    .controls-left .col,
+    .controls-right .col {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .controls-left .btn-action,
+    .controls-right .btn-action {
+      white-space: nowrap;
+      min-width: 70px;
+    }
+
+
+    /* Stack left controls into a compact grid on small phones (e.g. Pixel) */
+    @media (max-width: 480px) {
+      .controls-left {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        justify-content: center;
+        gap: 0.4rem;
+        max-width: 220px;
+      }
+
+      .controls-left .col {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+      }
+
+      .controls-left .btn-action {
+        width: 100%;
+        padding: 0.35rem 0.45rem;
+        font-size: 0.95rem;
+      }
+
+      /* allow right controls to shrink on small phones */
+      .controls-right {
+        flex: 0 0 auto;
+        max-width: none;
+        margin-left: 0.5rem;
+      }
+    }
+
+    /* make range inputs responsive */
+    .volume-range {
+      width: 100%;
+      max-width: 100%;
     }
   </style>
 
@@ -134,30 +259,37 @@
   <div class="container">
     <div id="controls-container" class="row">
       <h3>Controls</h3>
-      <div class="row align-items-center">
-        {% for audio_stream in config.audio_streams %}
-        <div class="col">
-          <button type="submit" class="btn btn-primary btn-action" value="{{ audio_stream.id }}"
-            onclick="onClickAction('play', event)">
-            <i class="bi bi-play-fill"></i>
-            {{ escape(audio_stream.stream_name) }}</button>
+      <div class="controls-row">
+        <div class="controls-left">
+          {% for audio_stream in config.audio_streams %}
+          <div class="col" style="flex: 0 0 auto;">
+            <button type="submit" class="btn btn-primary btn-action" value="{{ audio_stream.id }}"
+              onclick="onClickAction('play', event)" title="{{ escape(audio_stream.stream_name) }}">
+              <i class="bi bi-play-fill"></i>
+              <span class="stream-name-short">{{ escape(audio_stream.stream_name[:5]) }}</span>
+              <span class="stream-name-full">{{ escape(audio_stream.stream_name) }}</span>
+            </button>
+          </div>
+          {% end %}
         </div>
-        {% end %}
-        <div class="col">
-          <button type="submit" class="btn btn-primary btn-action" onclick="onClickAction('stop')">
-            <i class="bi bi-stop-fill"></i>
-          </button>
-        </div>
-        <div class="col offset-md-3" style="max-width: 100px;">
-          <button type="submit" class="btn btn-primary btn-action m-1" value="1"
-            onclick="onClickAction('volume', event)">
-            <i class="bi bi-volume-up-fill"></i>
-          </button>
 
-          <button type="submit" class="btn btn-primary btn-action m-1" value="-1"
-            onclick="onClickAction('volume', event)">
-            <i class="bi bi-volume-down-fill"></i>
-          </button>
+        <div class="controls-right">
+          <div class="col" style="flex: 0 0 auto;">
+            <button type="submit" class="btn btn-primary btn-action" onclick="onClickAction('stop')" title="Stop">
+              <i class="bi bi-stop-fill"></i>
+            </button>
+          </div>
+          <div class="col volume-stack" style="flex: 0 0 auto;">
+            <button type="submit" class="btn btn-primary btn-action" value="1" onclick="onClickAction('volume', event)"
+              title="Volume Up">
+              <i class="bi bi-volume-up-fill"></i>
+            </button>
+
+            <button type="submit" class="btn btn-primary btn-action" value="-1" onclick="onClickAction('volume', event)"
+              title="Volume Down">
+              <i class="bi bi-volume-down-fill"></i>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -177,7 +309,12 @@
           <td>{{ escape(alarm_definition.alarm_name) }}</td>
           <td>{{ escape(f"{alarm_definition.to_time_string()}") }}</td>
           <td>{{ escape(alarm_definition.to_day_string()) }}</td>
-          <td>stream: {{ escape(alarm_definition.audio_effect.stream_definition.stream_name ) }},
+          <td>stream: <span title="{{ escape(alarm_definition.audio_effect.stream_definition.stream_name) }}">
+              <span class="stream-name-short">{{ escape(alarm_definition.audio_effect.stream_definition.stream_name[:5])
+                }}</span>
+              <span class="stream-name-full">{{ escape(alarm_definition.audio_effect.stream_definition.stream_name)
+                }}</span>
+            </span>,
             vol: {{ alarm_definition.audio_effect.volume }},
             {{ 'visuals' if alarm_definition.visual_effect is not None else 'no visuals' }}</td>
           <td>
@@ -188,7 +325,9 @@
           </td>
           <td>
             <button type="submit" class="btn btn-primary btn-row-action" value="{{ alarm_definition.id }}"
-              onclick="onClickDelete('alarm', event)">Delete</button>
+              onclick="onClickDelete('alarm', event)" title="Delete">
+              <i class="bi bi-trash-fill"></i>
+            </button>
           </td>
         </tr>
         {% end %}
@@ -239,9 +378,8 @@
                 </div>
                 <div class="form-group">
                   <label for="volume-picker">Volume: <span id="volumeValue">{{ config.default_volume }}</span> </label>
-                  <input style="width: calc(100% - 250px); min-width: 250px; " id="volume-picker" name="volume"
-                    type="range" min="0" max="1" step="0.05" value="{{ config.default_volume }}"
-                    oninput="updateVolume(event)" on>
+                  <input id="volume-picker" name="volume" class="volume-range" type="range" min="0" max="1" step="0.05"
+                    value="{{ config.default_volume }}" oninput="updateVolume(event)">
                 </div>
                 <div class="form-group">
                   <label for="visualeffectpicker">Visual Effects:</label>
@@ -275,11 +413,20 @@
         </tr>
         {% for audio_stream in config.audio_streams %}
         <tr>
-          <td>{{ escape(audio_stream.stream_name) }}</td>
-          <td>{{ escape(audio_stream.stream_url) }}</td>
+          <td title="{{ escape(audio_stream.stream_name) }}">
+            <span class="stream-name-short">{{ escape(audio_stream.stream_name[:5]) }}</span>
+            <span class="stream-name-full">{{ escape(audio_stream.stream_name) }}</span>
+          </td>
+          <td>
+            <span title="{{ escape(audio_stream.stream_url) }}"
+              style="display:inline-block; width:clamp(150px,50vw,600px); max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+              {{ escape(audio_stream.stream_url) }} </span>
+          </td>
           <td>
             <button type="submit" class="btn btn-primary btn-row-action" value="{{ audio_stream.id }}"
-              onclick="onClickDelete('stream', event)">Delete</button>
+              onclick="onClickDelete('stream', event)" title="Delete">
+              <i class="bi bi-trash-fill"></i>
+            </button>
           </td>
         </tr>
         {% end %}
