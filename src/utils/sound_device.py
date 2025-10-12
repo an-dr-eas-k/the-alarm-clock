@@ -160,7 +160,6 @@ class SoundDevice:
                 logger.debug("pcm %s mixers: %s", pcm, "none")
 
 
-@singleton
 class TACSoundDevice(SoundDevice):
 
     def __init__(self):

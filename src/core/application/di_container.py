@@ -14,6 +14,7 @@ from core.domain.model import (
     DisplayContent,
     PlaybackContent,
 )
+from utils.sound_device import TACSoundDevice
 from luma.core.device import dummy
 from luma.oled.device import ssd1322
 from luma.core.interface.serial import spi
@@ -42,7 +43,10 @@ class DIContainer(containers.DeclarativeContainer):
     alarm_clock_state = providers.Singleton(AlarmClockState, config=config)
     state_machine = providers.Singleton(AlarmClockStateMachine, state=alarm_clock_state)
 
-    playback_content = providers.Singleton(PlaybackContent, state=alarm_clock_state)
+    sound_device = providers.Singleton(TACSoundDevice)
+    playback_content = providers.Singleton(
+        PlaybackContent, state=alarm_clock_state, sound_device=sound_device
+    )
     display_content = providers.Singleton(
         DisplayContent, state=alarm_clock_state, playback_content=playback_content
     )

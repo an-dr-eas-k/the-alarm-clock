@@ -1,4 +1,4 @@
-# note, RPi.GPIO is forcefully uninstalled in run.sh
+# note, RPi.GPIO is forcefully uninstalled in run.sh. the circuitpython libraries depend on it, but we use rpi-lgpio instead
 luma.core
 luma.oled
 python-vlc

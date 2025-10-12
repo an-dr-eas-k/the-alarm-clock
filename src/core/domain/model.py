@@ -17,10 +17,9 @@ from utils.events import TACEventPublisher, TACEvent, TACEventSubscriber
 from utils.geolocation import GeoLocation, Weather
 from resources.resources import alarms_dir, default_volume
 from utils.singleton import singleton
-from utils.sound_device import TACSoundDevice
+from utils.sound_device import SoundDevice
 from utils.state_machine import StateMachine, Trigger
 
-# from core.domain.mode import AlarmClockStateMachine
 from datetime import datetime, timedelta
 
 logger = logging.getLogger("tac.domain")
@@ -591,11 +590,11 @@ class PlaybackContent(MediaContent):
 
     @property
     def volume(self) -> float:
-        return TACSoundDevice().get_system_volume()
+        return self.sound_device.get_system_volume()
 
     @volume.setter
     def volume(self, value: float):
-        TACSoundDevice().set_system_volume(value)
+        self.sound_device.set_system_volume(value)
         self.publish(property="volume")
 
     @property
@@ -607,10 +606,11 @@ class PlaybackContent(MediaContent):
         self._is_streaming = value
         self.publish(property="is_streaming")
 
-    def __init__(self, state: AlarmClockState):
+    def __init__(self, state: AlarmClockState, sound_device: SoundDevice):
         super().__init__(state)
+        self.sound_device = sound_device
         self.audio_effect = None
-        self.volume = default_volume
+        self.sound_device.set_system_volume(default_volume)
         self.is_streaming = False
 
     def handle(self, observation: TACEvent):
