@@ -16,7 +16,9 @@ interrupt_pin: int = 4
 
 
 def GPIO_Module():
-    return RPi.GPIO  # type: ignore
+    from RPi import GPIO  # type: ignore
+
+    return GPIO
 
 
 class I2CManager:
