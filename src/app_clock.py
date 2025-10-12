@@ -1,31 +1,17 @@
-import argparse
 import logging
-import logging.config
-import os
 import signal
-from luma.oled.device import ssd1322
-from luma.core.device import device as luma_device
-from luma.core.interface.serial import spi
 from luma.core.device import dummy
 
 import tornado.ioloop
-import tornado.web
 
-from core.domain.mode import AlarmClockStateMachine
+from core.application.di_container import DIContainer
+from dependency_injector import providers
+
 from core.domain.model import (
-    AlarmClockState,
-    Config,
-    DisplayContent,
     Mode,
-    PlaybackContent,
 )
-from core.interface.display.display import Display
-from core.application.api import Api
-from core.infrastructure.audio import Speaker
-from core.application.controls import HardwareControls, SoftwareControls
-from core.infrastructure.persistence import Persistence
+from core.application.controls import Controls
 from resources.resources import init_logging
-from resources.resources import config_file
 from utils import os as app_os
 
 logger = logging.getLogger("tac.app_clock")
@@ -34,12 +20,10 @@ logger = logging.getLogger("tac.app_clock")
 class ClockApp:
 
     def __init__(self) -> None:
-        parser = argparse.ArgumentParser("ClockApp")
-        parser.add_argument("-s", "--software", action="store_true")
-        self.args = parser.parse_args()
+        self.container = DIContainer()
 
     def is_on_hardware(self):
-        return not self.args.software
+        return not self.container.argument_args().software
 
     def shutdown_function(self):
         logger.info("graceful shutdown")
@@ -50,49 +34,52 @@ class ClockApp:
 
         signal.signal(signal.SIGTERM, self.shutdown_function)
 
-        self.state = AlarmClockState(Config())
-        self.state.state_machine = AlarmClockStateMachine(self.state)
-        if os.path.exists(config_file):
-            self.state.config = Config.deserialize(config_file)
+        self.container.config()
+        state = self.container.alarm_clock_state()
+        state.state_machine = self.container.state_machine()
 
         logger.info("config available")
 
-        playback_content = PlaybackContent(self.state)
-        self.state.subscribe(playback_content)
-        display_content = DisplayContent(self.state, playback_content)
-        self.state.subscribe(display_content)
-
-        device: luma_device
+        playback_content = self.container.playback_content()
+        state.subscribe(playback_content)
+        display_content = self.container.display_content()
+        state.subscribe(display_content)
 
         if self.is_on_hardware():
-            self.controls = HardwareControls(
-                self.state, display_content, playback_content
-            )
-            # self.state.attach(GeneralPurposeOutput())
-            device = ssd1322(serial_interface=spi(device=0, port=0))
+            self.container.button_manager().subscribe(state.state_machine)
+            self.container.rotary_encoder_manager().subscribe(state.state_machine)
         else:
-            self.controls = SoftwareControls(
-                self.state, display_content, playback_content
+            from core.infrastructure.computer_infrastructure import (
+                ComputerInfrastructure,
             )
-            device = dummy(height=64, width=256, mode="RGB")
 
-        self.display = Display(device, display_content, playback_content, self.state)
-        display_content.subscribe(self.display)
-        self.persistence = Persistence(config_file)
-        self.state.subscribe(self.persistence)
-        self.state.config.subscribe(self.persistence)
+            ci = ComputerInfrastructure()
+            self.container.brightness_sensor.override(providers.Object(ci))
+            self.container.device.override(
+                providers.Singleton(dummy, height=64, width=256, mode="RGB")
+            )
+            ci.subscribe(state.state_machine)
 
-        self.speaker = Speaker(playback_content, self.state.config)
-        playback_content.subscribe(self.speaker)
-        self.state.config.subscribe(self.controls)
-        playback_content.subscribe(self.controls)
-        self.controls.configure()
+        controls: Controls = self.container.controls()
+        display = self.container.display()
+        display_content.subscribe(display)
 
-        self.api = Api(self.controls, self.display, self.is_on_hardware())
-        self.api.start()
+        persistence = self.container.persistence()
+        state.subscribe(persistence)
+        state.config.subscribe(persistence)
 
-        self.state.mode = Mode.Idle
-        self.controls.consider_failed_alarm()
+        speaker = self.container.speaker()
+        playback_content.subscribe(speaker)
+        state.config.subscribe(controls)
+        playback_content.subscribe(controls)
+        state.state_machine.subscribe(controls)
+        controls.configure()
+
+        api = self.container.api()
+        api.start()
+
+        state.mode = Mode.Idle
+        controls.consider_failed_alarm()
         tornado.ioloop.IOLoop.current().start()
 
 

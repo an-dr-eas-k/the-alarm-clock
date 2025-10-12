@@ -1,12 +1,10 @@
 import logging
 import threading
 import time
-from RPi import GPIO
 import board
 import busio
 from digitalio import Direction, Pull
 from adafruit_mcp230xx.mcp23017 import MCP23017
-from utils.singleton import singleton
 
 rotary_encoder_channel_press: int = 8
 rotary_encoder_channel_a: int = 10
@@ -17,7 +15,12 @@ invoke_button_channel: int = 1
 interrupt_pin: int = 4
 
 
-@singleton
+def GPIO_Module():
+    from RPi import GPIO  # type: ignore
+
+    return GPIO
+
+
 class I2CManager:
     def __init__(self):
         self.i2c = busio.I2C(board.SCL, board.SDA)
@@ -26,13 +29,12 @@ class I2CManager:
 logger = logging.getLogger("tac.mcp")
 
 
-@singleton
 class MCPManager:
     last_log_time = 0
 
-    def __init__(self):
+    def __init__(self, i2c_manager: I2CManager):
 
-        self.mcp = MCP23017(I2CManager().i2c)
+        self.mcp = MCP23017(i2c_manager.i2c)
         for i in range(0, 16):
             pin = self.mcp.get_pin(i)
             pin.direction = Direction.INPUT
@@ -46,13 +48,12 @@ class MCPManager:
 
         self.mcp.clear_ints()
 
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(interrupt_pin, GPIO.IN, GPIO.PUD_UP)
-        GPIO.add_event_detect(
+        GPIO_Module().setmode(GPIO_Module().BCM)
+        GPIO_Module().setup(interrupt_pin, GPIO_Module().IN, GPIO_Module().PUD_UP)
+        GPIO_Module().add_event_detect(
             interrupt_pin,
-            GPIO.FALLING,
+            GPIO_Module().FALLING,
             callback=self.invoke_gpio_callback,
-            bouncetime=10,
         )
         self.mcp_callbacks = {}
 
@@ -70,7 +71,7 @@ class MCPManager:
             if self.last_log_time < current_time - 1:
                 self.last_log_time = current_time
                 logger.debug(
-                    f"interrupt state: {int(GPIO.input(interrupt_pin))}, mcp pin states: "
+                    f"interrupt state: {int(GPIO_Module.input(interrupt_pin))}, mcp pin states: "
                     + ", ".join(
                         [f"{p:02}: {int(self.mcp.get_pin(p).value)}" for p in range(16)]
                     )
@@ -89,7 +90,7 @@ class MCPManager:
         self.mcp.clear_ints()
 
     def close(self):
-        GPIO.cleanup()
+        GPIO_Module().cleanup()
 
 
 if __name__ == "__main__":

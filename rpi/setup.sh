@@ -5,16 +5,18 @@ app=${uhome}/app
 echo "killing processes"
 killall -u the-alarm-clock
 
-echo "update system and install dependencies"
-apt-get -y update
-apt-get -y dist-upgrade
-apt-get -y install git python3 vlc python3-pip curl libasound2-plugin-equal python3-dbus python3-alsaaudio libasound2-dev
+if [ $1 != "fast" ]; then
+  echo "update system and install dependencies"
+  apt-get -y update
+  apt-get -y dist-upgrade
+  apt-get -y install git python3 vlc python3-pip curl libasound2-plugin-equal python3-dbus python3-alsaaudio libasound2-dev
 
-apt-get -y remove python3-rpi.gpio
-apt-get -y install python3-rpi-lgpio 
+  apt-get -y remove python3-rpi.gpio
+  apt-get -y install python3-rpi-lgpio 
 
-# apt-get -y remove python3-rpi-lgpio 
-# apt-get -y install python3-rpi.gpio
+  # apt-get -y remove python3-rpi-lgpio 
+  # apt-get -y install python3-rpi.gpio
+fi
 
 curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
 apt-get -y autoremove
@@ -64,7 +66,7 @@ systemctl enable raspotify
 ln -fs $app/rpi/resources/raspotify.conf /etc/raspotify/conf
 touch /var/log/the-alarm-clock.spotify-event.stdout
 touch /var/log/the-alarm-clock.spotify-event.errout
-chown $uid:$uid -R /var/log/the-alarm-clock.spotify-event.*
+chown $uid:$uid -R /var/log/the-alarm-clock.*
 
 
 echo "setup the-alarm-clock app"

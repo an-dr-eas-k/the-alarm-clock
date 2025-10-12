@@ -1,12 +1,18 @@
 import logging
 import time
-from core.infrastructure.i2c_devices import I2CManager
 import adafruit_bh1750
+
+from core.infrastructure.i2c_devices import I2CManager
 
 logger = logging.getLogger("tac.gpi")
 
 
-class BrightnessSensor:
+class IBrightnessSensor:
+    def get_room_brightness(self) -> float:
+        raise NotImplementedError("Subclasses must implement get_room_brightness()")
+
+
+class BrightnessSensor(IBrightnessSensor):
     def __init__(self, i2c_manager: I2CManager):
         self.i2c_manager = i2c_manager
 

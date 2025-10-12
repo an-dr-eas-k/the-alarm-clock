@@ -17,10 +17,9 @@ from utils.events import TACEventPublisher, TACEvent, TACEventSubscriber
 from utils.geolocation import GeoLocation, Weather
 from resources.resources import alarms_dir, default_volume
 from utils.singleton import singleton
-from utils.sound_device import TACSoundDevice
+from utils.sound_device import SoundDevice
 from utils.state_machine import StateMachine, Trigger
 
-# from core.domain.mode import AlarmClockStateMachine
 from datetime import datetime, timedelta
 
 logger = logging.getLogger("tac.domain")
@@ -274,7 +273,7 @@ class AlarmDefinition:
 
     def to_day_string(self) -> str:
         if self.is_recurring():
-            return ",".join(
+            return ", ".join(
                 [Weekday[wd].name.lower().capitalize()[:2] for wd in self.recurring]
             )
         elif self.is_onetime():
@@ -478,16 +477,14 @@ class Config(TACEventPublisher):
 
 
 class HwButton(Trigger):
-    def __init__(self, button_id: str, button_name: str = None, action=None):
+    def __init__(self, button_id: str):
         self.button_id = button_id
-        self.button_name = button_name
-        self.action = action
 
     def __hash__(self):
         return f"button.{self.button_id}".__hash__()
 
     def __str__(self):
-        return f"{super().__str__()} {self.button_name} ({self.button_id})"
+        return f"{super().__str__()} {self.button_id}"
 
 
 class AlarmClockState(TACEventPublisher):
@@ -543,14 +540,13 @@ class AlarmClockState(TACEventPublisher):
         self._active_alarm = value
         self.publish(property="active_alarm")
 
-    def __init__(self, c: Config) -> None:
+    def __init__(self, config: Config) -> None:
         super().__init__()
-        self.config = c
+        self.config = config
         self.mode = Mode.Boot
         self.geo_location = GeoLocation()
         self.is_online = True
         self.show_blink_segment = True
-        # self.state_machine: StateMachine = AlarmClockStateMachine(self)
 
     def update_state(
         self, show_blink_segment: bool, brightness: RoomBrightness, is_scrolling: bool
@@ -594,11 +590,11 @@ class PlaybackContent(MediaContent):
 
     @property
     def volume(self) -> float:
-        return TACSoundDevice().get_system_volume()
+        return self.sound_device.get_system_volume()
 
     @volume.setter
     def volume(self, value: float):
-        TACSoundDevice().set_system_volume(value)
+        self.sound_device.set_system_volume(value)
         self.publish(property="volume")
 
     @property
@@ -610,10 +606,11 @@ class PlaybackContent(MediaContent):
         self._is_streaming = value
         self.publish(property="is_streaming")
 
-    def __init__(self, state: AlarmClockState):
+    def __init__(self, state: AlarmClockState, sound_device: SoundDevice):
         super().__init__(state)
+        self.sound_device = sound_device
         self.audio_effect = None
-        self.volume = default_volume
+        self.sound_device.set_system_volume(default_volume)
         self.is_streaming = False
 
     def handle(self, observation: TACEvent):

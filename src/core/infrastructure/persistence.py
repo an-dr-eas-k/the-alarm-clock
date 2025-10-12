@@ -2,9 +2,7 @@ import os
 from core.domain.model import (
     AlarmClockState,
     AlarmDefinition,
-    AudioEffect,
     Config,
-    Mode,
     TACEvent,
     TACEventSubscriber,
 )
@@ -12,10 +10,10 @@ from resources.resources import active_alarm_definition_file
 
 
 class Persistence(TACEventSubscriber):
-    config_file_name: str
+    config_file: str
 
-    def __init__(self, config_file_name: str):
-        self.config_file_name = config_file_name
+    def __init__(self, config_file: str):
+        self.config_file = config_file
         super().__init__()
 
     def handle(self, observation: TACEvent):
@@ -33,7 +31,7 @@ class Persistence(TACEventSubscriber):
         self.store_config(config)
 
     def store_config(self, config: Config):
-        with open(self.config_file_name, "w") as f:
+        with open(self.config_file, "w") as f:
             f.write(config.serialize())
 
     def update_from_state(self, observation: TACEvent, state: AlarmClockState):

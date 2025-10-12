@@ -1,3 +1,4 @@
+from core.domain.model import HwButton
 from core.infrastructure.i2c_devices import (
     MCPManager,
     mode_button_channel,
@@ -5,15 +6,15 @@ from core.infrastructure.i2c_devices import (
 )
 import logging
 
+from utils.events import TACEventPublisher
+
 logger = logging.getLogger("tac.mcp_buttons")
 
 
-class ButtonsManager:
-    def __init__(self, mode_channel_callback, invoke_channel_callback):
-        self.mcpManager = MCPManager()
-
-        self.on_mode_channel_callback = mode_channel_callback
-        self.on_invoke_channel_callback = invoke_channel_callback
+class ButtonsManager(TACEventPublisher):
+    def __init__(self, mcp_manager: MCPManager):
+        super().__init__()
+        self.mcpManager = mcp_manager
 
         self.mcpManager.add_callback(mode_button_channel, self._mode_button_callback)
         self.mcpManager.add_callback(
@@ -25,9 +26,9 @@ class ButtonsManager:
     def _mode_button_callback(self, mcp, pin):
         if (mcp.get_pin(pin).value) == 1:
             return
-        self.on_mode_channel_callback()
+        self.publish(reason=HwButton("mode_button"), during_registration=False)
 
     def _invoke_button_callback(self, mcp, pin):
         if (mcp.get_pin(pin).value) == 1:
             return
-        self.on_invoke_channel_callback()
+        self.publish(reason=HwButton("invoke_button"), during_registration=False)
