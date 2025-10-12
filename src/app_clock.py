@@ -11,7 +11,6 @@ from core.domain.model import (
     Mode,
 )
 from core.application.controls import Controls
-from core.infrastructure.keyboardbuttons import ComputerInfrastructure
 from resources.resources import init_logging
 from utils import os as app_os
 
@@ -50,6 +49,10 @@ class ClockApp:
             self.container.button_manager().subscribe(state.state_machine)
             self.container.rotary_encoder_manager().subscribe(state.state_machine)
         else:
+            from core.infrastructure.computer_infrastructure import (
+                ComputerInfrastructure,
+            )
+
             ci = ComputerInfrastructure()
             self.container.brightness_sensor.override(providers.Object(ci))
             self.container.device.override(
