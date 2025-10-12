@@ -171,6 +171,8 @@ class Controls(TACEventSubscriber):
             self.cleanup_alarms()
             self.display_content.next_alarm_job = self.get_next_alarm_job()
             self.print_active_jobs(alarm_store)
+        if observation.property_name == "is_online" and observation.new_value:
+            self.update_weather_status()
 
     def get_next_alarm_job(self) -> Job:
         jobs = sorted(
