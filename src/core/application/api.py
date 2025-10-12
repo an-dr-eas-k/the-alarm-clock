@@ -11,7 +11,7 @@ from PIL.Image import Image
 from core.application.controls import Controls
 from core.interface.display.display import Display
 from core.interface.display.format import ColorType
-from resources.resources import webroot_file, ssl_dir
+from resources.resources import webroot_file, ssl_dir, icons_dir
 
 from core.domain.model import (
     AlarmDefinition,
@@ -254,6 +254,11 @@ class Api:
                 r"/api/librespotify",
                 LibreSpotifyEventHandler,
                 {"playback_content": self.controls.playback_content},
+            ),
+            (
+                r"/media/(.*)",
+                tornado.web.StaticFileHandler,
+                {"path": icons_dir},
             ),
             (
                 r"/(.*)",
