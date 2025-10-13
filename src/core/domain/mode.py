@@ -94,7 +94,7 @@ class AlarmViewMode(TacMode):
 
 class AlarmEditMode(AlarmViewMode):
 
-    property_to_edit: str = "hour"
+    property_to_edit: str = "is_active"
     alarm_definition_in_editing: AlarmDefinitionToEdit = None
 
     def __init__(self, previous_mode: TacMode):

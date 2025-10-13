@@ -82,7 +82,10 @@ class AlarmDefinitionToEdit(AlarmDefinition):
         return ep
 
     def get_properties_to_edit(self) -> List[str]:
-        pes = ["hour", "min"]
+        pes = []
+        pes.append("is_active")
+        pes.append("hour")
+        pes.append("min")
         if not super().is_onetime() and not super().is_recurring():
             pes.append("dayType")
 
@@ -92,7 +95,6 @@ class AlarmDefinitionToEdit(AlarmDefinition):
             pes.append("recurring")
 
         pes.append("audio_effect")
-        pes.append("is_active")
         pes.append("update")
         pes.append("cancel")
         return pes
