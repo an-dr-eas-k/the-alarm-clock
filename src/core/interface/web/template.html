@@ -359,10 +359,10 @@
           <td>stream: <span title="{{ escape(alarm_definition.audio_effect.stream_definition.stream_name) }}">
               <span class="stream-name-short">{{
                 escape(alarm_definition.audio_effect.stream_definition.stream_name[:10])
-                }}</span>
+                }},</span>
               <span class="stream-name-full">{{ escape(alarm_definition.audio_effect.stream_definition.stream_name)
-                }}</span>
-            </span>,
+                }},</span>
+            </span>
             vol: {{ alarm_definition.audio_effect.volume }},
             {{ 'visuals' if alarm_definition.visual_effect is not None else 'no visuals' }}</td>
           <td>
