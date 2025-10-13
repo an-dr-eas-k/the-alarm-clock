@@ -170,37 +170,26 @@
       display: flex;
       flex-direction: column;
       align-items: flex-end;
-      margin-bottom: -60px;
-      /* overlap with controls */
-      margin-right: 1rem;
+      margin-bottom: -55px;
+      margin-right: 0.5rem;
     }
 
     .favicon-image {
-      width: 256px;
-      height: 256px;
+      width: 100px;
+      height: 100px;
       margin-bottom: 0.25rem;
     }
 
-    .favicon-text {
-      font-size: 0.75rem;
-      color: #fff;
-      text-align: center;
-      white-space: nowrap;
-    }
 
-    @media (max-width: 480px) {
+    @media (min-width: 720px) {
       .favicon-container {
-        margin-bottom: -55px;
-        margin-right: 0.5rem;
+        margin-bottom: -60px;
+        margin-right: 1rem;
       }
 
       .favicon-image {
-        width: 100px;
-        height: 100px;
-      }
-
-      .favicon-text {
-        font-size: 0.65rem;
+        width: 256px;
+        height: 256px;
       }
     }
   </style>
@@ -301,7 +290,6 @@
     <!-- Favicon visualization -->
     <div class="favicon-container">
       <img src="/media/favicon.png" alt="the-alarm-clock" class="favicon-image">
-      <!-- <div class="favicon-text">the-alarm-clock</div> -->
     </div>
 
     <div id="controls-container" class="row">
