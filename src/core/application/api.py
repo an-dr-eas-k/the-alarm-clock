@@ -247,7 +247,7 @@ class Api:
             (
                 r"/api/config/?(.*)",
                 ConfigApiHandler,
-                {"config": self.controls.state.config},
+                {"config": self.controls.alarm_clock_context.config},
             ),
             (r"/api/action/?(.*)", ActionApiHandler, {"controls": self.controls}),
             (
@@ -263,7 +263,7 @@ class Api:
             (
                 r"/(.*)",
                 ConfigHandler,
-                {"config": self.controls.state.config, "api": self},
+                {"config": self.controls.alarm_clock_context.config, "api": self},
             ),
         ]
 
@@ -290,13 +290,13 @@ class Api:
                         color_type=ColorType.IN16
                     ),
                 ),
-                is_online=self.controls.state.is_online,
-                is_daytime=self.controls.state.is_daytime,
-                geo_location=self.controls.state.geo_location.location_info.__dict__,
+                is_online=self.controls.alarm_clock_context.is_online,
+                is_daytime=self.controls.alarm_clock_context.is_daytime,
+                geo_location=self.controls.alarm_clock_context.geo_location.location_info.__dict__,
                 playback_content=dict(
                     audio_effect=self.controls.playback_content.audio_effect.__str__(),
                     volume=self.controls.playback_content.volume,
-                    mode=self.controls.state.mode.name,
+                    mode=self.controls.alarm_clock_context.mode.name,
                 ),
                 uptime=subprocess.check_output(["uptime"]).strip().decode("utf-8"),
             ),

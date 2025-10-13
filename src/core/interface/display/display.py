@@ -6,7 +6,7 @@ from luma.core.render import canvas
 from PIL import Image
 
 from core.domain.model import (
-    AlarmClockState,
+    AlarmClockContext,
     Config,
     DisplayContent,
     DisplayContentProvider,
@@ -54,14 +54,16 @@ class Display(TACEventSubscriber, DisplayContentProvider):
         device: luma_device,
         display_content: DisplayContent,
         playback_content: PlaybackContent,
-        state: AlarmClockState,
+        alarm_clock_context: AlarmClockContext,
     ) -> None:
         self.device = device
         logger.info("device mode: %s", self.device.mode)
         self.display_content = display_content
         self.playback_content = playback_content
-        self.state = state
-        self.formatter = DisplayFormatter(self.display_content, self.state)
+        self.alarm_clock_context = alarm_clock_context
+        self.formatter = DisplayFormatter(
+            self.display_content, self.alarm_clock_context
+        )
         self.composable_presenters = ImageComposition(
             Image.new(mode=self.device.mode, size=self.device.size, color="black")
         )
@@ -211,7 +213,9 @@ class Display(TACEventSubscriber, DisplayContentProvider):
         start_time = GeoLocation().now()
         self.device.contrast(16)
         self.formatter.update_formatter()
-        self.composable_presenters.debug = self.state.config.debug_level >= 10
+        self.composable_presenters.debug = (
+            self.alarm_clock_context.config.debug_level >= 10
+        )
         self.display_content.is_scrolling = False
 
         if self.formatter.clear_display():
@@ -254,11 +258,11 @@ if __name__ == "__main__":
         dev = dummy(height=64, width=256, mode="1")
 
     c = Config()
-    s = AlarmClockState(c=c)
-    pc = PlaybackContent(state=s)
+    s = AlarmClockContext(c=c)
+    pc = PlaybackContent(alarm_clock_context=s)
     pc.audio_effect = SpotifyAudioEffect()
     pc.is_streaming = True
-    dc = DisplayContent(state=s, playback_content=pc)
+    dc = DisplayContent(alarm_clock_context=s, playback_content=pc)
     dc.show_blink_segment = True
     d = Display(dev, dc, pc, s)
     d.handle(TACEvent(event_publisher=dc, reason="init"))

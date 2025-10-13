@@ -1,7 +1,13 @@
 import os
 import argparse
 from dependency_injector import containers, providers
-from core.domain.mode import AlarmClockStateMachine
+from core.domain.mode import (
+    AlarmClockStateMachine,
+    AlarmEditMode,
+    AlarmViewMode,
+    DefaultMode,
+    PropertyEditMode,
+)
 from core.infrastructure.brightness_sensor import BrightnessSensor
 from core.infrastructure.i2c_devices import I2CManager, MCPManager
 from core.infrastructure.mcp23017.buttons import ButtonsManager
@@ -13,7 +19,7 @@ from core.application.controls import Controls
 from core.infrastructure.persistence import Persistence
 from resources.resources import config_file
 from core.domain.model import (
-    AlarmClockState,
+    AlarmClockContext,
     Config,
     DisplayContent,
     PlaybackContent,
@@ -44,15 +50,35 @@ class DIContainer(containers.DeclarativeContainer):
         )
     )
 
-    alarm_clock_state = providers.Singleton(AlarmClockState, config=config)
-    state_machine = providers.Singleton(AlarmClockStateMachine, state=alarm_clock_state)
+    alarm_clock_context = providers.Singleton(AlarmClockContext, config=config)
+    default_state = providers.Singleton(
+        DefaultMode, previous_mode=None, alarm_clock_context=alarm_clock_context
+    )
+    alarm_view_state = providers.Singleton(AlarmViewMode, previous_mode=default_state)
+    alarm_edit_state = providers.Singleton(
+        AlarmEditMode, previous_mode=alarm_view_state
+    )
+    property_edit_state = providers.Singleton(
+        PropertyEditMode, previous_mode=alarm_edit_state
+    )
+    state_machine = providers.Singleton(
+        AlarmClockStateMachine,
+        default_state=default_state,
+        alarm_view_state=alarm_view_state,
+        alarm_edit_state=alarm_edit_state,
+        property_edit_state=property_edit_state,
+    )
 
     sound_device = providers.Singleton(TACSoundDevice)
     playback_content = providers.Singleton(
-        PlaybackContent, state=alarm_clock_state, sound_device=sound_device
+        PlaybackContent,
+        alarm_clock_context=alarm_clock_context,
+        sound_device=sound_device,
     )
     display_content = providers.Singleton(
-        DisplayContent, state=alarm_clock_state, playback_content=playback_content
+        DisplayContent,
+        alarm_clock_context=alarm_clock_context,
+        playback_content=playback_content,
     )
 
     persistence = providers.Singleton(Persistence, config_file=config_file)
@@ -70,7 +96,7 @@ class DIContainer(containers.DeclarativeContainer):
 
     controls = providers.Singleton(
         Controls,
-        state=alarm_clock_state,
+        alarm_clock_context=alarm_clock_context,
         display_content=display_content,
         playback_content=playback_content,
         brightness_sensor=brightness_sensor,
@@ -84,7 +110,7 @@ class DIContainer(containers.DeclarativeContainer):
         device=device,
         display_content=display_content,
         playback_content=playback_content,
-        state=alarm_clock_state,
+        alarm_clock_context=alarm_clock_context,
     )
 
     api = providers.Singleton(

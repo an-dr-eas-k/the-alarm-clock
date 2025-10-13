@@ -3,7 +3,6 @@ import math
 import threading
 import alsaaudio
 from resources import resources
-from utils.singleton import singleton
 
 logger = logging.getLogger("tac.sound_device")
 

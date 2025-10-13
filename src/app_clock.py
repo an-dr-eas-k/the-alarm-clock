@@ -35,19 +35,19 @@ class ClockApp:
         signal.signal(signal.SIGTERM, self.shutdown_function)
 
         self.container.config()
-        state = self.container.alarm_clock_state()
-        state.state_machine = self.container.state_machine()
+        context = self.container.alarm_clock_context()
+        context.state_machine = self.container.state_machine()
 
         logger.info("config available")
 
         playback_content = self.container.playback_content()
-        state.subscribe(playback_content)
+        context.subscribe(playback_content)
         display_content = self.container.display_content()
-        state.subscribe(display_content)
+        context.subscribe(display_content)
 
         if self.is_on_hardware():
-            self.container.button_manager().subscribe(state.state_machine)
-            self.container.rotary_encoder_manager().subscribe(state.state_machine)
+            self.container.button_manager().subscribe(context.state_machine)
+            self.container.rotary_encoder_manager().subscribe(context.state_machine)
         else:
             from core.infrastructure.computer_infrastructure import (
                 ComputerInfrastructure,
@@ -58,27 +58,27 @@ class ClockApp:
             self.container.device.override(
                 providers.Singleton(dummy, height=64, width=256, mode="RGB")
             )
-            ci.subscribe(state.state_machine)
+            ci.subscribe(context.state_machine)
 
         controls: Controls = self.container.controls()
         display = self.container.display()
         display_content.subscribe(display)
 
         persistence = self.container.persistence()
-        state.subscribe(persistence)
-        state.config.subscribe(persistence)
+        context.subscribe(persistence)
+        context.config.subscribe(persistence)
 
         speaker = self.container.speaker()
         playback_content.subscribe(speaker)
-        state.config.subscribe(controls)
+        context.config.subscribe(controls)
         playback_content.subscribe(controls)
-        state.state_machine.subscribe(controls)
+        context.state_machine.subscribe(controls)
         controls.configure()
 
         api = self.container.api()
         api.start()
 
-        state.mode = Mode.Idle
+        context.mode = Mode.Idle
         controls.consider_failed_alarm()
         tornado.ioloop.IOLoop.current().start()
 

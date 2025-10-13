@@ -7,7 +7,7 @@ import subprocess
 import threading
 
 from core.domain.model import (
-    AlarmClockState,
+    AlarmClockContext,
     Mode,
     PlaybackContent,
     AudioEffect,
@@ -206,7 +206,7 @@ class Speaker(TACEventSubscriber):
         player: MediaPlayer = None
         if (
             not is_internet_available()
-            and self.playback_content.state.mode == Mode.Alarm
+            and self.playback_content.alarm_clock_context.mode == Mode.Alarm
         ):
             player = self.get_fallback_player()
 
@@ -224,7 +224,7 @@ class Speaker(TACEventSubscriber):
 
     def handle_player_error(self):
         logger.info("handling player error")
-        if self.playback_content.state.mode != Mode.Alarm:
+        if self.playback_content.alarm_clock_context.mode != Mode.Alarm:
             return
 
         if isinstance(self.playback_content.audio_effect, OfflineAlarmEffect):
@@ -273,7 +273,7 @@ def main():
     c.offline_alarm = AudioStream(
         stream_name="Offline Alarm", stream_url="Enchantment.ogg"
     )
-    pc = PlaybackContent(AlarmClockState(c))
+    pc = PlaybackContent(AlarmClockContext(c))
     pc.audio_effect = StreamAudioEffect(
         volume=default_volume,
         stream_definition=AudioStream(

@@ -487,7 +487,7 @@ class HwButton(Trigger):
         return f"{super().__str__()} {self.button_id}"
 
 
-class AlarmClockState(TACEventPublisher):
+class AlarmClockContext(TACEventPublisher):
 
     config: Config
     room_brightness: RoomBrightness = RoomBrightness(1.0)
@@ -565,9 +565,9 @@ class AlarmClockState(TACEventPublisher):
 
 class MediaContent(TACEventPublisher, TACEventSubscriber):
 
-    def __init__(self, state: AlarmClockState):
+    def __init__(self, alarm_clock_context: AlarmClockContext):
         super().__init__()
-        self.state = state
+        self.alarm_clock_context = alarm_clock_context
 
 
 class PlaybackContent(MediaContent):
@@ -606,8 +606,10 @@ class PlaybackContent(MediaContent):
         self._is_streaming = value
         self.publish(property="is_streaming")
 
-    def __init__(self, state: AlarmClockState, sound_device: SoundDevice):
-        super().__init__(state)
+    def __init__(
+        self, alarm_clock_context: AlarmClockContext, sound_device: SoundDevice
+    ):
+        super().__init__(alarm_clock_context)
         self.sound_device = sound_device
         self.audio_effect = None
         self.sound_device.set_system_volume(default_volume)
@@ -615,10 +617,10 @@ class PlaybackContent(MediaContent):
 
     def handle(self, observation: TACEvent):
         super().handle(observation)
-        if isinstance(observation.subscriber, AlarmClockState):
-            self.update_from_state(observation, observation.subscriber)
+        if isinstance(observation.subscriber, AlarmClockContext):
+            self.update_from_context(observation, observation.subscriber)
 
-    def update_from_state(self, observation: TACEvent, state: AlarmClockState):
+    def update_from_context(self, observation: TACEvent, state: AlarmClockContext):
         if observation.property_name == "mode":
             self.is_streaming = state.mode in [Mode.Alarm, Mode.Music, Mode.Spotify]
 
@@ -632,13 +634,15 @@ class PlaybackContent(MediaContent):
             self.audio_effect = state.active_alarm.audio_effect
 
     def wifi_availability_changed(self, is_online: bool):
-        if self.state.mode == Mode.Alarm:
+        if self.alarm_clock_context.mode == Mode.Alarm:
             if not is_online:
-                self.audio_effect = self.state.config.get_offline_alarm_effect(
-                    self.volume
+                self.audio_effect = (
+                    self.alarm_clock_context.config.get_offline_alarm_effect(
+                        self.volume
+                    )
                 )
             else:
-                self.audio_effect = self.state.active_alarm.audio_effect
+                self.audio_effect = self.alarm_clock_context.active_alarm.audio_effect
 
     def increase_volume(self):
         self.volume = min(self.volume + 0.05, 1.0)
@@ -658,14 +662,23 @@ class PlaybackContent(MediaContent):
         if hasattr(spotify_event, "track_id"):
             spotify_audio_effect.track_id = spotify_event.track_id
 
-        if spotify_event.is_playback_started() and self.state.mode != Mode.Spotify:
+        if (
+            spotify_event.is_playback_started()
+            and self.alarm_clock_context.mode != Mode.Spotify
+        ):
             self.audio_effect = spotify_audio_effect
-            self.state.mode = Mode.Spotify
+            self.alarm_clock_context.mode = Mode.Spotify
 
-        if spotify_event.is_playback_stopped() and self.state.mode != Mode.Idle:
-            self.state.mode = Mode.Idle
+        if (
+            spotify_event.is_playback_stopped()
+            and self.alarm_clock_context.mode != Mode.Idle
+        ):
+            self.alarm_clock_context.mode = Mode.Idle
 
-        if spotify_event.is_volume_changed() and self.state.mode == Mode.Spotify:
+        if (
+            spotify_event.is_volume_changed()
+            and self.alarm_clock_context.mode == Mode.Spotify
+        ):
             self.publish(property="volume")
 
 
@@ -677,20 +690,22 @@ class DisplayContent(MediaContent):
     room_brightness: float
     is_scrolling: bool = False
 
-    def __init__(self, state: AlarmClockState, playback_content: PlaybackContent):
-        super().__init__(state)
+    def __init__(
+        self, alarm_clock_context: AlarmClockContext, playback_content: PlaybackContent
+    ):
+        super().__init__(alarm_clock_context)
         self.playback_content = playback_content
 
     def get_is_online(self) -> bool:
-        return self.state.is_online
+        return self.alarm_clock_context.is_online
 
     def publish(self):
         super().publish(reason="display_changed")
 
     def handle(self, observation: TACEvent):
         super().handle(observation)
-        if isinstance(observation.subscriber, AlarmClockState):
-            self.update_from_state(observation, observation.subscriber)
+        if isinstance(observation.subscriber, AlarmClockContext):
+            self.update_from_context(observation, observation.subscriber)
         if isinstance(observation.subscriber, PlaybackContent):
             self.update_from_playback_content(observation, observation.subscriber)
 
@@ -699,10 +714,12 @@ class DisplayContent(MediaContent):
     ):
         pass
 
-    def update_from_state(self, observation: TACEvent, state: AlarmClockState):
+    def update_from_context(
+        self, observation: TACEvent, alarm_clock_context: AlarmClockContext
+    ):
         if observation.property_name == "update_state":
-            self.show_blink_segment = state.show_blink_segment
-            self.room_brightness = state.room_brightness
+            self.show_blink_segment = alarm_clock_context.show_blink_segment
+            self.room_brightness = alarm_clock_context.room_brightness
             if not observation.during_registration:
                 self.publish()
 
