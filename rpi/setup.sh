@@ -31,10 +31,17 @@ adduser the-alarm-clock i2c
 adduser the-alarm-clock spi
 adduser the-alarm-clock audio
 
+if [ -f "$app/src/config.json" ]; then
+  echo "copy existing config.json to /tmp"
+  cp -a "$app/src/config.json" $uhome
+fi
+cp -a "$app/rpi/tls/cert.*" $uhome
 echo "clone the-alarm-clock"
 rm -rf $app
 git clone -b develop https://github.com/an-dr-eas-k/the-alarm-clock.git $app
 chown $uid:$uid -R $uhome
+cp -a "$uhome/cert.*" "$app/rpi/tls/"
+cp -a "$uhome/config.json" "$app/src/"
 
 echo "configure system"
 ln -fs $app/rpi/resources/pigpiod.service /lib/systemd/system/pigpiod.service
