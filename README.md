@@ -1,7 +1,7 @@
 
 # Getting started
 ```
-curl https://raw.githubusercontent.com/an-dr-eas-k/the-alarm-clock/main/rpi/setup.sh | bash -- fast
+curl https://raw.githubusercontent.com/an-dr-eas-k/the-alarm-clock/main/rpi/setup.sh | bash -s -- fast
 python3 src/app_clock.py
 ```
 
