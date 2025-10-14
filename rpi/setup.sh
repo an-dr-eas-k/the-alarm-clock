@@ -22,13 +22,6 @@ if [ $1 != "fast" ]; then
 fi
 
 
-echo "configure system"
-ln -fs $app/rpi/resources/pigpiod.service /lib/systemd/system/pigpiod.service
-systemctl daemon-reload
-systemctl disable pigpiod
-# systemctl disable aplay.service
-
-
 echo "add and configure the-alarm-clock user"
 mkdir -p $uhome
 addgroup --system --gid $uid the-alarm-clock
@@ -42,6 +35,14 @@ echo "clone the-alarm-clock"
 rm -rf $app
 git clone -b develop https://github.com/an-dr-eas-k/the-alarm-clock.git $app
 chown $uid:$uid -R $uhome
+
+echo "configure system"
+ln -fs $app/rpi/resources/pigpiod.service /lib/systemd/system/pigpiod.service
+systemctl daemon-reload
+systemctl disable pigpiod
+# systemctl disable aplay.service
+
+
 
 echo "update config.txt"
 cat $app/rpi/resources/rpi-boot-config.txt > /boot/firmware/config.txt
