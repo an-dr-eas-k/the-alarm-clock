@@ -217,6 +217,7 @@ class OfflineAlarmEffect(StreamAudioEffect):
 class SpotifyAudioEffect(TACEventPublisher, AudioEffect):
     spotify_event: LibreSpotifyEvent = None
     track_name: str = "Spotify"
+    _track_id: str = None
 
     @property
     def track_id(self) -> str:
