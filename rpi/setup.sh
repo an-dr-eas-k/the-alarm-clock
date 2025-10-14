@@ -17,10 +17,10 @@ if [ $1 != "fast" ]; then
   # apt-get -y remove python3-rpi-lgpio 
   # apt-get -y install python3-rpi.gpio
 
+  curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
   apt-get -y autoremove
 fi
 
-curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
 
 echo "configure system"
 ln -fs $app/rpi/resources/pigpiod.service /lib/systemd/system/pigpiod.service
