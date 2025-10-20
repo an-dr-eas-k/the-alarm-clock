@@ -215,7 +215,7 @@ class ClockPresenter(DefaultPresenter):
     def draw(self) -> Image.Image:
         if (
             self.formatter.highly_dimmed()
-            and self.formatter.state.config.use_analog_clock
+            and self.formatter.alarm_clock_context.config.use_analog_clock
         ):
             return self.draw_analog_clock()
 
@@ -372,7 +372,7 @@ class NextAlarmPresenter(DefaultPresenter):
             and self.content.current_playback_title() is None
             and not self.content.show_volume_meter
             and self.content.get_timedelta_to_alarm().total_seconds() / 3600
-            <= self.content.state.config.alarm_preview_hours
+            <= self.content.alarm_clock_context.config.alarm_preview_hours
         )
 
     def draw(self) -> Image.Image:

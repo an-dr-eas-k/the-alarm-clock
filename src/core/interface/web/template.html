@@ -162,6 +162,36 @@
       width: 100%;
       max-width: 100%;
     }
+
+    /* Favicon container styling */
+    .favicon-container {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      margin-bottom: -55px;
+      margin-right: 0.5rem;
+    }
+
+    .favicon-image {
+      width: 100px;
+      height: 100px;
+      margin-bottom: 0.25rem;
+    }
+
+
+    @media (min-width: 720px) {
+      .favicon-container {
+        margin-bottom: -60px;
+        margin-right: 1rem;
+      }
+
+      .favicon-image {
+        width: 256px;
+        height: 256px;
+      }
+    }
   </style>
 
   <script>
@@ -257,6 +287,11 @@
 
 <body data-bs-theme="dark">
   <div class="container">
+    <!-- Favicon visualization -->
+    <div class="favicon-container">
+      <img src="/media/favicon.png" alt="the-alarm-clock" class="favicon-image">
+    </div>
+
     <div id="controls-container" class="row">
       <h3>Controls</h3>
       <div class="controls-row">
@@ -312,10 +347,10 @@
           <td>stream: <span title="{{ escape(alarm_definition.audio_effect.stream_definition.stream_name) }}">
               <span class="stream-name-short">{{
                 escape(alarm_definition.audio_effect.stream_definition.stream_name[:10])
-                }}</span>
+                }},</span>
               <span class="stream-name-full">{{ escape(alarm_definition.audio_effect.stream_definition.stream_name)
-                }}</span>
-            </span>,
+                }},</span>
+            </span>
             vol: {{ alarm_definition.audio_effect.volume }},
             {{ 'visuals' if alarm_definition.visual_effect is not None else 'no visuals' }}</td>
           <td>

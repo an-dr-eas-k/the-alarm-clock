@@ -16,16 +16,10 @@ if [ $1 != "fast" ]; then
 
   # apt-get -y remove python3-rpi-lgpio 
   # apt-get -y install python3-rpi.gpio
+
+  curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
+  apt-get -y autoremove
 fi
-
-curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
-apt-get -y autoremove
-
-echo "configure system"
-ln -fs $app/rpi/resources/pigpiod.service /lib/systemd/system/pigpiod.service
-systemctl daemon-reload
-systemctl disable pigpiod
-# systemctl disable aplay.service
 
 
 echo "add and configure the-alarm-clock user"
@@ -37,10 +31,25 @@ adduser the-alarm-clock i2c
 adduser the-alarm-clock spi
 adduser the-alarm-clock audio
 
+if [ -f "$app/src/config.json" ]; then
+  echo "copy existing config.json to /tmp"
+  cp -a "$app/src/config.json" $uhome
+fi
+cp -a "$app/rpi/tls/cert.*" $uhome
 echo "clone the-alarm-clock"
 rm -rf $app
 git clone -b develop https://github.com/an-dr-eas-k/the-alarm-clock.git $app
 chown $uid:$uid -R $uhome
+cp -a "$uhome/cert.*" "$app/rpi/tls/"
+cp -a "$uhome/config.json" "$app/src/"
+
+echo "configure system"
+ln -fs $app/rpi/resources/pigpiod.service /lib/systemd/system/pigpiod.service
+systemctl daemon-reload
+systemctl disable pigpiod
+# systemctl disable aplay.service
+
+
 
 echo "update config.txt"
 cat $app/rpi/resources/rpi-boot-config.txt > /boot/firmware/config.txt

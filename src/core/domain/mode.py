@@ -2,7 +2,7 @@ from typing import List
 import logging
 
 from core.domain.model import (
-    AlarmClockState,
+    AlarmClockContext,
     HwButton,
     StreamAudioEffect,
     VisualEffect,
@@ -18,22 +18,28 @@ logger = logging.getLogger("tac.domain")
 
 class TacMode(State):
 
-    state: "AlarmClockState"
+    alarm_clock_context: "AlarmClockContext"
 
     def __init__(
-        self, previous_mode: "TacMode" = None, state: "AlarmClockState" = None
+        self,
+        previous_mode: "TacMode" = None,
+        alarm_clock_context: "AlarmClockContext" = None,
     ):
-        self.state = state
-        if (previous_mode is not None) and (state is None):
-            self.state = previous_mode.state
+        self.alarm_clock_context = alarm_clock_context
+        if (previous_mode is not None) and (alarm_clock_context is None):
+            self.alarm_clock_context = previous_mode.alarm_clock_context
 
     def __hash__(self):
         return self.__class__.__name__.__hash__()
 
 
 class DefaultMode(TacMode):
-    def __init__(self, previous_mode: TacMode = None, state: "AlarmClockState" = None):
-        super().__init__(previous_mode, state)
+    def __init__(
+        self,
+        previous_mode: TacMode = None,
+        alarm_clock_context: "AlarmClockContext" = None,
+    ):
+        super().__init__(previous_mode, alarm_clock_context)
 
 
 class AlarmViewMode(TacMode):
@@ -49,9 +55,9 @@ class AlarmViewMode(TacMode):
 
     def get_active_alarm(self) -> AlarmDefinitionToEdit:
         ad: AlarmDefinitionToEdit = None
-        if self.alarm_index < len(self.state.config.alarm_definitions):
+        if self.alarm_index < len(self.alarm_clock_context.config.alarm_definitions):
             ad = AlarmDefinitionToEdit(
-                self.state.config.alarm_definitions[self.alarm_index]
+                self.alarm_clock_context.config.alarm_definitions[self.alarm_index]
             )
         else:
             now = GeoLocation().now()
@@ -63,16 +69,16 @@ class AlarmViewMode(TacMode):
             ad.is_active = True
             ad.recurring = None
             ad.onetime = now.date()
-            if len(self.state.config.audio_streams) > 0:
+            if len(self.alarm_clock_context.config.audio_streams) > 0:
                 ad.audio_effect = StreamAudioEffect(
-                    stream_definition=self.state.config.audio_streams[0],
-                    volume=self.state.config.default_volume,
+                    stream_definition=self.alarm_clock_context.config.audio_streams[0],
+                    volume=self.alarm_clock_context.config.default_volume,
                 )
             ad.visual_effect = VisualEffect()
         return ad
 
     def activate_next_alarm(self):
-        if self.alarm_index < len(self.state.config.alarm_definitions):
+        if self.alarm_index < len(self.alarm_clock_context.config.alarm_definitions):
             self.alarm_index += 1
         else:
             self.alarm_index = 0
@@ -82,13 +88,13 @@ class AlarmViewMode(TacMode):
         if self.alarm_index > 0:
             self.alarm_index -= 1
         else:
-            self.alarm_index = len(self.state.config.alarm_definitions)
+            self.alarm_index = len(self.alarm_clock_context.config.alarm_definitions)
         return self.alarm_index
 
 
 class AlarmEditMode(AlarmViewMode):
 
-    property_to_edit: str = "hour"
+    property_to_edit: str = "is_active"
     alarm_definition_in_editing: AlarmDefinitionToEdit = None
 
     def __init__(self, previous_mode: TacMode):
@@ -124,7 +130,8 @@ class AlarmEditMode(AlarmViewMode):
             self.proceedingState = AlarmViewMode
             return
         self.alarm_definition_in_editing.update_value_lists(
-            self.state.config, self.alarm_definition_in_editing.audio_effect.volume
+            self.alarm_clock_context.config,
+            self.alarm_definition_in_editing.audio_effect.volume,
         )
 
     def update_config(self):
@@ -132,9 +139,13 @@ class AlarmEditMode(AlarmViewMode):
             self.alarm_definition_in_editing.alarm_name = (
                 "Alarm at " + self.alarm_definition_in_editing.to_time_string()
             )
-            self.state.config.add_alarm_definition(self.alarm_definition_in_editing)
+            self.alarm_clock_context.config.add_alarm_definition(
+                self.alarm_definition_in_editing
+            )
         else:
-            self.state.config.update_alarm_definition(self.alarm_definition_in_editing)
+            self.alarm_clock_context.config.update_alarm_definition(
+                self.alarm_definition_in_editing
+            )
 
 
 class PropertyEditMode(AlarmEditMode):
@@ -174,11 +185,17 @@ class PropertyEditMode(AlarmEditMode):
 
 
 class AlarmClockStateMachine(StateMachine, TACEventPublisher):
-    def __init__(self, state: "AlarmClockState"):
-        default_mode = DefaultMode(state=state)
-        alarm_view_mode = AlarmViewMode(default_mode)
-        alarm_edit_mode = AlarmEditMode(alarm_view_mode)
-        property_edit_mode = PropertyEditMode(alarm_edit_mode)
+    def __init__(
+        self,
+        default_state,
+        alarm_view_state,
+        alarm_edit_state,
+        property_edit_state,
+    ):
+        default_mode = default_state
+        alarm_view_mode = alarm_view_state
+        alarm_edit_mode = alarm_edit_state
+        property_edit_mode = property_edit_state
 
         StateMachine.__init__(self, default_mode)
         TACEventPublisher.__init__(self)

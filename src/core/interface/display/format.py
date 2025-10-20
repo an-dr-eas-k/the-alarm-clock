@@ -3,7 +3,7 @@ from enum import Enum
 import logging
 from PIL import Image
 from core.domain.model import (
-    AlarmClockState,
+    AlarmClockContext,
     AlarmDefinition,
     DisplayContent,
     VisualEffect,
@@ -28,9 +28,9 @@ class DisplayFormatter:
     _visual_effect_active: bool = False
     _clear_display: bool = False
 
-    def __init__(self, content: DisplayContent, state: AlarmClockState):
+    def __init__(self, content: DisplayContent, alarm_clock_context: AlarmClockContext):
         self.display_content = content
-        self.state = state
+        self.alarm_clock_context = alarm_clock_context
 
     def clock_font(self, size: int = 50):
         if self.highly_dimmed():
@@ -46,13 +46,13 @@ class DisplayFormatter:
         return clear_display
 
     def highly_dimmed(self):
-        return self.state.room_brightness.is_highly_dimmed()
+        return self.alarm_clock_context.room_brightness.is_highly_dimmed()
 
     def update_formatter(self):
         self.adjust_display()
         logger.debug(
             "room_brightness: %s, time_delta_to_alarm: %sh, display_formatter: %s",
-            self.state.room_brightness(),
+            self.alarm_clock_context.room_brightness(),
             "{:.2f}".format(
                 self.display_content.get_timedelta_to_alarm().total_seconds() / 3600
             ),
@@ -91,8 +91,8 @@ class DisplayFormatter:
 
     def adjust_display_by_room_brightness(self):
         self._background_grayscale_16 = 0
-        self._foreground_grayscale_16 = self.state.room_brightness.get_grayscale_value(
-            min_value=1
+        self._foreground_grayscale_16 = (
+            self.alarm_clock_context.room_brightness.get_grayscale_value(min_value=1)
         )
 
     def adjust_display_by_alarm(self):
@@ -133,9 +133,11 @@ class DisplayFormatter:
     def format_clock_string(
         self, clock: datetime, show_blink_segment: bool = True
     ) -> str:
-        blink_segment = self.state.config.blink_segment if show_blink_segment else " "
+        blink_segment = (
+            self.alarm_clock_context.config.blink_segment if show_blink_segment else " "
+        )
         clock_string = clock.strftime(
-            self.state.config.clock_format_string.replace(
+            self.alarm_clock_context.config.clock_format_string.replace(
                 "<blinkSegment>", blink_segment
             )
         )

@@ -47,11 +47,11 @@ class Presenter(TACEventSubscriber, ComposableImage):
         self.content = content
 
     def machine_state(self, expected_type: Type[T] = None) -> Optional[T]:
-        state = self.content.state.state_machine.current_state
+        context = self.content.alarm_clock_context.state_machine.current_state
         if expected_type is None:
-            return state
-        if isinstance(state, expected_type):
-            return cast(T, state)
+            return context
+        if isinstance(context, expected_type):
+            return cast(T, context)
         return None
 
 
@@ -163,7 +163,7 @@ class RefreshPresenter(DefaultPresenter):
         super().__init__(formatter, content, position)
 
     def is_present(self):
-        return self.content.state.config.debug_level >= 5
+        return self.content.alarm_clock_context.config.debug_level >= 5
 
     def draw(self) -> Image.Image:
 
