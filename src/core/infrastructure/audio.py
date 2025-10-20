@@ -5,6 +5,7 @@ import vlc
 import time
 import subprocess
 import threading
+from abc import ABC, abstractmethod
 
 from core.domain.model import (
     AlarmClockContext,
@@ -45,6 +46,17 @@ class SpotifyPlayer(MediaPlayer):
 
     def __init__(self, track_id: str):
         self.track_id = track_id
+
+
+class IPlayerFactory(ABC):
+
+    @abstractmethod
+    def create_player(self, audio_effect: AudioEffect) -> MediaPlayer:
+        pass
+
+    @abstractmethod
+    def create_fallback_player(self) -> MediaPlayer:
+        pass
 
 
 class MediaListPlayer(MediaPlayer):
@@ -94,12 +106,9 @@ class MediaListPlayer(MediaPlayer):
                 ["--no-video", "--network-caching=3000", "--live-caching=3000"]
             )
 
-            # logger.info("audio outputs: ", ", ".join([o.description for o in instance.audio_output_list_get()]))
-            # [logger.info(d['description']) for d in instance.audio_output_enumerate_devices() if d]
             self.list_player: vlc.MediaListPlayer = instance.media_list_player_new()
             self.list_player.set_playback_mode(vlc.PlaybackMode.loop)
             media_player: vlc.MediaPlayer = self.list_player.get_media_player()
-            # media_player.audio_output_device_set(None)
             media_player.event_manager().event_attach(
                 vlc.EventType.MediaPlayerEncounteredError,
                 self.callback_from_player,
@@ -129,23 +138,6 @@ class MediaListPlayer(MediaPlayer):
 
             logger.info("starting audio %s", self.url)
             self.list_player.play()
-            # logger.info("audio output: %s", media_player.audio_output_device_get())
-            # foo = instance.audio_output_enumerate_devices()
-            # for d in foo:
-            # 	logger.info("output from audio_output_enumerate_devices: %s = %s", d['name'], d['description'])
-            # 	media_player.audio_output_device_set(d['name'], d['description'])
-            # 	logger.info("audio output: %s", media_player.audio_output_device_get())
-
-            # for de in media_player.audio_output_device_enum():
-            # 	logger.info("output from audio_output_device_enum: %s = %s", str(de.device), "")
-
-            # ol= instance.audio_output_list_get()
-            # for o in ol:
-            # 	logger.info("audio output %s: %s", o.name, o.description)
-            # 	vlc.libvlc_audio_output_list_release(ol)
-            # 	# for d in instance.audio_output_device_list_get(o.name):
-            # 	# 	logger.info(d)
-            # pass
 
         except Exception as e:
             logger.error("error: %s", traceback.format_exc())
@@ -160,14 +152,43 @@ class MediaListPlayer(MediaPlayer):
         logger.info(f"stopped audio")
 
 
+class PlayerFactory(IPlayerFactory):
+
+    def __init__(self, config: Config):
+        self.config = config
+
+    def create_player(self, audio_effect: AudioEffect) -> MediaPlayer:
+        if isinstance(audio_effect, StreamAudioEffect):
+            return MediaListPlayer(audio_effect.stream_definition.stream_url)
+        elif isinstance(audio_effect, SpotifyAudioEffect):
+            return SpotifyPlayer(audio_effect.track_id)
+        elif isinstance(audio_effect, OfflineAlarmEffect):
+            return MediaListPlayer(audio_effect.stream_definition.stream_url)
+        else:
+            raise ValueError(
+                f"Unknown audio effect type: {type(audio_effect).__name__}"
+            )
+
+    def create_fallback_player(self) -> MediaPlayer:
+        return MediaListPlayer(
+            self.config.get_offline_alarm_effect().stream_definition.stream_url
+        )
+
+
 class Speaker(TACEventSubscriber):
     media_player: MediaPlayer = None
     fallback_player_proc: subprocess.Popen = None
 
-    def __init__(self, playback_content: PlaybackContent, config: Config) -> None:
+    def __init__(
+        self,
+        playback_content: PlaybackContent,
+        config: Config,
+        player_factory: IPlayerFactory,
+    ) -> None:
         self.threadLock = threading.Lock()
         self.playback_content = playback_content
         self.config = config
+        self.player_factory = player_factory
 
     def handle(self, observation: TACEvent):
         super().handle(observation)
@@ -198,9 +219,7 @@ class Speaker(TACEventSubscriber):
         self.threadLock.release()
 
     def get_fallback_player(self) -> MediaPlayer:
-        return MediaListPlayer(
-            self.config.get_offline_alarm_effect().stream_definition.stream_url
-        )
+        return self.player_factory.create_fallback_player()
 
     def get_player(self, audio_effect: AudioEffect) -> MediaPlayer:
         player: MediaPlayer = None
@@ -210,14 +229,8 @@ class Speaker(TACEventSubscriber):
         ):
             player = self.get_fallback_player()
 
-        if player is None and isinstance(audio_effect, StreamAudioEffect):
-            player = MediaListPlayer(audio_effect.stream_definition.stream_url)
-
-        if player is None and isinstance(audio_effect, SpotifyAudioEffect):
-            player = SpotifyPlayer(audio_effect.track_id)
-
         if player is None:
-            raise ValueError("unknown audio effect type")
+            player = self.player_factory.create_player(audio_effect)
 
         player.set_error_callback(self.handle_player_error)
         return player
@@ -280,7 +293,6 @@ def main():
             stream_name="test", stream_url="https://streams.br.de/bayern2sued_2.m3u"
         ),
     )
-    # stream_definition=c.get_offline_alarm_effect().stream_definition)
     s = Speaker(pc, c)
     s.adjust_streaming(True)
     time.sleep(20)

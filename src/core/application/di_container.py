@@ -14,7 +14,7 @@ from core.infrastructure.mcp23017.buttons import ButtonsManager
 from core.infrastructure.mcp23017.rotary_encoder import RotaryEncoderManager
 from core.interface.display.display import Display
 from core.application.api import Api
-from core.infrastructure.audio import Speaker
+from core.infrastructure.audio import Speaker, PlayerFactory
 from core.application.controls import Controls
 from core.infrastructure.persistence import Persistence
 from resources.resources import config_file
@@ -82,8 +82,14 @@ class DIContainer(containers.DeclarativeContainer):
     )
 
     persistence = providers.Singleton(Persistence, config_file=config_file)
+
+    player_factory = providers.Singleton(PlayerFactory, config=config)
+
     speaker = providers.Singleton(
-        Speaker, playback_content=playback_content, config=config
+        Speaker,
+        playback_content=playback_content,
+        config=config,
+        player_factory=player_factory,
     )
 
     i2c_manager = providers.Singleton(I2CManager)
