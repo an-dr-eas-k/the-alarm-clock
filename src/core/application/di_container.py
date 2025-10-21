@@ -1,13 +1,8 @@
 import os
 import argparse
 from dependency_injector import containers, providers
-from core.domain.mode import (
-    AlarmClockStateMachine,
-    AlarmEditMode,
-    AlarmViewMode,
-    DefaultMode,
-    PropertyEditMode,
-)
+from core.domain.mode_state_machine import DomainModeStateMachine
+from core.domain.alarm_editor import AlarmEditor
 from core.infrastructure.brightness_sensor import BrightnessSensor
 from core.infrastructure.i2c_devices import I2CManager, MCPManager
 from core.infrastructure.mcp23017.buttons import ButtonsManager
@@ -51,22 +46,9 @@ class DIContainer(containers.DeclarativeContainer):
     )
 
     alarm_clock_context = providers.Singleton(AlarmClockContext, config=config)
-    default_state = providers.Singleton(
-        DefaultMode, previous_mode=None, alarm_clock_context=alarm_clock_context
-    )
-    alarm_view_state = providers.Singleton(AlarmViewMode, previous_mode=default_state)
-    alarm_edit_state = providers.Singleton(
-        AlarmEditMode, previous_mode=alarm_view_state
-    )
-    property_edit_state = providers.Singleton(
-        PropertyEditMode, previous_mode=alarm_edit_state
-    )
-    state_machine = providers.Singleton(
-        AlarmClockStateMachine,
-        default_state=default_state,
-        alarm_view_state=alarm_view_state,
-        alarm_edit_state=alarm_edit_state,
-        property_edit_state=property_edit_state,
+    alarm_editor = providers.Singleton(AlarmEditor, context=alarm_clock_context)
+    domain_mode_state_machine = providers.Singleton(
+        DomainModeStateMachine, alarm_editor=alarm_editor
     )
 
     sound_device = providers.Singleton(TACSoundDevice)

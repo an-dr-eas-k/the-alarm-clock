@@ -4,7 +4,12 @@ import logging
 from luma.core.device import device as luma_device
 from PIL import ImageFont, Image, ImageOps
 
-from core.domain.mode import AlarmEditMode, AlarmViewMode, DefaultMode
+from core.domain.mode_state_machine import (
+    AlarmEditMode,
+    AlarmViewMode,
+    DefaultMode,
+    PropertyEditMode,
+)
 from core.domain.model import (
     AlarmDefinition,
     DisplayContent,
@@ -71,14 +76,29 @@ class AlarmEditorPresenter(Presenter):
     ) -> None:
         super().__init__(formatter, content, position)
 
+    def editor(self):
+        return getattr(self.content.alarm_clock_context, "alarm_editor", None)
+
     def get_alarm_definition(self) -> AlarmDefinition:
-        mode = self.machine_state(AlarmEditMode)
-        if mode is not None and mode.alarm_definition_in_editing is not None:
-            return mode.alarm_definition_in_editing
-        mode = self.machine_state(AlarmViewMode)
-        if mode is not None:
-            return mode.get_active_alarm()
+        editor = self.editor()
+        state = self.machine_state()
+        if not editor:
+            return None
+        # If in editing/property editing state and session exists, use session alarm definition
+        if isinstance(state, (AlarmEditMode, PropertyEditMode)) and editor.session():
+            return editor.session().alarm_definition
+        # Viewing mode: build current alarm or new template
+        if isinstance(state, AlarmViewMode):
+            return editor.build_alarm_for_index(editor.current_alarm_index())
         return None
+
+    def is_property_focused(self, properties: list[str]) -> bool:
+        editor = self.editor()
+        state = self.machine_state()
+        if not editor or not isinstance(state, (AlarmEditMode, PropertyEditMode)):
+            return False
+        session = editor.session()
+        return session is not None and session.property_name in properties
 
     def is_present(self) -> bool:
         return isinstance(self.machine_state(), AlarmViewMode)
@@ -106,7 +126,7 @@ class SimpleTextPresenter(AlarmEditorPresenter):
             fg_color=self.formatter.foreground_color(),
             bg_color=self.formatter.background_color(),
         )
-        if machine_state is None or not machine_state.is_in_edit_mode([self.edit_mode]):
+        if not self.is_property_focused([self.edit_mode]):
             return effect_image
 
         return ImageOps.expand(effect_image, border=1, fill="white")

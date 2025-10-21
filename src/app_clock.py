@@ -36,7 +36,8 @@ class ClockApp:
 
         self.container.config()
         context = self.container.alarm_clock_context()
-        context.state_machine = self.container.state_machine()
+        # Use new domain-driven mode state machine
+        context.state_machine = self.container.domain_mode_state_machine()
 
         logger.info("config available")
 
@@ -46,6 +47,9 @@ class ClockApp:
         context.subscribe(display_content)
 
         if self.is_on_hardware():
+            # TODO: Introduce hardware -> domain trigger mapper. For now keep subscribing
+            # directly; hardware events still wrap HwButton triggers but domain SM expects DomainTrigger.
+            # A mapper subscriber will be needed; placeholder left here.
             self.container.button_manager().subscribe(context.state_machine)
             self.container.rotary_encoder_manager().subscribe(context.state_machine)
         else:

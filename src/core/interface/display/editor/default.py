@@ -1,7 +1,7 @@
 import logging
 from PIL import ImageFont, Image, ImageOps
 
-from core.domain.mode import AlarmEditMode
+from core.domain.mode_state_machine import AlarmEditMode, PropertyEditMode
 from core.domain.model import (
     DisplayContent,
     TACEvent,
@@ -58,7 +58,12 @@ class AlarmTimePresenter(AlarmEditorPresenter):
         machine_state = self.machine_state(AlarmEditMode)
         font = self.formatter.default_font(size=20)
         alarm_def = self.get_alarm_definition()
-        if machine_state is None or not machine_state.is_in_edit_mode(["hour", "min"]):
+        editor = getattr(self.content.alarm_clock_context, "alarm_editor", None)
+        session = editor.session() if editor else None
+        focused = session.property_name if session else None
+        if not isinstance(
+            machine_state, (AlarmEditMode, PropertyEditMode)
+        ) or focused not in ["hour", "min"]:
             return text_to_image(
                 alarm_def.to_time_string(),
                 font,
@@ -72,7 +77,7 @@ class AlarmTimePresenter(AlarmEditorPresenter):
             fg_color=self.formatter.foreground_color(),
             bg_color=self.formatter.background_color(),
         )
-        if machine_state is not None and machine_state.is_in_edit_mode(["hour"]):
+        if focused == "hour":
             hour_image = ImageOps.expand(hour_image, border=1, fill="white")
 
         minute_image = text_to_image(
@@ -81,7 +86,7 @@ class AlarmTimePresenter(AlarmEditorPresenter):
             fg_color=self.formatter.foreground_color(),
             bg_color=self.formatter.background_color(),
         )
-        if machine_state is not None and machine_state.is_in_edit_mode(["min"]):
+        if focused == "min":
             minute_image = ImageOps.expand(minute_image, border=1, fill="white")
 
         return get_concat_h_multi_blank(
@@ -116,9 +121,12 @@ class AlarmDatePresenter(AlarmEditorPresenter):
             fg_color=self.formatter.foreground_color(),
             bg_color=self.formatter.background_color(),
         )
-        if machine_state is None or not machine_state.is_in_edit_mode(
-            ["recurring", "onetime"]
-        ):
+        editor = getattr(self.content.alarm_clock_context, "alarm_editor", None)
+        session = editor.session() if editor else None
+        focused = session.property_name if session else None
+        if not isinstance(
+            machine_state, (AlarmEditMode, PropertyEditMode)
+        ) or focused not in ["recurring", "onetime"]:
             return day_image
 
         return ImageOps.expand(day_image, border=1, fill="white")

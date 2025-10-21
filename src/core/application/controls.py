@@ -6,7 +6,6 @@ import traceback
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
-from core.domain.mode import AlarmClockStateMachine
 from core.domain.model import (
     AlarmClockContext,
     AlarmDefinition,
@@ -117,12 +116,18 @@ class Controls(TACEventSubscriber):
             self.update_from_config(observation, observation.subscriber)
         if isinstance(observation.subscriber, PlaybackContent):
             self.update_from_playback_content(observation, observation.subscriber)
-        if isinstance(observation.subscriber, AlarmClockStateMachine):
+        # Volume adjustments were previously tied to hardware triggers passed through AlarmClockStateMachine.
+        # TODO: replace with hardware->domain trigger mapper publishing dedicated domain events.
+        if observation.property_name == "mode" and observation.reason in [
+            "rotary_clockwise",
+            "rotary_counter_clockwise",
+            "invoke_button",
+        ]:
             if observation.reason == "rotary_clockwise":
                 self.increase_volume()
-            if observation.reason == "rotary_counter_clockwise":
+            elif observation.reason == "rotary_counter_clockwise":
                 self.decrease_volume()
-            if observation.reason == "invoke_button":
+            elif observation.reason == "invoke_button":
                 self.toggle_stream()
 
     def update_from_playback_content(
