@@ -89,7 +89,7 @@ if [ -z "$( grep the-alarm-clock /etc/rc.local )" ]; then
 	echo "update /etc/rc.local"
 	sed -i '/exit/d' /etc/rc.local
 	cat >> /etc/rc.local << "EOF"
-sudo -u the-alarm-clock -- bash ${app}/rpi/onboot.sh 2>> /var/log/the-alarm-clock.errout 1>> /var/log/the-alarm-clock.stdout &
+sudo -u the-alarm-clock -- bash $app/rpi/onboot.sh 2>> /var/log/the-alarm-clock.errout 1>> /var/log/the-alarm-clock.stdout &
 exit 0
 EOF
 fi
