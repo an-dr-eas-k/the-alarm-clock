@@ -44,6 +44,7 @@ echo "clone the-alarm-clock"
 rm -rf $app
 git clone -b develop https://github.com/an-dr-eas-k/the-alarm-clock.git $app
 chown $uid:$uid -R $uhome
+chmod +x $app/rpi/*.sh
 
 if [ -f "$uhome/cert.key" ]; then
   cp -a $uhome/cert.* $app/rpi/tls/
@@ -106,6 +107,7 @@ if [ -z "$( grep the-alarm-clock /etc/rc.local )" ]; then
 sudo -u the-alarm-clock -- bash -c "$app/rpi/onboot.sh 2>&1 | systemd-cat -t the-alarm-clock.app" &
 exit 0
 EOF
+chmod +x /etc/rc.local
 fi
 
 echo "done, please reboot"
