@@ -5,7 +5,9 @@ app=${uhome}/app
 echo "killing processes"
 killall -u the-alarm-clock
 
-if [ $1 != "fast" ]; then
+if [ "${1:-}" = "fast" ]; then
+  echo "fast mode: skipping system update and dependency installation"
+else
   echo "update system and install dependencies"
   apt-get -y update
   apt-get -y dist-upgrade
@@ -18,9 +20,10 @@ if [ $1 != "fast" ]; then
   # apt-get -y install python3-rpi.gpio
 
   curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
+  curl -sL -o raspotify-latest_armhf.deb https://dtcooper.github.io/raspotify/raspotify-latest_armhf.deb
+  dpkg -i raspotify-latest_armhf.deb
   apt-get -y autoremove
 fi
-
 
 echo "add and configure the-alarm-clock user"
 mkdir -p $uhome
@@ -32,16 +35,16 @@ adduser the-alarm-clock spi
 adduser the-alarm-clock audio
 
 if [ -f "$app/src/config.json" ]; then
-  echo "copy existing config.json to /tmp"
-  cp -a "$app/src/config.json" $uhome
+  echo "copy existing config.json to $uhome"
+  cp -a $app/src/config.json $uhome
 fi
-cp -a "$app/rpi/tls/cert.*" $uhome
+cp -a $app/rpi/tls/cert.* $uhome
 echo "clone the-alarm-clock"
 rm -rf $app
 git clone -b develop https://github.com/an-dr-eas-k/the-alarm-clock.git $app
 chown $uid:$uid -R $uhome
-cp -a "$uhome/cert.*" "$app/rpi/tls/"
-cp -a "$uhome/config.json" "$app/src/"
+cp -a $uhome/cert.* $app/rpi/tls/
+cp -a $uhome/config.json $app/src/
 
 echo "configure system"
 ln -fs $app/rpi/resources/pigpiod.service /lib/systemd/system/pigpiod.service
