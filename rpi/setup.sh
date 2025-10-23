@@ -36,15 +36,29 @@ adduser the-alarm-clock audio
 
 if [ -f "$app/src/config.json" ]; then
   echo "copy existing config.json to $uhome"
-  cp -a $app/src/config.json $uhome
+  cp -af $app/src/config.json $uhome
 fi
-cp -a $app/rpi/tls/cert.* $uhome
+cp -af $app/rpi/tls/cert.* $uhome
+
 echo "clone the-alarm-clock"
 rm -rf $app
 git clone -b develop https://github.com/an-dr-eas-k/the-alarm-clock.git $app
 chown $uid:$uid -R $uhome
-cp -a $uhome/cert.* $app/rpi/tls/
-cp -a $uhome/config.json $app/src/
+
+if [ -f "$uhome/cert.key" ]; then
+  cp -a $uhome/cert.* $app/rpi/tls/
+else
+  pushd $app/rpi/tls/
+  ./new-ca-and-cert.sh
+  popd
+  cp -a $app/rpi/tls/cert.* $uhome/
+fi
+
+if [ -f "$uhome/config.json" ]; then
+  cp -a $uhome/config.json $app/src/
+else
+  cp -a $app/src/config_example.json $app/src/config.json
+fi
 
 echo "configure system"
 ln -fs $app/rpi/resources/pigpiod.service /lib/systemd/system/pigpiod.service
@@ -88,7 +102,7 @@ setcap CAP_NET_BIND_SERVICE=+eip $(readlink /usr/bin/python -f)
 if [ -z "$( grep the-alarm-clock /etc/rc.local )" ]; then
 	echo "update /etc/rc.local"
 	sed -i '/exit/d' /etc/rc.local
-	cat >> /etc/rc.local << "EOF"
+  cat >> /etc/rc.local << EOF
 sudo -u the-alarm-clock -- bash $app/rpi/onboot.sh 2>> /var/log/the-alarm-clock.errout 1>> /var/log/the-alarm-clock.stdout &
 exit 0
 EOF
