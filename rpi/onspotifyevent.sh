@@ -1,8 +1,7 @@
 #!/bin/bash
 
 cd /srv/the-alarm-clock/app
-python -u src/app_librespotify_event_listener.py \
-        2>> /var/log/the-alarm-clock.spotify-event.errout \
-        1>> /var/log/the-alarm-clock.spotify-event.stdout
+python -u src/app_librespotify_event_listener.py 2>&1 \
+| systemd-cat -t the-alarm-clock.spotify-event
 
 exit 0
