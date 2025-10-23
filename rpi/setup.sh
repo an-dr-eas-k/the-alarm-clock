@@ -107,7 +107,7 @@ if [ -z "$( grep the-alarm-clock /etc/rc.local )" ]; then
 sudo -u the-alarm-clock -- bash -c "$app/rpi/onboot.sh 2>&1 | systemd-cat -t the-alarm-clock.app" &
 exit 0
 EOF
-chmod +x /etc/rc.local
+chmod u+x /etc/rc.local
 fi
 
 echo "done, please reboot"
