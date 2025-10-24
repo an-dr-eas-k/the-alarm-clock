@@ -29,6 +29,16 @@
       nohup sh -c "curl https://raw.githubusercontent.com/an-dr-eas-k/the-alarm-clock/refs/heads/develop/rpi/setup.sh | bash -s -- fast" &
       ```
 
+1. follow the log output with
+   * for the application itself
+     ```
+     journalctl SYSLOG_IDENTIFIER=the-alarm-clock.service -f
+     ```
+   * for spotify events
+     ```
+     journalctl SYSLOG_IDENTIFIER=the-alarm-clock.spotify-event.service -f
+     ```
+
 # Dependencies
 7 Segment Font is included from https://github.com/keshikan/DSEG/releases \
 weather symbols are included from https://github.com/erikflowers/weather-icons
