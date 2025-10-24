@@ -12,7 +12,8 @@ else
   apt-get -y update
   apt-get -y dist-upgrade
   apt-get -y install git python3 vlc python3-pip curl libasound2-plugin-equal python3-dbus python3-alsaaudio libasound2-dev
-
+  pip install pillow --break-system-packages
+  
   apt-get -y remove python3-rpi.gpio
   apt-get -y install python3-rpi-lgpio 
 
@@ -69,7 +70,7 @@ systemctl disable pigpiod
 
 
 
-echo "update config.txt"
+echo "update rpi config.txt, somehow this step did not work last time, the manual enablement of i2c with raspi-config was necessary."
 cat $app/rpi/resources/rpi-boot-config.txt > /boot/firmware/config.txt
 
 echo "config sudoers"
