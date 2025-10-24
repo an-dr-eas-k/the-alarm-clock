@@ -104,7 +104,7 @@ if [ -z "$( grep the-alarm-clock /etc/rc.local )" ]; then
 	echo "update /etc/rc.local"
 	sed -i '/exit/d' /etc/rc.local
   cat >> /etc/rc.local << EOF
-sudo -u the-alarm-clock -- bash -c "$app/rpi/onboot.sh 2>&1 | systemd-cat -t the-alarm-clock.app" &
+sudo -u the-alarm-clock -- bash -c "$app/rpi/onboot.sh 2>&1 | systemd-cat -u the-alarm-clock.service" &
 exit 0
 EOF
 chmod u+x /etc/rc.local
