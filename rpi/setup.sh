@@ -5,22 +5,23 @@ app=${uhome}/app
 echo "killing processes"
 killall -u the-alarm-clock
 
-if [ $1 != "fast" ]; then
+if [ "${1:-}" = "fast" ]; then
+  echo "fast mode: skipping system update and dependency installation"
+else
   echo "update system and install dependencies"
   apt-get -y update
   apt-get -y dist-upgrade
   apt-get -y install git python3 vlc python3-pip curl libasound2-plugin-equal python3-dbus python3-alsaaudio libasound2-dev
-
+  pip install pillow --break-system-packages
+  
   apt-get -y remove python3-rpi.gpio
   apt-get -y install python3-rpi-lgpio 
 
-  # apt-get -y remove python3-rpi-lgpio 
-  # apt-get -y install python3-rpi.gpio
-
-  curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
+  # curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
+  curl -sL -o raspotify-latest_armhf.deb https://dtcooper.github.io/raspotify/raspotify-latest_armhf.deb
+  dpkg -i raspotify-latest_armhf.deb
   apt-get -y autoremove
 fi
-
 
 echo "add and configure the-alarm-clock user"
 mkdir -p $uhome
@@ -32,16 +33,31 @@ adduser the-alarm-clock spi
 adduser the-alarm-clock audio
 
 if [ -f "$app/src/config.json" ]; then
-  echo "copy existing config.json to /tmp"
-  cp -a "$app/src/config.json" $uhome
+  echo "copy existing config.json to $uhome"
+  cp -af $app/src/config.json $uhome
 fi
-cp -a "$app/rpi/tls/cert.*" $uhome
+cp -af $app/rpi/tls/cert.* $uhome
+
 echo "clone the-alarm-clock"
 rm -rf $app
 git clone -b develop https://github.com/an-dr-eas-k/the-alarm-clock.git $app
 chown $uid:$uid -R $uhome
-cp -a "$uhome/cert.*" "$app/rpi/tls/"
-cp -a "$uhome/config.json" "$app/src/"
+chmod +x $app/rpi/*.sh
+
+if [ -f "$uhome/cert.key" ]; then
+  cp -a $uhome/cert.* $app/rpi/tls/
+else
+  pushd $app/rpi/tls/
+  ./new-ca-and-cert.sh
+  popd
+  cp -a $app/rpi/tls/cert.* $uhome/
+fi
+
+if [ -f "$uhome/config.json" ]; then
+  cp -a $uhome/config.json $app/src/
+else
+  cp -a $app/src/config_example.json $app/src/config.json
+fi
 
 echo "configure system"
 ln -fs $app/rpi/resources/pigpiod.service /lib/systemd/system/pigpiod.service
@@ -51,7 +67,7 @@ systemctl disable pigpiod
 
 
 
-echo "update config.txt"
+echo "update rpi config.txt, somehow this step did not work last time, the manual enablement of i2c with raspi-config was necessary."
 cat $app/rpi/resources/rpi-boot-config.txt > /boot/firmware/config.txt
 
 echo "config sudoers"
@@ -85,10 +101,14 @@ setcap CAP_NET_BIND_SERVICE=+eip $(readlink /usr/bin/python -f)
 if [ -z "$( grep the-alarm-clock /etc/rc.local )" ]; then
 	echo "update /etc/rc.local"
 	sed -i '/exit/d' /etc/rc.local
-	cat >> /etc/rc.local << "EOF"
-sudo -u the-alarm-clock -- bash ${app}/rpi/onboot.sh 2>> /var/log/the-alarm-clock.errout 1>> /var/log/the-alarm-clock.stdout &
+
+  cat >> /etc/rc.local << EOF
+#!/bin/bash
+sudo -u the-alarm-clock -- bash -c "sh $app/rpi/onboot.sh 2>&1 | systemd-cat -t the-alarm-clock.service" &
 exit 0
 EOF
+
+  chmod u+x /etc/rc.local
 fi
 
 echo "done, please reboot"

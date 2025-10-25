@@ -1,11 +1,45 @@
+# Intro
+
+
 
 # Getting started
-```
-curl https://raw.githubusercontent.com/an-dr-eas-k/the-alarm-clock/main/rpi/setup.sh | bash -s -- fast
-curl https://raw.githubusercontent.com/an-dr-eas-k/the-alarm-clock/refs/heads/develop/rpi/setup.sh | bash -s -- fast
-python3 src/app_clock.py
-```
 
+1. Write Raspberry Pi OS to sd-card with the use of Raspberry Pi Imager.
+   * lite distribution is enough
+   * configure login and wifi
+
+1. call the following script 
+   * for main:
+     ```
+     nohup sh -c "curl https://raw.githubusercontent.com/an-dr-eas-k/the-alarm-clock/main/rpi/setup.sh | bash -s" &
+     ```
+
+   * for develop:
+     ```
+     nohup sh -c "curl https://raw.githubusercontent.com/an-dr-eas-k/the-alarm-clock/refs/heads/develop/rpi/setup.sh | bash -s" &
+     ```
+
+    * after: 
+      ```
+      reboot
+      ```
+
+    * repeat:
+      ```
+      nohup sh -c "curl https://raw.githubusercontent.com/an-dr-eas-k/the-alarm-clock/refs/heads/develop/rpi/setup.sh | bash -s -- fast" &
+      ```
+
+1. follow the log output with
+   * for the application itself
+     ```
+     journalctl SYSLOG_IDENTIFIER=the-alarm-clock.service -f
+     ```
+   * for spotify events
+     ```
+     journalctl SYSLOG_IDENTIFIER=the-alarm-clock.spotify-event.service -f
+     ```
+
+# Dependencies
 7 Segment Font is included from https://github.com/keshikan/DSEG/releases \
 weather symbols are included from https://github.com/erikflowers/weather-icons
 
