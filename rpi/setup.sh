@@ -17,10 +17,7 @@ else
   apt-get -y remove python3-rpi.gpio
   apt-get -y install python3-rpi-lgpio 
 
-  # apt-get -y remove python3-rpi-lgpio 
-  # apt-get -y install python3-rpi.gpio
-
-  curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
+  # curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
   curl -sL -o raspotify-latest_armhf.deb https://dtcooper.github.io/raspotify/raspotify-latest_armhf.deb
   dpkg -i raspotify-latest_armhf.deb
   apt-get -y autoremove
@@ -104,11 +101,14 @@ setcap CAP_NET_BIND_SERVICE=+eip $(readlink /usr/bin/python -f)
 if [ -z "$( grep the-alarm-clock /etc/rc.local )" ]; then
 	echo "update /etc/rc.local"
 	sed -i '/exit/d' /etc/rc.local
+
   cat >> /etc/rc.local << EOF
+#!/bin/bash
 sudo -u the-alarm-clock -- bash -c "sh $app/rpi/onboot.sh 2>&1 | systemd-cat -t the-alarm-clock.service" &
 exit 0
 EOF
-chmod u+x /etc/rc.local
+
+  chmod u+x /etc/rc.local
 fi
 
 echo "done, please reboot"
