@@ -19,6 +19,10 @@ from resources.resources import alarms_dir, default_volume
 from utils.singleton import singleton
 from utils.sound_device import SoundDevice
 from utils.state_machine import StateMachine, Trigger
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from core.infrastructure.event_bus import EventBus
 
 from datetime import datetime, timedelta
 
@@ -345,10 +349,11 @@ class Config(TACEventPublisher):
         self.offline_alarm = AudioStream(stream_name="Offline Alarm", stream_url=value)
         self.publish(property="blink_segment")
 
-    def __init__(self):
+    def __init__(self, event_bus: "EventBus" = None):
         logger.debug("initializing default config")
         self._alarm_definitions = []
         self._audio_streams = []
+        self.event_bus = event_bus
         self.ensure_valid_config()
         super().__init__()
 
@@ -468,11 +473,13 @@ class Config(TACEventPublisher):
     def serialize(self):
         return jsonpickle.encode(self, indent=2)
 
-    def deserialize(config_file):
+    @staticmethod
+    def deserialize(config_file, event_bus: "EventBus" = None):
         logger.debug("initializing config from file: %s", config_file)
         with open(config_file, "r") as file:
             file_contents = file.read()
             persisted_config: Config = jsonpickle.decode(file_contents)
+            persisted_config.event_bus = event_bus
             persisted_config.ensure_valid_config()
             return persisted_config
 

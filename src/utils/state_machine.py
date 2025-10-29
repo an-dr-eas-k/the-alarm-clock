@@ -1,6 +1,8 @@
 import logging
 from typing import Callable, Type
 
+from core.domain.events import DomainEvent
+from core.infrastructure.event_bus import EventBus
 from utils.events import TACEvent, TACEventSubscriber
 from utils.extensions import T
 
@@ -12,7 +14,7 @@ class StateMachineIdentifier:
         return self.__hash__() == other.__hash__()
 
     def __hash__(self):
-        raise NotImplementedError("hash not implemented")
+        return self.__str__().__hash__()
 
     def __str__(self):
         return self.__class__.__name__
@@ -23,7 +25,7 @@ class Trigger(StateMachineIdentifier):
 
 
 class State(StateMachineIdentifier):
-    proceedingState: Type[T] = None
+    proceedingState: Type[T] = None  # todo: remove?
     pass
 
 
@@ -39,10 +41,10 @@ class StateTransition:
         self,
         trigger: Trigger,
         new_state_type: Type[T],
-        source_state_updater: callable = None,
+        eventToEmit: DomainEvent = None,
     ) -> "StateTransition":
         try:
-            self.state_transition[trigger] = (new_state_type, source_state_updater)
+            self.state_transition[trigger] = (new_state_type, eventToEmit)
         except Exception as e:
             self.log.fatal(f"trigger to add: {trigger}")
             raise e
@@ -55,36 +57,35 @@ class StateTransition:
             return None
 
 
-class StateMachine(TACEventSubscriber):
-    def __init__(self, init_state: State):
+class StateMachine:
+    def __init__(self, init_state: State, event_bus: EventBus = None):
         self.state_definition = {}
         self.current_state = init_state
+        self.event_bus = event_bus
+        self.event_bus.register(Trigger, self.handle)
 
-    def handle(self, observation: TACEvent) -> State:
-        super().handle(observation)
-        if not isinstance(observation.reason, Trigger):
-            return self.current_state
+    def handle(self, trigger: Trigger) -> State:
         str_of_current_state = str(self.current_state)
         st: StateTransition = self.state_definition[self.current_state]
         if not st:
             logger.debug(f"no statetransition found for {str_of_current_state}")
             return self.current_state
-        transition = st.transition(observation.reason)
+        transition = st.transition(trigger)
         if not transition:
             logger.debug(
-                f"no transition defined from {str_of_current_state} triggered by {observation.reason}"
+                f"no transition defined from {str_of_current_state} triggered by {trigger}"
             )
             return self.current_state
-        (next_state_type, source_state_updater) = transition
-        if source_state_updater:
-            source_state_updater(self.current_state)
+        (next_state_type, eventToEmit) = transition
+        if eventToEmit:
+            self.publish(eventToEmit)
         next_state = None
         if self.current_state.proceedingState:
             next_state = self.current_state.proceedingState(self.current_state)
         else:
             next_state = next_state_type(self.current_state)
         logger.debug(
-            f"state transition from {str_of_current_state} triggered by {observation.reason} to {next_state}"
+            f"state transition from {str_of_current_state} triggered by {trigger} to {next_state}"
         )
         self.current_state = next_state
         return self.current_state

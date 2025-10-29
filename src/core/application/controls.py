@@ -6,7 +6,8 @@ import traceback
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
-from core.domain.mode import AlarmClockStateMachine
+from core.domain.events import ToggleAudioStreamEvent, VolumeChangedEvent
+from core.domain.mode_coordinator import AlarmClockModeCoordinator
 from core.domain.model import (
     AlarmClockContext,
     AlarmDefinition,
@@ -21,6 +22,7 @@ from core.domain.model import (
     Config,
 )
 from core.infrastructure.brightness_sensor import IBrightnessSensor
+from core.infrastructure.event_bus import EventBus
 from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon
@@ -50,11 +52,17 @@ class Controls(TACEventSubscriber):
         display_content: DisplayContent,
         playback_content: PlaybackContent,
         brightness_sensor: IBrightnessSensor,
+        event_bus: EventBus,
     ) -> None:
         self.alarm_clock_context = alarm_clock_context
         self.display_content = display_content
         self.playback_content = playback_content
         self.brightness_sensor = brightness_sensor
+        self.event_bus = event_bus
+        self.event_bus.on(ToggleAudioStreamEvent, self.toggle_stream)
+        self.event_bus.on(
+            VolumeChangedEvent, lambda e: self.update_volume(e.volume_delta)
+        )
 
         self.alarm_clock_context.is_daytime = (
             alarm_clock_context.geo_location.last_sun_event() == SunEvent.sunrise
@@ -63,6 +71,13 @@ class Controls(TACEventSubscriber):
         self.add_scheduler_jobs()
         self.scheduler.start()
         self.print_active_jobs(default_store)
+
+    def handle(self, observation: TACEvent):
+        super().handle(observation)
+        if isinstance(observation.subscriber, Config):
+            self.update_from_config(observation, observation.subscriber)
+        if isinstance(observation.subscriber, PlaybackContent):
+            self.update_from_playback_content(observation, observation.subscriber)
 
     def consider_failed_alarm(self):
         if os.path.exists(active_alarm_definition_file):
@@ -110,20 +125,6 @@ class Controls(TACEventSubscriber):
             id=event.value,
             jobstore=default_store,
         )
-
-    def handle(self, observation: TACEvent):
-        super().handle(observation)
-        if isinstance(observation.subscriber, Config):
-            self.update_from_config(observation, observation.subscriber)
-        if isinstance(observation.subscriber, PlaybackContent):
-            self.update_from_playback_content(observation, observation.subscriber)
-        if isinstance(observation.subscriber, AlarmClockStateMachine):
-            if observation.reason == "rotary_clockwise":
-                self.increase_volume()
-            if observation.reason == "rotary_counter_clockwise":
-                self.decrease_volume()
-            if observation.reason == "invoke_button":
-                self.toggle_stream()
 
     def update_from_playback_content(
         self, observation: TACEvent, playback_content: PlaybackContent
@@ -229,6 +230,12 @@ class Controls(TACEventSubscriber):
 
     def enter_mode(self):
         self.display_content.mode_state.next_mode_0()
+
+    def update_volume(self, volume_delta: int):
+        if volume_delta > 0:
+            self.increase_volume()
+        else:
+            self.decrease_volume()
 
     def increase_volume(self):
         self.playback_content.increase_volume()

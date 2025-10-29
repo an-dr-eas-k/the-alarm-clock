@@ -53,7 +53,12 @@ class MCPManager:
         GPIO_Module().add_event_detect(
             interrupt_pin,
             GPIO_Module().FALLING,
-            callback=self.invoke_gpio_callback,
+            callback=self.falling_gpio_event_detected,
+        )
+        GPIO_Module().add_event_detect(
+            interrupt_pin,
+            GPIO_Module().RISING,
+            callback=self.raising_gpio_event_detected,
         )
         self.mcp_callbacks = {}
 
@@ -77,15 +82,25 @@ class MCPManager:
                     )
                 )
 
-    def invoke_gpio_callback(self, gpio_pin):
-        logger.debug(f"GPIO interrupt on pin {gpio_pin} detected.")
+    def raising_gpio_event_detected(self, gpio_pin):
+        self.gpio_event_detected(gpio_pin, False)
+
+    def falling_gpio_event_detected(self, gpio_pin):
+        self.gpio_event_detected(gpio_pin, True)
+
+    def gpio_event_detected(self, gpio_pin, is_falling: bool):
+        logger.debug(
+            f"GPIO interrupt on pin {gpio_pin} detected: {'FALLING' if is_falling else 'RISING'}."
+        )
 
         for mcp_pin in self.mcp.int_flag:
             mcp_pin_value = self.mcp.get_pin(mcp_pin).value
+            if mcp_pin_value != is_falling:
+                return
             logger.debug(f"mcp pin {mcp_pin} changed to: {mcp_pin_value}")
 
             if mcp_pin in self.mcp_callbacks:
-                self.mcp_callbacks[mcp_pin](self.mcp, mcp_pin)
+                self.mcp_callbacks[mcp_pin](mcp_pin, mcp_pin_value)
 
         self.mcp.clear_ints()
 

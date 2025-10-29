@@ -1,8 +1,8 @@
 import os
 import argparse
 from dependency_injector import containers, providers
-from core.domain.mode import (
-    AlarmClockStateMachine,
+from core.domain.mode_coordinator import (
+    AlarmClockModeCoordinator,
     AlarmEditMode,
     AlarmViewMode,
     DefaultMode,
@@ -17,6 +17,7 @@ from core.application.api import Api
 from core.infrastructure.audio import Speaker, PlayerFactory
 from core.application.controls import Controls
 from core.infrastructure.persistence import Persistence
+from core.infrastructure.event_bus import EventBus
 from resources.resources import config_file
 from core.domain.model import (
     AlarmClockContext,
@@ -44,10 +45,15 @@ class DIContainer(containers.DeclarativeContainer):
         lambda parser: parser.parse_args(), parser=argument_parser
     )
 
+    event_bus = providers.Singleton(EventBus)
+
     config = providers.Singleton(
-        lambda: (
-            Config.deserialize(config_file) if os.path.exists(config_file) else Config()
-        )
+        lambda event_bus: (
+            Config.deserialize(config_file, event_bus)
+            if os.path.exists(config_file)
+            else Config(event_bus=event_bus)
+        ),
+        event_bus=event_bus,
     )
 
     alarm_clock_context = providers.Singleton(AlarmClockContext, config=config)
@@ -62,7 +68,7 @@ class DIContainer(containers.DeclarativeContainer):
         PropertyEditMode, previous_mode=alarm_edit_state
     )
     state_machine = providers.Singleton(
-        AlarmClockStateMachine,
+        AlarmClockModeCoordinator,
         default_state=default_state,
         alarm_view_state=alarm_view_state,
         alarm_edit_state=alarm_edit_state,
@@ -106,6 +112,7 @@ class DIContainer(containers.DeclarativeContainer):
         display_content=display_content,
         playback_content=playback_content,
         brightness_sensor=brightness_sensor,
+        event_bus=event_bus,
     )
 
     serial_interface = providers.Singleton(spi, device=0, port=0)
