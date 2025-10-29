@@ -1,7 +1,7 @@
 import logging
 from PIL import ImageFont, Image, ImageOps
 
-from core.domain.mode import AlarmEditMode
+from core.domain.mode_coordinator import AlarmEditMode
 from core.domain.model import (
     DisplayContent,
     TACEvent,

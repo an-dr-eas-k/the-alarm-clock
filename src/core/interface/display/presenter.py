@@ -4,7 +4,7 @@ import logging
 from luma.core.device import device as luma_device
 from PIL import ImageFont, Image, ImageOps
 
-from core.domain.mode import AlarmEditMode, AlarmViewMode, DefaultMode
+from core.domain.mode_coordinator import AlarmEditMode, AlarmViewMode, DefaultMode
 from core.domain.model import (
     AlarmDefinition,
     DisplayContent,
