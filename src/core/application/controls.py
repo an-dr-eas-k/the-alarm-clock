@@ -6,7 +6,11 @@ import traceback
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
-from core.domain.events import ToggleAudioStreamEvent, VolumeChangedEvent
+from core.domain.events import (
+    RegularDisplayContentUpdateEvent,
+    ToggleAudioStreamEvent,
+    VolumeChangedEvent,
+)
 from core.domain.mode_coordinator import AlarmClockModeCoordinator
 from core.domain.model import (
     AlarmClockContext,
@@ -60,9 +64,7 @@ class Controls(TACEventSubscriber):
         self.brightness_sensor = brightness_sensor
         self.event_bus = event_bus
         self.event_bus.on(ToggleAudioStreamEvent, self.toggle_stream)
-        self.event_bus.on(
-            VolumeChangedEvent, lambda e: self.update_volume(e.volume_delta)
-        )
+        self.event_bus.on(VolumeChangedEvent, self.update_volume)
 
         self.alarm_clock_context.is_daytime = (
             alarm_clock_context.geo_location.last_sun_event() == SunEvent.sunrise
@@ -207,7 +209,7 @@ class Controls(TACEventSubscriber):
         except:
             logger.error("%s", traceback.format_exc())
 
-    def toggle_stream(self):
+    def toggle_stream(self, event: ToggleAudioStreamEvent):
         if self.alarm_clock_context.mode in [Mode.Alarm, Mode.Music, Mode.Spotify]:
             self.set_to_idle_mode()
         else:
@@ -231,8 +233,8 @@ class Controls(TACEventSubscriber):
     def enter_mode(self):
         self.display_content.mode_state.next_mode_0()
 
-    def update_volume(self, volume_delta: int):
-        if volume_delta > 0:
+    def update_volume(self, event: VolumeChangedEvent):
+        if event.volume_delta > 0:
             self.increase_volume()
         else:
             self.decrease_volume()
@@ -277,10 +279,12 @@ class Controls(TACEventSubscriber):
                 new_blink_state = not self.alarm_clock_context.show_blink_segment
                 self._previous_second = current_second
 
-            self.alarm_clock_context.update_state(
-                new_blink_state,
-                RoomBrightness(self.get_room_brightness()),
-                self.display_content.is_scrolling,
+            self.event_bus.emit(
+                RegularDisplayContentUpdateEvent(
+                    new_blink_state,
+                    RoomBrightness(self.get_room_brightness()),
+                    self.display_content.is_scrolling,
+                )
             )
 
         Controls.action(do)

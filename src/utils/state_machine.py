@@ -2,7 +2,7 @@ import logging
 from typing import Callable, Type
 
 from core.domain.events import DomainEvent
-from core.infrastructure.event_bus import EventBus
+from core.infrastructure.event_bus import BaseEvent, EventBus
 from utils.events import TACEvent, TACEventSubscriber
 from utils.extensions import T
 
@@ -41,7 +41,7 @@ class StateTransition:
         self,
         trigger: Trigger,
         new_state_type: Type[T],
-        eventToEmit: DomainEvent = None,
+        eventToEmit: BaseEvent = None,
     ) -> "StateTransition":
         try:
             self.state_transition[trigger] = (new_state_type, eventToEmit)
@@ -70,7 +70,7 @@ class StateMachine:
         if not st:
             logger.debug(f"no statetransition found for {str_of_current_state}")
             return self.current_state
-        transition = st.transition(trigger)
+        transition: tuple[Type[T], BaseEvent] = st.transition(trigger)
         if not transition:
             logger.debug(
                 f"no transition defined from {str_of_current_state} triggered by {trigger}"
@@ -78,7 +78,7 @@ class StateMachine:
             return self.current_state
         (next_state_type, eventToEmit) = transition
         if eventToEmit:
-            self.publish(eventToEmit)
+            self.event_bus.emit(eventToEmit)
         next_state = None
         if self.current_state.proceedingState:
             next_state = self.current_state.proceedingState(self.current_state)

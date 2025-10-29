@@ -85,6 +85,7 @@ class DIContainer(containers.DeclarativeContainer):
         DisplayContent,
         alarm_clock_context=alarm_clock_context,
         playback_content=playback_content,
+        event_bus=event_bus,
     )
 
     persistence = providers.Singleton(Persistence, config_file=config_file)

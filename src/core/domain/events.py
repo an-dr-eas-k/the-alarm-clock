@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional, Any
 import uuid
 
+from core.domain.model import RoomBrightness
 from core.infrastructure.event_bus import BaseEvent
 
 
@@ -45,6 +46,13 @@ class StartAlarmPropertyEditEvent(DomainEvent):
 @dataclass(frozen=True)
 class AlarmPropertyValueSelectedEvent(DomainEvent):
     alarm_property_value_index_delta: int
+
+
+@dataclass(frozen=True)
+class RegularDisplayContentUpdateEvent(DomainEvent):
+    show_blink_segment: bool
+    room_brightness: RoomBrightness
+    is_scrolling: bool
 
 
 @dataclass(frozen=True)

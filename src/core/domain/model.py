@@ -11,6 +11,7 @@ import logging
 
 import jsonpickle
 from apscheduler.triggers.cron import CronTrigger
+from core.domain.events import RegularDisplayContentUpdateEvent
 from utils.extensions import T, Value, get_timedelta_to_alarm, respect_ranges
 
 from utils.events import TACEventPublisher, TACEvent, TACEventSubscriber
@@ -699,37 +700,22 @@ class DisplayContent(MediaContent):
     is_scrolling: bool = False
 
     def __init__(
-        self, alarm_clock_context: AlarmClockContext, playback_content: PlaybackContent
+        self,
+        alarm_clock_context: AlarmClockContext,
+        playback_content: PlaybackContent,
+        event_bus: "EventBus" = None,
     ):
         super().__init__(alarm_clock_context)
         self.playback_content = playback_content
+        self.event_bus = event_bus
+        self.event_bus.on(RegularDisplayContentUpdateEvent, self.regular_update)
 
     def get_is_online(self) -> bool:
         return self.alarm_clock_context.is_online
 
-    def publish(self):
-        super().publish(reason="display_changed")
-
-    def handle(self, observation: TACEvent):
-        super().handle(observation)
-        if isinstance(observation.subscriber, AlarmClockContext):
-            self.update_from_context(observation, observation.subscriber)
-        if isinstance(observation.subscriber, PlaybackContent):
-            self.update_from_playback_content(observation, observation.subscriber)
-
-    def update_from_playback_content(
-        self, observation: TACEvent, playback_content: PlaybackContent
-    ):
-        pass
-
-    def update_from_context(
-        self, observation: TACEvent, alarm_clock_context: AlarmClockContext
-    ):
-        if observation.property_name == "update_state":
-            self.show_blink_segment = alarm_clock_context.show_blink_segment
-            self.room_brightness = alarm_clock_context.room_brightness
-            if not observation.during_registration:
-                self.publish()
+    def regular_update(self, event: RegularDisplayContentUpdateEvent):
+        self.show_blink_segment = event.show_blink_segment
+        self.room_brightness = event.room_brightness.value
 
     def hide_volume_meter(self):
         self.show_volume_meter = False
@@ -742,7 +728,6 @@ class DisplayContent(MediaContent):
     def show_volume_meter(self, value: bool):
         logger.info("volume bar shown: %s", value)
         self._show_volume_meter = value
-        self.publish()
 
     def get_timedelta_to_alarm(self) -> timedelta:
         if self.next_alarm_job is None:
