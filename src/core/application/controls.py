@@ -7,9 +7,14 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
 from core.domain.events import (
+    AudioEffectEvent,
     RegularDisplayContentUpdateEvent,
-    ToggleAudioStreamEvent,
+    ToggleAudioEvent,
+    AlarmEvent,
+    RegularDisplayContentUpdateEvent,
+    SunEventOccurredEvent,
     VolumeChangedEvent,
+    WifiStatusChangedEvent,
 )
 from core.domain.mode_coordinator import AlarmClockModeCoordinator
 from core.domain.model import (
@@ -63,8 +68,12 @@ class Controls(TACEventSubscriber):
         self.playback_content = playback_content
         self.brightness_sensor = brightness_sensor
         self.event_bus = event_bus
-        self.event_bus.on(ToggleAudioStreamEvent, self.toggle_stream)
+        self.event_bus.on(ToggleAudioEvent, self._toggle_stream)
         self.event_bus.on(VolumeChangedEvent, self.update_volume)
+        self.event_bus.on(
+            WifiStatusChangedEvent,
+            lambda e: self.update_weather_status() if e.is_online else None,
+        )
 
         self.alarm_clock_context.is_daytime = (
             alarm_clock_context.geo_location.last_sun_event() == SunEvent.sunrise
@@ -78,8 +87,6 @@ class Controls(TACEventSubscriber):
         super().handle(observation)
         if isinstance(observation.subscriber, Config):
             self.update_from_config(observation, observation.subscriber)
-        if isinstance(observation.subscriber, PlaybackContent):
-            self.update_from_playback_content(observation, observation.subscriber)
 
     def consider_failed_alarm(self):
         if os.path.exists(active_alarm_definition_file):
@@ -87,7 +94,7 @@ class Controls(TACEventSubscriber):
                 active_alarm_definition_file
             )
             logger.info("failed audioeffect found %s", ad.alarm_name)
-            self.ring_alarm(ad)
+            self._ring_alarm(ad)
 
     def add_scheduler_jobs(self):
         self.scheduler.add_job(
@@ -128,16 +135,6 @@ class Controls(TACEventSubscriber):
             jobstore=default_store,
         )
 
-    def update_from_playback_content(
-        self, observation: TACEvent, playback_content: PlaybackContent
-    ):
-        if (
-            observation.property_name == "volume"
-            and not observation.during_registration
-        ):
-            self.display_content.show_volume_meter = True
-            self.start_hide_volume_meter_trigger()
-
     def start_hide_volume_meter_trigger(self):
         self.start_generic_trigger(
             SchedulerJobIds.hide_volume_meter.value,
@@ -173,7 +170,7 @@ class Controls(TACEventSubscriber):
                     continue
                 logger.info("adding job for '%s'", alDef.alarm_name)
                 self.scheduler.add_job(
-                    func=self.ring_alarm,
+                    func=self._ring_alarm,
                     args=(alDef,),
                     id=f"{alDef.id}",
                     jobstore=alarm_store,
@@ -182,8 +179,6 @@ class Controls(TACEventSubscriber):
             self.cleanup_alarms()
             self.display_content.next_alarm_job = self.get_next_alarm_job()
             self.print_active_jobs(alarm_store)
-        if observation.property_name == "is_online" and observation.new_value:
-            self.update_weather_status()
 
     def get_next_alarm_job(self) -> Job:
         jobs = sorted(
@@ -209,8 +204,12 @@ class Controls(TACEventSubscriber):
         except:
             logger.error("%s", traceback.format_exc())
 
-    def toggle_stream(self, event: ToggleAudioStreamEvent):
-        if self.alarm_clock_context.mode in [Mode.Alarm, Mode.Music, Mode.Spotify]:
+    def _toggle_stream(self, _: ToggleAudioEvent):
+        if self.alarm_clock_context.playback_mode in [
+            Mode.Alarm,
+            Mode.Music,
+            Mode.Spotify,
+        ]:
             self.set_to_idle_mode()
         else:
             if self.playback_content.audio_effect and isinstance(
@@ -221,23 +220,27 @@ class Controls(TACEventSubscriber):
                 self.play_stream_by_id(0)
 
     def set_to_idle_mode(self):
-        if self.alarm_clock_context.mode == Mode.Spotify:
+        if self.alarm_clock_context.playback_mode == Mode.Idle:
+            return
+
+        if self.alarm_clock_context.playback_mode == Mode.Spotify:
             restart_spotify_daemon()
 
-        if self.alarm_clock_context.mode != Mode.Idle:
-            self.stop_generic_trigger(SchedulerJobIds.hide_volume_meter.value)
-            self.display_content.hide_volume_meter()
-            self.alarm_clock_context.mode = Mode.Idle
-            self.alarm_clock_context.active_alarm = None
+        self.stop_generic_trigger(SchedulerJobIds.hide_volume_meter.value)
+        self.alarm_clock_context.playback_mode = Mode.Idle
+        self.alarm_clock_context.active_alarm = None
+        self.event_bus.emit(AudioEffectEvent(audio_effect=None))
 
     def enter_mode(self):
         self.display_content.mode_state.next_mode_0()
 
-    def update_volume(self, event: VolumeChangedEvent):
+    def _update_volume(self, event: VolumeChangedEvent):
         if event.volume_delta > 0:
             self.increase_volume()
-        else:
+        elif event.volume_delta < 0:
             self.decrease_volume()
+        self.display_content.show_volume_meter = True
+        self.start_hide_volume_meter_trigger()
 
     def increase_volume(self):
         self.playback_content.increase_volume()
@@ -258,10 +261,12 @@ class Controls(TACEventSubscriber):
         if volume is None:
             volume = self.playback_content.volume
 
-        self.playback_content.audio_effect = StreamAudioEffect(
-            stream_definition=audio_stream, volume=volume
+        self.event_bus.emit(
+            AudioEffectEvent(
+                StreamAudioEffect(stream_definition=audio_stream, volume=volume)
+            )
         )
-        self.alarm_clock_context.mode = Mode.Music
+        self.alarm_clock_context.playback_mode = Mode.Music
 
     def configure(self):
         pass
@@ -307,9 +312,10 @@ class Controls(TACEventSubscriber):
 
             if is_online != self.alarm_clock_context.is_online:
                 logger.info("change wifi state, is online: %s", is_online)
+                self.event_bus.emit(WifiStatusChangedEvent(is_online))
                 self.alarm_clock_context.is_online = is_online
 
-                if not is_online and self.alarm_clock_context.mode in [
+                if not is_online and self.alarm_clock_context.playback_mode in [
                     Mode.Music,
                     Mode.Spotify,
                 ]:
@@ -319,14 +325,15 @@ class Controls(TACEventSubscriber):
 
     def sun_event_occured(self, event: SunEvent):
         def do():
+            self.event_bus.emit(SunEventOccurredEvent(event))
             self.alarm_clock_context.is_daytime = event == SunEvent.sunrise
             self.init_sun_event_scheduler(event)
 
         Controls.action(do, "sun event %s" % event)
 
-    def ring_alarm(self, alarm_definition: AlarmDefinition):
+    def _ring_alarm(self, alarm_definition: AlarmDefinition):
         def do():
-            if self.alarm_clock_context.mode in [Mode.Music, Mode.Spotify]:
+            if self.alarm_clock_context.playback_mode in [Mode.Music, Mode.Spotify]:
                 alarm_definition.audio_effect = (
                     self.alarm_clock_context.config.get_offline_alarm_effect(
                         alarm_definition.audio_effect.volume
@@ -340,7 +347,8 @@ class Controls(TACEventSubscriber):
 
             self.set_to_idle_mode()
             self.alarm_clock_context.active_alarm = alarm_definition
-            self.alarm_clock_context.mode = Mode.Alarm
+            self.alarm_clock_context.playback_mode = Mode.Alarm
+            self.event_bus.emit(AlarmEvent(alarm_definition))
             self.postprocess_ring_alarm()
 
         Controls.action(do, "ring alarm %s" % alarm_definition.alarm_name)

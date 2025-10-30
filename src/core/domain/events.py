@@ -1,10 +1,18 @@
 from dataclasses import dataclass, field
 from datetime import datetime
+import json
 from typing import Optional, Any
-import uuid
 
-from core.domain.model import RoomBrightness
+from core.domain.model import (
+    AudioEffect,
+    RoomBrightness,
+    AlarmDefinition,
+    Config,
+    Config,
+    RoomBrightness,
+)
 from core.infrastructure.event_bus import BaseEvent
+from utils.geolocation import SunEvent
 
 
 @dataclass(frozen=True)
@@ -13,13 +21,71 @@ class DomainEvent(BaseEvent):
 
 
 @dataclass(frozen=True)
+class WifiStatusChangedEvent(BaseEvent):
+    is_online: bool
+
+
+@dataclass(frozen=True)
+class AlarmEvent(BaseEvent):
+    alarm_definition: AlarmDefinition
+
+
+@dataclass(frozen=True)
+class ConfigChangedEvent(BaseEvent):
+    config: Config
+
+
+@dataclass(frozen=True)
+class SunEventOccurredEvent(BaseEvent):
+    event: SunEvent
+
+
+class LibreSpotifyApiEvent(BaseEvent):
+
+    name: str
+    player_event: str = None
+    track_id: str
+    old_track_id: str
+    duration_ms: str
+    position_ms: str
+    volume: str
+    sink_status: str
+
+    def __init__(self, dict: dict):
+        for key, value in dict.items():
+            setattr(self, key, value)
+
+    def is_playback_started(self) -> bool:
+        return self.player_event in [
+            "session_connected",
+            "playing",
+            "started",
+            "changed",
+        ]
+
+    def is_playback_stopped(self) -> bool:
+        return self.player_event in ["session_disconnected", "stopped", "paused"]
+
+    def is_volume_changed(self) -> bool:
+        return self.player_event in ["volume_changed"]
+
+    def __str__(self):
+        return json.dumps(self.__dict__)
+
+
+@dataclass(frozen=True)
 class VolumeChangedEvent(DomainEvent):
     volume_delta: int
 
 
 @dataclass(frozen=True)
-class ToggleAudioStreamEvent(DomainEvent):
+class ToggleAudioEvent(DomainEvent):
     pass
+
+
+@dataclass(frozen=True)
+class AudioEffectEvent(DomainEvent):
+    audio_effect: AudioEffect
 
 
 @dataclass(frozen=True)

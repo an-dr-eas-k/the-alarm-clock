@@ -9,6 +9,8 @@ import tornado
 import tornado.web
 from PIL.Image import Image
 from core.application.controls import Controls
+from core.domain.events import LibreSpotifyApiEvent, VolumeChangedEvent
+from core.infrastructure.event_bus import EventBus
 from core.interface.display.display import Display
 from core.interface.display.format import ColorType
 from resources.resources import webroot_file, ssl_dir, icons_dir
@@ -19,7 +21,6 @@ from core.domain.model import (
     AudioStream,
     Config,
     DisplayContentProvider,
-    LibreSpotifyEvent,
     PlaybackContent,
     StreamAudioEffect,
     VisualEffect,
@@ -42,8 +43,8 @@ def parse_path_arguments(path) -> tuple[str, int, str]:
 
 class LibreSpotifyEventHandler(tornado.web.RequestHandler):
 
-    def initialize(self, playback_content: PlaybackContent) -> None:
-        self.playback_content = playback_content
+    def initialize(self, event_bus: EventBus) -> None:
+        self.event_bus = event_bus
 
     def post(self):
         self.handle_spotify_event()
@@ -62,9 +63,9 @@ class LibreSpotifyEventHandler(tornado.web.RequestHandler):
                 key: value for key, value in spotify_event_payload.items()
             }
 
-            spotify_event = LibreSpotifyEvent(spotify_event_dict)
+            spotify_event = LibreSpotifyApiEvent(spotify_event_dict)
             logger.info("received librespotify event %s", spotify_event)
-            self.playback_content.set_spotify_event(spotify_event)
+            self.event_bus.emit(spotify_event)
         except Exception:
             logger.warning("%s", traceback.format_exc())
 
@@ -102,8 +103,9 @@ class ConfigHandler(tornado.web.RequestHandler):
 
 class ActionApiHandler(tornado.web.RequestHandler):
 
-    def initialize(self, controls: Controls) -> None:
+    def initialize(self, controls: Controls, event_bus: EventBus) -> None:
         self.controls = controls
+        self.event_bus = event_bus
 
     def post(self, *args):
         try:
@@ -115,9 +117,9 @@ class ActionApiHandler(tornado.web.RequestHandler):
                 self.controls.set_to_idle_mode()
             elif type == "volume":
                 if id == 1:
-                    self.controls.increase_volume()
+                    self.event_bus.emit(VolumeChangedEvent(+1))
                 else:
-                    self.controls.decrease_volume()
+                    self.event_bus.emit(VolumeChangedEvent(-1))
             elif type == "update":
                 tornado.ioloop.IOLoop.instance().stop()
             elif type == "reboot":
@@ -296,7 +298,7 @@ class Api:
                 playback_content=dict(
                     audio_effect=self.controls.playback_content.audio_effect.__str__(),
                     volume=self.controls.playback_content.volume,
-                    mode=self.controls.alarm_clock_context.mode.name,
+                    mode=self.controls.alarm_clock_context.playback_mode.name,
                 ),
                 uptime=subprocess.check_output(["uptime"]).strip().decode("utf-8"),
             ),

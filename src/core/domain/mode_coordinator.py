@@ -6,7 +6,7 @@ from core.domain.events import (
     AlarmPropertyValueSelectedEvent,
     AlarmSelectedEvent,
     StartAlarmPropertyEditEvent,
-    ToggleAudioStreamEvent,
+    ToggleAudioEvent,
     VolumeChangedEvent,
 )
 from core.domain.model import (
@@ -198,7 +198,7 @@ class PropertyEditMode(AlarmEditMode):
         self.set_value(value_list[next_index])
 
 
-class AlarmClockModeCoordinator(StateMachine, TACEventPublisher):
+class AlarmClockModeCoordinator(StateMachine):
     def __init__(
         self,
         default_state,
@@ -212,7 +212,6 @@ class AlarmClockModeCoordinator(StateMachine, TACEventPublisher):
         property_edit_mode = property_edit_state
 
         StateMachine.__init__(self, default_mode)
-        TACEventPublisher.__init__(self)
 
         super().add_definition(
             StateTransition(default_mode)
@@ -220,7 +219,7 @@ class AlarmClockModeCoordinator(StateMachine, TACEventPublisher):
             .add_transition(
                 HwButtonEvent(DeviceName.INVOKE_BUTTON),
                 DefaultMode,
-                ToggleAudioStreamEvent(),
+                ToggleAudioEvent(),
             )
             .add_transition(
                 HwRotaryEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE),

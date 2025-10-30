@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from datetime import time, timedelta
 import datetime
-import json
 import os
 from PIL import Image
 from typing import List
@@ -11,7 +10,15 @@ import logging
 
 import jsonpickle
 from apscheduler.triggers.cron import CronTrigger
-from core.domain.events import RegularDisplayContentUpdateEvent
+from core.domain.events import (
+    AlarmEvent,
+    LibreSpotifyApiEvent,
+    RegularDisplayContentUpdateEvent,
+    VolumeChangedEvent,
+    WifiStatusChangedEvent,
+    AudioEffectEvent,
+    RegularDisplayContentUpdateEvent,
+)
 from utils.extensions import T, Value, get_timedelta_to_alarm, respect_ranges
 
 from utils.events import TACEventPublisher, TACEvent, TACEventSubscriber
@@ -49,57 +56,6 @@ def try_update(object, property_name: str, value: str) -> bool:
 class DisplayContentProvider:
 
     current_display_image: Image.Image
-
-
-class StreamContent:
-
-    name: str
-
-    def __init__(self, dict: dict):
-        for key, value in dict.items():
-            setattr(self, key, value)
-
-
-class SpotifyAlbum(StreamContent):
-    pass
-
-
-class SpotifyArtist(StreamContent):
-    pass
-
-
-class SpotifyTrack(StreamContent):
-
-    album: SpotifyAlbum
-    artists: List[SpotifyArtist]
-
-
-class LibreSpotifyEvent(StreamContent):
-
-    player_event: str = None
-    track_id: str
-    old_track_id: str
-    duration_ms: str
-    position_ms: str
-    volume: str
-    sink_status: str
-
-    def is_playback_started(self) -> bool:
-        return self.player_event in [
-            "session_connected",
-            "playing",
-            "started",
-            "changed",
-        ]
-
-    def is_playback_stopped(self) -> bool:
-        return self.player_event in ["session_disconnected", "stopped", "paused"]
-
-    def is_volume_changed(self) -> bool:
-        return self.player_event in ["volume_changed"]
-
-    def __str__(self):
-        return json.dumps(self.__dict__)
 
 
 class Mode(Enum):
@@ -219,22 +175,12 @@ class OfflineAlarmEffect(StreamAudioEffect):
         return "Offline Alarm"
 
 
-class SpotifyAudioEffect(TACEventPublisher, AudioEffect):
-    spotify_event: LibreSpotifyEvent = None
+class SpotifyAudioEffect(AudioEffect):
+    spotify_event: LibreSpotifyApiEvent = None
     track_name: str = "Spotify"
-    _track_id: str = None
-
-    @property
-    def track_id(self) -> str:
-        return self._track_id
-
-    @track_id.setter
-    def track_id(self, value: str):
-        self._track_id = value
-        self.publish(property="track_id")
+    track_id: str = None
 
     def __init__(self, volume: float = None):
-        TACEventPublisher.__init__(self)
         AudioEffect.__init__(self, volume)
 
     def __str__(self):
@@ -499,63 +445,31 @@ class HwButton(Trigger):
 class AlarmClockContext(TACEventPublisher):
 
     config: Config
+    state_machine: StateMachine = None
     room_brightness: RoomBrightness = RoomBrightness(1.0)
     show_blink_segment: bool = False
-    state_machine: StateMachine = None
+    is_online: bool
+    is_daytime: bool
+    active_alarm: AlarmDefinition
 
     @property
-    def is_online(self) -> bool:
-        return self._is_online
-
-    @is_online.setter
-    def is_online(self, value: bool):
-        self._is_online = value
-        self.publish(property="is_online")
-
-    @property
-    def is_daytime(self) -> bool:
-        return self._is_daytime
-
-    @is_daytime.setter
-    def is_daytime(self, value: bool):
-        self._is_daytime = value
-        self.publish(property="is_daytime")
-
-    @property
-    def mode(self) -> Mode:
+    def playback_mode(self) -> Mode:
         return self._mode
 
-    @mode.setter
-    def mode(self, value: Mode):
+    @playback_mode.setter
+    def playback_mode(self, value: Mode):
         self._mode = value
-        logger.info("new mode: %s", self.mode.name)
+        logger.info("new mode: %s", self.playback_mode.name)
         self.publish(property="mode")
 
-    @property
-    def spotify_event(self) -> LibreSpotifyEvent:
-        return self._spotify_event
-
-    @spotify_event.setter
-    def spotify_event(self, value: LibreSpotifyEvent):
-        self._spotify_event = value
-        self.publish(property="spotify_event")
-
-    @property
-    def active_alarm(self) -> AlarmDefinition:
-        return self._active_alarm
-
-    @active_alarm.setter
-    def active_alarm(self, value: AlarmDefinition):
-        self._active_alarm = value
-        self.publish(property="active_alarm")
-
-    def __init__(self, config: Config) -> None:
+    def __init__(self, config: Config, event_bus: EventBus) -> None:
         super().__init__()
         self.config = config
-        self.mode = Mode.Boot
+        self.playback_mode = Mode.Boot
         self.geo_location = GeoLocation()
         self.is_online = True
         self.show_blink_segment = True
+        self.event_bus = event_bus
 
     def update_state(
         self, show_blink_segment: bool, brightness: RoomBrightness, is_scrolling: bool
@@ -604,25 +518,29 @@ class PlaybackContent(MediaContent):
     @volume.setter
     def volume(self, value: float):
         self.sound_device.set_system_volume(value)
-        self.publish(property="volume")
 
     @property
     def is_streaming(self) -> str:
-        return self._is_streaming
-
-    @is_streaming.setter
-    def is_streaming(self, value: bool):
-        self._is_streaming = value
-        self.publish(property="is_streaming")
+        return self.alarm_clock_context.playback_mode in [
+            Mode.Alarm,
+            Mode.Music,
+            Mode.Spotify,
+        ]
 
     def __init__(
-        self, alarm_clock_context: AlarmClockContext, sound_device: SoundDevice
+        self,
+        alarm_clock_context: AlarmClockContext,
+        sound_device: SoundDevice,
+        event_bus: EventBus,
     ):
         super().__init__(alarm_clock_context)
         self.sound_device = sound_device
         self.audio_effect = None
         self.sound_device.set_system_volume(default_volume)
-        self.is_streaming = False
+        self.event_bus = event_bus
+        self.event_bus.on(LibreSpotifyApiEvent, self._set_spotify_event)
+        self.event_bus.on(WifiStatusChangedEvent, self._wifi_status_changed)
+        self.event_bus.on(AlarmEvent, self._alarm_event)
 
     def handle(self, observation: TACEvent):
         super().handle(observation)
@@ -631,20 +549,19 @@ class PlaybackContent(MediaContent):
 
     def update_from_context(self, observation: TACEvent, state: AlarmClockContext):
         if observation.property_name == "mode":
-            self.is_streaming = state.mode in [Mode.Alarm, Mode.Music, Mode.Spotify]
+            self.is_streaming = state.playback_mode in [
+                Mode.Alarm,
+                Mode.Music,
+                Mode.Spotify,
+            ]
 
-        if observation.property_name == "is_online":
-            self.wifi_availability_changed(state.is_online)
+    def _alarm_event(self, event: AlarmEvent):
+        if event.alarm_definition is not None:
+            self.audio_effect = event.alarm_definition.audio_effect
 
-        if (
-            observation.property_name == "active_alarm"
-            and state.active_alarm is not None
-        ):
-            self.audio_effect = state.active_alarm.audio_effect
-
-    def wifi_availability_changed(self, is_online: bool):
-        if self.alarm_clock_context.mode == Mode.Alarm:
-            if not is_online:
+    def _wifi_status_changed(self, event: WifiStatusChangedEvent):
+        if self.alarm_clock_context.playback_mode == Mode.Alarm:
+            if not event.is_online:
                 self.audio_effect = (
                     self.alarm_clock_context.config.get_offline_alarm_effect(
                         self.volume
@@ -659,8 +576,7 @@ class PlaybackContent(MediaContent):
     def decrease_volume(self):
         self.volume = max(self.volume - 0.05, 0.0)
 
-    def set_spotify_event(self, spotify_event: LibreSpotifyEvent):
-
+    def _set_spotify_event(self, spotify_event: LibreSpotifyApiEvent):
         spotify_audio_effect = (
             self.audio_effect
             if isinstance(self.audio_effect, SpotifyAudioEffect)
@@ -673,22 +589,22 @@ class PlaybackContent(MediaContent):
 
         if (
             spotify_event.is_playback_started()
-            and self.alarm_clock_context.mode != Mode.Spotify
+            and self.alarm_clock_context.playback_mode != Mode.Spotify
         ):
             self.audio_effect = spotify_audio_effect
-            self.alarm_clock_context.mode = Mode.Spotify
+            self.alarm_clock_context.playback_mode = Mode.Spotify
 
         if (
             spotify_event.is_playback_stopped()
-            and self.alarm_clock_context.mode != Mode.Idle
+            and self.alarm_clock_context.playback_mode != Mode.Idle
         ):
-            self.alarm_clock_context.mode = Mode.Idle
+            self.alarm_clock_context.playback_mode = Mode.Idle
 
         if (
             spotify_event.is_volume_changed()
-            and self.alarm_clock_context.mode == Mode.Spotify
+            and self.alarm_clock_context.playback_mode == Mode.Spotify
         ):
-            self.publish(property="volume")
+            self.event_bus.emit(VolumeChangedEvent(0))
 
 
 class DisplayContent(MediaContent):
@@ -709,6 +625,10 @@ class DisplayContent(MediaContent):
         self.playback_content = playback_content
         self.event_bus = event_bus
         self.event_bus.on(RegularDisplayContentUpdateEvent, self.regular_update)
+        self.event_bus.on(
+            AudioEffectEvent,
+            lambda e: self.hide_volume_meter() if e.audio_effect is None else None,
+        )
 
     def get_is_online(self) -> bool:
         return self.alarm_clock_context.is_online

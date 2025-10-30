@@ -20,6 +20,7 @@ from core.domain.model import (
     TACEventSubscriber,
     SpotifyAudioEffect,
 )
+from core.infrastructure.event_bus import EventBus
 from utils.network import is_internet_available
 from resources.resources import alarms_dir, init_logging, default_volume
 
@@ -184,11 +185,16 @@ class Speaker(TACEventSubscriber):
         playback_content: PlaybackContent,
         config: Config,
         player_factory: IPlayerFactory,
+        event_bus: EventBus,
     ) -> None:
         self.threadLock = threading.Lock()
         self.playback_content = playback_content
         self.config = config
         self.player_factory = player_factory
+        self.event_bus = event_bus
+        self.event_bus.on(
+            AudioEffectEvent,
+        )
 
     def handle(self, observation: TACEvent):
         super().handle(observation)
@@ -225,7 +231,7 @@ class Speaker(TACEventSubscriber):
         player: MediaPlayer = None
         if (
             not is_internet_available()
-            and self.playback_content.alarm_clock_context.mode == Mode.Alarm
+            and self.playback_content.alarm_clock_context.playback_mode == Mode.Alarm
         ):
             player = self.get_fallback_player()
 
@@ -237,7 +243,7 @@ class Speaker(TACEventSubscriber):
 
     def handle_player_error(self):
         logger.info("handling player error")
-        if self.playback_content.alarm_clock_context.mode != Mode.Alarm:
+        if self.playback_content.alarm_clock_context.playback_mode != Mode.Alarm:
             return
 
         if isinstance(self.playback_content.audio_effect, OfflineAlarmEffect):
