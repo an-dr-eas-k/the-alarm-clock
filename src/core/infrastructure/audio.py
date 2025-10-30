@@ -193,7 +193,7 @@ class Speaker:
         self.config = config
         self.player_factory = player_factory
         self.event_bus = event_bus
-        self.event_bus.on(AudioEffectEvent, self._adjust_effect)
+        self.event_bus.on(AudioEffectEvent)(self._adjust_effect)
 
     def _adjust_effect(self, event: AudioEffectEvent):
         if event.audio_effect is not None:

@@ -62,9 +62,9 @@ class StateMachine:
         self.state_definition = {}
         self.current_state = init_state
         self.event_bus = event_bus
-        self.event_bus.register(Trigger, self.handle)
+        self.event_bus.on(Trigger)(self._transition_state)
 
-    def handle(self, trigger: Trigger) -> State:
+    def _transition_state(self, trigger: Trigger) -> State:
         str_of_current_state = str(self.current_state)
         st: StateTransition = self.state_definition[self.current_state]
         if not st:

@@ -518,14 +518,6 @@ class PlaybackContent(MediaContent):
     def volume(self, value: float):
         self.sound_device.set_system_volume(value)
 
-    @property
-    def is_streaming(self) -> str:
-        return self.alarm_clock_context.playback_mode in [
-            Mode.Alarm,
-            Mode.Music,
-            Mode.Spotify,
-        ]
-
     def __init__(
         self,
         alarm_clock_context: AlarmClockContext,
@@ -537,22 +529,9 @@ class PlaybackContent(MediaContent):
         self.audio_effect = None
         self.sound_device.set_system_volume(default_volume)
         self.event_bus = event_bus
-        self.event_bus.on(LibreSpotifyApiEvent, self._set_spotify_event)
-        self.event_bus.on(WifiStatusChangedEvent, self._wifi_status_changed)
-        self.event_bus.on(AlarmEvent, self._alarm_event)
-
-    def handle(self, observation: TACEvent):
-        super().handle(observation)
-        if isinstance(observation.subscriber, AlarmClockContext):
-            self.update_from_context(observation, observation.subscriber)
-
-    def update_from_context(self, observation: TACEvent, state: AlarmClockContext):
-        if observation.property_name == "mode":
-            self.is_streaming = state.playback_mode in [
-                Mode.Alarm,
-                Mode.Music,
-                Mode.Spotify,
-            ]
+        self.event_bus.on(LibreSpotifyApiEvent)(self._set_spotify_event)
+        self.event_bus.on(WifiStatusChangedEvent)(self._wifi_status_changed)
+        self.event_bus.on(AlarmEvent)(self._alarm_event)
 
     def _alarm_event(self, event: AlarmEvent):
         if event.alarm_definition is not None:
@@ -623,9 +602,8 @@ class DisplayContent(MediaContent):
         super().__init__(alarm_clock_context)
         self.playback_content = playback_content
         self.event_bus = event_bus
-        self.event_bus.on(RegularDisplayContentUpdateEvent, self._regular_update)
-        self.event_bus.on(
-            AudioEffectEvent,
+        self.event_bus.on(RegularDisplayContentUpdateEvent)(self._regular_update)
+        self.event_bus.on(AudioEffectEvent)(
             lambda e: self.hide_volume_meter() if e.audio_effect is None else None,
         )
 
@@ -662,9 +640,7 @@ class DisplayContent(MediaContent):
     def current_playback_title(self):
         return (
             self.playback_content.audio_effect.title()
-            if True
-            and self.playback_content.is_streaming
-            and self.playback_content.audio_effect is not None
+            if True and self.playback_content.audio_effect is not None
             else None
         )
 

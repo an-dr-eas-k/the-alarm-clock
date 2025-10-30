@@ -261,7 +261,6 @@ if __name__ == "__main__":
     s = AlarmClockContext(c=c)
     pc = PlaybackContent(alarm_clock_context=s)
     pc.audio_effect = SpotifyAudioEffect()
-    pc.is_streaming = True
     dc = DisplayContent(alarm_clock_context=s, playback_content=pc)
     dc.show_blink_segment = True
     d = Display(dev, dc, pc, s)

@@ -67,10 +67,9 @@ class Controls(TACEventSubscriber):
         self.playback_content = playback_content
         self.brightness_sensor = brightness_sensor
         self.event_bus = event_bus
-        self.event_bus.on(ToggleAudioEvent, self._toggle_stream)
-        self.event_bus.on(VolumeChangedEvent, self.update_volume)
-        self.event_bus.on(
-            WifiStatusChangedEvent,
+        self.event_bus.on(ToggleAudioEvent)(self._toggle_stream)
+        self.event_bus.on(VolumeChangedEvent)(self.update_volume)
+        self.event_bus.on(WifiStatusChangedEvent)(
             lambda e: self.update_weather_status() if e.is_online else None,
         )
 

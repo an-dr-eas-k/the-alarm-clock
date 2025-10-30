@@ -14,8 +14,8 @@ class Persistence:
     def __init__(self, config_file: str, event_bus: EventBus):
         self.config_file = config_file
         self.event_bus = event_bus
-        self.event_bus.on(AlarmEvent, self._alarm_event)
-        self.event_bus.on(ConfigChangedEvent, self._update_from_config)
+        self.event_bus.on(AlarmEvent)(self._alarm_event)
+        self.event_bus.on(ConfigChangedEvent)(self._update_from_config)
 
     def _update_from_config(self, configChangedEvent: ConfigChangedEvent):
         self.store_config(configChangedEvent.config)
