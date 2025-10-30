@@ -283,19 +283,18 @@ class Controls(TACEventSubscriber):
                 new_blink_state = not self.alarm_clock_context.show_blink_segment
                 self._previous_second = current_second
 
-            if any(
-                (
-                    self.show_blink_segment != show_blink_segment,
-                    self.room_brightness != brightness,
-                    is_scrolling,
+            b = (RoomBrightness(self.get_room_brightness()),)
+            self.alarm_clock_context.update_state(
+                new_blink_state,
+                b,
+                self.display_content.is_scrolling,
+            )
+            self.event_bus.emit(
+                RegularDisplayContentUpdateEvent(
+                    show_blink_segment=new_blink_state,
+                    room_brightness=b,
                 )
-            ):
-                self.event_bus.emit(
-                    RegularDisplayContentUpdateEvent(
-                        new_blink_state,
-                        RoomBrightness(self.get_room_brightness()),
-                    )
-                )
+            )
 
         Controls.action(do)
 
