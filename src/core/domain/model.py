@@ -17,7 +17,6 @@ from core.domain.events import (
     VolumeChangedEvent,
     WifiStatusChangedEvent,
     AudioEffectEvent,
-    RegularDisplayContentUpdateEvent,
 )
 from utils.extensions import T, Value, get_timedelta_to_alarm, respect_ranges
 
@@ -169,10 +168,10 @@ class StreamAudioEffect(AudioEffect):
 
 
 @singleton
-class OfflineAlarmEffect(StreamAudioEffect):
+class OfflineAudioEffect(StreamAudioEffect):
 
     def title(self):
-        return "Offline Alarm"
+        return "Offline Audio"
 
 
 class SpotifyAudioEffect(AudioEffect):
@@ -380,13 +379,13 @@ class Config(TACEventPublisher):
 
         self.add_alarm_definition(powernap_alarm_def)
 
-    def get_offline_alarm_effect(
+    def get_offline_audio_effect(
         self, volume: float = default_volume
-    ) -> OfflineAlarmEffect:
+    ) -> OfflineAudioEffect:
         full_path = os.path.join(alarms_dir, self.offline_alarm.stream_url)
-        return OfflineAlarmEffect(
+        return OfflineAudioEffect(
             stream_definition=AudioStream(
-                stream_name="Offline Alarm", stream_url=full_path
+                stream_name="Offline Audio", stream_url=full_path
             ),
             volume=volume,
         )
@@ -483,7 +482,6 @@ class AlarmClockContext(TACEventPublisher):
         ):
             self.show_blink_segment = show_blink_segment
             self.room_brightness = brightness
-            self.publish(property="update_state")
 
 
 class MediaContent(TACEventPublisher, TACEventSubscriber):
@@ -509,7 +507,6 @@ class PlaybackContent(MediaContent):
             and value.volume != self.volume
         ):
             self.volume = value.volume
-        self.publish(property="audio_effect")
 
     @property
     def volume(self) -> float:
@@ -624,7 +621,7 @@ class DisplayContent(MediaContent):
         super().__init__(alarm_clock_context)
         self.playback_content = playback_content
         self.event_bus = event_bus
-        self.event_bus.on(RegularDisplayContentUpdateEvent, self.regular_update)
+        self.event_bus.on(RegularDisplayContentUpdateEvent, self._regular_update)
         self.event_bus.on(
             AudioEffectEvent,
             lambda e: self.hide_volume_meter() if e.audio_effect is None else None,
@@ -633,9 +630,10 @@ class DisplayContent(MediaContent):
     def get_is_online(self) -> bool:
         return self.alarm_clock_context.is_online
 
-    def regular_update(self, event: RegularDisplayContentUpdateEvent):
+    def _regular_update(self, event: RegularDisplayContentUpdateEvent):
         self.show_blink_segment = event.show_blink_segment
         self.room_brightness = event.room_brightness.value
+        self.is_scrolling = event.is_scrolling
 
     def hide_volume_meter(self):
         self.show_volume_meter = False

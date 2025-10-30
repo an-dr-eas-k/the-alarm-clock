@@ -7,6 +7,7 @@ import subprocess
 import threading
 from abc import ABC, abstractmethod
 
+from core.domain.events import AudioEffectEvent
 from core.domain.model import (
     AlarmClockContext,
     Mode,
@@ -14,7 +15,7 @@ from core.domain.model import (
     AudioEffect,
     AudioStream,
     Config,
-    OfflineAlarmEffect,
+    OfflineAudioEffect,
     StreamAudioEffect,
     TACEvent,
     TACEventSubscriber,
@@ -163,7 +164,7 @@ class PlayerFactory(IPlayerFactory):
             return MediaListPlayer(audio_effect.stream_definition.stream_url)
         elif isinstance(audio_effect, SpotifyAudioEffect):
             return SpotifyPlayer(audio_effect.track_id)
-        elif isinstance(audio_effect, OfflineAlarmEffect):
+        elif isinstance(audio_effect, OfflineAudioEffect):
             return MediaListPlayer(audio_effect.stream_definition.stream_url)
         else:
             raise ValueError(
@@ -176,7 +177,7 @@ class PlayerFactory(IPlayerFactory):
         )
 
 
-class Speaker(TACEventSubscriber):
+class Speaker:
     media_player: MediaPlayer = None
     fallback_player_proc: subprocess.Popen = None
 
@@ -192,33 +193,18 @@ class Speaker(TACEventSubscriber):
         self.config = config
         self.player_factory = player_factory
         self.event_bus = event_bus
-        self.event_bus.on(
-            AudioEffectEvent,
-        )
+        self.event_bus.on(AudioEffectEvent, self._adjust_effect)
 
-    def handle(self, observation: TACEvent):
-        super().handle(observation)
-        if isinstance(observation.subscriber, PlaybackContent):
-            self.update_from_playback_content(observation, observation.subscriber)
+    def _adjust_effect(self, event: AudioEffectEvent):
+        if event.audio_effect is not None:
+            self.adjust_streaming(None)
+            self.adjust_streaming(event.audio_effect)
 
-    def update_from_playback_content(
-        self, observation: TACEvent, playback_content: PlaybackContent
-    ):
-        if observation.property_name == "is_streaming":
-            self.adjust_streaming(playback_content.is_streaming)
-        elif observation.property_name == "audio_effect":
-            self.adjust_effect()
-
-    def adjust_effect(self):
-        if self.playback_content.is_streaming:
-            self.adjust_streaming(False)
-            self.adjust_streaming(True)
-
-    def adjust_streaming(self, isStreaming: bool):
+    def adjust_streaming(self, audio_effect: AudioEffect):
         self.threadLock.acquire(True)
 
-        if isStreaming:
-            self.start_streaming(self.playback_content.audio_effect)
+        if audio_effect is not None:
+            self.start_streaming(audio_effect)
         else:
             self.stop_streaming()
 
@@ -246,17 +232,11 @@ class Speaker(TACEventSubscriber):
         if self.playback_content.alarm_clock_context.playback_mode != Mode.Alarm:
             return
 
-        if isinstance(self.playback_content.audio_effect, OfflineAlarmEffect):
+        if isinstance(self.playback_content.audio_effect, OfflineAudioEffect):
             self.start_streaming_alternative()
             return
 
-        self.start_offline_effect()
-
-    def start_offline_effect(self):
-        logger.info("starting offline fallback playback")
-        self.playback_content.is_streaming = False
-        self.playback_content.audio_effect = self.config.get_offline_alarm_effect()
-        self.playback_content.is_streaming = True
+        self.event_bus.emit(AudioEffectEvent(self.config.get_offline_audio_effect()))
 
     def start_streaming(self, audio_effect: AudioEffect):
         try:
@@ -268,7 +248,7 @@ class Speaker(TACEventSubscriber):
             self.handle_player_error()
 
     def start_streaming_alternative(self):
-        self.adjust_streaming(False)
+        self.adjust_streaming(None)
         logger.info("starting alternative fallback player")
         self.fallback_player_proc = subprocess.Popen(
             ["ogg123", "-r", os.path.join(alarms_dir, "fallback", "Timer.ogg")],
@@ -300,9 +280,9 @@ def main():
         ),
     )
     s = Speaker(pc, c)
-    s.adjust_streaming(True)
+    s.adjust_streaming(pc.audio_effect)
     time.sleep(20)
-    s.adjust_streaming(False)
+    s.adjust_streaming(None)
 
 
 def main_mlp():

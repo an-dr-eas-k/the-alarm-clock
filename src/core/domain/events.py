@@ -118,7 +118,6 @@ class AlarmPropertyValueSelectedEvent(DomainEvent):
 class RegularDisplayContentUpdateEvent(DomainEvent):
     show_blink_segment: bool
     room_brightness: RoomBrightness
-    is_scrolling: bool
 
 
 @dataclass(frozen=True)

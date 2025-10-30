@@ -8,7 +8,6 @@ from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
 from core.domain.events import (
     AudioEffectEvent,
-    RegularDisplayContentUpdateEvent,
     ToggleAudioEvent,
     AlarmEvent,
     RegularDisplayContentUpdateEvent,
@@ -98,7 +97,7 @@ class Controls(TACEventSubscriber):
 
     def add_scheduler_jobs(self):
         self.scheduler.add_job(
-            self.update_display,
+            self._update_display,
             "interval",
             start_date=datetime.datetime.today(),
             seconds=self.alarm_clock_context.config.refresh_timeout_in_secs,
@@ -274,7 +273,7 @@ class Controls(TACEventSubscriber):
     def get_room_brightness(self):
         return self.brightness_sensor.get_room_brightness()
 
-    def update_display(self):
+    def _update_display(self):
 
         def do():
             logger.debug("update display")
@@ -284,13 +283,19 @@ class Controls(TACEventSubscriber):
                 new_blink_state = not self.alarm_clock_context.show_blink_segment
                 self._previous_second = current_second
 
-            self.event_bus.emit(
-                RegularDisplayContentUpdateEvent(
-                    new_blink_state,
-                    RoomBrightness(self.get_room_brightness()),
-                    self.display_content.is_scrolling,
+            if any(
+                (
+                    self.show_blink_segment != show_blink_segment,
+                    self.room_brightness != brightness,
+                    is_scrolling,
                 )
-            )
+            ):
+                self.event_bus.emit(
+                    RegularDisplayContentUpdateEvent(
+                        new_blink_state,
+                        RoomBrightness(self.get_room_brightness()),
+                    )
+                )
 
         Controls.action(do)
 
