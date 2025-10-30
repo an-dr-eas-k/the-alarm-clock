@@ -482,6 +482,8 @@ class AlarmClockContext(TACEventPublisher):
         ):
             self.show_blink_segment = show_blink_segment
             self.room_brightness = brightness
+            return True
+        return False
 
 
 class MediaContent(TACEventPublisher, TACEventSubscriber):
