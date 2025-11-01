@@ -1,9 +1,7 @@
 import logging
-from typing import Callable, Type
+from typing import Type
 
-from core.domain.events import DomainEvent
 from core.infrastructure.event_bus import BaseEvent, EventBus
-from utils.events import TACEvent, TACEventSubscriber
 from utils.extensions import T
 
 logger = logging.getLogger("utils.state_machine")

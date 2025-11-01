@@ -23,7 +23,6 @@ from core.infrastructure.events_infrastructure import (
 )
 from core.interface.display.editor.alarm_definition_editor import AlarmDefinitionToEdit
 
-from utils.events import TACEventPublisher
 from utils.geolocation import GeoLocation
 from utils.state_machine import State, StateMachine, StateTransition
 

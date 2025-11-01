@@ -17,8 +17,6 @@ from core.domain.model import (
     Config,
     OfflineAudioEffect,
     StreamAudioEffect,
-    TACEvent,
-    TACEventSubscriber,
     SpotifyAudioEffect,
 )
 from core.infrastructure.event_bus import EventBus

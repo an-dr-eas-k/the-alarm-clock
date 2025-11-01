@@ -20,7 +20,6 @@ from core.domain.events import (
 )
 from utils.extensions import T, Value, get_timedelta_to_alarm, respect_ranges
 
-from utils.events import TACEventPublisher, TACEvent, TACEventSubscriber
 from utils.geolocation import GeoLocation, Weather
 from resources.resources import alarms_dir, default_volume
 from utils.singleton import singleton
@@ -249,7 +248,7 @@ class AlarmDefinition:
         return persisted_alarm_definition
 
 
-class Config(TACEventPublisher):
+class Config:
 
     clock_format_string: str
     blink_segment: str
@@ -420,7 +419,7 @@ class HwButton(Trigger):
         return f"{super().__str__()} {self.button_id}"
 
 
-class AlarmClockContext(TACEventPublisher):
+class AlarmClockContext:
 
     config: Config
     state_machine: StateMachine = None
@@ -456,7 +455,7 @@ class AlarmClockContext(TACEventPublisher):
         return False
 
 
-class MediaContent(TACEventPublisher, TACEventSubscriber):
+class MediaContent:
 
     def __init__(self, alarm_clock_context: AlarmClockContext):
         super().__init__()
@@ -556,7 +555,7 @@ class PlaybackContent(MediaContent):
 
 
 class DisplayContent(MediaContent):
-    _show_volume_meter: bool = False
+    show_volume_meter: bool = False
     next_alarm_job: Job = None
     current_weather: Weather = None
     show_blink_segment: bool
@@ -587,15 +586,6 @@ class DisplayContent(MediaContent):
 
     def hide_volume_meter(self):
         self.show_volume_meter = False
-
-    @property
-    def show_volume_meter(self) -> bool:
-        return self._show_volume_meter
-
-    @show_volume_meter.setter
-    def show_volume_meter(self, value: bool):
-        logger.info("volume bar shown: %s", value)
-        self._show_volume_meter = value
 
     def get_timedelta_to_alarm(self) -> timedelta:
         if self.next_alarm_job is None:

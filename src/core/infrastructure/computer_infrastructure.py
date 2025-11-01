@@ -9,8 +9,6 @@ from core.infrastructure.events_infrastructure import (
     HwRotaryEvent,
     RotaryDirection,
 )
-from utils.events import TACEventPublisher
-
 
 logger = logging.getLogger("tac.keyboard_buttons")
 

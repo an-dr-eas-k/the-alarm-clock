@@ -5,16 +5,16 @@ from luma.core.device import dummy as luma_dummy
 from luma.core.render import canvas
 from PIL import Image
 
+from core.domain.events import RegularDisplayContentUpdateEvent
 from core.domain.model import (
     AlarmClockContext,
     Config,
     DisplayContent,
     DisplayContentProvider,
-    TACEvent,
-    TACEventSubscriber,
     PlaybackContent,
     SpotifyAudioEffect,
 )
+from core.infrastructure.event_bus import EventBus
 from core.interface.display.format import DisplayFormatter
 from core.interface.display.presenter import (
     BackgroundPresenter,
@@ -44,7 +44,7 @@ from resources.resources import display_shot_file
 logger = logging.getLogger("tac.display")
 
 
-class Display(TACEventSubscriber, DisplayContentProvider):
+class Display(DisplayContentProvider):
 
     device: luma_device
     display_content: DisplayContent
@@ -55,12 +55,14 @@ class Display(TACEventSubscriber, DisplayContentProvider):
         display_content: DisplayContent,
         playback_content: PlaybackContent,
         alarm_clock_context: AlarmClockContext,
+        event_bus: EventBus = None,
     ) -> None:
         self.device = device
         logger.info("device mode: %s", self.device.mode)
         self.display_content = display_content
         self.playback_content = playback_content
         self.alarm_clock_context = alarm_clock_context
+        self.event_bus = event_bus
         self.formatter = DisplayFormatter(
             self.display_content, self.alarm_clock_context
         )
@@ -80,6 +82,7 @@ class Display(TACEventSubscriber, DisplayContentProvider):
                 lambda width, _1: (self.device.size[0] - width, 2),
             )
         )
+        self.event_bus.on(RegularDisplayContentUpdateEvent)(self._regular_update)
 
     def compose_alarm_changer(self):
 
@@ -172,6 +175,7 @@ class Display(TACEventSubscriber, DisplayContentProvider):
             PlaybackTitlePresenter(
                 self.formatter,
                 self.display_content,
+                self.event_bus,
                 lambda _, height: (2, self.device.size[1] - height - 2),
             )
         )
@@ -195,20 +199,15 @@ class Display(TACEventSubscriber, DisplayContentProvider):
             )
         )
 
-    def handle(self, observation: TACEvent):
-        super().handle(observation)
-        if isinstance(observation.subscriber, DisplayContent):
-            self.update_from_display_content(observation, observation.subscriber)
-
-    def update_from_display_content(self, _1: TACEvent, _2: DisplayContent):
+    def _regular_update(self, _: RegularDisplayContentUpdateEvent):
         try:
-            self.adjust_display()
+            self.refresh()
         except Exception as e:
             logger.warning("%s", traceback.format_exc())
             with canvas(self.device) as draw:
                 draw.text((20, 20), f"exception! ({e})", fill="white")
 
-    def adjust_display(self):
+    def refresh(self):
         logger.debug("refreshing display...")
         start_time = GeoLocation().now()
         self.device.contrast(16)
@@ -264,7 +263,7 @@ if __name__ == "__main__":
     dc = DisplayContent(alarm_clock_context=s, playback_content=pc)
     dc.show_blink_segment = True
     d = Display(dev, dc, pc, s)
-    d.handle(TACEvent(event_publisher=dc, reason="init"))
+    d.refresh()
     image = d.current_display_image
 
     # with canvas(dev) as draw:

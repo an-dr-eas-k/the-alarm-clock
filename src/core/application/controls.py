@@ -8,6 +8,7 @@ from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
 from core.domain.events import (
     AudioEffectEvent,
+    ConfigChangedEvent,
     ToggleAudioEvent,
     AlarmEvent,
     RegularDisplayContentUpdateEvent,
@@ -25,8 +26,6 @@ from core.domain.model import (
     Mode,
     RoomBrightness,
     StreamAudioEffect,
-    TACEvent,
-    TACEventSubscriber,
     Config,
 )
 from core.infrastructure.brightness_sensor import IBrightnessSensor
@@ -47,7 +46,7 @@ class SchedulerJobIds(Enum):
     stop_alarm = "stop_alarm_trigger"
 
 
-class Controls(TACEventSubscriber):
+class Controls:
     jobstores = {alarm_store: {"type": "memory"}, default_store: {"type": "memory"}}
     scheduler = BackgroundScheduler(jobstores=jobstores)
     alarm_clock_context: AlarmClockContext
@@ -68,23 +67,17 @@ class Controls(TACEventSubscriber):
         self.brightness_sensor = brightness_sensor
         self.event_bus = event_bus
         self.event_bus.on(ToggleAudioEvent)(self._toggle_stream)
-        self.event_bus.on(VolumeChangedEvent)(self.update_volume)
-        self.event_bus.on(WifiStatusChangedEvent)(
-            lambda e: self.update_weather_status() if e.is_online else None,
-        )
+        self.event_bus.on(VolumeChangedEvent)(self._update_volume)
+        self.event_bus.on(WifiStatusChangedEvent)(self._wifi_status_changed)
+        self.event_bus.on(ConfigChangedEvent)(self._config_changed)
 
         self.alarm_clock_context.is_daytime = (
             alarm_clock_context.geo_location.last_sun_event() == SunEvent.sunrise
         )
-        self.update_weather_status()
-        self.add_scheduler_jobs()
+        self._update_weather_status()
+        self._add_scheduler_jobs()
         self.scheduler.start()
-        self.print_active_jobs(default_store)
-
-    def handle(self, observation: TACEvent):
-        super().handle(observation)
-        if isinstance(observation.subscriber, Config):
-            self.update_from_config(observation, observation.subscriber)
+        self._print_active_jobs(default_store)
 
     def consider_failed_alarm(self):
         if os.path.exists(active_alarm_definition_file):
@@ -94,7 +87,7 @@ class Controls(TACEventSubscriber):
             logger.info("failed audioeffect found %s", ad.alarm_name)
             self._ring_alarm(ad)
 
-    def add_scheduler_jobs(self):
+    def _add_scheduler_jobs(self):
         self.scheduler.add_job(
             self._update_display,
             "interval",
@@ -113,7 +106,7 @@ class Controls(TACEventSubscriber):
         )
 
         self.scheduler.add_job(
-            self.update_weather_status,
+            self._update_weather_status,
             "interval",
             minutes=5,
             id="weather_check_interval",
@@ -159,24 +152,24 @@ class Controls(TACEventSubscriber):
                 id=job_id, trigger=trigger, func=func, jobstore=job_store
             )
 
-    def update_from_config(self, observation: TACEvent, config: Config):
-        if observation.property_name == "alarm_definitions":
-            self.scheduler.remove_all_jobs(jobstore=alarm_store)
-            alDef: AlarmDefinition
-            for alDef in config.alarm_definitions:
-                if not alDef.is_active:
-                    continue
-                logger.info("adding job for '%s'", alDef.alarm_name)
-                self.scheduler.add_job(
-                    func=self._ring_alarm,
-                    args=(alDef,),
-                    id=f"{alDef.id}",
-                    jobstore=alarm_store,
-                    trigger=alDef.to_cron_trigger(),
-                )
-            self.cleanup_alarms()
-            self.display_content.next_alarm_job = self.get_next_alarm_job()
-            self.print_active_jobs(alarm_store)
+    def _config_changed(self, event: ConfigChangedEvent):
+        config: Config = event.config
+        self.scheduler.remove_all_jobs(jobstore=alarm_store)
+        alDef: AlarmDefinition
+        for alDef in config.alarm_definitions:
+            if not alDef.is_active:
+                continue
+            logger.info("adding job for '%s'", alDef.alarm_name)
+            self.scheduler.add_job(
+                func=self._ring_alarm,
+                args=(alDef,),
+                id=f"{alDef.id}",
+                jobstore=alarm_store,
+                trigger=alDef.to_cron_trigger(),
+            )
+        self.cleanup_alarms()
+        self.display_content.next_alarm_job = self.get_next_alarm_job()
+        self._print_active_jobs(alarm_store)
 
     def get_next_alarm_job(self) -> Job:
         jobs = sorted(
@@ -185,7 +178,7 @@ class Controls(TACEventSubscriber):
         )
         return jobs[0] if len(jobs) > 0 else None
 
-    def print_active_jobs(self, jobstore):
+    def _print_active_jobs(self, jobstore):
         for job in self.scheduler.get_jobs(jobstore=jobstore):
             if hasattr(job, "next_run_time") and job.next_run_time is not None:
                 logger.info(
@@ -298,7 +291,13 @@ class Controls(TACEventSubscriber):
 
         Controls.action(do)
 
-    def update_weather_status(self):
+    def _wifi_status_changed(self, event: WifiStatusChangedEvent):
+        if event.is_online:
+            self._update_weather_status()
+        else:
+            self.display_content.current_weather = None
+
+    def _update_weather_status(self):
         def do():
             if not self.alarm_clock_context.is_online:
                 self.display_content.current_weather = None
