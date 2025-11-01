@@ -430,14 +430,13 @@ class AlarmClockContext:
     active_alarm: AlarmDefinition
     playback_mode: Mode
 
-    def __init__(self, config: Config, event_bus: EventBus) -> None:
+    def __init__(self, config: Config) -> None:
         super().__init__()
         self.config = config
         self.playback_mode = Mode.Boot
         self.geo_location = GeoLocation()
         self.is_online = True
         self.show_blink_segment = True
-        self.event_bus = event_bus
 
     def update_state(
         self, show_blink_segment: bool, brightness: RoomBrightness, is_scrolling: bool

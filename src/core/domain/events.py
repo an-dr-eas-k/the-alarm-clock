@@ -1,7 +1,5 @@
-from dataclasses import dataclass, field
-from datetime import datetime
+from dataclasses import dataclass
 import json
-from typing import Optional, Any
 
 from core.domain.model import (
     AudioEffect,
@@ -13,11 +11,6 @@ from core.domain.model import (
 )
 from core.infrastructure.event_bus import BaseEvent
 from utils.geolocation import SunEvent
-
-
-@dataclass(frozen=True)
-class DomainEvent(BaseEvent):
-    pass
 
 
 @dataclass(frozen=True)
@@ -74,149 +67,36 @@ class LibreSpotifyApiEvent(BaseEvent):
 
 
 @dataclass(frozen=True)
-class VolumeChangedEvent(DomainEvent):
+class VolumeChangedEvent(BaseEvent):
     volume_delta: int
 
 
 @dataclass(frozen=True)
-class ToggleAudioEvent(DomainEvent):
+class ToggleAudioEvent(BaseEvent):
     pass
 
 
 @dataclass(frozen=True)
-class AudioEffectEvent(DomainEvent):
+class AudioEffectEvent(BaseEvent):
     audio_effect: AudioEffect
 
 
 @dataclass(frozen=True)
-class ModeChanged(DomainEvent):
-    previous_mode: str
-    new_mode: str
-
-
-@dataclass(frozen=True)
-class AlarmSelectedEvent(DomainEvent):
-    alarm_index_delta: int
-
-
-@dataclass(frozen=True)
-class AlarmPropertySelectedEvent(DomainEvent):
+class AlarmPropertySelectedEvent(BaseEvent):
     alarm_property_index_delta: int
 
 
 @dataclass(frozen=True)
-class StartAlarmPropertyEditEvent(DomainEvent):
+class StartAlarmPropertyEditEvent(BaseEvent):
     pass
 
 
 @dataclass(frozen=True)
-class AlarmPropertyValueSelectedEvent(DomainEvent):
+class AlarmPropertyValueSelectedEvent(BaseEvent):
     alarm_property_value_index_delta: int
 
 
 @dataclass(frozen=True)
-class RegularDisplayContentUpdateEvent(DomainEvent):
+class RegularDisplayContentUpdateEvent(BaseEvent):
     show_blink_segment: bool
     room_brightness: RoomBrightness
-
-
-@dataclass(frozen=True)
-class AlarmEditStarted(DomainEvent):
-    alarm_index: int
-
-
-@dataclass(frozen=True)
-class AlarmEditEnded(DomainEvent):
-    alarm_index: Optional[int]
-    committed: bool
-
-
-@dataclass(frozen=True)
-class AlarmPropertyValueChanged(DomainEvent):
-    alarm_index: int
-    property_name: str
-    new_value: Any
-
-
-@dataclass(frozen=True)
-class AlarmCommitted(DomainEvent):
-    alarm_index: int
-    alarm_id: Optional[str]
-
-
-@dataclass(frozen=True)
-class AlarmCreated(DomainEvent):
-    alarm_index: int
-    alarm_id: Optional[str]
-
-
-@dataclass(frozen=True)
-class AlarmEditCancelled(DomainEvent):
-    alarm_index: Optional[int]
-
-
-@dataclass(frozen=True)
-class ConfigPropertyChanged(DomainEvent):
-    """Domain event: A configuration property has been changed."""
-
-    property_name: str = None
-    old_value: Any = None
-    new_value: Any = None
-
-
-# Trigger abstractions (domain level, independent from hardware buttons)
-class DomainTrigger:
-    """Marker for domain-level triggers decoupled from hardware events."""
-
-    def __repr__(self):
-        return self.__class__.__name__
-
-
-# Navigation triggers
-class EnterDefault(DomainTrigger):
-    pass
-
-
-class EnterAlarmView(DomainTrigger):
-    pass
-
-
-class StartAlarmEdit(DomainTrigger):
-    pass
-
-
-class FocusNextAlarm(DomainTrigger):
-    pass
-
-
-class FocusPreviousAlarm(DomainTrigger):
-    pass
-
-
-class FocusNextProperty(DomainTrigger):
-    pass
-
-
-class FocusPreviousProperty(DomainTrigger):
-    pass
-
-
-class FocusNextValue(DomainTrigger):
-    pass
-
-
-class FocusPreviousValue(DomainTrigger):
-    pass
-
-
-class CommitAlarmEdit(DomainTrigger):
-    pass
-
-
-class CancelAlarmEdit(DomainTrigger):
-    pass
-
-
-# Composite trigger when property editing starts
-class StartPropertyEdit(DomainTrigger):
-    pass

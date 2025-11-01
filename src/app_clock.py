@@ -40,15 +40,7 @@ class ClockApp:
 
         logger.info("config available")
 
-        playback_content = self.container.playback_content()
-        context.subscribe(playback_content)
-        display_content = self.container.display_content()
-        context.subscribe(display_content)
-
-        if self.is_on_hardware():
-            self.container.button_manager().subscribe(context.state_machine)
-            self.container.rotary_encoder_manager().subscribe(context.state_machine)
-        else:
+        if not self.is_on_hardware():
             from core.infrastructure.computer_infrastructure import (
                 ComputerInfrastructure,
             )
@@ -58,21 +50,9 @@ class ClockApp:
             self.container.device.override(
                 providers.Singleton(dummy, height=64, width=256, mode="RGB")
             )
-            ci.subscribe(context.state_machine)
 
         controls: Controls = self.container.controls()
-        display = self.container.display()
-        display_content.subscribe(display)
 
-        persistence = self.container.persistence()
-        context.subscribe(persistence)
-        context.config.subscribe(persistence)
-
-        speaker = self.container.speaker()
-        playback_content.subscribe(speaker)
-        context.config.subscribe(controls)
-        playback_content.subscribe(controls)
-        context.state_machine.subscribe(controls)
         controls.configure()
 
         api = self.container.api()

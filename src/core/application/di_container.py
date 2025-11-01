@@ -73,6 +73,7 @@ class DIContainer(containers.DeclarativeContainer):
         alarm_view_state=alarm_view_state,
         alarm_edit_state=alarm_edit_state,
         property_edit_state=property_edit_state,
+        event_bus=event_bus,
     )
 
     sound_device = providers.Singleton(TACSoundDevice)
@@ -80,6 +81,7 @@ class DIContainer(containers.DeclarativeContainer):
         PlaybackContent,
         alarm_clock_context=alarm_clock_context,
         sound_device=sound_device,
+        event_bus=event_bus,
     )
     display_content = providers.Singleton(
         DisplayContent,
@@ -88,7 +90,9 @@ class DIContainer(containers.DeclarativeContainer):
         event_bus=event_bus,
     )
 
-    persistence = providers.Singleton(Persistence, config_file=config_file)
+    persistence = providers.Singleton(
+        Persistence, config_file=config_file, event_bus=event_bus
+    )
 
     player_factory = providers.Singleton(PlayerFactory, config=config)
 
@@ -97,14 +101,17 @@ class DIContainer(containers.DeclarativeContainer):
         playback_content=playback_content,
         config=config,
         player_factory=player_factory,
+        event_bus=event_bus,
     )
 
     i2c_manager = providers.Singleton(I2CManager)
     brightness_sensor = providers.Singleton(BrightnessSensor, i2c_manager=i2c_manager)
     mcp_manager = providers.Singleton(MCPManager, i2c_manager=i2c_manager)
-    button_manager = providers.Singleton(ButtonsManager, mcp_manager=mcp_manager)
+    button_manager = providers.Singleton(
+        ButtonsManager, mcp_manager=mcp_manager, event_bus=event_bus
+    )
     rotary_encoder_manager = providers.Singleton(
-        RotaryEncoderManager, mcp_manager=mcp_manager
+        RotaryEncoderManager, mcp_manager=mcp_manager, event_bus=event_bus
     )
 
     controls = providers.Singleton(
@@ -124,6 +131,7 @@ class DIContainer(containers.DeclarativeContainer):
         device=device,
         display_content=display_content,
         playback_content=playback_content,
+        event_bus=event_bus,
         alarm_clock_context=alarm_clock_context,
     )
 
@@ -131,5 +139,6 @@ class DIContainer(containers.DeclarativeContainer):
         Api,
         controls=controls,
         display=display,
+        event_bus=event_bus,
         encrypted=not argument_args().software,
     )
