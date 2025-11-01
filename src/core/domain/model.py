@@ -36,22 +36,6 @@ from datetime import datetime, timedelta
 logger = logging.getLogger("tac.domain")
 
 
-def try_update(object, property_name: str, value: str) -> bool:
-    if hasattr(object, property_name):
-        attr_value = getattr(object, property_name)
-        attr_type = type(attr_value)
-        if attr_type == bool:
-            value = value.lower() in ["on", "yes", "true", "t", "1"]
-        else:
-            value = attr_type(value) if len(value) > 0 else None
-        if value != attr_value:
-            setattr(object, property_name, value)
-            if isinstance(object, TACEventPublisher):
-                object.publish(property=property_name)
-        return True
-    return False
-
-
 class DisplayContentProvider:
 
     current_display_image: Image.Image
@@ -293,7 +277,6 @@ class Config(TACEventPublisher):
     @local_alarm_file.setter
     def local_alarm_file(self, value: str):
         self.offline_alarm = AudioStream(stream_name="Offline Alarm", stream_url=value)
-        self.publish(property="blink_segment")
 
     def __init__(self, event_bus: "EventBus" = None):
         logger.debug("initializing default config")
@@ -311,7 +294,6 @@ class Config(TACEventPublisher):
         self._alarm_definitions = self._append_item_with_id(
             value, self._alarm_definitions
         )
-        self.publish(property="alarm_definitions")
 
     def remove_alarm_definition(self, id: int):
         if id is None:
@@ -319,7 +301,6 @@ class Config(TACEventPublisher):
         self._alarm_definitions = [
             alarm_def for alarm_def in self._alarm_definitions if alarm_def.id != id
         ]
-        self.publish(property="alarm_definitions")
 
     def get_alarm_definition(self, id: int) -> AlarmDefinition:
         return next(
@@ -331,13 +312,11 @@ class Config(TACEventPublisher):
 
     def add_audio_stream(self, value: AudioStream):
         self._audio_streams = self._append_item_with_id(value, self._audio_streams)
-        self.publish(property="audio_streams")
 
     def remove_audio_stream(self, id: int):
         self._audio_streams = [
             stream_def for stream_def in self._audio_streams if stream_def.id != id
         ]
-        self.publish(property="audio_streams")
 
     def _append_item_with_id(self, item_with_id, list) -> List[object]:
         self._assure_item_id(item_with_id, list)
@@ -450,16 +429,7 @@ class AlarmClockContext(TACEventPublisher):
     is_online: bool
     is_daytime: bool
     active_alarm: AlarmDefinition
-
-    @property
-    def playback_mode(self) -> Mode:
-        return self._mode
-
-    @playback_mode.setter
-    def playback_mode(self, value: Mode):
-        self._mode = value
-        logger.info("new mode: %s", self.playback_mode.name)
-        self.publish(property="mode")
+    playback_mode: Mode
 
     def __init__(self, config: Config, event_bus: EventBus) -> None:
         super().__init__()
