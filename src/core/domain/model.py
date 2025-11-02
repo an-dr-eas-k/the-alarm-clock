@@ -11,20 +11,18 @@ import logging
 import jsonpickle
 from apscheduler.triggers.cron import CronTrigger
 from core.domain.events import (
-    AlarmEvent,
-    LibreSpotifyApiEvent,
+    AudioStreamChangedEvent,
+    SpotifyApiEvent,
     RegularDisplayContentUpdateEvent,
     VolumeChangedEvent,
-    WifiStatusChangedEvent,
-    AudioEffectEvent,
+    AudioEffectChangedEvent,
 )
 from utils.extensions import T, Value, get_timedelta_to_alarm, respect_ranges
 
 from utils.geolocation import GeoLocation, Weather
 from resources.resources import alarms_dir, default_volume
-from utils.singleton import singleton
 from utils.sound_device import SoundDevice
-from utils.state_machine import StateMachine, Trigger
+from utils.state_machine import StateMachine
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -122,6 +120,25 @@ class AudioStream:
         return f"stream_name: {self.stream_name}, stream_url: {self.stream_url}"
 
 
+@dataclass
+class OfflineStream(AudioStream):
+
+    def __init__(self, local_alarm_file: str):
+        super().__init__(
+            stream_name="Offline Audio",
+            stream_url=os.path.join(alarms_dir, local_alarm_file),
+        )
+
+
+@dataclass
+class SpotifyStream(AudioStream):
+    track_name: str = "Spotify"
+    track_id: str = None
+
+    def __str__(self):
+        return f"track_name: {self.track_name}, track_id: {self.track_id}"
+
+
 class AudioEffect:
 
     volume: float
@@ -137,39 +154,30 @@ class AudioEffect:
 
 
 class StreamAudioEffect(AudioEffect):
-    stream_definition: AudioStream = None
+    audio_stream: AudioStream = None
 
     def __init__(self, stream_definition: AudioStream = None, volume: float = None):
         super().__init__(volume)
-        self.stream_definition = stream_definition
+        self.audio_stream = stream_definition
 
     def __str__(self):
-        return f"stream_definition: {self.stream_definition} {super().__str__()}"
+        return f"stream_definition: {self.audio_stream} {super().__str__()}"
 
     def title(self):
-        return self.stream_definition.stream_name
-
-
-@singleton
-class OfflineAudioEffect(StreamAudioEffect):
-
-    def title(self):
-        return "Offline Audio"
+        return self.audio_stream.stream_name
 
 
 class SpotifyAudioEffect(AudioEffect):
-    spotify_event: LibreSpotifyApiEvent = None
-    track_name: str = "Spotify"
-    track_id: str = None
+    spotify_stream: SpotifyStream = SpotifyStream()
 
     def __init__(self, volume: float = None):
         AudioEffect.__init__(self, volume)
 
     def __str__(self):
-        return f"track_id: {self.track_id}, spotify_event: {self.spotify_event} {super().__str__()}"
+        return f"spotify_stream: {self.spotify_stream} {super().__str__()}"
 
     def title(self):
-        return self.track_name
+        return self.spotify_stream.track_name
 
 
 class AlarmDefinition:
@@ -252,7 +260,7 @@ class Config:
 
     clock_format_string: str
     blink_segment: str
-    offline_alarm: AudioStream
+    local_alarm_file: str
     alarm_duration_in_mins: int
     refresh_timeout_in_secs: float
     powernap_duration_in_mins: int
@@ -269,14 +277,6 @@ class Config:
     def audio_streams(self) -> List[AudioStream]:
         return self._audio_streams
 
-    @property
-    def local_alarm_file(self) -> str:
-        return self.offline_alarm.stream_url
-
-    @local_alarm_file.setter
-    def local_alarm_file(self, value: str):
-        self.offline_alarm = AudioStream(stream_name="Offline Alarm", stream_url=value)
-
     def __init__(self, event_bus: "EventBus" = None):
         logger.debug("initializing default config")
         self._alarm_definitions = []
@@ -288,6 +288,10 @@ class Config:
     def update_alarm_definition(self, alarm_definition: AlarmDefinition):
         self.remove_alarm_definition(alarm_definition.id)
         self.add_alarm_definition(alarm_definition)
+
+    def get_audio_stream_by_id(self, stream_id: int) -> AudioStream:
+        streams = self.audio_streams
+        return next((s for s in streams if s.id == stream_id), streams[0])
 
     def add_alarm_definition(self, value: AlarmDefinition):
         self._alarm_definitions = self._append_item_with_id(
@@ -357,25 +361,15 @@ class Config:
 
         self.add_alarm_definition(powernap_alarm_def)
 
-    def get_offline_audio_effect(
-        self, volume: float = default_volume
-    ) -> OfflineAudioEffect:
-        full_path = os.path.join(alarms_dir, self.offline_alarm.stream_url)
-        return OfflineAudioEffect(
-            stream_definition=AudioStream(
-                stream_name="Offline Audio", stream_url=full_path
-            ),
-            volume=volume,
-        )
+    def get_offline_stream(self) -> OfflineStream:
+        return OfflineStream(self.local_alarm_file)
 
     def ensure_valid_config(self):
         for conf_prop in [
             dict(key="alarm_duration_in_mins", value=60),
             dict(
-                key="offline_alarm",
-                value=AudioStream(
-                    stream_name="Offline Alarm", stream_url="Enchantment.ogg"
-                ),
+                key="local_alarm_file",
+                value="Enchantment.ogg",
             ),
             dict(key="clock_format_string", value="%-H<blinkSegment>%M"),
             dict(key="blink_segment", value=":"),
@@ -408,17 +402,6 @@ class Config:
             return persisted_config
 
 
-class HwButton(Trigger):
-    def __init__(self, button_id: str):
-        self.button_id = button_id
-
-    def __hash__(self):
-        return f"button.{self.button_id}".__hash__()
-
-    def __str__(self):
-        return f"{super().__str__()} {self.button_id}"
-
-
 class AlarmClockContext:
 
     config: Config
@@ -427,7 +410,6 @@ class AlarmClockContext:
     show_blink_segment: bool = False
     is_online: bool
     is_daytime: bool
-    active_alarm: AlarmDefinition
     playback_mode: Mode
 
     def __init__(self, config: Config) -> None:
@@ -463,20 +445,7 @@ class MediaContent:
 
 class PlaybackContent(MediaContent):
 
-    @property
-    def audio_effect(self) -> AudioEffect:
-        return self._audio_effect
-
-    @audio_effect.setter
-    def audio_effect(self, value: AudioEffect):
-
-        self._audio_effect = value
-        if (
-            value is not None
-            and value.volume is not None
-            and value.volume != self.volume
-        ):
-            self.volume = value.volume
+    audio_stream: AudioStream
 
     @property
     def volume(self) -> float:
@@ -494,27 +463,36 @@ class PlaybackContent(MediaContent):
     ):
         super().__init__(alarm_clock_context)
         self.sound_device = sound_device
-        self.audio_effect = None
-        self.sound_device.set_system_volume(default_volume)
         self.event_bus = event_bus
-        self.event_bus.on(LibreSpotifyApiEvent)(self._set_spotify_event)
-        self.event_bus.on(WifiStatusChangedEvent)(self._wifi_status_changed)
-        self.event_bus.on(AlarmEvent)(self._alarm_event)
 
-    def _alarm_event(self, event: AlarmEvent):
-        if event.alarm_definition is not None:
-            self.audio_effect = event.alarm_definition.audio_effect
+        default_volume = self.alarm_clock_context.config.default_volume
+        self.sound_device.set_system_volume(default_volume)
+        self.audio_stream = None
+        self.event_bus.on(SpotifyApiEvent)(self._set_spotify_api_event)
+        self.event_bus.on(AudioEffectChangedEvent)(self._audio_effect_changed)
+        self.event_bus.on(AudioStreamChangedEvent)(self._audio_stream_changed)
+        self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
 
-    def _wifi_status_changed(self, event: WifiStatusChangedEvent):
-        if self.alarm_clock_context.playback_mode == Mode.Alarm:
-            if not event.is_online:
-                self.audio_effect = (
-                    self.alarm_clock_context.config.get_offline_alarm_effect(
-                        self.volume
-                    )
-                )
-            else:
-                self.audio_effect = self.alarm_clock_context.active_alarm.audio_effect
+    def _audio_effect_changed(self, event: AudioEffectChangedEvent):
+        self.event_bus.emit(
+            VolumeChangedEvent(
+                event.audio_effect.volume
+                or self.alarm_clock_context.config.default_volume
+            )
+        )
+        if isinstance(event.audio_effect, StreamAudioEffect):
+            self.event_bus.emit(
+                AudioStreamChangedEvent(event.audio_effect.audio_stream)
+            )
+
+    def _audio_stream_changed(self, event: AudioStreamChangedEvent):
+        self.audio_stream = event.audio_stream
+
+    def _volume_changed(self, event: VolumeChangedEvent):
+        if event.volume_delta > 0:
+            self.increase_volume()
+        elif event.volume_delta < 0:
+            self.decrease_volume()
 
     def increase_volume(self):
         self.volume = min(self.volume + 0.05, 1.0)
@@ -522,22 +500,20 @@ class PlaybackContent(MediaContent):
     def decrease_volume(self):
         self.volume = max(self.volume - 0.05, 0.0)
 
-    def _set_spotify_event(self, spotify_event: LibreSpotifyApiEvent):
-        spotify_audio_effect = (
-            self.audio_effect
-            if isinstance(self.audio_effect, SpotifyAudioEffect)
-            else SpotifyAudioEffect()
-        )
+    def _set_spotify_api_event(self, spotify_event: SpotifyApiEvent):
+        spotify_audio_effect = SpotifyAudioEffect()
 
-        spotify_audio_effect.spotify_event = spotify_event
+        spotify_stream = SpotifyStream()
         if hasattr(spotify_event, "track_id"):
-            spotify_audio_effect.track_id = spotify_event.track_id
+            spotify_stream.track_id = spotify_event.track_id
+        spotify_audio_effect.spotify_stream = spotify_stream
+
+        self.audio_stream = spotify_stream
 
         if (
             spotify_event.is_playback_started()
             and self.alarm_clock_context.playback_mode != Mode.Spotify
         ):
-            self.audio_effect = spotify_audio_effect
             self.alarm_clock_context.playback_mode = Mode.Spotify
 
         if (
@@ -571,9 +547,15 @@ class DisplayContent(MediaContent):
         self.playback_content = playback_content
         self.event_bus = event_bus
         self.event_bus.on(RegularDisplayContentUpdateEvent)(self._regular_update)
-        self.event_bus.on(AudioEffectEvent)(
-            lambda e: self.hide_volume_meter() if e.audio_effect is None else None,
-        )
+        self.event_bus.on(AudioEffectChangedEvent)(self._audio_effect_changed)
+        self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
+
+    def _audio_effect_changed(self, event: AudioEffectChangedEvent):
+        if event.audio_effect is None:
+            self.hide_volume_meter()
+
+    def _volume_changed(self, _: VolumeChangedEvent):
+        self.show_volume_meter = True
 
     def get_is_online(self) -> bool:
         return self.alarm_clock_context.is_online
@@ -598,8 +580,10 @@ class DisplayContent(MediaContent):
 
     def current_playback_title(self):
         return (
-            self.playback_content.audio_effect.title()
-            if True and self.playback_content.audio_effect is not None
+            self.playback_content.audio_stream.title()
+            if True
+            and super().alarm_clock_context != Mode.Idle
+            and self.playback_content.audio_stream is not None
             else None
         )
 

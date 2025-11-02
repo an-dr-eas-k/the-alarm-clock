@@ -10,8 +10,9 @@ import tornado.web
 from PIL.Image import Image
 from core.application.controls import Controls
 from core.domain.events import (
+    AudioStreamChangedEvent,
     ConfigChangedEvent,
-    LibreSpotifyApiEvent,
+    SpotifyApiEvent,
     VolumeChangedEvent,
 )
 from core.infrastructure.event_bus import EventBus
@@ -79,7 +80,7 @@ class LibreSpotifyEventHandler(tornado.web.RequestHandler):
                 key: value for key, value in spotify_event_payload.items()
             }
 
-            spotify_event = LibreSpotifyApiEvent(spotify_event_dict)
+            spotify_event = SpotifyApiEvent(spotify_event_dict)
             logger.info("received librespotify event %s", spotify_event)
             self.event_bus.emit(spotify_event)
         except Exception:
@@ -106,7 +107,7 @@ class DisplayHandler(tornado.web.RequestHandler):
 
 class ConfigHandler(tornado.web.RequestHandler):
 
-    def initialize(self, config: Config, api) -> None:
+    def initialize(self, config: Config, api: Api) -> None:
         self.config = config
         self.api = api
 
@@ -119,8 +120,8 @@ class ConfigHandler(tornado.web.RequestHandler):
 
 class ActionApiHandler(tornado.web.RequestHandler):
 
-    def initialize(self, controls: Controls, event_bus: EventBus) -> None:
-        self.controls = controls
+    def initialize(self, config: Config, event_bus: EventBus) -> None:
+        self.config = config
         self.event_bus = event_bus
 
     def post(self, *args):
@@ -128,9 +129,11 @@ class ActionApiHandler(tornado.web.RequestHandler):
             (type, id, _1) = parse_path_arguments(args)
 
             if type == "play":
-                self.controls.play_stream_by_id(id)
+                self.event_bus.emit(
+                    AudioStreamChangedEvent(self.config.get_audio_stream_by_id(id))
+                )
             elif type == "stop":
-                self.controls.set_to_idle_mode()
+                self.event_bus.emit(AudioStreamChangedEvent(None))
             elif type == "volume":
                 if id == 1:
                     self.event_bus.emit(VolumeChangedEvent(+1))
@@ -280,7 +283,14 @@ class Api:
                     "event_bus": self.event_bus,
                 },
             ),
-            (r"/api/action/?(.*)", ActionApiHandler, {"controls": self.controls}),
+            (
+                r"/api/action/?(.*)",
+                ActionApiHandler,
+                {
+                    "config": self.controls.alarm_clock_context.config,
+                    "event_bus": self.event_bus,
+                },
+            ),
             (
                 r"/api/librespotify",
                 LibreSpotifyEventHandler,
@@ -325,7 +335,7 @@ class Api:
                 is_daytime=self.controls.alarm_clock_context.is_daytime,
                 geo_location=self.controls.alarm_clock_context.geo_location.location_info.__dict__,
                 playback_content=dict(
-                    audio_effect=self.controls.playback_content.audio_effect.__str__(),
+                    audio_effect=self.controls.playback_content.audio_stream.__str__(),
                     volume=self.controls.playback_content.volume,
                     mode=self.controls.alarm_clock_context.playback_mode.name,
                 ),

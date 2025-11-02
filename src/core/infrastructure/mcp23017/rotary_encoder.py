@@ -1,4 +1,3 @@
-from core.domain.model import HwButton
 from core.infrastructure.event_bus import EventBus
 from core.infrastructure.events_infrastructure import (
     DeviceName,

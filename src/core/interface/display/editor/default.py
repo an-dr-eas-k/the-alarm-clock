@@ -1,11 +1,10 @@
 import logging
 from PIL import ImageFont, Image, ImageOps
 
-from core.domain.events import AudioEffectEvent
+from core.domain.events import AudioEffectChangedEvent
 from core.domain.mode_coordinator import AlarmEditMode
 from core.domain.model import (
     DisplayContent,
-    PlaybackContent,
 )
 from core.infrastructure.event_bus import EventBus
 from core.interface.display.display import DisplayFormatter
@@ -312,9 +311,9 @@ class PlaybackTitlePresenter(ScrollingPresenter):
     ) -> None:
         super().__init__(formatter, content, 70, position)
         self.event_bus = event_bus
-        self.event_bus.on(AudioEffectEvent)(self._audio_effect)
+        self.event_bus.on(AudioEffectChangedEvent)(self._audio_effect_changed)
 
-    def _audio_effect(self, event: AudioEffectEvent):
+    def _audio_effect_changed(self, event: AudioEffectChangedEvent):
         if event.audio_effect is not None:
             self.rewind_scroller()
 

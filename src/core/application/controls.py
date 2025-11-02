@@ -7,7 +7,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
 from core.domain.events import (
-    AudioEffectEvent,
+    AudioEffectChangedEvent,
+    AudioStreamChangedEvent,
     ConfigChangedEvent,
     ToggleAudioEvent,
     AlarmEvent,
@@ -16,7 +17,6 @@ from core.domain.events import (
     VolumeChangedEvent,
     WifiStatusChangedEvent,
 )
-from core.domain.mode_coordinator import AlarmClockModeCoordinator
 from core.domain.model import (
     AlarmClockContext,
     AlarmDefinition,
@@ -67,9 +67,10 @@ class Controls:
         self.brightness_sensor = brightness_sensor
         self.event_bus = event_bus
         self.event_bus.on(ToggleAudioEvent)(self._toggle_stream)
-        self.event_bus.on(VolumeChangedEvent)(self._update_volume)
+        self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
         self.event_bus.on(WifiStatusChangedEvent)(self._wifi_status_changed)
         self.event_bus.on(ConfigChangedEvent)(self._config_changed)
+        self.event_bus.on(AlarmEvent)(self._alarm_event)
 
         self.alarm_clock_context.is_daytime = (
             alarm_clock_context.geo_location.last_sun_event() == SunEvent.sunrise
@@ -203,12 +204,17 @@ class Controls:
         ]:
             self.set_to_idle_mode()
         else:
-            if self.playback_content.audio_effect and isinstance(
-                self.playback_content.audio_effect, StreamAudioEffect
+            if self.playback_content.audio_stream and isinstance(
+                self.playback_content.audio_stream, AudioStream
             ):
-                self.play_stream(self.playback_content.audio_effect.stream_definition)
+                self._play_stream(self.playback_content.audio_stream)
             else:
                 self.play_stream_by_id(0)
+
+    def _alarm_event(self, event: AlarmEvent):
+        self.event_bus.emit(
+            AudioEffectChangedEvent(event.alarm_definition.audio_effect)
+        )
 
     def set_to_idle_mode(self):
         if self.alarm_clock_context.playback_mode == Mode.Idle:
@@ -219,44 +225,22 @@ class Controls:
 
         self.stop_generic_trigger(SchedulerJobIds.hide_volume_meter.value)
         self.alarm_clock_context.playback_mode = Mode.Idle
-        self.alarm_clock_context.active_alarm = None
-        self.event_bus.emit(AudioEffectEvent(audio_effect=None))
+        self.event_bus.emit(AudioEffectChangedEvent(None))
 
     def enter_mode(self):
         self.display_content.mode_state.next_mode_0()
 
-    def _update_volume(self, event: VolumeChangedEvent):
-        if event.volume_delta > 0:
-            self.increase_volume()
-        elif event.volume_delta < 0:
-            self.decrease_volume()
-        self.display_content.show_volume_meter = True
+    def _volume_changed(self, _: VolumeChangedEvent):
         self.start_hide_volume_meter_trigger()
 
-    def increase_volume(self):
-        self.playback_content.increase_volume()
-        logger.info("new volume: %s", self.playback_content.volume)
-
-    def decrease_volume(self):
-        self.playback_content.decrease_volume()
-        logger.info("new volume: %s", self.playback_content.volume)
-
     def play_stream_by_id(self, stream_id: int):
-        streams = self.alarm_clock_context.config.audio_streams
-        stream = next((s for s in streams if s.id == stream_id), streams[0])
-        self.play_stream(stream)
+        stream = self.alarm_clock_context.config.get_audio_stream_by_id(stream_id)
+        self.event_bus.emit(AudioStreamChangedEvent(stream))
 
-    def play_stream(self, audio_stream: AudioStream, volume: float = None):
+    def _play_stream(self, audio_stream: AudioStream):
         self.set_to_idle_mode()
 
-        if volume is None:
-            volume = self.playback_content.volume
-
-        self.event_bus.emit(
-            AudioEffectEvent(
-                StreamAudioEffect(stream_definition=audio_stream, volume=volume)
-            )
-        )
+        self.event_bus.emit(AudioStreamChangedEvent(audio_stream))
         self.alarm_clock_context.playback_mode = Mode.Music
 
     def configure(self):
@@ -337,10 +321,9 @@ class Controls:
     def _ring_alarm(self, alarm_definition: AlarmDefinition):
         def do():
             if self.alarm_clock_context.playback_mode in [Mode.Music, Mode.Spotify]:
-                alarm_definition.audio_effect = (
-                    self.alarm_clock_context.config.get_offline_alarm_effect(
-                        alarm_definition.audio_effect.volume
-                    )
+                alarm_definition.audio_effect = StreamAudioEffect(
+                    audio_stream=self.alarm_clock_context.config.get_offline_stream(),
+                    volume=self.playback_content.volume,
                 )
 
             if alarm_definition.is_onetime():
@@ -349,7 +332,6 @@ class Controls:
                 )
 
             self.set_to_idle_mode()
-            self.alarm_clock_context.active_alarm = alarm_definition
             self.alarm_clock_context.playback_mode = Mode.Alarm
             self.event_bus.emit(AlarmEvent(alarm_definition))
             self.postprocess_ring_alarm()
@@ -362,7 +344,7 @@ class Controls:
             datetime.timedelta(
                 minutes=self.alarm_clock_context.config.alarm_duration_in_mins
             ),
-            func=lambda: self.set_to_idle_mode(),
+            func=self.set_to_idle_mode,
         )
 
         self.display_content.next_alarm_job = self.get_next_alarm_job()

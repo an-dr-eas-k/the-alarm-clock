@@ -3,6 +3,7 @@ import json
 
 from core.domain.model import (
     AudioEffect,
+    AudioStream,
     RoomBrightness,
     AlarmDefinition,
     Config,
@@ -33,7 +34,7 @@ class SunEventOccurredEvent(BaseEvent):
     event: SunEvent
 
 
-class LibreSpotifyApiEvent(BaseEvent):
+class SpotifyApiEvent(BaseEvent):
 
     name: str
     player_event: str = None
@@ -72,12 +73,17 @@ class VolumeChangedEvent(BaseEvent):
 
 
 @dataclass(frozen=True)
+class AudioStreamChangedEvent(BaseEvent):
+    audio_stream: AudioStream
+
+
+@dataclass(frozen=True)
 class ToggleAudioEvent(BaseEvent):
     pass
 
 
 @dataclass(frozen=True)
-class AudioEffectEvent(BaseEvent):
+class AudioEffectChangedEvent(BaseEvent):
     audio_effect: AudioEffect
 
 

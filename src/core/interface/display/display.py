@@ -12,7 +12,7 @@ from core.domain.model import (
     DisplayContent,
     DisplayContentProvider,
     PlaybackContent,
-    SpotifyAudioEffect,
+    SpotifyStream,
 )
 from core.infrastructure.event_bus import EventBus
 from core.interface.display.format import DisplayFormatter
@@ -259,7 +259,7 @@ if __name__ == "__main__":
     c = Config()
     s = AlarmClockContext(c=c)
     pc = PlaybackContent(alarm_clock_context=s)
-    pc.audio_effect = SpotifyAudioEffect()
+    pc.audio_stream = SpotifyStream()
     dc = DisplayContent(alarm_clock_context=s, playback_content=pc)
     dc.show_blink_segment = True
     d = Display(dev, dc, pc, s)

@@ -4,14 +4,12 @@ import logging
 from core.domain.events import (
     AlarmPropertySelectedEvent,
     AlarmPropertyValueSelectedEvent,
-    AlarmSelectedEvent,
     StartAlarmPropertyEditEvent,
     ToggleAudioEvent,
     VolumeChangedEvent,
 )
 from core.domain.model import (
     AlarmClockContext,
-    HwButton,
     StreamAudioEffect,
     VisualEffect,
 )
