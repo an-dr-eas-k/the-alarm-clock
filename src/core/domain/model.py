@@ -410,12 +410,10 @@ class AlarmClockContext:
     show_blink_segment: bool = False
     is_online: bool
     is_daytime: bool
-    playback_mode: Mode
 
     def __init__(self, config: Config) -> None:
         super().__init__()
         self.config = config
-        self.playback_mode = Mode.Boot
         self.geo_location = GeoLocation()
         self.is_online = True
         self.show_blink_segment = True
@@ -445,6 +443,7 @@ class MediaContent:
 
 class PlaybackContent(MediaContent):
 
+    playback_mode: Mode
     audio_stream: AudioStream
 
     @property
@@ -464,6 +463,7 @@ class PlaybackContent(MediaContent):
         super().__init__(alarm_clock_context)
         self.sound_device = sound_device
         self.event_bus = event_bus
+        self.playback_mode = Mode.Boot
 
         default_volume = self.alarm_clock_context.config.default_volume
         self.sound_device.set_system_volume(default_volume)
@@ -510,22 +510,13 @@ class PlaybackContent(MediaContent):
 
         self.audio_stream = spotify_stream
 
-        if (
-            spotify_event.is_playback_started()
-            and self.alarm_clock_context.playback_mode != Mode.Spotify
-        ):
-            self.alarm_clock_context.playback_mode = Mode.Spotify
+        if spotify_event.is_playback_started() and self.playback_mode != Mode.Spotify:
+            self.playback_mode = Mode.Spotify
 
-        if (
-            spotify_event.is_playback_stopped()
-            and self.alarm_clock_context.playback_mode != Mode.Idle
-        ):
-            self.alarm_clock_context.playback_mode = Mode.Idle
+        if spotify_event.is_playback_stopped() and self.playback_mode != Mode.Idle:
+            self.playback_mode = Mode.Idle
 
-        if (
-            spotify_event.is_volume_changed()
-            and self.alarm_clock_context.playback_mode == Mode.Spotify
-        ):
+        if spotify_event.is_volume_changed() and self.playback_mode == Mode.Spotify:
             self.event_bus.emit(VolumeChangedEvent(0))
 
 

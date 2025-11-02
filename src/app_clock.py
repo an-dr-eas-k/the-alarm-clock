@@ -58,7 +58,7 @@ class ClockApp:
         api = self.container.api()
         api.start()
 
-        context.playback_mode = Mode.Idle
+        self.container.playback_content().playback_mode = Mode.Idle
         controls.consider_failed_alarm()
         tornado.ioloop.IOLoop.current().start()
 

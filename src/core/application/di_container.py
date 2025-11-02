@@ -94,7 +94,7 @@ class DIContainer(containers.DeclarativeContainer):
         Persistence, config_file=config_file, event_bus=event_bus
     )
 
-    player_factory = providers.Singleton(PlayerFactory, config=config)
+    player_factory = providers.Singleton(PlayerFactory, config().get_offline_stream())
 
     speaker = providers.Singleton(
         Speaker,

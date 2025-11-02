@@ -197,7 +197,7 @@ class Controls:
             logger.error("%s", traceback.format_exc())
 
     def _toggle_stream(self, _: ToggleAudioEvent):
-        if self.alarm_clock_context.playback_mode in [
+        if self.playback_content.playback_mode in [
             Mode.Alarm,
             Mode.Music,
             Mode.Spotify,
@@ -217,14 +217,14 @@ class Controls:
         )
 
     def set_to_idle_mode(self):
-        if self.alarm_clock_context.playback_mode == Mode.Idle:
+        if self.playback_content.playback_mode == Mode.Idle:
             return
 
-        if self.alarm_clock_context.playback_mode == Mode.Spotify:
+        if self.playback_content.playback_mode == Mode.Spotify:
             restart_spotify_daemon()
 
         self.stop_generic_trigger(SchedulerJobIds.hide_volume_meter.value)
-        self.alarm_clock_context.playback_mode = Mode.Idle
+        self.playback_content.playback_mode = Mode.Idle
         self.event_bus.emit(AudioEffectChangedEvent(None))
 
     def enter_mode(self):
@@ -241,7 +241,7 @@ class Controls:
         self.set_to_idle_mode()
 
         self.event_bus.emit(AudioStreamChangedEvent(audio_stream))
-        self.alarm_clock_context.playback_mode = Mode.Music
+        self.playback_content.playback_mode = Mode.Music
 
     def configure(self):
         pass
@@ -302,7 +302,7 @@ class Controls:
                 self.event_bus.emit(WifiStatusChangedEvent(is_online))
                 self.alarm_clock_context.is_online = is_online
 
-                if not is_online and self.alarm_clock_context.playback_mode in [
+                if not is_online and self.playback_content.playback_mode in [
                     Mode.Music,
                     Mode.Spotify,
                 ]:
@@ -320,7 +320,7 @@ class Controls:
 
     def _ring_alarm(self, alarm_definition: AlarmDefinition):
         def do():
-            if self.alarm_clock_context.playback_mode in [Mode.Music, Mode.Spotify]:
+            if self.playback_content.playback_mode in [Mode.Music, Mode.Spotify]:
                 alarm_definition.audio_effect = StreamAudioEffect(
                     audio_stream=self.alarm_clock_context.config.get_offline_stream(),
                     volume=self.playback_content.volume,
@@ -332,7 +332,7 @@ class Controls:
                 )
 
             self.set_to_idle_mode()
-            self.alarm_clock_context.playback_mode = Mode.Alarm
+            self.playback_content.playback_mode = Mode.Alarm
             self.event_bus.emit(AlarmEvent(alarm_definition))
             self.postprocess_ring_alarm()
 

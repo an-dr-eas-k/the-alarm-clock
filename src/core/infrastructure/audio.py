@@ -44,7 +44,9 @@ class MediaPlayer:
 class IPlayerFactory(ABC):
 
     @abstractmethod
-    def create_player(self, audio_stream: AudioStream) -> MediaPlayer:
+    def create_player(
+        self, playback_mode: Mode, audio_stream: AudioStream
+    ) -> MediaPlayer:
         pass
 
 
@@ -143,14 +145,13 @@ class MediaListPlayer(MediaPlayer):
 
 class PlayerFactory(IPlayerFactory):
 
-    def __init__(self, alarm_clock_context: AlarmClockContext):
-        self.alarm_clock_context = alarm_clock_context
+    def __init__(self, offline_stream: AudioStream):
+        self.offline_stream = offline_stream
 
-    def create_player(self, audio_stream: AudioStream) -> MediaPlayer:
-        if (
-            not is_internet_available()
-            and self.alarm_clock_context.playback_mode == Mode.Alarm
-        ):
+    def create_player(
+        self, playback_mode: Mode, audio_stream: AudioStream
+    ) -> MediaPlayer:
+        if not is_internet_available() and playback_mode == Mode.Alarm:
             return self._create_fallback_player()
 
         if isinstance(audio_stream, AudioStream):
@@ -161,9 +162,7 @@ class PlayerFactory(IPlayerFactory):
             )
 
     def _create_fallback_player(self) -> MediaPlayer:
-        return MediaListPlayer(
-            self.alarm_clock_context.config.get_offline_stream().stream_url
-        )
+        return MediaListPlayer(self.offline_stream.stream_url)
 
 
 class Speaker:
@@ -172,61 +171,63 @@ class Speaker:
 
     def __init__(
         self,
-        alarm_clock_context: AlarmClockContext,
+        playback_content: PlaybackContent,
+        config: Config,
         player_factory: IPlayerFactory,
         event_bus: EventBus,
     ) -> None:
         self.threadLock = threading.Lock()
-        self.alarm_clock_context = alarm_clock_context
+        self.playback_content = playback_content
+        self.config = config
         self.player_factory = player_factory
         self.event_bus = event_bus
         self.event_bus.on(AudioStreamChangedEvent)(self._audio_stream_changed)
 
     def _audio_stream_changed(self, event: AudioStreamChangedEvent):
         if isinstance(event.audio_stream, SpotifyStream):
-            self.adjust_streaming(None)
+            self.adjust_streaming(self.playback_content.playback_mode, None)
             return
 
-        self.adjust_streaming(event.audio_stream)
+        self.adjust_streaming(self.playback_content.playback_mode, event.audio_stream)
 
-    def adjust_streaming(self, audio_stream: AudioStream):
+    def adjust_streaming(self, playback_mode: Mode, audio_stream: AudioStream):
         self.threadLock.acquire(True)
 
         if audio_stream is not None:
-            self.start_streaming(audio_stream)
+            self.start_streaming(playback_mode, audio_stream)
         else:
             self.stop_streaming()
 
         self.threadLock.release()
 
-    def get_player(self, audio_stream: AudioStream) -> MediaPlayer:
-        player: MediaPlayer = self.player_factory.create_player(audio_stream)
-        player.set_error_callback(lambda: self.handle_player_error(audio_stream))
+    def get_player(self, playback_mode: Mode, audio_stream: AudioStream) -> MediaPlayer:
+        player: MediaPlayer = self.player_factory.create_player(
+            playback_mode, audio_stream
+        )
+        player.set_error_callback(
+            lambda: self.handle_player_error(playback_mode, audio_stream)
+        )
         return player
 
-    def handle_player_error(self, audio_stream: AudioStream):
+    def handle_player_error(self, playback_mode: Mode, audio_stream: AudioStream):
         logger.info("handling player error")
-        if self.alarm_clock_context.playback_mode != Mode.Alarm:
+        if playback_mode != Mode.Alarm:
             return
 
         if isinstance(audio_stream, OfflineStream):
             self.start_streaming_alternative()
             return
 
-        self.event_bus.emit(
-            AudioStreamChangedEvent(
-                self.alarm_clock_context.config.get_offline_stream()
-            )
-        )
+        self.event_bus.emit(AudioStreamChangedEvent(self.config.get_offline_stream()))
 
-    def start_streaming(self, audio_stream: AudioStream):
+    def start_streaming(self, playback_mode: Mode, audio_stream: AudioStream):
         try:
             self.stop_streaming()
-            self.media_player = self.get_player(audio_stream)
+            self.media_player = self.get_player(playback_mode, audio_stream)
             self.media_player.play()
         except Exception as e:
             logger.error("error: %s", traceback.format_exc())
-            self.handle_player_error(audio_stream)
+            self.handle_player_error(playback_mode, audio_stream)
 
     def start_streaming_alternative(self):
         self.stop_streaming()

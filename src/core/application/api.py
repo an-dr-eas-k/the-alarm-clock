@@ -337,7 +337,7 @@ class Api:
                 playback_content=dict(
                     audio_effect=self.controls.playback_content.audio_stream.__str__(),
                     volume=self.controls.playback_content.volume,
-                    mode=self.controls.alarm_clock_context.playback_mode.name,
+                    mode=self.controls.playback_content.playback_mode.name,
                 ),
                 uptime=subprocess.check_output(["uptime"]).strip().decode("utf-8"),
             ),
