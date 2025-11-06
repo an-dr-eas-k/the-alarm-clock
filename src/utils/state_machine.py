@@ -40,9 +40,14 @@ class StateTransition:
         trigger: Trigger,
         new_state_type: Type[T],
         eventToEmit: BaseEvent = None,
+        source_state_updater: callable = None,
     ) -> "StateTransition":
         try:
-            self.state_transition[trigger] = (new_state_type, eventToEmit)
+            self.state_transition[trigger] = (
+                new_state_type,
+                eventToEmit,
+                source_state_updater,
+            )
         except Exception as e:
             self.log.fatal(f"trigger to add: {trigger}")
             raise e
@@ -56,7 +61,7 @@ class StateTransition:
 
 
 class StateMachine:
-    def __init__(self, init_state: State, event_bus: EventBus = None):
+    def __init__(self, event_bus: EventBus, init_state: State):
         self.state_definition = {}
         self.current_state = init_state
         self.event_bus = event_bus
@@ -74,9 +79,7 @@ class StateMachine:
                 f"no transition defined from {str_of_current_state} triggered by {trigger}"
             )
             return self.current_state
-        (next_state_type, eventToEmit) = transition
-        if eventToEmit:
-            self.event_bus.emit(eventToEmit)
+        (next_state_type, eventToEmit, source_state_updater) = transition
         next_state = None
         if self.current_state.proceedingState:
             next_state = self.current_state.proceedingState(self.current_state)
@@ -85,9 +88,13 @@ class StateMachine:
         logger.debug(
             f"state transition from {str_of_current_state} triggered by {trigger} to {next_state}"
         )
+        if eventToEmit:
+            self.event_bus.emit(eventToEmit)
+        if source_state_updater:
+            source_state_updater(self.current_state)
         self.current_state = next_state
         return self.current_state
 
-    def add_definition(self, transition: StateTransition):
+    def add_definition(self, transition: StateTransition) -> "StateMachine":
         self.state_definition[transition.source_state] = transition
         return self

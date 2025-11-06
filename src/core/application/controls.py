@@ -240,8 +240,8 @@ class Controls:
     def _play_stream(self, audio_stream: AudioStream):
         self.set_to_idle_mode()
 
-        self.event_bus.emit(AudioStreamChangedEvent(audio_stream))
         self.playback_content.playback_mode = Mode.Music
+        self.event_bus.emit(AudioStreamChangedEvent(audio_stream))
 
     def configure(self):
         pass
@@ -260,7 +260,7 @@ class Controls:
                 new_blink_state = not self.alarm_clock_context.show_blink_segment
                 self._previous_second = current_second
 
-            b = (RoomBrightness(self.get_room_brightness()),)
+            b = RoomBrightness(self.get_room_brightness())
             if self.alarm_clock_context.update_state(
                 new_blink_state,
                 b,

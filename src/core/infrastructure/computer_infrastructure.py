@@ -16,12 +16,12 @@ logger = logging.getLogger("tac.keyboard_buttons")
 class ComputerInfrastructure(IBrightnessSensor):
     simulated_brightness: int = 10000
 
-    def __init__(self, event_bus: EventBus = None):
+    def __init__(self, event_bus: EventBus):
         super().__init__()
+        self.event_bus = event_bus
         self.listener = keyboard.Listener(on_press=self.on_press)
         self.listener.start()
         self.log = logging.getLogger(self.__class__.__name__)
-        self.event_bus = event_bus
 
     def on_press(self, key):
         logger.debug("pressed %s", key)
@@ -39,9 +39,9 @@ class ComputerInfrastructure(IBrightnessSensor):
                     HwRotaryEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE)
                 )
             if key.char == "3":
-                self.event_bus.emit(HwButtonEvent(DeviceName.MODE_BUTTON, True))
+                self.event_bus.emit(HwButtonEvent(DeviceName.MODE_BUTTON))
             if key.char == "4":
-                self.event_bus.emit(HwButtonEvent(DeviceName.INVOKE_BUTTON, True))
+                self.event_bus.emit(HwButtonEvent(DeviceName.INVOKE_BUTTON))
             if key.char == "5":
                 brightness_examples = [0, 1, 3, 10, 10000]
                 self.simulated_brightness = brightness_examples[

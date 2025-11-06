@@ -19,6 +19,7 @@ class SoundDevice:
     def __init__(self, control="", device="default"):
         self.control = control
         self.device = device
+        self.threadLock = threading.Lock()
 
     def get_system_volume(self) -> float:
         def callback(mixer) -> float:
@@ -46,8 +47,15 @@ class SoundDevice:
                 )
 
             logger.debug(
-                f"human_volume is %s on %s:%s (%s)"
-                % (human_volume, mixer.cardname(), mixer.mixer(), algorithm)
+                f"human_volume is %s (%s-%s) on %s:%s (%s)"
+                % (
+                    human_volume,
+                    min_volume_db,
+                    max_volume_db,
+                    mixer.cardname(),
+                    mixer.mixer(),
+                    algorithm,
+                )
             )
             return human_volume
 
@@ -59,8 +67,14 @@ class SoundDevice:
                 units=alsaaudio.VOLUME_UNITS_DB
             )
             algorithm = "cubic"
-
-            if min_volume_db >= max_volume_db:
+            a: float
+            if min_volume_db < max_volume_db:
+                volume_db = self.convert_from_human_volume(
+                    new_human_volume, min_volume_db, max_volume_db
+                )
+                a = volume_db
+                mixer.setvolume(int(volume_db), units=alsaaudio.VOLUME_UNITS_DB)
+            else:
                 algorithm = "linear"
                 [min_volume_raw, max_volume_raw] = mixer.getrange(
                     units=alsaaudio.VOLUME_UNITS_RAW
@@ -68,19 +82,16 @@ class SoundDevice:
                 volume_raw = self.convert_from_normalized_volume(
                     new_human_volume, min_volume_raw, max_volume_raw
                 )
+                a = volume_raw
                 mixer.setvolume(int(volume_raw), units=alsaaudio.VOLUME_UNITS_RAW)
-            else:
-                volume_db = self.convert_from_human_volume(
-                    new_human_volume, min_volume_db, max_volume_db
-                )
-                mixer.setvolume(int(volume_db), units=alsaaudio.VOLUME_UNITS_DB)
 
             logger.debug(
-                "set %s:%s human_volume to %s (%s)",
+                "set %s:%s human_volume to %s (%s) [%s]",
                 mixer.cardname(),
                 mixer.mixer(),
                 new_human_volume,
                 algorithm,
+                a,
             )
 
         self.invoke_on_mixer(callback)
@@ -162,7 +173,7 @@ class SoundDevice:
 class TACSoundDevice(SoundDevice):
 
     def __init__(self):
-        self.threadLock = threading.Lock()
+        super().__init__()
         self.init_mixer(resources.valid_mixer_device_simple_control_names)
 
     def init_mixer(self, valid_mixers: list[str], device: str = "default"):

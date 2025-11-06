@@ -10,6 +10,19 @@ import logging
 
 import jsonpickle
 from apscheduler.triggers.cron import CronTrigger
+from utils.extensions import T, Value, get_timedelta_to_alarm, respect_ranges
+
+from utils.geolocation import GeoLocation, Weather
+from resources.resources import alarms_dir, default_volume
+from utils.sound_device import SoundDevice
+from utils.state_machine import StateMachine
+
+from datetime import datetime, timedelta
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from core.infrastructure.event_bus import EventBus
 from core.domain.events import (
     AudioStreamChangedEvent,
     SpotifyApiEvent,
@@ -17,18 +30,7 @@ from core.domain.events import (
     VolumeChangedEvent,
     AudioEffectChangedEvent,
 )
-from utils.extensions import T, Value, get_timedelta_to_alarm, respect_ranges
 
-from utils.geolocation import GeoLocation, Weather
-from resources.resources import alarms_dir, default_volume
-from utils.sound_device import SoundDevice
-from utils.state_machine import StateMachine
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from core.infrastructure.event_bus import EventBus
-
-from datetime import datetime, timedelta
 
 logger = logging.getLogger("tac.domain")
 
@@ -168,7 +170,7 @@ class StreamAudioEffect(AudioEffect):
 
 
 class SpotifyAudioEffect(AudioEffect):
-    spotify_stream: SpotifyStream = SpotifyStream()
+    spotify_stream: SpotifyStream
 
     def __init__(self, volume: float = None):
         AudioEffect.__init__(self, volume)
@@ -475,15 +477,22 @@ class PlaybackContent(MediaContent):
 
     def _audio_effect_changed(self, event: AudioEffectChangedEvent):
         self.event_bus.emit(
-            VolumeChangedEvent(
-                event.audio_effect.volume
-                or self.alarm_clock_context.config.default_volume
+            AudioStreamChangedEvent(
+                event.audio_effect.audio_stream
+                if event.audio_effect is not None
+                and isinstance(event.audio_effect, StreamAudioEffect)
+                else None
             )
         )
-        if isinstance(event.audio_effect, StreamAudioEffect):
-            self.event_bus.emit(
-                AudioStreamChangedEvent(event.audio_effect.audio_stream)
+
+        self.event_bus.emit(
+            VolumeChangedEvent(
+                event.audio_effect.volume
+                if event.audio_effect is not None
+                and event.audio_effect.volume is not None
+                else self.alarm_clock_context.config.default_volume
             )
+        )
 
     def _audio_stream_changed(self, event: AudioStreamChangedEvent):
         self.audio_stream = event.audio_stream
@@ -554,7 +563,6 @@ class DisplayContent(MediaContent):
     def _regular_update(self, event: RegularDisplayContentUpdateEvent):
         self.show_blink_segment = event.show_blink_segment
         self.room_brightness = event.room_brightness.value
-        self.is_scrolling = event.is_scrolling
 
     def hide_volume_meter(self):
         self.show_volume_meter = False
@@ -571,9 +579,9 @@ class DisplayContent(MediaContent):
 
     def current_playback_title(self):
         return (
-            self.playback_content.audio_stream.title()
+            self.playback_content.audio_stream.stream_name
             if True
-            and super().alarm_clock_context != Mode.Idle
+            and self.playback_content.playback_mode != Mode.Idle
             and self.playback_content.audio_stream is not None
             else None
         )

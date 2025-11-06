@@ -16,16 +16,16 @@ class DeviceName(Enum):
 
 
 class ButtonDirection(Enum):
-    DOWN = auto()
-    UP = auto()
+    DOWN = "down"
+    UP = "up"
 
     def __str__(self) -> str:
         return self.name.lower()
 
 
 class RotaryDirection(Enum):
-    CLOCKWISE = auto()
-    COUNTERCLOCKWISE = auto()
+    CLOCKWISE = "clockwise"
+    COUNTERCLOCKWISE = "counterclockwise"
 
     def __str__(self) -> str:
         return self.name.lower()

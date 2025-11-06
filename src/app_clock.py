@@ -7,6 +7,7 @@ import tornado.ioloop
 from core.application.di_container import DIContainer
 from dependency_injector import providers
 
+from core.domain.events import AudioStreamChangedEvent
 from core.domain.model import (
     Mode,
 )
@@ -45,7 +46,7 @@ class ClockApp:
                 ComputerInfrastructure,
             )
 
-            ci = ComputerInfrastructure()
+            ci = self.container.computer_infrastructure()
             self.container.brightness_sensor.override(providers.Object(ci))
             self.container.device.override(
                 providers.Singleton(dummy, height=64, width=256, mode="RGB")
@@ -58,7 +59,9 @@ class ClockApp:
         api = self.container.api()
         api.start()
 
-        self.container.playback_content().playback_mode = Mode.Idle
+        self.container.speaker()
+
+        self.container.event_bus().emit(AudioStreamChangedEvent(None))
         controls.consider_failed_alarm()
         tornado.ioloop.IOLoop.current().start()
 

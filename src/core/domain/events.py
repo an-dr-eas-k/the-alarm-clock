@@ -1,17 +1,20 @@
 from dataclasses import dataclass
 import json
 
-from core.domain.model import (
-    AudioEffect,
-    AudioStream,
-    RoomBrightness,
-    AlarmDefinition,
-    Config,
-    Config,
-    RoomBrightness,
-)
 from core.infrastructure.event_bus import BaseEvent
 from utils.geolocation import SunEvent
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from core.domain.model import (
+        AudioEffect,
+        AudioStream,
+        RoomBrightness,
+        AlarmDefinition,
+        Config,
+        RoomBrightness,
+    )
 
 
 @dataclass(frozen=True)

@@ -198,21 +198,23 @@ class PropertyEditMode(AlarmEditMode):
 class AlarmClockModeCoordinator(StateMachine):
     def __init__(
         self,
+        event_bus,
         default_state,
         alarm_view_state,
         alarm_edit_state,
         property_edit_state,
     ):
-        default_mode = default_state
-        alarm_view_mode = alarm_view_state
-        alarm_edit_mode = alarm_edit_state
-        property_edit_mode = property_edit_state
-
-        StateMachine.__init__(self, default_mode)
+        self.default_mode = default_state
+        self.alarm_view_mode = alarm_view_state
+        self.alarm_edit_mode = alarm_edit_state
+        self.property_edit_mode = property_edit_state
+        super().__init__(event_bus, default_state)
+        self.event_bus.on(HwButtonEvent)(super()._transition_state)
+        self.event_bus.on(HwRotaryEvent)(super()._transition_state)
 
         super().add_definition(
-            StateTransition(default_mode)
-            .add_transition(HwButtonEvent(DeviceName.MODE_BUTTON), AlarmViewMode)
+            StateTransition(self.default_mode)
+            .add_transition(HwButtonEvent(DeviceName.MODE_BUTTON), self.alarm_view_mode)
             .add_transition(
                 HwButtonEvent(DeviceName.INVOKE_BUTTON),
                 DefaultMode,
@@ -234,13 +236,13 @@ class AlarmClockModeCoordinator(StateMachine):
         )
 
         super().add_definition(
-            StateTransition(alarm_view_mode)
+            StateTransition(self.alarm_view_mode)
             .add_transition(HwButtonEvent(DeviceName.MODE_BUTTON), DefaultMode)
             .add_transition(HwButtonEvent(DeviceName.INVOKE_BUTTON), AlarmEditMode)
             .add_transition(
                 HwRotaryEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE),
                 AlarmViewMode,
-                AlarmSelectedEvent(+1),
+                source_state_updater=lambda state: state.activate_next_alarm(),
             )
             .add_transition(
                 HwRotaryEvent(
@@ -248,12 +250,12 @@ class AlarmClockModeCoordinator(StateMachine):
                     RotaryDirection.COUNTERCLOCKWISE,
                 ),
                 AlarmViewMode,
-                AlarmSelectedEvent(-1),
+                source_state_updater=lambda state: state.activate_previous_alarm(),
             )
         )
 
         super().add_definition(
-            StateTransition(alarm_edit_mode)
+            StateTransition(self.alarm_edit_mode)
             .add_transition(HwButtonEvent(DeviceName.MODE_BUTTON), DefaultMode)
             .add_transition(
                 HwRotaryEvent(
@@ -261,30 +263,30 @@ class AlarmClockModeCoordinator(StateMachine):
                     RotaryDirection.CLOCKWISE,
                 ),
                 AlarmEditMode,
-                AlarmPropertySelectedEvent(+1),
+                source_state_updater=lambda state: state.activate_next_property_to_edit(),
             )
             .add_transition(
                 HwRotaryEvent(
                     DeviceName.ROTARY_ENCODER, RotaryDirection.COUNTERCLOCKWISE
                 ),
                 AlarmEditMode,
-                AlarmPropertySelectedEvent(-1),
+                source_state_updater=lambda state: state.activate_previous_property_to_edit(),
             )
             .add_transition(
                 HwButtonEvent(DeviceName.INVOKE_BUTTON),
                 PropertyEditMode,
-                StartAlarmPropertyEditEvent(),
+                source_state_updater=lambda su: su.start_editing(),
             )
         )
 
         super().add_definition(
-            StateTransition(property_edit_mode)
+            StateTransition(self.property_edit_mode)
             .add_transition(HwButtonEvent(DeviceName.MODE_BUTTON), DefaultMode)
             .add_transition(HwButtonEvent(DeviceName.INVOKE_BUTTON), AlarmEditMode)
             .add_transition(
                 HwButtonEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE),
                 PropertyEditMode,
-                AlarmPropertyValueSelectedEvent(+1),
+                source_state_updater=lambda su: su.activate_next_value(),
             )
             .add_transition(
                 HwButtonEvent(
@@ -292,6 +294,6 @@ class AlarmClockModeCoordinator(StateMachine):
                     RotaryDirection.COUNTERCLOCKWISE,
                 ),
                 PropertyEditMode,
-                AlarmPropertyValueSelectedEvent(-1),
+                source_state_updater=lambda su: su.activate_previous_value(),
             )
         )
