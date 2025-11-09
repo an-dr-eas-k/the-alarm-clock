@@ -107,7 +107,7 @@ class DisplayHandler(tornado.web.RequestHandler):
 
 class ConfigHandler(tornado.web.RequestHandler):
 
-    def initialize(self, config: Config, api: Api) -> None:
+    def initialize(self, config: Config, api: "Api") -> None:
         self.config = config
         self.api = api
 
