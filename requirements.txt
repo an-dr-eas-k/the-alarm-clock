@@ -13,3 +13,4 @@ adafruit-circuitpython-mcp230xx
 spotify
 pyalsaaudio
 dependency-injector
+pillow

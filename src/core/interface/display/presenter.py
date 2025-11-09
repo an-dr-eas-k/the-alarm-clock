@@ -4,11 +4,10 @@ import logging
 from luma.core.device import device as luma_device
 from PIL import ImageFont, Image, ImageOps
 
-from core.domain.mode import AlarmEditMode, AlarmViewMode, DefaultMode
+from core.domain.mode_coordinator import AlarmEditMode, AlarmViewMode, DefaultMode
 from core.domain.model import (
     AlarmDefinition,
     DisplayContent,
-    TACEventSubscriber,
 )
 from utils.drawing import (
     PresentationFont,
@@ -30,7 +29,7 @@ class ColorType(Enum):
     INCOLOR = 2
 
 
-class Presenter(TACEventSubscriber, ComposableImage):
+class Presenter(ComposableImage):
     font_file_7segment = PresentationFont.bold_clock_font
     font_file_nerd = PresentationFont.default_font
 

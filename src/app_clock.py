@@ -1,4 +1,5 @@
 import logging
+from logging import config
 import signal
 from luma.core.device import dummy
 
@@ -7,6 +8,7 @@ import tornado.ioloop
 from core.application.di_container import DIContainer
 from dependency_injector import providers
 
+from core.domain.events import AudioStreamChangedEvent, ConfigChangedEvent
 from core.domain.model import (
     Mode,
 )
@@ -34,52 +36,35 @@ class ClockApp:
 
         signal.signal(signal.SIGTERM, self.shutdown_function)
 
-        self.container.config()
+        config = self.container.config()
         context = self.container.alarm_clock_context()
         context.state_machine = self.container.state_machine()
 
         logger.info("config available")
 
-        playback_content = self.container.playback_content()
-        context.subscribe(playback_content)
-        display_content = self.container.display_content()
-        context.subscribe(display_content)
-
-        if self.is_on_hardware():
-            self.container.button_manager().subscribe(context.state_machine)
-            self.container.rotary_encoder_manager().subscribe(context.state_machine)
-        else:
+        if not self.is_on_hardware():
             from core.infrastructure.computer_infrastructure import (
                 ComputerInfrastructure,
             )
 
-            ci = ComputerInfrastructure()
+            ci = self.container.computer_infrastructure()
             self.container.brightness_sensor.override(providers.Object(ci))
             self.container.device.override(
                 providers.Singleton(dummy, height=64, width=256, mode="RGB")
             )
-            ci.subscribe(context.state_machine)
 
         controls: Controls = self.container.controls()
-        display = self.container.display()
-        display_content.subscribe(display)
 
-        persistence = self.container.persistence()
-        context.subscribe(persistence)
-        context.config.subscribe(persistence)
-
-        speaker = self.container.speaker()
-        playback_content.subscribe(speaker)
-        context.config.subscribe(controls)
-        playback_content.subscribe(controls)
-        context.state_machine.subscribe(controls)
         controls.configure()
 
         api = self.container.api()
         api.start()
 
-        context.mode = Mode.Idle
+        self.container.speaker()
+
+        self.container.playback_content().playback_mode = Mode.Idle
         controls.consider_failed_alarm()
+        self.container.event_bus().emit(ConfigChangedEvent(config=config))
         tornado.ioloop.IOLoop.current().start()
 
 

@@ -7,19 +7,16 @@ import subprocess
 import threading
 from abc import ABC, abstractmethod
 
+from core.domain.events import AudioStreamChangedEvent, SpeakerErrorEvent
 from core.domain.model import (
     AlarmClockContext,
-    Mode,
     PlaybackContent,
-    AudioEffect,
     AudioStream,
     Config,
-    OfflineAlarmEffect,
+    SpotifyStream,
     StreamAudioEffect,
-    TACEvent,
-    TACEventSubscriber,
-    SpotifyAudioEffect,
 )
+from core.infrastructure.event_bus import EventBus
 from utils.network import is_internet_available
 from resources.resources import alarms_dir, init_logging, default_volume
 
@@ -40,23 +37,6 @@ class MediaPlayer:
 
     def set_error_callback(self, callback: callable):
         self.error_callback = callback
-
-
-class SpotifyPlayer(MediaPlayer):
-
-    def __init__(self, track_id: str):
-        self.track_id = track_id
-
-
-class IPlayerFactory(ABC):
-
-    @abstractmethod
-    def create_player(self, audio_effect: AudioEffect) -> MediaPlayer:
-        pass
-
-    @abstractmethod
-    def create_fallback_player(self) -> MediaPlayer:
-        pass
 
 
 class MediaListPlayer(MediaPlayer):
@@ -152,117 +132,55 @@ class MediaListPlayer(MediaPlayer):
         logger.info(f"stopped audio")
 
 
-class PlayerFactory(IPlayerFactory):
-
-    def __init__(self, config: Config):
-        self.config = config
-
-    def create_player(self, audio_effect: AudioEffect) -> MediaPlayer:
-        if isinstance(audio_effect, StreamAudioEffect):
-            return MediaListPlayer(audio_effect.stream_definition.stream_url)
-        elif isinstance(audio_effect, SpotifyAudioEffect):
-            return SpotifyPlayer(audio_effect.track_id)
-        elif isinstance(audio_effect, OfflineAlarmEffect):
-            return MediaListPlayer(audio_effect.stream_definition.stream_url)
-        else:
-            raise ValueError(
-                f"Unknown audio effect type: {type(audio_effect).__name__}"
-            )
-
-    def create_fallback_player(self) -> MediaPlayer:
-        return MediaListPlayer(
-            self.config.get_offline_alarm_effect().stream_definition.stream_url
-        )
-
-
-class Speaker(TACEventSubscriber):
+class Speaker:
     media_player: MediaPlayer = None
     fallback_player_proc: subprocess.Popen = None
 
     def __init__(
         self,
-        playback_content: PlaybackContent,
-        config: Config,
-        player_factory: IPlayerFactory,
+        event_bus: EventBus,
     ) -> None:
         self.threadLock = threading.Lock()
-        self.playback_content = playback_content
-        self.config = config
-        self.player_factory = player_factory
+        self.event_bus = event_bus
+        self.event_bus.on(AudioStreamChangedEvent)(self._audio_stream_changed)
 
-    def handle(self, observation: TACEvent):
-        super().handle(observation)
-        if isinstance(observation.subscriber, PlaybackContent):
-            self.update_from_playback_content(observation, observation.subscriber)
+    def _audio_stream_changed(self, event: AudioStreamChangedEvent):
+        if isinstance(event.audio_stream, SpotifyStream):
+            self.adjust_streaming(None)
+            return
 
-    def update_from_playback_content(
-        self, observation: TACEvent, playback_content: PlaybackContent
-    ):
-        if observation.property_name == "is_streaming":
-            self.adjust_streaming(playback_content.is_streaming)
-        elif observation.property_name == "audio_effect":
-            self.adjust_effect()
+        self.adjust_streaming(event.audio_stream)
 
-    def adjust_effect(self):
-        if self.playback_content.is_streaming:
-            self.adjust_streaming(False)
-            self.adjust_streaming(True)
-
-    def adjust_streaming(self, isStreaming: bool):
+    def adjust_streaming(self, audio_stream: AudioStream):
         self.threadLock.acquire(True)
 
-        if isStreaming:
-            self.start_streaming(self.playback_content.audio_effect)
+        if audio_stream is not None:
+            self.start_streaming(audio_stream)
         else:
             self.stop_streaming()
 
         self.threadLock.release()
 
-    def get_fallback_player(self) -> MediaPlayer:
-        return self.player_factory.create_fallback_player()
-
-    def get_player(self, audio_effect: AudioEffect) -> MediaPlayer:
-        player: MediaPlayer = None
-        if (
-            not is_internet_available()
-            and self.playback_content.alarm_clock_context.mode == Mode.Alarm
-        ):
-            player = self.get_fallback_player()
-
-        if player is None:
-            player = self.player_factory.create_player(audio_effect)
-
+    def get_player(self, audio_stream: AudioStream) -> MediaPlayer:
+        player: MediaPlayer = MediaListPlayer(audio_stream.stream_url)
         player.set_error_callback(self.handle_player_error)
         return player
 
     def handle_player_error(self):
         logger.info("handling player error")
-        if self.playback_content.alarm_clock_context.mode != Mode.Alarm:
-            return
+        self.event_bus.emit(SpeakerErrorEvent())
 
-        if isinstance(self.playback_content.audio_effect, OfflineAlarmEffect):
-            self.start_streaming_alternative()
-            return
-
-        self.start_offline_effect()
-
-    def start_offline_effect(self):
-        logger.info("starting offline fallback playback")
-        self.playback_content.is_streaming = False
-        self.playback_content.audio_effect = self.config.get_offline_alarm_effect()
-        self.playback_content.is_streaming = True
-
-    def start_streaming(self, audio_effect: AudioEffect):
+    def start_streaming(self, audio_stream: AudioStream):
         try:
             self.stop_streaming()
-            self.media_player = self.get_player(audio_effect)
+            self.media_player = self.get_player(audio_stream)
             self.media_player.play()
         except Exception as e:
             logger.error("error: %s", traceback.format_exc())
             self.handle_player_error()
 
     def start_streaming_alternative(self):
-        self.adjust_streaming(False)
+        self.stop_streaming()
         logger.info("starting alternative fallback player")
         self.fallback_player_proc = subprocess.Popen(
             ["ogg123", "-r", os.path.join(alarms_dir, "fallback", "Timer.ogg")],
@@ -287,16 +205,16 @@ def main():
         stream_name="Offline Alarm", stream_url="Enchantment.ogg"
     )
     pc = PlaybackContent(AlarmClockContext(c))
-    pc.audio_effect = StreamAudioEffect(
+    pc.audio_stream = StreamAudioEffect(
         volume=default_volume,
         stream_definition=AudioStream(
             stream_name="test", stream_url="https://streams.br.de/bayern2sued_2.m3u"
         ),
     )
     s = Speaker(pc, c)
-    s.adjust_streaming(True)
+    s.adjust_streaming(pc.audio_stream)
     time.sleep(20)
-    s.adjust_streaming(False)
+    s.adjust_streaming(None)
 
 
 def main_mlp():

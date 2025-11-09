@@ -1,15 +1,28 @@
 from typing import List
 import logging
 
+from core.domain.events import (
+    AlarmPropertySelectedEvent,
+    AlarmPropertyValueSelectedEvent,
+    ConfigChangedEvent,
+    ForcedDisplayUpdateEvent,
+    StartAlarmPropertyEditEvent,
+    ToggleAudioEvent,
+    VolumeChangedEvent,
+)
 from core.domain.model import (
     AlarmClockContext,
-    HwButton,
     StreamAudioEffect,
     VisualEffect,
 )
+from core.infrastructure.events_infrastructure import (
+    DeviceName,
+    HwButtonEvent,
+    HwRotaryEvent,
+    RotaryDirection,
+)
 from core.interface.display.editor.alarm_definition_editor import AlarmDefinitionToEdit
 
-from utils.events import TACEventPublisher
 from utils.geolocation import GeoLocation
 from utils.state_machine import State, StateMachine, StateTransition
 
@@ -184,96 +197,110 @@ class PropertyEditMode(AlarmEditMode):
         self.set_value(value_list[next_index])
 
 
-class AlarmClockStateMachine(StateMachine, TACEventPublisher):
+class AlarmClockModeCoordinator(StateMachine):
     def __init__(
         self,
+        event_bus,
         default_state,
         alarm_view_state,
         alarm_edit_state,
         property_edit_state,
     ):
-        default_mode = default_state
-        alarm_view_mode = alarm_view_state
-        alarm_edit_mode = alarm_edit_state
-        property_edit_mode = property_edit_state
-
-        StateMachine.__init__(self, default_mode)
-        TACEventPublisher.__init__(self)
+        self.default_mode: DefaultMode = default_state
+        self.alarm_view_mode: AlarmViewMode = alarm_view_state
+        self.alarm_edit_mode: AlarmEditMode = alarm_edit_state
+        self.property_edit_mode: PropertyEditMode = property_edit_state
+        super().__init__(event_bus, default_state)
+        self.event_bus.on(HwButtonEvent)(super()._transition_state)
+        self.event_bus.on(HwRotaryEvent)(super()._transition_state)
 
         super().add_definition(
-            StateTransition(default_mode)
-            .add_transition(HwButton("mode_button"), AlarmViewMode)
+            StateTransition(self.default_mode)
+            .add_transition(HwButtonEvent(DeviceName.MODE_BUTTON), AlarmViewMode)
             .add_transition(
-                HwButton("rotary_clockwise"),
+                HwButtonEvent(DeviceName.INVOKE_BUTTON),
                 DefaultMode,
-                source_state_updater=lambda su: self.publish(
-                    reason="rotary_clockwise", during_registration=False
-                ),
+                ToggleAudioEvent(),
             )
             .add_transition(
-                HwButton("rotary_counter_clockwise"),
+                HwRotaryEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE),
                 DefaultMode,
-                source_state_updater=lambda su: self.publish(
-                    reason="rotary_counter_clockwise", during_registration=False
-                ),
+                VolumeChangedEvent(+1),
             )
             .add_transition(
-                HwButton("invoke_button"),
-                DefaultMode,
-                source_state_updater=lambda su: self.publish(
-                    reason="invoke_button", during_registration=False
+                HwRotaryEvent(
+                    DeviceName.ROTARY_ENCODER,
+                    RotaryDirection.COUNTERCLOCKWISE,
                 ),
+                DefaultMode,
+                VolumeChangedEvent(-1),
             )
         )
 
         super().add_definition(
-            StateTransition(alarm_view_mode)
-            .add_transition(HwButton("mode_button"), DefaultMode)
+            StateTransition(self.alarm_view_mode)
+            .add_transition(HwButtonEvent(DeviceName.MODE_BUTTON), DefaultMode)
+            .add_transition(HwButtonEvent(DeviceName.INVOKE_BUTTON), AlarmEditMode)
             .add_transition(
-                HwButton("rotary_clockwise"),
+                HwRotaryEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE),
                 AlarmViewMode,
-                source_state_updater=lambda su: su.activate_next_alarm(),
+                source_state_updater=lambda state: state.activate_next_alarm(),
+                eventToEmit=ForcedDisplayUpdateEvent(),
             )
             .add_transition(
-                HwButton("rotary_counter_clockwise"),
+                HwRotaryEvent(
+                    DeviceName.ROTARY_ENCODER,
+                    RotaryDirection.COUNTERCLOCKWISE,
+                ),
                 AlarmViewMode,
-                source_state_updater=lambda su: su.activate_previous_alarm(),
+                source_state_updater=lambda state: state.activate_previous_alarm(),
+                eventToEmit=ForcedDisplayUpdateEvent(),
             )
-            .add_transition(HwButton("invoke_button"), AlarmEditMode)
         )
 
         super().add_definition(
-            StateTransition(alarm_edit_mode)
-            .add_transition(HwButton("mode_button"), DefaultMode)
+            StateTransition(self.alarm_edit_mode)
+            .add_transition(HwButtonEvent(DeviceName.MODE_BUTTON), DefaultMode)
             .add_transition(
-                HwButton("rotary_clockwise"),
+                HwRotaryEvent(
+                    DeviceName.ROTARY_ENCODER,
+                    RotaryDirection.CLOCKWISE,
+                ),
                 AlarmEditMode,
-                source_state_updater=lambda su: su.activate_next_property_to_edit(),
+                source_state_updater=lambda state: state.activate_next_property_to_edit(),
             )
             .add_transition(
-                HwButton("rotary_counter_clockwise"),
+                HwRotaryEvent(
+                    DeviceName.ROTARY_ENCODER, RotaryDirection.COUNTERCLOCKWISE
+                ),
                 AlarmEditMode,
-                source_state_updater=lambda su: su.activate_previous_property_to_edit(),
+                source_state_updater=lambda state: state.activate_previous_property_to_edit(),
             )
             .add_transition(
-                HwButton("invoke_button"),
+                HwButtonEvent(DeviceName.INVOKE_BUTTON),
                 PropertyEditMode,
                 source_state_updater=lambda su: su.start_editing(),
+                eventToEmit=ConfigChangedEvent(
+                    self.default_mode.alarm_clock_context.config
+                ),
             )
         )
 
         super().add_definition(
-            StateTransition(property_edit_mode)
-            .add_transition(HwButton("mode_button"), DefaultMode)
+            StateTransition(self.property_edit_mode)
+            .add_transition(HwButtonEvent(DeviceName.MODE_BUTTON), DefaultMode)
+            .add_transition(HwButtonEvent(DeviceName.INVOKE_BUTTON), AlarmEditMode)
             .add_transition(
-                HwButton("rotary_clockwise"),
+                HwRotaryEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE),
                 PropertyEditMode,
                 source_state_updater=lambda su: su.activate_next_value(),
             )
             .add_transition(
-                HwButton("rotary_counter_clockwise"),
+                HwRotaryEvent(
+                    DeviceName.ROTARY_ENCODER,
+                    RotaryDirection.COUNTERCLOCKWISE,
+                ),
                 PropertyEditMode,
                 source_state_updater=lambda su: su.activate_previous_value(),
             )
-            .add_transition(HwButton("invoke_button"), AlarmEditMode),
         )
