@@ -38,7 +38,6 @@ class ClockApp:
 
         config = self.container.config()
         context = self.container.alarm_clock_context()
-        context.state_machine = self.container.state_machine()
 
         logger.info("config available")
 
@@ -61,6 +60,9 @@ class ClockApp:
         api.start()
 
         self.container.speaker()
+        self.container.button_manager()
+        self.container.rotary_encoder_manager()
+        self.container.state_machine()
 
         self.container.playback_content().playback_mode = Mode.Idle
         controls.consider_failed_alarm()
