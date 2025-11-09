@@ -47,7 +47,7 @@ class ClockApp:
                 ComputerInfrastructure,
             )
 
-            ci = self.container.computer_infrastructure()
+            ci = ComputerInfrastructure(event_bus=self.container.event_bus())
             self.container.brightness_sensor.override(providers.Object(ci))
             self.container.device.override(
                 providers.Singleton(dummy, height=64, width=256, mode="RGB")

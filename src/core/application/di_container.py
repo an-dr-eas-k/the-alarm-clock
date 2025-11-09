@@ -9,7 +9,6 @@ from core.domain.mode_coordinator import (
     PropertyEditMode,
 )
 from core.infrastructure.brightness_sensor import BrightnessSensor
-from core.infrastructure.computer_infrastructure import ComputerInfrastructure
 from core.infrastructure.i2c_devices import I2CManager, MCPManager
 from core.infrastructure.mcp23017.buttons import ButtonsManager
 from core.infrastructure.mcp23017.rotary_encoder import RotaryEncoderManager
@@ -75,10 +74,6 @@ class DIContainer(containers.DeclarativeContainer):
         alarm_view_state=alarm_view_state,
         alarm_edit_state=alarm_edit_state,
         property_edit_state=property_edit_state,
-    )
-
-    computer_infrastructure = providers.Singleton(
-        ComputerInfrastructure, event_bus=event_bus
     )
 
     sound_device = providers.Singleton(TACSoundDevice)
