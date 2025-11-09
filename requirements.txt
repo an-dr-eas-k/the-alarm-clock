@@ -14,4 +14,3 @@ spotify
 pyalsaaudio
 dependency-injector
 pillow
-typing
