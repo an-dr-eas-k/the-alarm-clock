@@ -80,18 +80,18 @@ class StateMachine:
             )
             return self.current_state
         (next_state_type, eventToEmit, source_state_updater) = transition
+        if source_state_updater:
+            source_state_updater(self.current_state)
         next_state = None
         if self.current_state.proceedingState:
             next_state = self.current_state.proceedingState(self.current_state)
         else:
             next_state = next_state_type(self.current_state)
+        if eventToEmit:
+            self.event_bus.emit(eventToEmit)
         logger.debug(
             f"state transition from {str_of_current_state} triggered by {trigger} to {next_state}"
         )
-        if eventToEmit:
-            self.event_bus.emit(eventToEmit)
-        if source_state_updater:
-            source_state_updater(self.current_state)
         self.current_state = next_state
         return self.current_state
 

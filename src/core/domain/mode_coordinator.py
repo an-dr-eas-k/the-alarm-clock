@@ -4,6 +4,8 @@ import logging
 from core.domain.events import (
     AlarmPropertySelectedEvent,
     AlarmPropertyValueSelectedEvent,
+    ConfigChangedEvent,
+    ForcedDisplayUpdateEvent,
     StartAlarmPropertyEditEvent,
     ToggleAudioEvent,
     VolumeChangedEvent,
@@ -204,17 +206,17 @@ class AlarmClockModeCoordinator(StateMachine):
         alarm_edit_state,
         property_edit_state,
     ):
-        self.default_mode = default_state
-        self.alarm_view_mode = alarm_view_state
-        self.alarm_edit_mode = alarm_edit_state
-        self.property_edit_mode = property_edit_state
+        self.default_mode: DefaultMode = default_state
+        self.alarm_view_mode: AlarmViewMode = alarm_view_state
+        self.alarm_edit_mode: AlarmEditMode = alarm_edit_state
+        self.property_edit_mode: PropertyEditMode = property_edit_state
         super().__init__(event_bus, default_state)
         self.event_bus.on(HwButtonEvent)(super()._transition_state)
         self.event_bus.on(HwRotaryEvent)(super()._transition_state)
 
         super().add_definition(
             StateTransition(self.default_mode)
-            .add_transition(HwButtonEvent(DeviceName.MODE_BUTTON), self.alarm_view_mode)
+            .add_transition(HwButtonEvent(DeviceName.MODE_BUTTON), AlarmViewMode)
             .add_transition(
                 HwButtonEvent(DeviceName.INVOKE_BUTTON),
                 DefaultMode,
@@ -243,6 +245,7 @@ class AlarmClockModeCoordinator(StateMachine):
                 HwRotaryEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE),
                 AlarmViewMode,
                 source_state_updater=lambda state: state.activate_next_alarm(),
+                eventToEmit=ForcedDisplayUpdateEvent(),
             )
             .add_transition(
                 HwRotaryEvent(
@@ -251,6 +254,7 @@ class AlarmClockModeCoordinator(StateMachine):
                 ),
                 AlarmViewMode,
                 source_state_updater=lambda state: state.activate_previous_alarm(),
+                eventToEmit=ForcedDisplayUpdateEvent(),
             )
         )
 
@@ -276,6 +280,9 @@ class AlarmClockModeCoordinator(StateMachine):
                 HwButtonEvent(DeviceName.INVOKE_BUTTON),
                 PropertyEditMode,
                 source_state_updater=lambda su: su.start_editing(),
+                eventToEmit=ConfigChangedEvent(
+                    self.default_mode.alarm_clock_context.config
+                ),
             )
         )
 
@@ -284,12 +291,12 @@ class AlarmClockModeCoordinator(StateMachine):
             .add_transition(HwButtonEvent(DeviceName.MODE_BUTTON), DefaultMode)
             .add_transition(HwButtonEvent(DeviceName.INVOKE_BUTTON), AlarmEditMode)
             .add_transition(
-                HwButtonEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE),
+                HwRotaryEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE),
                 PropertyEditMode,
                 source_state_updater=lambda su: su.activate_next_value(),
             )
             .add_transition(
-                HwButtonEvent(
+                HwRotaryEvent(
                     DeviceName.ROTARY_ENCODER,
                     RotaryDirection.COUNTERCLOCKWISE,
                 ),

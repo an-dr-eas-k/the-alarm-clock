@@ -15,7 +15,7 @@ from core.infrastructure.mcp23017.buttons import ButtonsManager
 from core.infrastructure.mcp23017.rotary_encoder import RotaryEncoderManager
 from core.interface.display.display import Display
 from core.application.api import Api
-from core.infrastructure.audio import Speaker, PlayerFactory
+from core.infrastructure.audio import Speaker
 from core.application.controls import Controls
 from core.infrastructure.persistence import Persistence
 from core.infrastructure.event_bus import EventBus
@@ -99,13 +99,8 @@ class DIContainer(containers.DeclarativeContainer):
         Persistence, config_file=config_file, event_bus=event_bus
     )
 
-    player_factory = providers.Singleton(PlayerFactory, config().get_offline_stream())
-
     speaker = providers.Singleton(
         Speaker,
-        playback_content=playback_content,
-        config=config,
-        player_factory=player_factory,
         event_bus=event_bus,
     )
 

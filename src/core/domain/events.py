@@ -78,6 +78,7 @@ class VolumeChangedEvent(BaseEvent):
 @dataclass(frozen=True)
 class AudioStreamChangedEvent(BaseEvent):
     audio_stream: AudioStream
+    use_alternative_player: bool = False
 
 
 @dataclass(frozen=True)
@@ -115,3 +116,8 @@ class RegularDisplayContentUpdateEvent(BaseEvent):
     show_blink_segment: bool
     room_brightness: RoomBrightness
     suppress_logging: bool = True
+
+
+@dataclass(frozen=True)
+class SpeakerErrorEvent(BaseEvent):
+    offline_stream_failed: bool

@@ -11,6 +11,7 @@ from core.domain.events import (
     AudioStreamChangedEvent,
     ConfigChangedEvent,
     ForcedDisplayUpdateEvent,
+    SpeakerErrorEvent,
     ToggleAudioEvent,
     AlarmEvent,
     RegularDisplayContentUpdateEvent,
@@ -22,6 +23,7 @@ from core.domain.model import (
     AlarmClockContext,
     AlarmDefinition,
     AudioStream,
+    OfflineStream,
     PlaybackContent,
     DisplayContent,
     Mode,
@@ -75,6 +77,7 @@ class Controls:
         self.event_bus.on(RegularDisplayContentUpdateEvent)(
             self._regular_display_update
         )
+        self.event_bus.on(SpeakerErrorEvent)(self._handle_speaker_error)
 
         self.alarm_clock_context.is_daytime = (
             alarm_clock_context.geo_location.last_sun_event() == SunEvent.sunrise
@@ -234,9 +237,6 @@ class Controls:
         self.playback_content.playback_mode = Mode.Idle
         self.event_bus.emit(AudioStreamChangedEvent(None))
 
-    def enter_mode(self):
-        self.display_content.mode_state.next_mode_0()
-
     def _volume_changed(self, _: VolumeChangedEvent):
         self.start_hide_volume_meter_trigger()
 
@@ -255,6 +255,23 @@ class Controls:
 
     def get_room_brightness(self):
         return self.brightness_sensor.get_room_brightness()
+
+    def _handle_speaker_error(self, _: SpeakerErrorEvent):
+        logger.warning("speaker error occurred")
+        if self.playback_content.playback_mode == Mode.Alarm:
+            if isinstance(self.playback_content.audio_stream, OfflineStream):
+                self.event_bus.emit(
+                    AudioStreamChangedEvent(
+                        self.alarm_clock_context.config.get_offline_stream(),
+                        use_alternative_player=True,
+                    )
+                )
+            else:
+                self.event_bus.emit(
+                    AudioStreamChangedEvent(
+                        self.alarm_clock_context.config.get_offline_stream()
+                    )
+                )
 
     def _regular_display_update(self, event: RegularDisplayContentUpdateEvent):
         if self.alarm_clock_context.update_state(
@@ -329,10 +346,18 @@ class Controls:
 
     def _ring_alarm(self, alarm_definition: AlarmDefinition):
         def do():
-            if self.playback_content.playback_mode in [Mode.Music, Mode.Spotify]:
+            if (
+                False
+                or not is_internet_available()
+                or self.playback_content.playback_mode
+                in [
+                    Mode.Music,
+                    Mode.Spotify,
+                ]
+            ):
                 alarm_definition.audio_effect = StreamAudioEffect(
                     audio_stream=self.alarm_clock_context.config.get_offline_stream(),
-                    volume=self.playback_content.volume,
+                    volume=alarm_definition.audio_effect.volume,
                 )
 
             if alarm_definition.is_onetime():
