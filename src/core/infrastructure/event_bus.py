@@ -11,10 +11,7 @@ logger = logging.getLogger("tac.event_bus")
 
 
 class BaseEvent:
-    # def __init__(self):
-    #     self.event_id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    #     self.occurred_at: datetime = field(default_factory=datetime.now)
-    pass
+    suppress_logging: bool = False
 
 
 class EventBus:
@@ -46,7 +43,10 @@ class EventBus:
             logger.debug(f"No handlers registered for {event_type.__name__}")
             return
 
-        logger.debug(f"Emitting {event_type.__name__} to {len(handlers)} handler(s)")
+        if not getattr(event, "suppress_logging", False):
+            logger.debug(
+                f"Emitting {event_type.__name__} to {len(handlers)} handler(s)"
+            )
 
         for handler in handlers:
             try:

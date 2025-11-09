@@ -1,4 +1,5 @@
 import logging
+from logging import config
 import signal
 from luma.core.device import dummy
 
@@ -7,7 +8,7 @@ import tornado.ioloop
 from core.application.di_container import DIContainer
 from dependency_injector import providers
 
-from core.domain.events import AudioStreamChangedEvent
+from core.domain.events import AudioStreamChangedEvent, ConfigChangedEvent
 from core.domain.model import (
     Mode,
 )
@@ -35,7 +36,7 @@ class ClockApp:
 
         signal.signal(signal.SIGTERM, self.shutdown_function)
 
-        self.container.config()
+        config = self.container.config()
         context = self.container.alarm_clock_context()
         context.state_machine = self.container.state_machine()
 
@@ -61,8 +62,9 @@ class ClockApp:
 
         self.container.speaker()
 
-        self.container.event_bus().emit(AudioStreamChangedEvent(None))
+        self.container.playback_content().playback_mode = Mode.Idle
         controls.consider_failed_alarm()
+        self.container.event_bus().emit(ConfigChangedEvent(config=config))
         tornado.ioloop.IOLoop.current().start()
 
 

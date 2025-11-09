@@ -106,6 +106,12 @@ class AlarmPropertyValueSelectedEvent(BaseEvent):
 
 
 @dataclass(frozen=True)
+class ForcedDisplayUpdateEvent(BaseEvent):
+    suppress_logging: bool = False
+
+
+@dataclass(frozen=True)
 class RegularDisplayContentUpdateEvent(BaseEvent):
     show_blink_segment: bool
     room_brightness: RoomBrightness
+    suppress_logging: bool = True

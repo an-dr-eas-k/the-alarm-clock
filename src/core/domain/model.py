@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from core.infrastructure.event_bus import EventBus
 from core.domain.events import (
     AudioStreamChangedEvent,
+    ForcedDisplayUpdateEvent,
     SpotifyApiEvent,
     RegularDisplayContentUpdateEvent,
     VolumeChangedEvent,
@@ -191,7 +192,7 @@ class AlarmDefinition:
     alarm_name: str
     is_active: bool
     visual_effect: VisualEffect
-    audio_effect: AudioEffect
+    audio_effect: StreamAudioEffect
 
     def to_cron_trigger(self) -> CronTrigger:
         if self.is_recurring():
@@ -495,7 +496,8 @@ class PlaybackContent(MediaContent):
         )
 
     def _audio_stream_changed(self, event: AudioStreamChangedEvent):
-        self.audio_stream = event.audio_stream
+        if event.audio_stream is not None:
+            self.audio_stream = event.audio_stream
 
     def _volume_changed(self, event: VolumeChangedEvent):
         if event.volume_delta > 0:
@@ -547,15 +549,17 @@ class DisplayContent(MediaContent):
         self.playback_content = playback_content
         self.event_bus = event_bus
         self.event_bus.on(RegularDisplayContentUpdateEvent)(self._regular_update)
-        self.event_bus.on(AudioEffectChangedEvent)(self._audio_effect_changed)
+        self.event_bus.on(AudioStreamChangedEvent)(self._audio_stream_changed)
         self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
 
-    def _audio_effect_changed(self, event: AudioEffectChangedEvent):
-        if event.audio_effect is None:
+    def _audio_stream_changed(self, event: AudioStreamChangedEvent):
+        if event.audio_stream is None:
             self.hide_volume_meter()
+        self.event_bus.emit(ForcedDisplayUpdateEvent())
 
     def _volume_changed(self, _: VolumeChangedEvent):
         self.show_volume_meter = True
+        self.event_bus.emit(ForcedDisplayUpdateEvent())
 
     def get_is_online(self) -> bool:
         return self.alarm_clock_context.is_online

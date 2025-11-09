@@ -10,6 +10,7 @@ from core.domain.events import (
     AudioEffectChangedEvent,
     AudioStreamChangedEvent,
     ConfigChangedEvent,
+    ForcedDisplayUpdateEvent,
     ToggleAudioEvent,
     AlarmEvent,
     RegularDisplayContentUpdateEvent,
@@ -71,6 +72,9 @@ class Controls:
         self.event_bus.on(WifiStatusChangedEvent)(self._wifi_status_changed)
         self.event_bus.on(ConfigChangedEvent)(self._config_changed)
         self.event_bus.on(AlarmEvent)(self._alarm_event)
+        self.event_bus.on(RegularDisplayContentUpdateEvent)(
+            self._regular_display_update
+        )
 
         self.alarm_clock_context.is_daytime = (
             alarm_clock_context.geo_location.last_sun_event() == SunEvent.sunrise
@@ -90,7 +94,7 @@ class Controls:
 
     def _add_scheduler_jobs(self):
         self.scheduler.add_job(
-            self._update_display,
+            self._emit_regular_display_update,
             "interval",
             start_date=datetime.datetime.today(),
             seconds=self.alarm_clock_context.config.refresh_timeout_in_secs,
@@ -143,6 +147,7 @@ class Controls:
     ):
         trigger = DateTrigger(run_date=GeoLocation().now() + duration)
 
+        logger.debug("starting generic trigger %s for %s", job_id, duration)
         existing_job = self.scheduler.get_job(job_id=job_id, jobstore=job_store)
         if existing_job:
             self.scheduler.reschedule_job(
@@ -207,11 +212,13 @@ class Controls:
             if self.playback_content.audio_stream and isinstance(
                 self.playback_content.audio_stream, AudioStream
             ):
-                self._play_stream(self.playback_content.audio_stream)
+                self._play_music(self.playback_content.audio_stream)
             else:
-                self.play_stream_by_id(0)
+                self.play_music_by_id(0)
 
     def _alarm_event(self, event: AlarmEvent):
+        self.set_to_idle_mode()
+        self.playback_content.playback_mode = Mode.Alarm
         self.event_bus.emit(
             AudioEffectChangedEvent(event.alarm_definition.audio_effect)
         )
@@ -225,7 +232,7 @@ class Controls:
 
         self.stop_generic_trigger(SchedulerJobIds.hide_volume_meter.value)
         self.playback_content.playback_mode = Mode.Idle
-        self.event_bus.emit(AudioEffectChangedEvent(None))
+        self.event_bus.emit(AudioStreamChangedEvent(None))
 
     def enter_mode(self):
         self.display_content.mode_state.next_mode_0()
@@ -233,11 +240,11 @@ class Controls:
     def _volume_changed(self, _: VolumeChangedEvent):
         self.start_hide_volume_meter_trigger()
 
-    def play_stream_by_id(self, stream_id: int):
+    def play_music_by_id(self, stream_id: int):
         stream = self.alarm_clock_context.config.get_audio_stream_by_id(stream_id)
-        self.event_bus.emit(AudioStreamChangedEvent(stream))
+        self._play_music(stream)
 
-    def _play_stream(self, audio_stream: AudioStream):
+    def _play_music(self, audio_stream: AudioStream):
         self.set_to_idle_mode()
 
         self.playback_content.playback_mode = Mode.Music
@@ -249,7 +256,15 @@ class Controls:
     def get_room_brightness(self):
         return self.brightness_sensor.get_room_brightness()
 
-    def _update_display(self):
+    def _regular_display_update(self, event: RegularDisplayContentUpdateEvent):
+        if self.alarm_clock_context.update_state(
+            event.show_blink_segment,
+            event.room_brightness,
+            self.display_content.is_scrolling,
+        ):
+            self.event_bus.emit(ForcedDisplayUpdateEvent(suppress_logging=True))
+
+    def _emit_regular_display_update(self):
 
         def do():
             logger.debug("update display")
@@ -260,18 +275,12 @@ class Controls:
                 new_blink_state = not self.alarm_clock_context.show_blink_segment
                 self._previous_second = current_second
 
-            b = RoomBrightness(self.get_room_brightness())
-            if self.alarm_clock_context.update_state(
-                new_blink_state,
-                b,
-                self.display_content.is_scrolling,
-            ):
-                self.event_bus.emit(
-                    RegularDisplayContentUpdateEvent(
-                        show_blink_segment=new_blink_state,
-                        room_brightness=b,
-                    )
+            self.event_bus.emit(
+                RegularDisplayContentUpdateEvent(
+                    show_blink_segment=new_blink_state,
+                    room_brightness=RoomBrightness(self.get_room_brightness()),
                 )
+            )
 
         Controls.action(do)
 
@@ -331,8 +340,6 @@ class Controls:
                     alarm_definition.id
                 )
 
-            self.set_to_idle_mode()
-            self.playback_content.playback_mode = Mode.Alarm
             self.event_bus.emit(AlarmEvent(alarm_definition))
             self.postprocess_ring_alarm()
 

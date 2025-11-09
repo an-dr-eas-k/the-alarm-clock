@@ -5,7 +5,9 @@ from luma.core.device import dummy as luma_dummy
 from luma.core.render import canvas
 from PIL import Image
 
-from core.domain.events import RegularDisplayContentUpdateEvent
+from core.domain.events import (
+    ForcedDisplayUpdateEvent,
+)
 from core.domain.model import (
     AlarmClockContext,
     Config,
@@ -82,7 +84,7 @@ class Display(DisplayContentProvider):
                 lambda width, _1: (self.device.size[0] - width, 2),
             )
         )
-        self.event_bus.on(RegularDisplayContentUpdateEvent)(self._regular_update)
+        self.event_bus.on(ForcedDisplayUpdateEvent)(self._forced_update)
 
     def compose_alarm_changer(self):
 
@@ -199,7 +201,7 @@ class Display(DisplayContentProvider):
             )
         )
 
-    def _regular_update(self, _: RegularDisplayContentUpdateEvent):
+    def _forced_update(self, _: ForcedDisplayUpdateEvent):
         try:
             self.refresh()
         except Exception as e:

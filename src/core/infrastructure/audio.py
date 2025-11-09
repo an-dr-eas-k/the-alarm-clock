@@ -193,7 +193,7 @@ class Speaker:
     def adjust_streaming(self, playback_mode: Mode, audio_stream: AudioStream):
         self.threadLock.acquire(True)
 
-        if audio_stream is not None:
+        if audio_stream is not None and playback_mode != Mode.Idle:
             self.start_streaming(playback_mode, audio_stream)
         else:
             self.stop_streaming()
