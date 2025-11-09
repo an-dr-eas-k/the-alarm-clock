@@ -2,11 +2,8 @@ from typing import List
 import logging
 
 from core.domain.events import (
-    AlarmPropertySelectedEvent,
-    AlarmPropertyValueSelectedEvent,
     ConfigChangedEvent,
     ForcedDisplayUpdateEvent,
-    StartAlarmPropertyEditEvent,
     ToggleAudioEvent,
     VolumeChangedEvent,
 )

@@ -56,7 +56,6 @@ class DIContainer(containers.DeclarativeContainer):
         event_bus=event_bus,
     )
 
-    alarm_clock_context = providers.Singleton(AlarmClockContext, config=config)
     default_state = providers.Singleton(
         DefaultMode, previous_mode=None, alarm_clock_context=alarm_clock_context
     )
@@ -74,6 +73,9 @@ class DIContainer(containers.DeclarativeContainer):
         alarm_view_state=alarm_view_state,
         alarm_edit_state=alarm_edit_state,
         property_edit_state=property_edit_state,
+    )
+    alarm_clock_context = providers.Singleton(
+        AlarmClockContext, config=config, state_machine=state_machine
     )
 
     sound_device = providers.Singleton(TACSoundDevice)
