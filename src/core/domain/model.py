@@ -416,13 +416,12 @@ class AlarmClockContext:
     is_online: bool
     is_daytime: bool
 
-    def __init__(self, config: Config, state_machine: StateMachine) -> None:
+    def __init__(self, config: Config) -> None:
         super().__init__()
         self.config = config
         self.geo_location = GeoLocation()
         self.is_online = True
         self.show_blink_segment = True
-        self.state_machine = state_machine
 
     def update_state(
         self, show_blink_segment: bool, brightness: RoomBrightness, is_scrolling: bool

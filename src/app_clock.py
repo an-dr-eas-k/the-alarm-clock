@@ -41,7 +41,10 @@ class ClockApp:
 
         logger.info("config available")
 
-        if not self.is_on_hardware():
+        if self.is_on_hardware():
+            self.container.button_manager()
+            self.container.rotary_encoder_manager()
+        else:
             from core.infrastructure.computer_infrastructure import (
                 ComputerInfrastructure,
             )
@@ -60,9 +63,7 @@ class ClockApp:
         api.start()
 
         self.container.speaker()
-        self.container.button_manager()
-        self.container.rotary_encoder_manager()
-        self.container.state_machine()
+        context.state_machine = self.container.state_machine()
 
         self.container.playback_content().playback_mode = Mode.Idle
         controls.consider_failed_alarm()
