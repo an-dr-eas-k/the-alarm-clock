@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 import json
 
 from core.infrastructure.event_bus import BaseEvent
-from utils.geolocation import SunEvent
 
 from typing import TYPE_CHECKING
 
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
         Config,
         RoomBrightness,
     )
+    from utils.geolocation import SunEvent
 
 
 @dataclass(frozen=True)
