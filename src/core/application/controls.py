@@ -233,6 +233,7 @@ class Controls:
         if self.playback_content.playback_mode == Mode.Spotify:
             restart_spotify_daemon()
 
+        self.stop_generic_trigger(SchedulerJobIds.stop_alarm.value)
         self.stop_generic_trigger(SchedulerJobIds.hide_volume_meter.value)
         self.playback_content.playback_mode = Mode.Idle
         self.event_bus.emit(AudioStreamChangedEvent(None))

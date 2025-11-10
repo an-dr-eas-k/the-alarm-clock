@@ -1,16 +1,3 @@
 {
-  "github.copilot.chat.reviewSelection.instructions": [
-    {
-      "text": "docstrings are not required and don't need to be considered in the review",
-    },
-    {
-      "text": "for the review always have in mind, the app should follow domain-driven design principles.",
-    },
-    {
-      "text": "technical issues should have a low priority in the review, the main focus should be on the domain logic.",
-    },
-    {
-      "text": "A methods with not more than a few lines has a low priority in the review.",
-    }
-  ]
+  "explorer.excludeGitIgnore": true
 }

@@ -563,6 +563,13 @@ class DisplayContent(MediaContent):
         self.show_volume_meter = True
         self.event_bus.emit(ForcedDisplayUpdateEvent())
 
+    def show_alarm_preview(self) -> bool:
+        return (
+            self.next_alarm_job is not None
+            and self.get_timedelta_to_alarm().total_seconds() / 3600
+            <= self.alarm_clock_context.config.alarm_preview_hours
+        )
+
     def get_is_online(self) -> bool:
         return self.alarm_clock_context.is_online
 

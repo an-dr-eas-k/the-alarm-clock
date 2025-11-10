@@ -368,8 +368,7 @@ class NextAlarmPresenter(DefaultPresenter):
             super().is_present()
             and self.content.current_playback_title() is None
             and not self.content.show_volume_meter
-            and self.content.get_timedelta_to_alarm().total_seconds() / 3600
-            <= self.content.alarm_clock_context.config.alarm_preview_hours
+            and self.content.show_alarm_preview()
         )
 
     def draw(self) -> Image.Image:
