@@ -67,15 +67,13 @@ class MCPManager:
 
     def _log_thread_callback(self):
         while True:
-            current_time = time.time()
-            if self.last_log_time < current_time - 1:
-                self.last_log_time = current_time
-                logger.debug(
-                    f"interrupt state: {int(GPIO_Module().input(interrupt_pin))}, mcp pin states: "
-                    + ", ".join(
-                        [f"{p:02}: {int(self.mcp.get_pin(p).value)}" for p in range(16)]
-                    )
+            logger.debug(
+                f"interrupt state: {int(GPIO_Module().input(interrupt_pin))}, mcp pin states: "
+                + ", ".join(
+                    [f"{p:02}: {int(self.mcp.get_pin(p).value)}" for p in range(16)]
                 )
+            )
+            time.sleep(1)
 
     def gpio_event_detected(self, gpio_pin):
         logger.debug(f"GPIO interrupt on pin {gpio_pin} detected.")
