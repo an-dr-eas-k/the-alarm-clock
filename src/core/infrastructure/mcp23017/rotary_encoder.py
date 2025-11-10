@@ -30,8 +30,8 @@ class RotaryEncoderManager:
         )
 
     def _pin_callback(self, _1: int, mcp_pin_value: bool):
-        if mcp_pin_value != True:
-            return
+        # if mcp_pin_value != True:
+        #     return
 
         mcp = self.mcp_manager.mcp
         channel_a_value = int(not mcp.get_pin(rotary_encoder_channel_a).value)
