@@ -52,7 +52,7 @@ class MCPManager:
         GPIO_Module().setup(interrupt_pin, GPIO_Module().IN, GPIO_Module().PUD_UP)
         GPIO_Module().add_event_detect(
             interrupt_pin,
-            GPIO_Module().RISING,
+            GPIO_Module().FALLING,
             callback=self.gpio_event_detected,
         )
         self.mcp_callbacks = {}
