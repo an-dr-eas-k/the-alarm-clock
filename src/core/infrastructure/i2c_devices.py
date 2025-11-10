@@ -85,7 +85,7 @@ class MCPManager:
             logger.debug(f"mcp pin {mcp_pin} changed to: {mcp_pin_value}")
 
             if mcp_pin in self.mcp_callbacks:
-                self.mcp_callbacks[mcp_pin](mcp_pin, mcp_pin_value)
+                self.mcp_callbacks[mcp_pin](mcp_pin_value)
 
         self.mcp.clear_ints()
 

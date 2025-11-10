@@ -29,7 +29,7 @@ class RotaryEncoderManager:
             "MCP23017 initialized for rotary encoder input with event interrupts."
         )
 
-    def _pin_callback(self, _1: int, mcp_pin_value: bool):
+    def _pin_callback(self, pin_value: bool):
         # if mcp_pin_value != True:
         #     return
 
