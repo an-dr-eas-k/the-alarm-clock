@@ -29,9 +29,13 @@ class RotaryEncoderManager:
             "MCP23017 initialized for rotary encoder input with event interrupts."
         )
 
-    def _pin_callback(self, _: int, pin_value: bool):
-        channel_a_value = int(not pin_value)
-        channel_b_value = int(not pin_value)
+    def _pin_callback(self, _1: int, mcp_pin_value: bool):
+        if mcp_pin_value != True:
+            return
+
+        mcp = self.mcp_manager.mcp
+        channel_a_value = int(not mcp.get_pin(rotary_encoder_channel_a).value)
+        channel_b_value = int(not mcp.get_pin(rotary_encoder_channel_b).value)
 
         state = (channel_a_value, channel_b_value)
         logger.debug(
