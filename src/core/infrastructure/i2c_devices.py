@@ -52,7 +52,7 @@ class MCPManager:
         GPIO_Module().setup(interrupt_pin, GPIO_Module().IN, GPIO_Module().PUD_UP)
         GPIO_Module().add_event_detect(
             interrupt_pin,
-            GPIO_Module().BOTH,
+            GPIO_Module().RISING,
             callback=self.gpio_event_detected,
         )
         self.mcp_callbacks = {}
@@ -71,7 +71,7 @@ class MCPManager:
             if self.last_log_time < current_time - 1:
                 self.last_log_time = current_time
                 logger.debug(
-                    f"interrupt state: {int(GPIO_Module.input(interrupt_pin))}, mcp pin states: "
+                    f"interrupt state: {int(GPIO_Module().input(interrupt_pin))}, mcp pin states: "
                     + ", ".join(
                         [f"{p:02}: {int(self.mcp.get_pin(p).value)}" for p in range(16)]
                     )
