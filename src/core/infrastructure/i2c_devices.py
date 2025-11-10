@@ -82,8 +82,8 @@ class MCPManager:
 
         for mcp_pin in self.mcp.int_flag:
             mcp_pin_value = self.mcp.get_pin(mcp_pin).value
-            # if mcp_pin_value != is_falling:
-            #     return
+            if mcp_pin_value != True:
+                return
             logger.debug(f"mcp pin {mcp_pin} changed to: {mcp_pin_value}")
 
             if mcp_pin in self.mcp_callbacks:
