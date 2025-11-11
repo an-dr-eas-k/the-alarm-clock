@@ -63,13 +63,13 @@ class StateTransition:
 class StateMachine:
     def __init__(self, event_bus: EventBus, init_state: State):
         self.state_definition = {}
-        self.current_state = init_state
+        self.current_state: State = init_state
         self.event_bus = event_bus
         self.event_bus.on(Trigger)(self._transition_state)
 
     def _transition_state(self, trigger: Trigger) -> State:
         str_of_current_state = str(self.current_state)
-        st: StateTransition = self.state_definition[self.current_state]
+        st: StateTransition = self.state_definition[hash(self.current_state)]
         if not st:
             logger.debug(f"no statetransition found for {str_of_current_state}")
             return self.current_state
@@ -82,10 +82,10 @@ class StateMachine:
         (next_state_type, eventToEmit, source_state_updater) = transition
         if source_state_updater:
             source_state_updater(self.current_state)
-        next_state = None
+        next_state = self.current_state
         if self.current_state.proceedingState:
             next_state = self.current_state.proceedingState(self.current_state)
-        else:
+        elif next_state_type:
             next_state = next_state_type(self.current_state)
         if eventToEmit:
             self.event_bus.emit(eventToEmit)

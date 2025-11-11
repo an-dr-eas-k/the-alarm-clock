@@ -2,7 +2,7 @@ import logging
 from PIL import ImageFont, Image, ImageOps
 
 from core.domain.events import AudioEffectChangedEvent
-from core.domain.mode_coordinator import AlarmEditMode
+from core.domain.mode_coordinator import AlarmEditor
 from core.domain.model import (
     DisplayContent,
 )
@@ -55,7 +55,7 @@ class AlarmTimePresenter(AlarmEditorPresenter):
         super().__init__(formatter, content, position)
 
     def draw(self) -> Image.Image:
-        machine_state = self.machine_state(AlarmEditMode)
+        machine_state = self.machine_state(AlarmEditor)
         font = self.formatter.default_font(size=20)
         alarm_def = self.get_alarm_definition()
         if machine_state is None or not machine_state.is_in_edit_mode(["hour", "min"]):
@@ -106,7 +106,7 @@ class AlarmDatePresenter(AlarmEditorPresenter):
         super().__init__(formatter, content, position)
 
     def draw(self) -> Image.Image:
-        machine_state = self.machine_state(AlarmEditMode)
+        machine_state = self.machine_state(AlarmEditor)
         font = self.formatter.default_font(size=15)
         alarm_def = self.get_alarm_definition()
         day_string = alarm_def.to_day_string()

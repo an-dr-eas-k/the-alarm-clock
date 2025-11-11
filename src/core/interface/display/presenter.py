@@ -1,10 +1,9 @@
 from typing import Optional, Type, cast
 from enum import Enum
 import logging
-from luma.core.device import device as luma_device
 from PIL import ImageFont, Image, ImageOps
 
-from core.domain.mode_coordinator import AlarmEditMode, AlarmViewMode, DefaultMode
+from core.domain.mode_coordinator import AlarmEditor, DefaultMode
 from core.domain.model import (
     AlarmDefinition,
     DisplayContent,
@@ -46,7 +45,11 @@ class Presenter(ComposableImage):
         self.content = content
 
     def machine_state(self, expected_type: Type[T] = None) -> Optional[T]:
-        context = self.content.alarm_clock_context.state_machine.current_state
+        context = (
+            self.content.alarm_clock_context.state_machine.current_state
+            if self.content.alarm_clock_context.state_machine
+            else None
+        )
         if expected_type is None:
             return context
         if isinstance(context, expected_type):
@@ -71,16 +74,13 @@ class AlarmEditorPresenter(Presenter):
         super().__init__(formatter, content, position)
 
     def get_alarm_definition(self) -> AlarmDefinition:
-        mode = self.machine_state(AlarmEditMode)
+        mode = self.machine_state(AlarmEditor)
         if mode is not None and mode.alarm_definition_in_editing is not None:
             return mode.alarm_definition_in_editing
-        mode = self.machine_state(AlarmViewMode)
-        if mode is not None:
-            return mode.get_active_alarm()
         return None
 
     def is_present(self) -> bool:
-        return isinstance(self.machine_state(), AlarmViewMode)
+        return isinstance(self.machine_state(), AlarmEditor)
 
 
 class SimpleTextPresenter(AlarmEditorPresenter):
@@ -97,7 +97,7 @@ class SimpleTextPresenter(AlarmEditorPresenter):
         self.edit_mode = edit_mode
 
     def draw(self) -> Image.Image:
-        machine_state = self.machine_state(AlarmEditMode)
+        machine_state = self.machine_state(AlarmEditor)
         font = self.formatter.default_font(size=20)
         effect_image = text_to_image(
             self.text(self.get_alarm_definition()),

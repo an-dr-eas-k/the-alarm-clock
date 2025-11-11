@@ -98,7 +98,11 @@ class DisplayFormatter:
         )
 
     def adjust_display_by_mode(self):
-        current_state = self.alarm_clock_context.state_machine.current_state
+        current_state = (
+            self.alarm_clock_context.state_machine.current_state
+            if self.alarm_clock_context.state_machine
+            else None
+        )
 
         if current_state is None:
             return
