@@ -74,13 +74,13 @@ class AlarmEditor(TacMode):
     def __str__(self):
         return f"{super().__str__()}(edit: {self.property_to_edit})"
 
-    def initialize(self) -> AlarmEditor:
+    def initialize(self) -> "AlarmEditor":
         self.alarm_index = 0
         self.alarm_definition_in_editing = self.get_active_alarm()
         self.mode_name = ModeName.ALARM_VIEW
         return self
 
-    def start_editing(self) -> AlarmEditor:
+    def start_editing(self) -> "AlarmEditor":
         self.mode_name = ModeName.ALARM_EDIT
         # if self.property_to_edit == "update":
         #     self.update_config()
@@ -196,7 +196,7 @@ class AlarmClockModeCoordinator(StateMachine):
         alarm_edit_mode,
     ):
         self.default_mode: DefaultMode = default_mode
-        self.alarm_edit_mode: AlarmEditor = alarm_edit_mode
+        self.alarm_edit_mode: "AlarmEditor" = alarm_edit_mode
         super().__init__(event_bus, default_mode)
         self.event_bus.on(HwButtonEvent)(super()._transition_state)
         self.event_bus.on(HwRotaryEvent)(super()._transition_state)
