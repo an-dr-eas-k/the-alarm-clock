@@ -1,9 +1,12 @@
+import io
 import logging
 import traceback
 from luma.core.device import device as luma_device
 from luma.core.device import dummy as luma_dummy
 from luma.core.render import canvas
 from PIL import Image
+
+from PyQt5 import QtWidgets, QtCore, QtGui
 
 from core.domain.events import (
     ForcedDisplayUpdateEvent,
@@ -72,18 +75,19 @@ class Display(DisplayContentProvider):
             Image.new(mode=self.device.mode, size=self.device.size, color="black")
         )
 
-        self.composable_presenters.add_image(
-            BackgroundPresenter(self.formatter, self.display_content, self.device.size)
-        )
-        self.compose_default()
-        self.compose_alarm_changer()
-        self.composable_presenters.add_image(
-            RefreshPresenter(
-                self.formatter,
-                self.display_content,
-                lambda width, _1: (self.device.size[0] - width, 2),
-            )
-        )
+        # self.composable_presenters.add_image(
+        #     BackgroundPresenter(self.formatter, self.display_content, self.device.size)
+        # )
+        # self.compose_default()
+        # self.compose_alarm_changer()
+        # self.composable_presenters.add_image(
+        #     RefreshPresenter(
+        #         self.formatter,
+        #         self.display_content,
+        #         lambda width, _1: (self.device.size[0] - width, 2),
+        #     )
+        # )
+        self.app = QtWidgets.QApplication([])
         self.event_bus.on(ForcedDisplayUpdateEvent)(self._forced_update)
 
     def compose_alarm_changer(self):
@@ -209,9 +213,36 @@ class Display(DisplayContentProvider):
             with canvas(self.device) as draw:
                 draw.text((20, 20), f"exception! ({e})", fill="white")
 
-    def refresh(self):
-        logger.debug("refreshing display...")
-        start_time = GeoLocation().now()
+    def draw_widget(self) -> Image.Image:
+        self.widget = QtWidgets.QFrame()
+        self.widget.setFixedSize(self.device.width, self.device.height)
+        self.widget.setStyleSheet("background-color: black; color: white;")
+        layout = QtWidgets.QVBoxLayout(self.widget)
+        layout.setContentsMargins(2, 2, 2, 2)  # Add padding
+
+        clock_string = self.formatter.format_clock_string(
+            GeoLocation().now(), self.display_content.show_blink_segment
+        )
+        label = QtWidgets.QLabel(clock_string)
+        label.setFont(QtGui.QFont("Arial", 16))
+        layout.addWidget(label, alignment=QtCore.Qt.AlignmentFlag.AlignHCenter)
+
+        button = QtWidgets.QPushButton("I was never on screen")
+        layout.addWidget(button)
+
+        checkbox = QtWidgets.QCheckBox("This is also a widget")
+        layout.addWidget(checkbox)
+
+        pixmap = self.widget.grab()
+
+        buffer = QtCore.QBuffer()
+        buffer.open(QtCore.QBuffer.OpenModeFlag.WriteOnly)
+        pixmap.save(buffer, "PNG")
+
+        pil_image = Image.open(io.BytesIO(buffer.data()))
+        return pil_image
+
+    def present_my(self) -> Image.Image:
         self.device.contrast(16)
         self.formatter.update_formatter()
         self.composable_presenters.debug = (
@@ -222,8 +253,13 @@ class Display(DisplayContentProvider):
         if self.formatter.clear_display():
             logger.info("clearing display")
             self.device.clear()
+        return self.present()
 
-        self.current_display_image = self.present()
+    def refresh(self):
+        logger.debug("refreshing display...")
+        start_time = GeoLocation().now()
+        # self.current_display_image = self.present_my()
+        self.current_display_image = self.draw_widget()
         self.device.display(self.current_display_image)
         if isinstance(self.device, luma_dummy):
             self.current_display_image.save(
