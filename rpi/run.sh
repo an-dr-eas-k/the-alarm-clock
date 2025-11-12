@@ -13,4 +13,4 @@ python -u src/app_sound_device.py -D equal -a set -f rpi/resources/equalizer.con
 
 echo "invoking app_clock.py"
 # GPIOZERO_PIN_FACTORY=pigpio python -u src/app_clock.py
-python -u src/app_clock.py
+QT_QPA_PLATFORM=offscreen python -u src/app_clock.py
