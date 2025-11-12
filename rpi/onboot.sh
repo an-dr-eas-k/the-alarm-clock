@@ -32,7 +32,10 @@ while true; do
 
   echo "git status"
   git status
+
+  echo "\n\n\n\nLast git commit:"
   git log -1
+  echo "\n\n\n\n"
   
   echo "calling rpi/run.sh"
 
