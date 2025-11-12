@@ -227,11 +227,11 @@ class Display(DisplayContentProvider):
         label.setFont(QtGui.QFont("Arial", 16))
         layout.addWidget(label, alignment=QtCore.Qt.AlignmentFlag.AlignHCenter)
 
-        button = QtWidgets.QPushButton("I was never on screen")
-        layout.addWidget(button)
+        # button = QtWidgets.QPushButton("I was never on screen")
+        # layout.addWidget(button)
 
-        checkbox = QtWidgets.QCheckBox("This is also a widget")
-        layout.addWidget(checkbox)
+        # checkbox = QtWidgets.QCheckBox("This is also a widget")
+        # layout.addWidget(checkbox)
 
         pixmap = self.widget.grab()
 

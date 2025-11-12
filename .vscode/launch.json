@@ -12,7 +12,7 @@
       "args": [
         "--software"
       ],
-      "console": "integratedTerminal",
+      "console": "internalConsole",
       "cwd": "${workspaceFolder}/src",
       "justMyCode": false,
     },
