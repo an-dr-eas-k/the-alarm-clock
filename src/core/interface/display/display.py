@@ -20,7 +20,7 @@ from core.domain.model import (
     SpotifyStream,
 )
 from core.infrastructure.event_bus import EventBus
-from core.interface.display.format import DisplayFormatter
+from core.interface.display.format import ColorType, DisplayFormatter
 from core.interface.display.presenter import (
     BackgroundPresenter,
     RefreshPresenter,
@@ -214,9 +214,12 @@ class Display(DisplayContentProvider):
                 draw.text((20, 20), f"exception! ({e})", fill="white")
 
     def draw_widget(self) -> Image.Image:
+        self.formatter.update_formatter()
         self.widget = QtWidgets.QFrame()
         self.widget.setFixedSize(self.device.width, self.device.height)
-        self.widget.setStyleSheet("background-color: black; color: white;")
+        self.widget.setStyleSheet(
+            f"background-color: black; color: {self.formatter.foreground_color(color_type=ColorType.INHEX)};"
+        )
         layout = QtWidgets.QVBoxLayout(self.widget)
         layout.setContentsMargins(2, 2, 2, 2)  # Add padding
 

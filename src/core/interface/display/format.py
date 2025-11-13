@@ -19,6 +19,7 @@ class ColorType(Enum):
     IN16 = 0
     IN256 = 1
     INCOLOR = 2
+    INHEX = 3
 
 
 class DisplayFormatter:
@@ -75,6 +76,11 @@ class DisplayFormatter:
             return grayscale_16 * 16
         if color_type == ColorType.INCOLOR:
             return grayscale_to_color(grayscale_16 * 16)
+        if color_type == ColorType.INHEX:
+            level = int(grayscale_16)
+            level = max(0, min(15, level))
+            gray = int(round(level / 15 * 255))
+            return f"#{gray:02x}{gray:02x}{gray:02x}"
 
     def foreground_color(
         self, min_value: int = 1, color_type: ColorType = ColorType.INCOLOR

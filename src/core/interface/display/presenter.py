@@ -22,12 +22,6 @@ from utils.extensions import T
 logger = logging.getLogger("tac.display")
 
 
-class ColorType(Enum):
-    IN16 = 0
-    IN256 = 1
-    INCOLOR = 2
-
-
 class Presenter(ComposableImage):
     font_file_7segment = PresentationFont.bold_clock_font
     font_file_nerd = PresentationFont.default_font
