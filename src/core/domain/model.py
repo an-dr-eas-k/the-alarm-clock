@@ -189,6 +189,28 @@ class AlarmDefinition:
     id: int
     hour: int
     min: int
+
+    @property
+    def day_type(self) -> str:
+        if self.is_recurring():
+            return "recurring"
+        elif self.is_onetime():
+            return "onetime"
+        else:
+            return "undefined"
+
+    @day_type.setter
+    def day_type(self, value: str):
+        if value == "recurring":
+            self.recurring = [Weekday.MONDAY.name]
+            self.onetime = None
+        elif value == "onetime":
+            self.recurring = None
+            self.onetime = datetime.date.today()
+        else:
+            self.recurring = None
+            self.onetime = None
+
     recurring: List[str]
     onetime: datetime
     alarm_name: str

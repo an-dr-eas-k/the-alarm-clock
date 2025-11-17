@@ -1,106 +1,103 @@
 from datetime import timedelta
 import datetime
-from typing import List
+from typing import Dict, List
 import logging
 
+from core.domain.edit_mode import AlarmProperty
 from core.domain.model import AlarmDefinition, Config, StreamAudioEffect, Weekday
 
 from datetime import datetime, timedelta
 
-logger = logging.getLogger("tac.domain")
+logger = logging.getLogger("tac.alarm_definition_properties")
 
 
 class EditableProperty:
 
-    def __init__(self, name: str, value_list: List = None):
+    def __init__(self, name: AlarmProperty, value_list: List = None):
         self.name = name
         self.value_list = value_list
 
 
-class AlarmDefinitionToEdit(AlarmDefinition):
+class AlarmDefinitionProperties:
 
     day_type: str = "onetime"
+    _editable_properties: Dict[AlarmProperty, EditableProperty]
 
-    _hour: EditableProperty = EditableProperty("hour", list(range(24)))
-    _min: EditableProperty = EditableProperty("min", list(range(60)))
-    _day_type: EditableProperty = EditableProperty("day_type", ["onetime", "recurring"])
-    _onetime: EditableProperty = EditableProperty(
-        "onetime",
-        [None]
-        + [
-            (datetime.now() + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(30)
-        ],
-    )
-    _recurring: EditableProperty = EditableProperty(
-        "recurring",
-        [
-            [Weekday.MONDAY.name],
-            [Weekday.TUESDAY.name],
-            [Weekday.WEDNESDAY.name],
-            [Weekday.THURSDAY.name],
-            [Weekday.FRIDAY.name],
-            [Weekday.SATURDAY.name],
-            [Weekday.SUNDAY.name],
-            [Weekday.SATURDAY.name, Weekday.SUNDAY.name],
-            [
-                Weekday.MONDAY.name,
-                Weekday.TUESDAY.name,
-                Weekday.WEDNESDAY.name,
-                Weekday.THURSDAY.name,
-                Weekday.FRIDAY.name,
-            ],
-            [
-                Weekday.MONDAY.name,
-                Weekday.TUESDAY.name,
-                Weekday.WEDNESDAY.name,
-                Weekday.THURSDAY.name,
-                Weekday.FRIDAY.name,
-                Weekday.SATURDAY.name,
-                Weekday.SUNDAY.name,
-            ],
-        ],
-    )
-    _audio_effect: EditableProperty = EditableProperty("audio_effect", None)
-    _is_active: EditableProperty = EditableProperty("is_active", [True, False])
+    def __init__(self):
 
-    def __init__(self, alarm_definition: AlarmDefinition = None):
-        if alarm_definition is None:
-            return
-        self.id = alarm_definition.id
-        self.alarm_name = alarm_definition.alarm_name
-        self.is_active = alarm_definition.is_active
-        self.hour = alarm_definition.hour
-        self.min = alarm_definition.min
-        self.onetime = alarm_definition.onetime
-        self.recurring = alarm_definition.recurring
-        self.day_type = "onetime" if alarm_definition.is_onetime() else "recurring"
-        self.visual_effect = alarm_definition.visual_effect
-        self.audio_effect = alarm_definition.audio_effect
+        self._editable_properties = {
+            AlarmProperty.HOUR: EditableProperty(AlarmProperty.HOUR, list(range(24))),
+            AlarmProperty.MIN: EditableProperty(AlarmProperty.MIN, list(range(60))),
+            AlarmProperty.DAY_TYPE: EditableProperty(
+                AlarmProperty.DAY_TYPE, ["onetime", "recurring"]
+            ),
+            AlarmProperty.ONETIME: EditableProperty(
+                AlarmProperty.ONETIME,
+                [None]
+                + [
+                    (datetime.now() + timedelta(days=i)).strftime("%Y-%m-%d")
+                    for i in range(30)
+                ],
+            ),
+            AlarmProperty.RECURRING: EditableProperty(
+                AlarmProperty.RECURRING,
+                [
+                    [Weekday.MONDAY.name],
+                    [Weekday.TUESDAY.name],
+                    [Weekday.WEDNESDAY.name],
+                    [Weekday.THURSDAY.name],
+                    [Weekday.FRIDAY.name],
+                    [Weekday.SATURDAY.name],
+                    [Weekday.SUNDAY.name],
+                    [Weekday.SATURDAY.name, Weekday.SUNDAY.name],
+                    [
+                        Weekday.MONDAY.name,
+                        Weekday.TUESDAY.name,
+                        Weekday.WEDNESDAY.name,
+                        Weekday.THURSDAY.name,
+                        Weekday.FRIDAY.name,
+                    ],
+                    [
+                        Weekday.MONDAY.name,
+                        Weekday.TUESDAY.name,
+                        Weekday.WEDNESDAY.name,
+                        Weekday.THURSDAY.name,
+                        Weekday.FRIDAY.name,
+                        Weekday.SATURDAY.name,
+                        Weekday.SUNDAY.name,
+                    ],
+                ],
+            ),
+            AlarmProperty.AUDIO_EFFECT: EditableProperty(
+                AlarmProperty.AUDIO_EFFECT, None
+            ),
+            AlarmProperty.IS_ACTIVE: EditableProperty(
+                AlarmProperty.IS_ACTIVE, [True, False]
+            ),
+        }
 
-    def get_editable_property(self, property_name: str) -> EditableProperty:
-        ep: EditableProperty = getattr(self, "_" + property_name)
-        return ep
+    def get_editable_property(self, property: AlarmProperty) -> EditableProperty:
+        return self._editable_properties[property]
 
-    def get_properties_to_edit(self) -> List[str]:
+    def get_properties_to_edit(
+        self, alarm_definition: AlarmDefinition
+    ) -> List[AlarmProperty]:
         pes = []
-        pes.append("is_active")
-        pes.append("hour")
-        pes.append("min")
-        if not super().is_onetime() and not super().is_recurring():
-            pes.append("dayType")
+        pes.append(AlarmProperty.IS_ACTIVE)
+        pes.append(AlarmProperty.HOUR)
+        pes.append(AlarmProperty.MIN)
+        pes.append(AlarmProperty.DAY_TYPE)
 
-        if self.day_type == "onetime":
-            pes.append("onetime")
+        if not alarm_definition.is_onetime() and not alarm_definition.is_recurring():
+            pes.append(AlarmProperty.ONETIME)
         else:
-            pes.append("recurring")
+            pes.append(AlarmProperty.RECURRING)
 
-        pes.append("audio_effect")
-        pes.append("update")
-        pes.append("cancel")
+        pes.append(AlarmProperty.AUDIO_EFFECT)
         return pes
 
     def update_value_lists(self, config: Config, volume: float):
-        self._audio_effect.value_list = [
+        self._editable_properties[AlarmProperty.AUDIO_EFFECT].value_list = [
             StreamAudioEffect(stream_definition=stream, volume=volume)
             for stream in config.audio_streams
         ]
