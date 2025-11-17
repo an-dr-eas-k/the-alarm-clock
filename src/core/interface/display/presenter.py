@@ -3,7 +3,7 @@ from enum import Enum
 import logging
 from PIL import ImageFont, Image, ImageOps
 
-from core.domain.mode_coordinator import AlarmEditor, DefaultMode
+from core.domain.mode_coordinator import AlarmEditingService, DefaultMode
 from core.domain.model import (
     AlarmDefinition,
     DisplayContent,
@@ -68,13 +68,13 @@ class AlarmEditorPresenter(Presenter):
         super().__init__(formatter, content, position)
 
     def get_alarm_definition(self) -> AlarmDefinition:
-        mode = self.machine_state(AlarmEditor)
+        mode = self.machine_state(AlarmEditingService)
         if mode is not None and mode.alarm_definition_in_editing is not None:
             return mode.alarm_definition_in_editing
         return None
 
     def is_present(self) -> bool:
-        return isinstance(self.machine_state(), AlarmEditor)
+        return isinstance(self.machine_state(), AlarmEditingService)
 
 
 class SimpleTextPresenter(AlarmEditorPresenter):
@@ -91,7 +91,7 @@ class SimpleTextPresenter(AlarmEditorPresenter):
         self.edit_mode = edit_mode
 
     def draw(self) -> Image.Image:
-        machine_state = self.machine_state(AlarmEditor)
+        machine_state = self.machine_state(AlarmEditingService)
         font = self.formatter.default_font(size=20)
         effect_image = text_to_image(
             self.text(self.get_alarm_definition()),

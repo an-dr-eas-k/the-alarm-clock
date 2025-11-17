@@ -3,7 +3,7 @@ import argparse
 from dependency_injector import containers, providers
 from core.domain.mode_coordinator import (
     AlarmClockModeCoordinator,
-    AlarmEditor,
+    AlarmEditingService,
     DefaultMode,
 )
 from core.infrastructure.brightness_sensor import BrightnessSensor

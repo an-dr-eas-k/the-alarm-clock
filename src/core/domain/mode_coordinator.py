@@ -60,7 +60,7 @@ class DefaultMode(TacMode):
         super().__init__(alarm_clock_context)
 
 
-class AlarmEditor(TacMode):
+class AlarmEditingService(TacMode):
     alarm_index: int = -1
     property_to_edit: Union[AlarmProperty, EditorAction] = None
     alarm_definition_in_editing: AlarmDefinition = None
@@ -91,7 +91,7 @@ class AlarmEditor(TacMode):
             self.property_to_edit
         ).value_list
         if len(value_list) == 2:
-            self.activate_next_value()
+            self._activate_next_value()
             return False
         return True
 
@@ -118,7 +118,25 @@ class AlarmEditor(TacMode):
         logger.debug(f"Editing alarm: {ad.id}, {ad.alarm_name}")
         return ad
 
-    def activate_next_alarm(self):
+    def navigate_alarms(self, direction: int):
+        if direction > 0:
+            self._activate_next_alarm()
+        else:
+            self._activate_previous_alarm()
+
+    def navigate_properties(self, direction: int):
+        if direction > 0:
+            self._activate_next_property_to_edit()
+        else:
+            self._activate_previous_property_to_edit()
+
+    def navigate_value_list(self, direction: int):
+        if direction > 0:
+            self._activate_next_value()
+        else:
+            self._activate_previous_value()
+
+    def _activate_next_alarm(self):
         if self.alarm_index < len(self.alarm_clock_context.config.alarm_definitions):
             self.alarm_index += 1
         else:
@@ -126,7 +144,7 @@ class AlarmEditor(TacMode):
         self.alarm_definition_in_editing = self.get_active_alarm()
         return self.alarm_index
 
-    def activate_previous_alarm(self):
+    def _activate_previous_alarm(self):
         if self.alarm_index > 0:
             self.alarm_index -= 1
         else:
@@ -145,10 +163,16 @@ class AlarmEditor(TacMode):
     def get_actions_to_edit(self) -> List[EditorAction]:
         return [EditorAction.COMMIT, EditorAction.CANCEL]
 
-    def activate_next_property_to_edit(self):
+    def _activate_next_property_to_edit(self):
         properties = self.get_properties_to_edit()
         current_index = properties.index(self.property_to_edit)
         self.property_to_edit = properties[(current_index + 1) % len(properties)]
+        self.log_property_activation()
+
+    def _activate_previous_property_to_edit(self):
+        properties = self.get_properties_to_edit()
+        current_index = properties.index(self.property_to_edit)
+        self.property_to_edit = properties[(current_index - 1) % len(properties)]
         self.log_property_activation()
 
     def log_property_activation(self):
@@ -158,12 +182,6 @@ class AlarmEditor(TacMode):
         logger.debug(
             f"Activated next property to edit: {self.property_to_edit}, current value: {self.get_value()}"
         )
-
-    def activate_previous_property_to_edit(self):
-        properties = self.get_properties_to_edit()
-        current_index = properties.index(self.property_to_edit)
-        self.property_to_edit = properties[(current_index - 1) % len(properties)]
-        self.log_property_activation()
 
     def is_in_edit_mode(self, properties: List[AlarmProperty]) -> bool:
         return self.property_to_edit in properties
@@ -191,7 +209,7 @@ class AlarmEditor(TacMode):
             self.alarm_definition_in_editing, self.property_to_edit.name.lower(), value
         )
 
-    def activate_next_value(self):
+    def _activate_next_value(self):
         value_list = self.alarm_definition_properties.get_editable_property(
             self.property_to_edit
         ).value_list
@@ -204,7 +222,7 @@ class AlarmEditor(TacMode):
         self.set_value(value_list[(current_index + 1) % len(value_list)])
         logger.debug(f"Activated next value: {self.get_value()}")
 
-    def activate_previous_value(self):
+    def _activate_previous_value(self):
         value_list = self.alarm_definition_properties.get_editable_property(
             self.property_to_edit
         ).value_list
@@ -265,15 +283,15 @@ class AlarmClockModeCoordinator(StateMachine):
                 next_state=ModeName.ALARM_EDIT,
                 callable=lambda _: (
                     self.current_mode.start_editing()
-                    if isinstance(self.current_mode, AlarmEditor)
+                    if isinstance(self.current_mode, AlarmEditingService)
                     else None
                 ),
             )
             .add_transition(
                 HwRotaryEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE),
                 callable=lambda _: (
-                    self.current_mode.activate_next_alarm()
-                    if isinstance(self.current_mode, AlarmEditor)
+                    self.current_mode.navigate_alarms(1)
+                    if isinstance(self.current_mode, AlarmEditingService)
                     else None
                 ),
                 eventToEmit=ForcedDisplayUpdateEvent(),
@@ -284,8 +302,8 @@ class AlarmClockModeCoordinator(StateMachine):
                     RotaryDirection.COUNTERCLOCKWISE,
                 ),
                 callable=lambda _: (
-                    self.current_mode.activate_previous_alarm()
-                    if isinstance(self.current_mode, AlarmEditor)
+                    self.current_mode.navigate_alarms(-1)
+                    if isinstance(self.current_mode, AlarmEditingService)
                     else None
                 ),
                 eventToEmit=ForcedDisplayUpdateEvent(),
@@ -303,7 +321,7 @@ class AlarmClockModeCoordinator(StateMachine):
                 HwButtonEvent(DeviceName.INVOKE_BUTTON),
                 next_state=lambda _: (
                     self.handle_invoke_in_alarm_edit_mode(self.current_mode)
-                    if isinstance(self.current_mode, AlarmEditor)
+                    if isinstance(self.current_mode, AlarmEditingService)
                     else None
                 ),
             )
@@ -313,8 +331,8 @@ class AlarmClockModeCoordinator(StateMachine):
                     RotaryDirection.CLOCKWISE,
                 ),
                 callable=lambda _: (
-                    self.current_mode.activate_next_property_to_edit()
-                    if isinstance(self.current_mode, AlarmEditor)
+                    self.current_mode.navigate_properties(1)
+                    if isinstance(self.current_mode, AlarmEditingService)
                     else None
                 ),
             )
@@ -323,8 +341,8 @@ class AlarmClockModeCoordinator(StateMachine):
                     DeviceName.ROTARY_ENCODER, RotaryDirection.COUNTERCLOCKWISE
                 ),
                 callable=lambda _: (
-                    self.current_mode.activate_previous_property_to_edit()
-                    if isinstance(self.current_mode, AlarmEditor)
+                    self.current_mode.navigate_properties(-1)
+                    if isinstance(self.current_mode, AlarmEditingService)
                     else None
                 ),
             )
@@ -340,15 +358,15 @@ class AlarmClockModeCoordinator(StateMachine):
                 next_state=ModeName.ALARM_EDIT,
                 callable=lambda _: (
                     self.current_mode.continue_editing()
-                    if isinstance(self.current_mode, AlarmEditor)
+                    if isinstance(self.current_mode, AlarmEditingService)
                     else None
                 ),
             )
             .add_transition(
                 HwRotaryEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE),
                 callable=lambda _: (
-                    self.current_mode.activate_next_value()
-                    if isinstance(self.current_mode, AlarmEditor)
+                    self.current_mode.navigate_value_list(1)
+                    if isinstance(self.current_mode, AlarmEditingService)
                     else None
                 ),
             )
@@ -358,14 +376,14 @@ class AlarmClockModeCoordinator(StateMachine):
                     RotaryDirection.COUNTERCLOCKWISE,
                 ),
                 callable=lambda _: (
-                    self.current_mode.activate_previous_value()
-                    if isinstance(self.current_mode, AlarmEditor)
+                    self.current_mode.navigate_value_list(-1)
+                    if isinstance(self.current_mode, AlarmEditingService)
                     else None
                 ),
             )
         )
 
-    def handle_invoke_in_alarm_edit_mode(self, state: AlarmEditor):
+    def handle_invoke_in_alarm_edit_mode(self, state: AlarmEditingService):
         if state.property_to_edit == EditorAction.COMMIT:
             state.update_config()
             self.event_bus.emit(ConfigChangedEvent(self.alarm_clock_context.config))
@@ -378,8 +396,8 @@ class AlarmClockModeCoordinator(StateMachine):
             else:
                 return ModeName.ALARM_EDIT
 
-    def init_alarm_editor_mode(self) -> "AlarmEditor":
-        self.current_mode = AlarmEditor(self.alarm_clock_context)
+    def init_alarm_editor_mode(self) -> "AlarmEditingService":
+        self.current_mode = AlarmEditingService(self.alarm_clock_context)
 
-    def init_default_mode(self) -> "AlarmEditor":
-        self.current_mode = AlarmEditor(self.alarm_clock_context)
+    def init_default_mode(self) -> "AlarmEditingService":
+        self.current_mode = AlarmEditingService(self.alarm_clock_context)
