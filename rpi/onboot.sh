@@ -6,7 +6,7 @@ check_internet() {
 		end_time=$((start_time + timeout))
 		ping_success=false
 
-		while [[ $(date +%s) -lt $end_time ]]; do
+		while [ $(date +%s) -lt $end_time ]; do
 				if ping -c 1 google.com >/dev/null; then
 						ping_success=true
 						break
