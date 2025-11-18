@@ -38,6 +38,7 @@ class ClockApp:
 
         config = self.container.config()
         context = self.container.alarm_clock_context()
+        self.container.persistence()
 
         logger.info("config available")
 

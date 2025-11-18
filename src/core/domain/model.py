@@ -192,7 +192,7 @@ class AlarmDefinition:
     min: int
 
     @property
-    def day_type(self) -> AlarmRecurrence:
+    def recurrence(self) -> AlarmRecurrence:
         if self.is_recurring():
             return AlarmRecurrence.RECURRING
         elif self.is_onetime():
@@ -200,8 +200,8 @@ class AlarmDefinition:
         else:
             return None
 
-    @day_type.setter
-    def day_type(self, value: AlarmRecurrence):
+    @recurrence.setter
+    def recurrence(self, value: AlarmRecurrence):
         if value == AlarmRecurrence.RECURRING:
             self.recurring = [Weekday.MONDAY.name]
             self.onetime = None
@@ -260,7 +260,7 @@ class AlarmDefinition:
         self.recurring = None
 
     def is_onetime(self) -> bool:
-        return self.onetime is not None and self.recurring is None
+        return not self.is_recurring()
 
     def is_recurring(self) -> bool:
         return (
