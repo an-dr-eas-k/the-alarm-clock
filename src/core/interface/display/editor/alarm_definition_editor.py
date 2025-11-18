@@ -3,7 +3,7 @@ import datetime
 from typing import Dict, List
 import logging
 
-from core.domain.edit_mode import AlarmProperty
+from core.domain.edit_mode import AlarmProperty, AlarmRecurrence
 from core.domain.model import AlarmDefinition, Config, StreamAudioEffect, Weekday
 
 from datetime import datetime, timedelta
@@ -20,7 +20,7 @@ class EditableProperty:
 
 class AlarmDefinitionProperties:
 
-    day_type: str = "onetime"
+    day_type: AlarmRecurrence = AlarmRecurrence.ONETIME
     _editable_properties: Dict[AlarmProperty, EditableProperty]
 
     def __init__(self):
@@ -29,7 +29,8 @@ class AlarmDefinitionProperties:
             AlarmProperty.HOUR: EditableProperty(AlarmProperty.HOUR, list(range(24))),
             AlarmProperty.MIN: EditableProperty(AlarmProperty.MIN, list(range(60))),
             AlarmProperty.DAY_TYPE: EditableProperty(
-                AlarmProperty.DAY_TYPE, ["onetime", "recurring"]
+                AlarmProperty.DAY_TYPE,
+                [AlarmRecurrence.ONETIME, AlarmRecurrence.RECURRING],
             ),
             AlarmProperty.ONETIME: EditableProperty(
                 AlarmProperty.ONETIME,
@@ -88,7 +89,7 @@ class AlarmDefinitionProperties:
         pes.append(AlarmProperty.MIN)
         pes.append(AlarmProperty.DAY_TYPE)
 
-        if not alarm_definition.is_onetime() and not alarm_definition.is_recurring():
+        if alarm_definition.day_type == AlarmRecurrence.ONETIME:
             pes.append(AlarmProperty.ONETIME)
         else:
             pes.append(AlarmProperty.RECURRING)

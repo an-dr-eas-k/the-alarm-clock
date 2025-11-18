@@ -3,8 +3,6 @@ from core.infrastructure.event_bus import BaseEvent
 
 from enum import Enum, auto
 
-from utils.state_machine import Trigger
-
 
 class DeviceName(Enum):
     MODE_BUTTON = "mode_button"
@@ -32,7 +30,7 @@ class RotaryDirection(Enum):
 
 
 @dataclass(frozen=True)
-class HwEvent(BaseEvent, Trigger):
+class HwEvent(BaseEvent):
     device_name: DeviceName
 
 

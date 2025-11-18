@@ -1,6 +1,7 @@
 import logging
 from PIL import ImageFont, Image, ImageOps
 
+from core.domain.edit_mode import AlarmProperty, AlarmRecurrence
 from core.domain.events import AudioEffectChangedEvent
 from core.domain.mode_coordinator import AlarmEditingService
 from core.domain.model import (
@@ -117,7 +118,7 @@ class AlarmDatePresenter(AlarmEditorPresenter):
             bg_color=self.formatter.background_color(),
         )
         if machine_state is None or not machine_state.is_in_edit_mode(
-            ["recurring", "onetime"]
+            [AlarmProperty.RECURRING, AlarmProperty.ONETIME]
         ):
             return day_image
 

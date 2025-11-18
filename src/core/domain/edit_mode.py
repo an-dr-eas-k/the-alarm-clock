@@ -6,6 +6,13 @@ class EditorAction(Enum):
     CANCEL = "cancel"
 
 
+class AlarmRecurrence(Enum):
+    """Represents whether an alarm is one-time or recurring."""
+
+    ONETIME = "onetime"
+    RECURRING = "recurring"
+
+
 class AlarmProperty(Enum):
     IS_ACTIVE = "is_active"
     HOUR = "hour"

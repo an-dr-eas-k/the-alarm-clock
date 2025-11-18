@@ -12,6 +12,7 @@ import logging
 
 import jsonpickle
 from apscheduler.triggers.cron import CronTrigger
+from core.domain.edit_mode import AlarmRecurrence
 from utils.extensions import T, Value, get_timedelta_to_alarm, respect_ranges
 
 from utils.geolocation import GeoLocation, Weather
@@ -191,22 +192,22 @@ class AlarmDefinition:
     min: int
 
     @property
-    def day_type(self) -> str:
+    def day_type(self) -> AlarmRecurrence:
         if self.is_recurring():
-            return "recurring"
+            return AlarmRecurrence.RECURRING
         elif self.is_onetime():
-            return "onetime"
+            return AlarmRecurrence.ONETIME
         else:
-            return "undefined"
+            return None
 
     @day_type.setter
-    def day_type(self, value: str):
-        if value == "recurring":
+    def day_type(self, value: AlarmRecurrence):
+        if value == AlarmRecurrence.RECURRING:
             self.recurring = [Weekday.MONDAY.name]
             self.onetime = None
-        elif value == "onetime":
+        elif value == AlarmRecurrence.ONETIME:
             self.recurring = None
-            self.onetime = datetime.date.today()
+            self.onetime = datetime.today().date()
         else:
             self.recurring = None
             self.onetime = None
