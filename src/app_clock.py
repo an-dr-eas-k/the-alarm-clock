@@ -63,7 +63,10 @@ class ClockApp:
         api.start()
 
         self.container.speaker()
-        context.state_machine = self.container.state_machine()
+
+        # Initialize domain coordinator and interface layer
+        context.mode_coordinator = self.container.mode_coordinator()
+        self.container.hardware_input_handler()
 
         self.container.playback_content().playback_mode = Mode.Idle
         controls.consider_failed_alarm()

@@ -3,7 +3,7 @@ from enum import Enum
 import logging
 from PIL import ImageFont, Image, ImageOps
 
-from core.domain.mode_coordinator import AlarmEditingService, DefaultMode
+from core.domain.mode_coordinator import AlarmEditingService, ModeName
 from core.domain.model import (
     AlarmDefinition,
     DisplayContent,
@@ -38,17 +38,15 @@ class Presenter(ComposableImage):
         self.formatter = formatter
         self.content = content
 
-    def machine_state(self, expected_type: Type[T] = None) -> Optional[T]:
-        context = (
-            self.content.alarm_clock_context.state_machine.current_state
-            if self.content.alarm_clock_context.state_machine
-            else None
-        )
-        if expected_type is None:
-            return context
-        if isinstance(context, expected_type):
-            return cast(T, context)
-        return None
+    def current_mode(self) -> Optional[ModeName]:
+        """Get the current mode from the mode coordinator."""
+        coordinator = self.content.alarm_clock_context.mode_coordinator
+        return coordinator.current_mode_name if coordinator else None
+
+    def editing_service(self) -> Optional[AlarmEditingService]:
+        """Get the editing service if in an editing mode."""
+        coordinator = self.content.alarm_clock_context.mode_coordinator
+        return coordinator.editing_service if coordinator else None
 
 
 class DefaultPresenter(Presenter):
@@ -58,7 +56,7 @@ class DefaultPresenter(Presenter):
         super().__init__(formatter, content, position)
 
     def is_present(self) -> bool:
-        return isinstance(self.machine_state(), DefaultMode)
+        return self.current_mode() == ModeName.DEFAULT
 
 
 class AlarmEditorPresenter(Presenter):
@@ -68,13 +66,18 @@ class AlarmEditorPresenter(Presenter):
         super().__init__(formatter, content, position)
 
     def get_alarm_definition(self) -> AlarmDefinition:
-        mode = self.machine_state(AlarmEditingService)
-        if mode is not None and mode.alarm_definition_in_editing is not None:
-            return mode.alarm_definition_in_editing
+        service = self.editing_service()
+        if service is not None and service.alarm_definition_in_editing is not None:
+            return service.alarm_definition_in_editing
         return None
 
     def is_present(self) -> bool:
-        return isinstance(self.machine_state(), AlarmEditingService)
+        mode = self.current_mode()
+        return mode in (
+            ModeName.ALARM_VIEW,
+            ModeName.ALARM_EDIT,
+            ModeName.PROPERTY_EDIT,
+        )
 
 
 class SimpleTextPresenter(AlarmEditorPresenter):
@@ -91,7 +94,7 @@ class SimpleTextPresenter(AlarmEditorPresenter):
         self.edit_mode = edit_mode
 
     def draw(self) -> Image.Image:
-        machine_state = self.machine_state(AlarmEditingService)
+        service = self.editing_service()
         font = self.formatter.default_font(size=20)
         effect_image = text_to_image(
             self.text(self.get_alarm_definition()),
@@ -99,7 +102,7 @@ class SimpleTextPresenter(AlarmEditorPresenter):
             fg_color=self.formatter.foreground_color(),
             bg_color=self.formatter.background_color(),
         )
-        if machine_state is None or not machine_state.is_in_edit_mode([self.edit_mode]):
+        if service is None or not service.is_in_edit_mode([self.edit_mode]):
             return effect_image
 
         return ImageOps.expand(effect_image, border=1, fill="white")

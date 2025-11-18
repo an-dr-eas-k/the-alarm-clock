@@ -2,7 +2,6 @@ import datetime
 from enum import Enum
 import logging
 from PIL import Image
-from core.domain.mode_coordinator import DefaultMode
 from core.domain.model import (
     AlarmClockContext,
     AlarmDefinition,
@@ -104,16 +103,18 @@ class DisplayFormatter:
         )
 
     def adjust_display_by_mode(self):
-        current_state = (
-            self.alarm_clock_context.state_machine.current_state
-            if self.alarm_clock_context.state_machine
+        from core.domain.mode_coordinator import ModeName
+
+        current_mode = (
+            self.alarm_clock_context.mode_coordinator.current_mode_name
+            if self.alarm_clock_context.mode_coordinator
             else None
         )
 
-        if current_state is None:
+        if current_mode is None:
             return
 
-        if not isinstance(current_state, DefaultMode):
+        if current_mode != ModeName.DEFAULT:
             self._background_grayscale_16 = 0
             self._foreground_grayscale_16 = 15
 

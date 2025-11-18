@@ -1,11 +1,8 @@
 import os
 import argparse
 from dependency_injector import containers, providers
-from core.domain.mode_coordinator import (
-    AlarmClockModeCoordinator,
-    AlarmEditingService,
-    DefaultMode,
-)
+from core.domain.mode_coordinator import AlarmClockModeCoordinator
+from core.interface.hardware_input_handler import HardwareInputHandler
 from core.infrastructure.brightness_sensor import BrightnessSensor
 from core.infrastructure.i2c_devices import I2CManager, MCPManager
 from core.infrastructure.mcp23017.buttons import ButtonsManager
@@ -55,10 +52,19 @@ class DIContainer(containers.DeclarativeContainer):
     )
 
     alarm_clock_context = providers.Singleton(AlarmClockContext, config=config)
-    state_machine = providers.Singleton(
+
+    # Domain layer: Pure business logic, no hardware dependencies
+    mode_coordinator = providers.Singleton(
         AlarmClockModeCoordinator,
         event_bus=event_bus,
         alarm_clock_context=alarm_clock_context,
+    )
+
+    # Interface layer: Translates hardware events to domain commands
+    hardware_input_handler = providers.Singleton(
+        HardwareInputHandler,
+        event_bus=event_bus,
+        mode_coordinator=mode_coordinator,
     )
 
     sound_device = providers.Singleton(TACSoundDevice)

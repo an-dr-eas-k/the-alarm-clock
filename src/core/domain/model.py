@@ -17,7 +17,6 @@ from utils.extensions import T, Value, get_timedelta_to_alarm, respect_ranges
 from utils.geolocation import GeoLocation, Weather
 from resources.resources import alarms_dir, default_volume
 from utils.sound_device import SoundDevice
-from utils.state_machine import StateMachine
 
 from datetime import datetime, timedelta
 
@@ -25,6 +24,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from core.infrastructure.event_bus import EventBus
+    from core.domain.mode_coordinator import AlarmClockModeCoordinator
 from core.domain.events import (
     AudioStreamChangedEvent,
     ForcedDisplayUpdateEvent,
@@ -432,7 +432,7 @@ class Config:
 class AlarmClockContext:
 
     config: Config
-    state_machine: StateMachine = None
+    mode_coordinator: "AlarmClockModeCoordinator" = None
     room_brightness: RoomBrightness = RoomBrightness(1.0)
     show_blink_segment: bool = False
     is_online: bool

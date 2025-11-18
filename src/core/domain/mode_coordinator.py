@@ -1,13 +1,11 @@
 from enum import Enum
-from typing import List, Union
+from typing import List, Union, Optional
 import logging
 
 from core.domain.edit_mode import AlarmProperty, EditorAction
 from core.domain.events import (
     ConfigChangedEvent,
     ForcedDisplayUpdateEvent,
-    ToggleAudioEvent,
-    VolumeChangedEvent,
 )
 from core.domain.model import (
     AlarmClockContext,
@@ -15,18 +13,11 @@ from core.domain.model import (
     StreamAudioEffect,
     VisualEffect,
 )
-from core.infrastructure.events_infrastructure import (
-    DeviceName,
-    HwButtonEvent,
-    HwRotaryEvent,
-    RotaryDirection,
-)
 from core.interface.display.editor.alarm_definition_editor import (
     AlarmDefinitionProperties,
 )
 
 from utils.geolocation import GeoLocation
-from utils.state_machine import State, StateMachine, StateTransition
 
 logger = logging.getLogger("tac.mode_coordinator")
 
@@ -233,171 +224,147 @@ class AlarmEditingService(TacMode):
         logger.debug(f"Activated previous value: {self.get_value()}")
 
 
-class AlarmClockModeCoordinator(StateMachine):
+class AlarmClockModeCoordinator:
+    """
+    Domain Entity: Coordinates UI modes and manages the alarm editing workflow.
+
+    This is a pure domain component focused on business logic, not hardware events.
+    Hardware event translation happens at the interface layer.
+    """
+
     def __init__(
         self,
         event_bus,
         alarm_clock_context: AlarmClockContext,
     ):
+        self.event_bus = event_bus
         self.alarm_clock_context = alarm_clock_context
-        self.current_mode: TacMode = DefaultMode(
-            alarm_clock_context=alarm_clock_context
-        )
-        super().__init__(event_bus, ModeName.DEFAULT)
-        self.event_bus.on(HwButtonEvent)(super()._transition_state)
-        self.event_bus.on(HwRotaryEvent)(super()._transition_state)
+        self._current_mode_name: ModeName = ModeName.DEFAULT
+        self._editing_service: Optional[AlarmEditingService] = None
 
-        super().add_definition(
-            StateTransition(ModeName.DEFAULT)
-            .add_transition(
-                HwButtonEvent(DeviceName.MODE_BUTTON),
-                callable=lambda _: self.init_alarm_editor_mode(),
-                next_state=ModeName.ALARM_VIEW,
-            )
-            .add_transition(
-                HwButtonEvent(DeviceName.INVOKE_BUTTON),
-                eventToEmit=ToggleAudioEvent(),
-            )
-            .add_transition(
-                HwRotaryEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE),
-                eventToEmit=VolumeChangedEvent(+1),
-            )
-            .add_transition(
-                HwRotaryEvent(
-                    DeviceName.ROTARY_ENCODER,
-                    RotaryDirection.COUNTERCLOCKWISE,
-                ),
-                eventToEmit=VolumeChangedEvent(-1),
-            )
-        )
+    @property
+    def current_mode_name(self) -> ModeName:
+        """Returns the current mode state."""
+        return self._current_mode_name
 
-        super().add_definition(
-            StateTransition(ModeName.ALARM_VIEW)
-            .add_transition(
-                HwButtonEvent(DeviceName.MODE_BUTTON),
-                callable=lambda _: self.init_default_mode(),
-                next_state=ModeName.DEFAULT,
-            )
-            .add_transition(
-                HwButtonEvent(DeviceName.INVOKE_BUTTON),
-                next_state=ModeName.ALARM_EDIT,
-                callable=lambda _: (
-                    self.current_mode.start_editing()
-                    if isinstance(self.current_mode, AlarmEditingService)
-                    else None
-                ),
-            )
-            .add_transition(
-                HwRotaryEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE),
-                callable=lambda _: (
-                    self.current_mode.navigate_alarms(1)
-                    if isinstance(self.current_mode, AlarmEditingService)
-                    else None
-                ),
-                eventToEmit=ForcedDisplayUpdateEvent(),
-            )
-            .add_transition(
-                HwRotaryEvent(
-                    DeviceName.ROTARY_ENCODER,
-                    RotaryDirection.COUNTERCLOCKWISE,
-                ),
-                callable=lambda _: (
-                    self.current_mode.navigate_alarms(-1)
-                    if isinstance(self.current_mode, AlarmEditingService)
-                    else None
-                ),
-                eventToEmit=ForcedDisplayUpdateEvent(),
-            )
-        )
+    @property
+    def editing_service(self) -> Optional[AlarmEditingService]:
+        """Returns the active editing service, if in an editing mode."""
+        return self._editing_service
 
-        super().add_definition(
-            StateTransition(ModeName.ALARM_EDIT)
-            .add_transition(
-                HwButtonEvent(DeviceName.MODE_BUTTON),
-                callable=lambda _: self.init_default_mode(),
-                next_state=ModeName.DEFAULT,
-            )
-            .add_transition(
-                HwButtonEvent(DeviceName.INVOKE_BUTTON),
-                next_state=lambda _: (
-                    self.handle_invoke_in_alarm_edit_mode(self.current_mode)
-                    if isinstance(self.current_mode, AlarmEditingService)
-                    else None
-                ),
-            )
-            .add_transition(
-                HwRotaryEvent(
-                    DeviceName.ROTARY_ENCODER,
-                    RotaryDirection.CLOCKWISE,
-                ),
-                callable=lambda _: (
-                    self.current_mode.navigate_properties(1)
-                    if isinstance(self.current_mode, AlarmEditingService)
-                    else None
-                ),
-            )
-            .add_transition(
-                HwRotaryEvent(
-                    DeviceName.ROTARY_ENCODER, RotaryDirection.COUNTERCLOCKWISE
-                ),
-                callable=lambda _: (
-                    self.current_mode.navigate_properties(-1)
-                    if isinstance(self.current_mode, AlarmEditingService)
-                    else None
-                ),
-            )
-        )
+    # ========== Domain Commands (called by interface layer) ==========
 
-        super().add_definition(
-            StateTransition(ModeName.PROPERTY_EDIT)
-            .add_transition(
-                HwButtonEvent(DeviceName.MODE_BUTTON), next_state=ModeName.DEFAULT
-            )
-            .add_transition(
-                HwButtonEvent(DeviceName.INVOKE_BUTTON),
-                next_state=ModeName.ALARM_EDIT,
-                callable=lambda _: (
-                    self.current_mode.continue_editing()
-                    if isinstance(self.current_mode, AlarmEditingService)
-                    else None
-                ),
-            )
-            .add_transition(
-                HwRotaryEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE),
-                callable=lambda _: (
-                    self.current_mode.navigate_value_list(1)
-                    if isinstance(self.current_mode, AlarmEditingService)
-                    else None
-                ),
-            )
-            .add_transition(
-                HwRotaryEvent(
-                    DeviceName.ROTARY_ENCODER,
-                    RotaryDirection.COUNTERCLOCKWISE,
-                ),
-                callable=lambda _: (
-                    self.current_mode.navigate_value_list(-1)
-                    if isinstance(self.current_mode, AlarmEditingService)
-                    else None
-                ),
-            )
-        )
+    def enter_alarm_view_mode(self):
+        """Enter alarm viewing/selection mode."""
+        logger.debug("Entering alarm view mode")
+        self._editing_service = AlarmEditingService(self.alarm_clock_context)
+        self._current_mode_name = ModeName.ALARM_VIEW
 
-    def handle_invoke_in_alarm_edit_mode(self, state: AlarmEditingService):
-        if state.property_to_edit == EditorAction.COMMIT:
-            state.update_config()
-            self.event_bus.emit(ConfigChangedEvent(self.alarm_clock_context.config))
-            return ModeName.ALARM_VIEW
-        elif state.property_to_edit == EditorAction.CANCEL:
-            return ModeName.ALARM_VIEW
+    def enter_alarm_edit_mode(self):
+        """Enter alarm property editing mode."""
+        if not self._editing_service:
+            logger.warning("Cannot enter edit mode without an editing service")
+            return
+
+        logger.debug("Entering alarm edit mode")
+        self._editing_service.start_editing()
+        self._current_mode_name = ModeName.ALARM_EDIT
+
+    def enter_property_edit_mode(self):
+        """Enter property value editing mode."""
+        logger.debug("Entering property edit mode")
+        self._current_mode_name = ModeName.PROPERTY_EDIT
+
+    def return_to_default_mode(self):
+        """Return to default (clock display) mode."""
+        logger.debug("Returning to default mode")
+        self._editing_service = None
+        self._current_mode_name = ModeName.DEFAULT
+
+    def navigate_alarms(self, direction: int):
+        """Navigate through alarm list in alarm view mode."""
+        if self._current_mode_name != ModeName.ALARM_VIEW or not self._editing_service:
+            return
+
+        self._editing_service.navigate_alarms(direction)
+        self.event_bus.emit(ForcedDisplayUpdateEvent())
+
+    def navigate_properties(self, direction: int):
+        """Navigate through properties in alarm edit mode."""
+        if self._current_mode_name != ModeName.ALARM_EDIT or not self._editing_service:
+            return
+
+        self._editing_service.navigate_properties(direction)
+
+    def navigate_property_values(self, direction: int):
+        """Navigate through values in property edit mode."""
+        if (
+            self._current_mode_name != ModeName.PROPERTY_EDIT
+            or not self._editing_service
+        ):
+            return
+
+        self._editing_service.navigate_value_list(direction)
+
+    def handle_mode_button(self):
+        """
+        Handle mode button press - context-dependent behavior.
+        Returns to default mode from any editing state.
+        """
+        if self._current_mode_name == ModeName.DEFAULT:
+            # From default, enter alarm view
+            self.enter_alarm_view_mode()
         else:
-            if state.start_property_value_editing():
-                return ModeName.PROPERTY_EDIT
+            # From any editing mode, return to default
+            self.return_to_default_mode()
+
+    def handle_invoke_button(self):
+        """
+        Handle invoke button press - context-dependent behavior.
+        Advances through editing workflow or commits/cancels changes.
+        """
+        if self._current_mode_name == ModeName.DEFAULT:
+            # In default mode, invoke button is handled elsewhere (toggle audio)
+            return None
+
+        elif self._current_mode_name == ModeName.ALARM_VIEW:
+            # Start editing the selected alarm
+            self.enter_alarm_edit_mode()
+
+        elif self._current_mode_name == ModeName.ALARM_EDIT:
+            # Handle property selection or action execution
+            if not self._editing_service:
+                return
+
+            if self._editing_service.property_to_edit == EditorAction.COMMIT:
+                self._commit_alarm_changes()
+            elif self._editing_service.property_to_edit == EditorAction.CANCEL:
+                self._cancel_alarm_changes()
             else:
-                return ModeName.ALARM_EDIT
+                # Start editing property value
+                if self._editing_service.start_property_value_editing():
+                    self.enter_property_edit_mode()
+                # else: value was toggled inline, stay in ALARM_EDIT
 
-    def init_alarm_editor_mode(self) -> "AlarmEditingService":
-        self.current_mode = AlarmEditingService(self.alarm_clock_context)
+        elif self._current_mode_name == ModeName.PROPERTY_EDIT:
+            # Finish editing property value
+            if self._editing_service:
+                self._editing_service.continue_editing()
+            self._current_mode_name = ModeName.ALARM_EDIT
 
-    def init_default_mode(self) -> "AlarmEditingService":
-        self.current_mode = AlarmEditingService(self.alarm_clock_context)
+    # ========== Private Domain Logic ==========
+
+    def _commit_alarm_changes(self):
+        """Commit the edited alarm to the configuration."""
+        if not self._editing_service:
+            return
+
+        self._editing_service.update_config()
+        self.event_bus.emit(ConfigChangedEvent(self.alarm_clock_context.config))
+        self._current_mode_name = ModeName.ALARM_VIEW
+        logger.info("Alarm changes committed")
+
+    def _cancel_alarm_changes(self):
+        """Cancel alarm editing and discard changes."""
+        self._current_mode_name = ModeName.ALARM_VIEW
+        logger.info("Alarm changes cancelled")
