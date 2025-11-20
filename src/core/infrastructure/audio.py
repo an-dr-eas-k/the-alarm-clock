@@ -5,7 +5,6 @@ import vlc
 import time
 import subprocess
 import threading
-from abc import ABC, abstractmethod
 
 from core.domain.events import AudioStreamChangedEvent, SpeakerErrorEvent
 from core.domain.model import (
@@ -17,7 +16,6 @@ from core.domain.model import (
     StreamAudioEffect,
 )
 from core.infrastructure.event_bus import EventBus
-from utils.network import is_internet_available
 from resources.resources import alarms_dir, init_logging, default_volume
 
 logger = logging.getLogger("tac.audio")
@@ -60,12 +58,13 @@ class MediaListPlayer(MediaPlayer):
                 pass
 
             if (
-                True
-                and event.type == vlc.EventType.MediaPlayerEncounteredError
-                and super().error_callback is not None
+                False
+                or event.type == vlc.EventType.MediaPlayerEncounteredError
+                or event.type == vlc.EventType.MediaPlayerEndReached
             ):
-                logger.info("vlc player error")
-                threading.Thread(target=super().error_callback).start()
+                logger.info("vlc player error: %s", event.type)
+                threading.Thread(target=self.error_callback).start()
+
         except Exception as e:
             logger.error("callback error: %s", traceback.format_exc())
 

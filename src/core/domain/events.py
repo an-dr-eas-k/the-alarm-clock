@@ -25,8 +25,15 @@ class WifiStatusChangedEvent(BaseEvent):
 
 
 @dataclass(frozen=True)
-class AlarmEvent(BaseEvent):
+class AlarmTriggeredEvent(BaseEvent):
     alarm_definition: AlarmDefinition
+
+
+@dataclass(frozen=True)
+class AlarmStoppedEvent(BaseEvent):
+
+    alarm_definition: AlarmDefinition = None
+    reason: str = None  # e.g., "manual", "timeout", "snooze"
 
 
 @dataclass(frozen=True)
@@ -122,4 +129,4 @@ class RegularDisplayContentUpdateEvent(BaseEvent):
 
 @dataclass(frozen=True)
 class SpeakerErrorEvent(BaseEvent):
-    offline_stream_failed: bool
+    pass
