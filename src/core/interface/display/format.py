@@ -161,9 +161,22 @@ class DisplayFormatter:
                 "<blinkSegment>", blink_segment
             )
         )
-        return self.format_dseg7_string(clock_string, desired_length=5)
+        return clock_string
 
-    def format_dseg7_string(self, dseg7: str, desired_length: int = None) -> str:
+    def format_dseg7_clock_string(
+        self,
+        clock: datetime,
+        show_blink_segment: bool = True,
+        desired_length: int = 5,
+    ) -> str:
+        dseg7 = self.format_clock_string(clock, show_blink_segment)
+        return self.format_dseg7_string(dseg7, desired_length=desired_length)
+
+    def format_dseg7_string(
+        self,
+        dseg7: str,
+        desired_length: int = None,
+    ) -> str:
         if desired_length is None:
             desired_length = len(dseg7)
 

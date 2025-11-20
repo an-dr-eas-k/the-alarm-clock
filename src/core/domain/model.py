@@ -27,7 +27,6 @@ if TYPE_CHECKING:
     from core.domain.mode_coordinator import AlarmClockModeCoordinator
 from core.domain.events import (
     AudioStreamChangedEvent,
-    SpotifyApiEvent,
     VolumeChangedEvent,
     AudioEffectChangedEvent,
 )
@@ -218,19 +217,6 @@ class StreamAudioEffect(AudioEffect):
 
     def title(self):
         return self.audio_stream.stream_name
-
-
-class SpotifyAudioEffect(AudioEffect):
-    spotify_stream: SpotifyStream
-
-    def __init__(self, volume: float = None):
-        AudioEffect.__init__(self, volume)
-
-    def __str__(self):
-        return f"spotify_stream: {self.spotify_stream} {super().__str__()}"
-
-    def title(self):
-        return self.spotify_stream.track_name
 
 
 class AlarmDefinition:
@@ -548,7 +534,6 @@ class PlaybackContent(MediaContent):
         default_volume = self.alarm_clock_context.config.default_volume
         self.sound_device.set_system_volume(default_volume)
         self.audio_stream = None
-        self.event_bus.on(SpotifyApiEvent)(self._set_spotify_api_event)
         self.event_bus.on(AudioEffectChangedEvent)(self._audio_effect_changed)
         self.event_bus.on(AudioStreamChangedEvent)(self._audio_stream_changed)
         self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
@@ -587,22 +572,3 @@ class PlaybackContent(MediaContent):
 
     def decrease_volume(self):
         self.volume = max(self.volume - 0.05, 0.0)
-
-    def _set_spotify_api_event(self, spotify_event: SpotifyApiEvent):
-        spotify_audio_effect = SpotifyAudioEffect()
-
-        spotify_stream = SpotifyStream()
-        if hasattr(spotify_event, "track_id"):
-            spotify_stream.track_id = spotify_event.track_id
-        spotify_audio_effect.spotify_stream = spotify_stream
-
-        self.audio_stream = spotify_stream
-
-        if spotify_event.is_playback_started() and self.playback_mode != Mode.Spotify:
-            self.playback_mode = Mode.Spotify
-
-        if spotify_event.is_playback_stopped() and self.playback_mode != Mode.Idle:
-            self.playback_mode = Mode.Idle
-
-        if spotify_event.is_volume_changed() and self.playback_mode == Mode.Spotify:
-            self.event_bus.emit(VolumeChangedEvent(0))

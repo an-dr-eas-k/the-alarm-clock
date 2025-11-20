@@ -12,8 +12,10 @@ from core.domain.events import (
     ConfigChangedEvent,
     ForcedDisplayUpdateEvent,
     SpeakerErrorEvent,
+    SpotifyApiEvent,
     ToggleAudioEvent,
-    AlarmEvent,
+    AlarmTriggeredEvent,
+    AlarmStoppedEvent,
     SunEventOccurredEvent,
     VolumeChangedEvent,
     WifiStatusChangedEvent,
@@ -26,6 +28,7 @@ from core.domain.model import (
     PlaybackContent,
     Mode,
     RoomBrightness,
+    SpotifyStream,
     StreamAudioEffect,
     Config,
 )
@@ -72,10 +75,9 @@ class Controls:
         self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
         self.event_bus.on(WifiStatusChangedEvent)(self._wifi_status_changed)
         self.event_bus.on(ConfigChangedEvent)(self._config_changed)
-        self.event_bus.on(AlarmEvent)(self._alarm_event)
-        # DisplayContent now delegates to AlarmClockContext.display_state
-        # No need for separate event handler
+        self.event_bus.on(AlarmTriggeredEvent)(self._alarm_triggered)
         self.event_bus.on(SpeakerErrorEvent)(self._handle_speaker_error)
+        self.event_bus.on(SpotifyApiEvent)(self._spotify_api_event)
 
         self.alarm_clock_context.environment.is_daytime = (
             alarm_clock_context.environment.geo_location.last_sun_event()
@@ -91,6 +93,7 @@ class Controls:
             ad: AlarmDefinition = AlarmDefinition.deserialize(
                 active_alarm_definition_file
             )
+            ad.id = -1
             logger.info("failed audioeffect found %s", ad.alarm_name)
             self._ring_alarm(ad)
 
@@ -204,30 +207,59 @@ class Controls:
             logger.error("%s", traceback.format_exc())
 
     def _toggle_stream(self, _: ToggleAudioEvent):
+        if self.playback_content.playback_mode == Mode.Alarm:
+            self.set_to_idle_mode(alarm_stopped_reason="manual")
+            return
+
         if self.playback_content.playback_mode in [
-            Mode.Alarm,
             Mode.Music,
             Mode.Spotify,
         ]:
             self.set_to_idle_mode()
-        else:
-            if self.playback_content.audio_stream and isinstance(
-                self.playback_content.audio_stream, AudioStream
-            ):
-                self._play_music(self.playback_content.audio_stream)
-            else:
-                self.play_music_by_id(0)
+            return
 
-    def _alarm_event(self, event: AlarmEvent):
+        if self.playback_content.audio_stream and isinstance(
+            self.playback_content.audio_stream, AudioStream
+        ):
+            self._play_music(self.playback_content.audio_stream)
+        else:
+            self.play_music_by_id(0)
+
+    def _spotify_api_event(self, spotify_event: SpotifyApiEvent):
+
+        spotify_stream = SpotifyStream()
+        if hasattr(spotify_event, "track_id"):
+            spotify_stream.track_id = spotify_event.track_id
+
+        if (
+            spotify_event.is_playback_started()
+            and self.playback_content.playback_mode != Mode.Spotify
+        ):
+            self.playback_content.playback_mode = Mode.Spotify
+            self.event_bus.emit(AudioStreamChangedEvent(spotify_stream))
+
+        if (
+            spotify_event.is_playback_stopped()
+            and self.playback_content.playback_mode != Mode.Idle
+        ):
+            self.set_to_idle_mode()
+
+        if (
+            spotify_event.is_volume_changed()
+            and self.playback_content.playback_mode == Mode.Spotify
+        ):
+            self.event_bus.emit(VolumeChangedEvent(0))
+
+    def _alarm_triggered(self, event: AlarmTriggeredEvent):
+        """Handle alarm triggered event - start playback."""
         self.set_to_idle_mode()
         self.playback_content.playback_mode = Mode.Alarm
         self.event_bus.emit(
             AudioEffectChangedEvent(event.alarm_definition.audio_effect)
         )
 
-    def set_to_idle_mode(self):
-        if self.playback_content.playback_mode == Mode.Idle:
-            return
+    def set_to_idle_mode(self, alarm_stopped_reason: str = None):
+        was_alarm = self.playback_content.playback_mode == Mode.Alarm
 
         if self.playback_content.playback_mode == Mode.Spotify:
             restart_spotify_daemon()
@@ -236,6 +268,9 @@ class Controls:
         self.stop_generic_trigger(SchedulerJobIds.hide_volume_meter.value)
         self.playback_content.playback_mode = Mode.Idle
         self.event_bus.emit(AudioStreamChangedEvent(None))
+
+        if was_alarm:
+            self.event_bus.emit(AlarmStoppedEvent(reason=alarm_stopped_reason))
 
     def _volume_changed(self, _: VolumeChangedEvent):
         self.start_hide_volume_meter_trigger()
@@ -272,9 +307,8 @@ class Controls:
                         self.alarm_clock_context.config.get_offline_stream()
                     )
                 )
-
-    # DisplayContent now delegates display state to AlarmClockContext
-    # This method is no longer needed
+        else:
+            self.set_to_idle_mode()
 
     def _emit_regular_display_update(self):
 
@@ -356,12 +390,12 @@ class Controls:
                     volume=alarm_definition.audio_effect.volume,
                 )
 
-            if alarm_definition.is_onetime():
+            if alarm_definition.is_onetime() and alarm_definition.id >= 0:
                 self.alarm_clock_context.config.remove_alarm_definition(
                     alarm_definition.id
                 )
 
-            self.event_bus.emit(AlarmEvent(alarm_definition))
+            self.event_bus.emit(AlarmTriggeredEvent(alarm_definition))
             self.postprocess_ring_alarm()
 
         Controls.action(do, "ring alarm %s" % alarm_definition.alarm_name)
@@ -372,7 +406,7 @@ class Controls:
             datetime.timedelta(
                 minutes=self.alarm_clock_context.config.alarm_duration_in_mins
             ),
-            func=self.set_to_idle_mode,
+            func=lambda: self.set_to_idle_mode(alarm_stopped_reason="timeout"),
         )
 
         self.display_content.update_next_alarm(self.get_next_alarm_job())

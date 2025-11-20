@@ -219,7 +219,7 @@ class ClockPresenter(DefaultPresenter):
             return self.draw_analog_clock()
 
         font = self.formatter.clock_font()
-        clock_string = self.formatter.format_clock_string(
+        clock_string = self.formatter.format_dseg7_clock_string(
             GeoLocation().now(), self.content.show_blink_segment
         )
         clock_image = text_to_image(
@@ -374,7 +374,7 @@ class NextAlarmPresenter(DefaultPresenter):
         font_nerd = ImageFont.truetype(self.font_file_nerd, 20)
         font_7segment = ImageFont.truetype(self.font_file_7segment, 13)
 
-        next_alarm_string = self.formatter.format_clock_string(
+        next_alarm_string = self.formatter.format_dseg7_clock_string(
             self.content.get_next_alarm()
         )
         next_alarm_img = text_to_image(
