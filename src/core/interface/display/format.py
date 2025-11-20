@@ -4,12 +4,11 @@ import logging
 from PIL import Image
 from core.domain.model import (
     AlarmClockContext,
-    AlarmDefinition,
     VisualEffect,
 )
 from core.interface.display.display_content import DisplayContent
 from utils.drawing import PresentationFont, grayscale_to_color
-from utils.extensions import get_job_arg, respect_ranges
+from utils.extensions import respect_ranges
 
 logger = logging.getLogger("tac.display")
 
@@ -119,23 +118,14 @@ class DisplayFormatter:
             self._foreground_grayscale_16 = 15
 
     def adjust_display_by_alarm(self):
-        # Get alarm info from display content
+        """
+        Adjust display based on upcoming alarm proximity and visual effects.
+        """
         next_alarm_info = self.display_content.next_alarm_info
 
-        # Extract visual effect from scheduler if alarm exists
-        visual_effect: VisualEffect = None
-        if next_alarm_info.has_alarm():
-            # TODO: This still requires accessing scheduler Job to get AlarmDefinition
-            # Consider moving visual_effect to NextAlarmInfo in future refactoring
-            from core.application.controls import Controls
-
-            next_job = (
-                Controls.get_instance().get_next_alarm_job()
-                if hasattr(Controls, "get_instance")
-                else None
-            )
-            if next_job:
-                visual_effect = get_job_arg(next_job, AlarmDefinition).visual_effect
+        visual_effect = (
+            next_alarm_info.visual_effect if next_alarm_info.has_alarm() else None
+        )
 
         self.adjust_display_by_alarm_visual_effect(
             next_alarm_info.get_timedelta_to_alarm(), visual_effect

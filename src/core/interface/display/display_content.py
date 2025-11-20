@@ -9,6 +9,7 @@ from core.domain.model import (
     Mode,
     RoomBrightness,
     Weather,
+    VisualEffect,
 )
 
 if TYPE_CHECKING:
@@ -28,24 +29,46 @@ logger = logging.getLogger("tac.interface.display")
 
 class NextAlarmInfo:
     """
-    Value Object: Information about the next scheduled alarm.
+    Value Object: Complete information about the next scheduled alarm.
 
-    Encapsulates alarm timing without exposing scheduler infrastructure.
-    This bridges between the Infrastructure layer (APScheduler) and
-    the Interface layer (DisplayContent).
+    Encapsulates alarm timing, name, and visual effects without exposing
+    scheduler infrastructure. This bridges between the Infrastructure layer
+    (APScheduler) and the Interface layer (DisplayContent).
+
+    DDD Pattern: Rich Value Object - contains all data needed for presentation
     """
 
-    def __init__(self, next_run_time: datetime = None):
+    def __init__(
+        self,
+        next_run_time: datetime = None,
+        alarm_name: str = None,
+        visual_effect: "VisualEffect" = None,
+    ):
         self._next_run_time = next_run_time
+        self._alarm_name = alarm_name
+        self._visual_effect = visual_effect
 
     @property
     def next_run_time(self) -> datetime:
+        """When the alarm will trigger."""
         return self._next_run_time
 
+    @property
+    def alarm_name(self) -> str:
+        """Name of the alarm (e.g., 'Wake Up', 'Powernap')."""
+        return self._alarm_name
+
+    @property
+    def visual_effect(self) -> "VisualEffect":
+        """Visual effect configuration for this alarm."""
+        return self._visual_effect
+
     def has_alarm(self) -> bool:
+        """Whether there is a scheduled alarm."""
         return self._next_run_time is not None
 
     def get_timedelta_to_alarm(self) -> timedelta:
+        """Time remaining until alarm triggers."""
         if not self.has_alarm():
             return timedelta.max
         return self._calculate_time_delta()
@@ -58,6 +81,7 @@ class NextAlarmInfo:
         return self._next_run_time - now
 
     def minutes_until_alarm(self) -> int:
+        """Minutes until alarm triggers."""
         return int(self.get_timedelta_to_alarm().total_seconds() / 60)
 
 
@@ -105,7 +129,6 @@ class DisplayContent:
         self.next_alarm_info = NextAlarmInfo()
         self.room_brightness = RoomBrightness(1.0)
 
-        # Subscribe to presentation-relevant events
         self.event_bus.on(AudioStreamChangedEvent)(self._audio_stream_changed)
         self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
 
@@ -170,10 +193,23 @@ class DisplayContent:
         Update next alarm from scheduler job (infrastructure adapter).
 
         This method acts as an adapter between Infrastructure (APScheduler Job)
-        and Interface (NextAlarmInfo value object).
+        and Interface (NextAlarmInfo value object). Extracts all relevant
+        alarm information including visual effects.
         """
-        next_run = job.next_run_time if job is not None else None
-        self.next_alarm_info = NextAlarmInfo(next_run)
+        if job is None:
+            self.next_alarm_info = NextAlarmInfo()
+            return
+
+        from core.domain.model import AlarmDefinition
+        from utils.extensions import get_job_arg
+
+        alarm_def = get_job_arg(job, AlarmDefinition)
+
+        self.next_alarm_info = NextAlarmInfo(
+            next_run_time=job.next_run_time,
+            alarm_name=alarm_def.alarm_name if alarm_def else None,
+            visual_effect=alarm_def.visual_effect if alarm_def else None,
+        )
 
     def show_alarm_preview(self) -> bool:
         """
