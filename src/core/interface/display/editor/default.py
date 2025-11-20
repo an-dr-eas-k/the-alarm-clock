@@ -1,12 +1,10 @@
 import logging
 from PIL import ImageFont, Image, ImageOps
 
-from core.domain.edit_mode import AlarmProperty, AlarmRecurrence
+from core.domain.edit_mode import AlarmProperty
 from core.domain.events import AudioEffectChangedEvent
 from core.domain.mode_coordinator import AlarmEditingService
-from core.domain.model import (
-    DisplayContent,
-)
+from core.interface.display.display_content import DisplayContent
 from core.infrastructure.event_bus import EventBus
 from core.interface.display.display import DisplayFormatter
 from core.interface.display.presenter import (

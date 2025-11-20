@@ -14,7 +14,6 @@ from core.domain.events import (
     SpeakerErrorEvent,
     ToggleAudioEvent,
     AlarmEvent,
-    RegularDisplayContentUpdateEvent,
     SunEventOccurredEvent,
     VolumeChangedEvent,
     WifiStatusChangedEvent,
@@ -25,12 +24,12 @@ from core.domain.model import (
     AudioStream,
     OfflineStream,
     PlaybackContent,
-    DisplayContent,
     Mode,
     RoomBrightness,
     StreamAudioEffect,
     Config,
 )
+from core.interface.display.display_content import DisplayContent
 from core.infrastructure.brightness_sensor import IBrightnessSensor
 from core.infrastructure.event_bus import EventBus
 from utils.geolocation import GeoLocation, SunEvent
@@ -74,13 +73,13 @@ class Controls:
         self.event_bus.on(WifiStatusChangedEvent)(self._wifi_status_changed)
         self.event_bus.on(ConfigChangedEvent)(self._config_changed)
         self.event_bus.on(AlarmEvent)(self._alarm_event)
-        self.event_bus.on(RegularDisplayContentUpdateEvent)(
-            self._regular_display_update
-        )
+        # DisplayContent now delegates to AlarmClockContext.display_state
+        # No need for separate event handler
         self.event_bus.on(SpeakerErrorEvent)(self._handle_speaker_error)
 
-        self.alarm_clock_context.is_daytime = (
-            alarm_clock_context.geo_location.last_sun_event() == SunEvent.sunrise
+        self.alarm_clock_context.environment.is_daytime = (
+            alarm_clock_context.environment.geo_location.last_sun_event()
+            == SunEvent.sunrise
         )
         self._update_weather_status()
         self._add_scheduler_jobs()
@@ -127,7 +126,7 @@ class Controls:
     def init_sun_event_scheduler(self, event: SunEvent):
         self.scheduler.add_job(
             lambda: self.sun_event_occured(event),
-            trigger=self.alarm_clock_context.geo_location.get_sun_event_cron_trigger(
+            trigger=self.alarm_clock_context.environment.geo_location.get_sun_event_cron_trigger(
                 event
             ),
             id=event.value,
@@ -177,7 +176,7 @@ class Controls:
                 trigger=alDef.to_cron_trigger(),
             )
         self.cleanup_alarms()
-        self.display_content.next_alarm_job = self.get_next_alarm_job()
+        self.display_content.update_next_alarm(self.get_next_alarm_job())
         self._print_active_jobs(alarm_store)
 
     def get_next_alarm_job(self) -> Job:
@@ -274,31 +273,27 @@ class Controls:
                     )
                 )
 
-    def _regular_display_update(self, event: RegularDisplayContentUpdateEvent):
-        if self.alarm_clock_context.update_state(
-            event.show_blink_segment,
-            event.room_brightness,
-            self.display_content.is_scrolling,
-        ):
-            self.event_bus.emit(ForcedDisplayUpdateEvent(suppress_logging=True))
+    # DisplayContent now delegates display state to AlarmClockContext
+    # This method is no longer needed
 
     def _emit_regular_display_update(self):
 
         def do():
             logger.debug("update display")
             current_second = GeoLocation().now().second
-            new_blink_state = self.alarm_clock_context.show_blink_segment
+            new_blink_state = self.display_content.show_blink_segment
 
             if self._previous_second != current_second:
-                new_blink_state = not self.alarm_clock_context.show_blink_segment
+                new_blink_state = not self.display_content.show_blink_segment
                 self._previous_second = current_second
 
-            self.event_bus.emit(
-                RegularDisplayContentUpdateEvent(
-                    show_blink_segment=new_blink_state,
-                    room_brightness=RoomBrightness(self.get_room_brightness()),
-                )
-            )
+            # Update ViewModel presentation state directly
+            if self.display_content.update_presentation_state(
+                show_blink_segment=new_blink_state,
+                room_brightness=RoomBrightness(self.get_room_brightness()),
+                is_scrolling=self.display_content.is_scrolling,
+            ):
+                self.event_bus.emit(ForcedDisplayUpdateEvent(suppress_logging=True))
 
         Controls.action(do)
 
@@ -306,17 +301,17 @@ class Controls:
         if event.is_online:
             self._update_weather_status()
         else:
-            self.display_content.current_weather = None
+            self.alarm_clock_context.environment.current_weather = None
 
     def _update_weather_status(self):
         def do():
-            if not self.alarm_clock_context.is_online:
-                self.display_content.current_weather = None
+            if not self.alarm_clock_context.environment.is_online:
+                self.alarm_clock_context.environment.current_weather = None
                 return
 
             new_weather = GeoLocation().get_current_weather()
             logger.info("weather updating: %s", new_weather)
-            self.display_content.current_weather = new_weather
+            self.alarm_clock_context.environment.current_weather = new_weather
 
         Controls.action(do)
 
@@ -324,10 +319,10 @@ class Controls:
         def do():
             is_online = is_internet_available()
 
-            if is_online != self.alarm_clock_context.is_online:
+            if is_online != self.alarm_clock_context.environment.is_online:
                 logger.info("change wifi state, is online: %s", is_online)
                 self.event_bus.emit(WifiStatusChangedEvent(is_online))
-                self.alarm_clock_context.is_online = is_online
+                self.alarm_clock_context.environment.is_online = is_online
 
                 if not is_online and self.playback_content.playback_mode in [
                     Mode.Music,
@@ -340,7 +335,7 @@ class Controls:
     def sun_event_occured(self, event: SunEvent):
         def do():
             self.event_bus.emit(SunEventOccurredEvent(event))
-            self.alarm_clock_context.is_daytime = event == SunEvent.sunrise
+            self.alarm_clock_context.environment.is_daytime = event == SunEvent.sunrise
             self.init_sun_event_scheduler(event)
 
         Controls.action(do, "sun event %s" % event)
@@ -380,7 +375,7 @@ class Controls:
             func=self.set_to_idle_mode,
         )
 
-        self.display_content.next_alarm_job = self.get_next_alarm_job()
+        self.display_content.update_next_alarm(self.get_next_alarm_job())
 
     def cleanup_alarms(self):
         job: Job

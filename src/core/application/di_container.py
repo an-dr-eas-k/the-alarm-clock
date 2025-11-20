@@ -17,11 +17,10 @@ from resources.resources import config_file
 from core.domain.model import (
     AlarmClockContext,
     Config,
-    DisplayContent,
     PlaybackContent,
 )
+from core.interface.display.display_content import DisplayContent
 from utils.sound_device import TACSoundDevice
-from luma.core.device import dummy
 from luma.oled.device import ssd1322
 from luma.core.interface.serial import spi
 

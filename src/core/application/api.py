@@ -331,9 +331,9 @@ class Api:
                         color_type=ColorType.IN16
                     ),
                 ),
-                is_online=self.controls.alarm_clock_context.is_online,
-                is_daytime=self.controls.alarm_clock_context.is_daytime,
-                geo_location=self.controls.alarm_clock_context.geo_location.location_info.__dict__,
+                is_online=self.controls.alarm_clock_context.environment.is_online,
+                is_daytime=self.controls.alarm_clock_context.environment.is_daytime,
+                geo_location=self.controls.alarm_clock_context.environment.geo_location.location_info.__dict__,
                 playback_content=dict(
                     audio_effect=self.controls.playback_content.audio_stream.__str__(),
                     volume=self.controls.playback_content.volume,

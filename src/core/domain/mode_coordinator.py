@@ -47,11 +47,11 @@ class AlarmEditingSession:
         self._original_alarm = alarm
         self._draft_alarm = self._create_draft(alarm)
         self._current_property_index = 0
-        self._properties = self._build_property_list()
         self._property_editor = AlarmDefinitionProperties()
         self._property_editor.update_value_lists(
             config, self._draft_alarm.audio_effect.volume
         )
+        self._properties = self._build_property_list()
 
     def _create_draft(self, alarm: AlarmDefinition) -> AlarmDefinition:
         """Create a working copy of the alarm for editing."""

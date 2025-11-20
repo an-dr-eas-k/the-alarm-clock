@@ -14,17 +14,13 @@ from core.domain.events import (
 from core.domain.model import (
     AlarmClockContext,
     Config,
-    DisplayContent,
     DisplayContentProvider,
     PlaybackContent,
     SpotifyStream,
 )
+from core.interface.display.display_content import DisplayContent
 from core.infrastructure.event_bus import EventBus
 from core.interface.display.format import ColorType, DisplayFormatter
-from core.interface.display.presenter import (
-    BackgroundPresenter,
-    RefreshPresenter,
-)
 from core.interface.display.editor.default import (
     AlarmActiveStatusPresenter,
     AlarmCancelPresenter,

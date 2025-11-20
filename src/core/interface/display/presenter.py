@@ -1,13 +1,11 @@
-from typing import Optional, Type, cast
+from typing import Optional
 from enum import Enum
 import logging
 from PIL import ImageFont, Image, ImageOps
 
 from core.domain.mode_coordinator import AlarmEditingService, ModeName
-from core.domain.model import (
-    AlarmDefinition,
-    DisplayContent,
-)
+from core.domain.model import AlarmDefinition
+from core.interface.display.display_content import DisplayContent
 from utils.drawing import (
     PresentationFont,
     text_to_image,

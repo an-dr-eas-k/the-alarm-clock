@@ -6,14 +6,13 @@ import datetime
 import os
 from PIL import Image
 from typing import List
-from apscheduler.job import Job
 from enum import Enum
 import logging
 
 import jsonpickle
 from apscheduler.triggers.cron import CronTrigger
 from core.domain.edit_mode import AlarmRecurrence
-from utils.extensions import T, Value, get_timedelta_to_alarm, respect_ranges
+from utils.extensions import T, Value, respect_ranges
 
 from utils.geolocation import GeoLocation, Weather
 from resources.resources import alarms_dir, default_volume
@@ -28,9 +27,7 @@ if TYPE_CHECKING:
     from core.domain.mode_coordinator import AlarmClockModeCoordinator
 from core.domain.events import (
     AudioStreamChangedEvent,
-    ForcedDisplayUpdateEvent,
     SpotifyApiEvent,
-    RegularDisplayContentUpdateEvent,
     VolumeChangedEvent,
     AudioEffectChangedEvent,
 )
@@ -94,6 +91,56 @@ class Style:
     background_grayscale_16: int
     foreground_grayscale_16: int
     be_bold: bool
+
+
+class EnvironmentContext:
+    """
+    Aggregate: Current environmental and network conditions.
+
+    Encapsulates knowledge about the physical and network environment
+    the alarm clock is operating in.
+    """
+
+    def __init__(self):
+        self._geo_location = GeoLocation()
+        self._is_online = True
+        self._is_daytime = True
+        self._current_weather: Weather = None
+
+    @property
+    def geo_location(self) -> GeoLocation:
+        """Geographic location service."""
+        return self._geo_location
+
+    @property
+    def is_online(self) -> bool:
+        """Whether network connectivity is available."""
+        return self._is_online
+
+    @is_online.setter
+    def is_online(self, value: bool):
+        """Update network connectivity status."""
+        self._is_online = value
+
+    @property
+    def is_daytime(self) -> bool:
+        """Whether it's currently daytime (based on sunrise/sunset)."""
+        return self._is_daytime
+
+    @is_daytime.setter
+    def is_daytime(self, value: bool):
+        """Update day/night status."""
+        self._is_daytime = value
+
+    @property
+    def current_weather(self) -> Weather:
+        """Current weather conditions."""
+        return self._current_weather
+
+    @current_weather.setter
+    def current_weather(self, value: Weather):
+        """Update current weather conditions."""
+        self._current_weather = value
 
 
 class VisualEffect:
@@ -297,18 +344,14 @@ class Config:
     alarm_preview_hours: int
     debug_level: int
 
-    @property
-    def alarm_definitions(self) -> List[AlarmDefinition]:
-        return self._alarm_definitions
-
-    @property
-    def audio_streams(self) -> List[AudioStream]:
-        return self._audio_streams
+    # Public attributes for template access (Tornado templates don't call properties)
+    alarm_definitions: List[AlarmDefinition]
+    audio_streams: List[AudioStream]
 
     def __init__(self, event_bus: "EventBus" = None):
         logger.debug("initializing default config")
-        self._alarm_definitions = []
-        self._audio_streams = []
+        self.alarm_definitions = []
+        self.audio_streams = []
         self.event_bus = event_bus
         self.ensure_valid_config()
         super().__init__()
@@ -322,31 +365,29 @@ class Config:
         return next((s for s in streams if s.id == stream_id), streams[0])
 
     def add_alarm_definition(self, value: AlarmDefinition):
-        self._alarm_definitions = self._append_item_with_id(
-            value, self._alarm_definitions
+        self.alarm_definitions = self._append_item_with_id(
+            value, self.alarm_definitions
         )
 
     def remove_alarm_definition(self, id: int):
         if id is None:
             return
-        self._alarm_definitions = [
-            alarm_def for alarm_def in self._alarm_definitions if alarm_def.id != id
+        self.alarm_definitions = [
+            alarm_def for alarm_def in self.alarm_definitions if alarm_def.id != id
         ]
 
     def get_alarm_definition(self, id: int) -> AlarmDefinition:
-        return next(
-            (alarm for alarm in self._alarm_definitions if alarm.id == id), None
-        )
+        return next((alarm for alarm in self.alarm_definitions if alarm.id == id), None)
 
     def get_audio_stream(self, id: int) -> AudioStream:
-        return next((stream for stream in self._audio_streams if stream.id == id), None)
+        return next((stream for stream in self.audio_streams if stream.id == id), None)
 
     def add_audio_stream(self, value: AudioStream):
-        self._audio_streams = self._append_item_with_id(value, self._audio_streams)
+        self.audio_streams = self._append_item_with_id(value, self.audio_streams)
 
     def remove_audio_stream(self, id: int):
-        self._audio_streams = [
-            stream_def for stream_def in self._audio_streams if stream_def.id != id
+        self.audio_streams = [
+            stream_def for stream_def in self.audio_streams if stream_def.id != id
         ]
 
     def _append_item_with_id(self, item_with_id, list) -> List[object]:
@@ -417,7 +458,14 @@ class Config:
                 setattr(self, conf_prop["key"], conf_prop["value"])
 
     def serialize(self):
-        return jsonpickle.encode(self, indent=2)
+        # Temporarily remove event_bus before serialization to avoid circular references
+        event_bus_backup = self.event_bus
+        self.event_bus = None
+        try:
+            serialized = jsonpickle.encode(self, indent=2)
+        finally:
+            self.event_bus = event_bus_backup
+        return serialized
 
     @staticmethod
     def deserialize(config_file, event_bus: "EventBus" = None):
@@ -431,35 +479,39 @@ class Config:
 
 
 class AlarmClockContext:
+    """
+    Aggregate Root: Central context for the alarm clock domain.
 
-    config: Config
-    mode_coordinator: "AlarmClockModeCoordinator" = None
-    room_brightness: RoomBrightness = RoomBrightness(1.0)
-    show_blink_segment: bool = False
-    is_online: bool
-    is_daytime: bool
+    Coordinates between configuration, environment conditions,
+    and UI mode management. This is the main entry point for domain operations.
+    """
 
     def __init__(self, config: Config) -> None:
-        super().__init__()
-        self.config = config
-        self.geo_location = GeoLocation()
-        self.is_online = True
-        self.show_blink_segment = True
+        self._config = config
+        self._environment = EnvironmentContext()
+        self._mode_coordinator: "AlarmClockModeCoordinator" = None
 
-    def update_state(
-        self, show_blink_segment: bool, brightness: RoomBrightness, is_scrolling: bool
-    ):
-        if any(
-            (
-                self.show_blink_segment != show_blink_segment,
-                self.room_brightness != brightness,
-                is_scrolling,
-            )
-        ):
-            self.show_blink_segment = show_blink_segment
-            self.room_brightness = brightness
-            return True
-        return False
+    # ========== Aggregate Properties ==========
+
+    @property
+    def config(self) -> Config:
+        """The alarm clock configuration."""
+        return self._config
+
+    @property
+    def environment(self) -> EnvironmentContext:
+        """Environmental and network conditions."""
+        return self._environment
+
+    @property
+    def mode_coordinator(self) -> "AlarmClockModeCoordinator":
+        """UI mode coordinator (set during initialization)."""
+        return self._mode_coordinator
+
+    @mode_coordinator.setter
+    def mode_coordinator(self, coordinator: "AlarmClockModeCoordinator"):
+        """Set the mode coordinator (should only be called during initialization)."""
+        self._mode_coordinator = coordinator
 
 
 class MediaContent:
@@ -554,73 +606,3 @@ class PlaybackContent(MediaContent):
 
         if spotify_event.is_volume_changed() and self.playback_mode == Mode.Spotify:
             self.event_bus.emit(VolumeChangedEvent(0))
-
-
-class DisplayContent(MediaContent):
-    show_volume_meter: bool = False
-    next_alarm_job: Job = None
-    current_weather: Weather = None
-    show_blink_segment: bool
-    room_brightness: float
-    is_scrolling: bool = False
-
-    def __init__(
-        self,
-        alarm_clock_context: AlarmClockContext,
-        playback_content: PlaybackContent,
-        event_bus: "EventBus" = None,
-    ):
-        super().__init__(alarm_clock_context)
-        self.playback_content = playback_content
-        self.event_bus = event_bus
-        self.event_bus.on(RegularDisplayContentUpdateEvent)(self._regular_update)
-        self.event_bus.on(AudioStreamChangedEvent)(self._audio_stream_changed)
-        self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
-
-    def _audio_stream_changed(self, event: AudioStreamChangedEvent):
-        if event.audio_stream is None:
-            self.hide_volume_meter()
-        self.event_bus.emit(ForcedDisplayUpdateEvent())
-
-    def _volume_changed(self, _: VolumeChangedEvent):
-        self.show_volume_meter = True
-        self.event_bus.emit(ForcedDisplayUpdateEvent())
-
-    def show_alarm_preview(self) -> bool:
-        return (
-            self.next_alarm_job is not None
-            and self.get_timedelta_to_alarm().total_seconds() / 3600
-            <= self.alarm_clock_context.config.alarm_preview_hours
-        )
-
-    def get_is_online(self) -> bool:
-        return self.alarm_clock_context.is_online
-
-    def _regular_update(self, event: RegularDisplayContentUpdateEvent):
-        self.show_blink_segment = event.show_blink_segment
-        self.room_brightness = event.room_brightness.value
-
-    def hide_volume_meter(self):
-        self.show_volume_meter = False
-
-    def get_timedelta_to_alarm(self) -> timedelta:
-        if self.next_alarm_job is None:
-            return timedelta.max
-        return get_timedelta_to_alarm(self.next_alarm_job)
-
-    def get_next_alarm(self) -> datetime:
-        return (
-            None if self.next_alarm_job is None else self.next_alarm_job.next_run_time
-        )
-
-    def current_playback_title(self):
-        return (
-            self.playback_content.audio_stream.stream_name
-            if True
-            and self.playback_content.playback_mode != Mode.Idle
-            and self.playback_content.audio_stream is not None
-            else None
-        )
-
-    def current_volume(self) -> float:
-        return self.playback_content.volume

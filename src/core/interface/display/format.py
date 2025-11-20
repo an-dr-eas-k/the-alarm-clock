@@ -5,11 +5,11 @@ from PIL import Image
 from core.domain.model import (
     AlarmClockContext,
     AlarmDefinition,
-    DisplayContent,
     VisualEffect,
 )
+from core.interface.display.display_content import DisplayContent
 from utils.drawing import PresentationFont, grayscale_to_color
-from utils.extensions import get_job_arg, get_timedelta_to_alarm, respect_ranges
+from utils.extensions import get_job_arg, respect_ranges
 
 logger = logging.getLogger("tac.display")
 
@@ -47,13 +47,13 @@ class DisplayFormatter:
         return clear_display
 
     def highly_dimmed(self):
-        return self.alarm_clock_context.room_brightness.is_highly_dimmed()
+        return self.display_content.room_brightness.is_highly_dimmed
 
     def update_formatter(self):
         self.adjust_display()
         logger.debug(
             "room_brightness: %s, time_delta_to_alarm: %sh, display_formatter: %s",
-            self.alarm_clock_context.room_brightness(),
+            self.display_content.room_brightness,
             "{:.2f}".format(
                 self.display_content.get_timedelta_to_alarm().total_seconds() / 3600
             ),
@@ -99,7 +99,7 @@ class DisplayFormatter:
     def adjust_display_by_room_brightness(self):
         self._background_grayscale_16 = 0
         self._foreground_grayscale_16 = (
-            self.alarm_clock_context.room_brightness.get_grayscale_value(min_value=1)
+            self.display_content.room_brightness.get_grayscale_value(min_value=1)
         )
 
     def adjust_display_by_mode(self):
@@ -119,19 +119,26 @@ class DisplayFormatter:
             self._foreground_grayscale_16 = 15
 
     def adjust_display_by_alarm(self):
-        next_alarm_job = (
-            self.display_content.next_alarm_job
-            if self.display_content or self.display_content.next_alarm_job
-            else None
-        )
-        visual_effect: VisualEffect = (
-            get_job_arg(next_alarm_job, AlarmDefinition).visual_effect
-            if next_alarm_job is not None
-            else None
-        )
+        # Get alarm info from display content
+        next_alarm_info = self.display_content.next_alarm_info
+
+        # Extract visual effect from scheduler if alarm exists
+        visual_effect: VisualEffect = None
+        if next_alarm_info.has_alarm():
+            # TODO: This still requires accessing scheduler Job to get AlarmDefinition
+            # Consider moving visual_effect to NextAlarmInfo in future refactoring
+            from core.application.controls import Controls
+
+            next_job = (
+                Controls.get_instance().get_next_alarm_job()
+                if hasattr(Controls, "get_instance")
+                else None
+            )
+            if next_job:
+                visual_effect = get_job_arg(next_job, AlarmDefinition).visual_effect
 
         self.adjust_display_by_alarm_visual_effect(
-            get_timedelta_to_alarm(next_alarm_job), visual_effect
+            next_alarm_info.get_timedelta_to_alarm(), visual_effect
         )
 
     def adjust_display_by_alarm_visual_effect(
