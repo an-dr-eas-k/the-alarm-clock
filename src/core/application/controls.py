@@ -360,16 +360,18 @@ class Controls:
         def do():
             is_online = is_internet_available()
 
-            if is_online != self.alarm_clock_context.environment.is_online:
-                logger.info("change wifi state, is online: %s", is_online)
-                self.event_bus.emit(WifiStatusChangedEvent(is_online))
-                self.alarm_clock_context.environment.is_online = is_online
+            if is_online == self.alarm_clock_context.environment.is_online:
+                return
 
-                if not is_online and self.playback_content.playback_mode in [
-                    Mode.Music,
-                    Mode.Spotify,
-                ]:
-                    self.set_to_idle_mode()
+            logger.info("change wifi state, is online: %s", is_online)
+            self.event_bus.emit(WifiStatusChangedEvent(is_online))
+            self.alarm_clock_context.environment.is_online = is_online
+
+            if not is_online and self.playback_content.playback_mode in [
+                Mode.Music,
+                Mode.Spotify,
+            ]:
+                self.set_to_idle_mode()
 
         Controls.action(do)
 
@@ -381,21 +383,25 @@ class Controls:
 
         Controls.action(do, "sun event %s" % event)
 
+    def adjust_alarm_if_needed(self, alarm_definition: AlarmDefinition):
+        if (
+            False
+            or not is_internet_available()
+            or self.playback_content.playback_mode
+            in [
+                Mode.Music,
+                Mode.Spotify,
+            ]
+        ):
+            alarm_definition.audio_effect = StreamAudioEffect(
+                audio_stream=self.alarm_clock_context.config.get_offline_stream(),
+                volume=alarm_definition.audio_effect.volume,
+            )
+
     def _ring_alarm(self, alarm_definition: AlarmDefinition):
         def do():
-            if (
-                False
-                or not is_internet_available()
-                or self.playback_content.playback_mode
-                in [
-                    Mode.Music,
-                    Mode.Spotify,
-                ]
-            ):
-                alarm_definition.audio_effect = StreamAudioEffect(
-                    audio_stream=self.alarm_clock_context.config.get_offline_stream(),
-                    volume=alarm_definition.audio_effect.volume,
-                )
+
+            self.adjust_alarm_if_needed(alarm_definition)
 
             if alarm_definition.is_onetime() and alarm_definition.id >= 0:
                 self.alarm_clock_context.config.remove_alarm_definition(

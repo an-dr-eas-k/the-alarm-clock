@@ -71,53 +71,53 @@ class MediaListPlayer(MediaPlayer):
         if self.list_player is not None:
             return
 
-        try:
-            instance: vlc.Instance = vlc.Instance(
-                ["--no-video", "--network-caching=3000", "--live-caching=3000"]
-            )
+        instance: vlc.Instance = vlc.Instance(
+            ["--no-video", "--network-caching=3000", "--live-caching=3000"]
+        )
 
-            self.list_player: vlc.MediaListPlayer = instance.media_list_player_new()
-            self.list_player.set_playback_mode(vlc.PlaybackMode.loop)
-            media_player: vlc.MediaPlayer = self.list_player.get_media_player()
+        self.list_player: vlc.MediaListPlayer = instance.media_list_player_new()
+        self.list_player.set_playback_mode(vlc.PlaybackMode.loop)
+        media_player: vlc.MediaPlayer = self.list_player.get_media_player()
 
-            media: vlc.Media = instance.media_new(self.url)
+        media: vlc.Media = instance.media_new(self.url)
 
-            media_list: vlc.MediaList = instance.media_list_new([])
-            self.list_player.set_media_list(media_list)
-            media_list.add_media(media)
+        media_list: vlc.MediaList = instance.media_list_new([])
+        self.list_player.set_media_list(media_list)
+        media_list.add_media(media)
 
-            if logger.level == logging.DEBUG:
-                self.register_debug_callbacks()
+        if logger.level == logging.DEBUG:
+            self.register_debug_callbacks()
 
-            for event_type, callback in self.callbacks.items():
-                for event_manager_struct in (
-                    dict(em=instance.vlm_get_event_manager(), called_from="instance"),
-                    dict(em=media_player.event_manager(), called_from="media_player"),
-                    dict(
-                        em=self.list_player.event_manager(), called_from="list_player"
-                    ),
-                    dict(em=media_list.event_manager(), called_from="media_list"),
-                    dict(em=media.event_manager(), called_from="media"),
+        self.add_callbacks(instance, media_player, media_list, media)
+
+        logger.info("starting audio %s", self.url)
+        self.list_player.play()
+
+    def add_callbacks(
+        self,
+        instance: vlc.Instance,
+        media_player: vlc.MediaPlayer,
+        media_list: vlc.MediaList,
+        media: vlc.Media,
+    ):
+        for event_type, callback in self.callbacks.items():
+            for event_manager_struct in (
+                dict(em=instance.vlm_get_event_manager(), called_from="instance"),
+                dict(em=media_player.event_manager(), called_from="media_player"),
+                dict(em=self.list_player.event_manager(), called_from="list_player"),
+                dict(em=media_list.event_manager(), called_from="media_list"),
+                dict(em=media.event_manager(), called_from="media"),
+            ):
+                if event_manager_struct["em"] is not None and isinstance(
+                    event_manager_struct["em"], vlc.EventManager
                 ):
-                    if event_manager_struct["em"] is not None and isinstance(
-                        event_manager_struct["em"], vlc.EventManager
-                    ):
-                        event_manager_struct["em"].event_attach(
-                            event_type,
-                            lambda x: threading.Thread(
-                                target=callback,
-                                args=(x, event_manager_struct["called_from"]),
-                            ).start(),
-                        )
-
-            logger.info("starting audio %s", self.url)
-            self.list_player.play()
-
-        except Exception as e:
-            logger.error("error: %s", traceback.format_exc())
-            self.callbacks.get(
-                vlc.EventType.MediaPlayerEncounteredError, lambda: None
-            )()
+                    event_manager_struct["em"].event_attach(
+                        event_type,
+                        lambda x: threading.Thread(
+                            target=callback,
+                            args=(x, event_manager_struct["called_from"]),
+                        ).start(),
+                    )
 
     def stop(self):
         if self.list_player is None:
