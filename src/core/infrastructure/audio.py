@@ -26,8 +26,7 @@ logger = logging.getLogger("tac.audio")
 
 class MediaPlayer:
 
-    error_callback: callable
-    playing_callback: callable
+    callbacks: dict = {}
 
     def play(self):
         pass
@@ -35,11 +34,8 @@ class MediaPlayer:
     def stop(self):
         pass
 
-    def set_error_callback(self, callback: callable):
-        self.error_callback = callback
-
-    def set_playing_callback(self, callback: callable):
-        self.playing_callback = callback
+    def add_callback(self, event_type: vlc.EventType, callback: callable):
+        self.callbacks[event_type] = callback
 
 
 class MediaListPlayer(MediaPlayer):
@@ -57,34 +53,19 @@ class MediaListPlayer(MediaPlayer):
                 event.type,
                 args[0],
                 (
-                    self.list_player.get_state()
+                    "existing"  # dont call functions on the list_player when it is stopped like self.list_player.get_state()
                     if self.list_player is not None
-                    else "unknown"
+                    else "destroyed"
                 ),
             )
-
-            if event.type == vlc.EventType.MediaPlayerPlaying:
-                logger.info("vlc player playing: %s", event.type)
-                threading.Thread(target=self.playing_callback).start()
-
-            if (
-                False
-                or event.type == vlc.EventType.MediaPlayerEncounteredError
-                # or event.type == vlc.EventType.MediaPlayerEndReached
-            ):
-                logger.info("vlc player error: %s", event.type)
-                threading.Thread(target=self.error_callback).start()
-
         except Exception as e:
             logger.error("callback error: %s", traceback.format_exc())
 
-    def register_error_callback(
-        self, event_manager: vlc.EventManager, called_from: str = None
-    ):
+    def register_debug_callbacks(self):
+        return
         for event_type in vlc.EventType._enum_names_:
-            event_manager.event_attach(
-                vlc.EventType(event_type), self.callback_from_player, called_from
-            )
+            foo = vlc.EventType(event_type)
+            self.add_callback(foo, self.callback_from_player)
 
     def play(self):
         if self.list_player is not None:
@@ -105,28 +86,44 @@ class MediaListPlayer(MediaPlayer):
             self.list_player.set_media_list(media_list)
             media_list.add_media(media)
 
-            for em_struct in [
-                dict(em=instance.vlm_get_event_manager(), name="instance"),
-                dict(em=self.list_player.event_manager(), name="list_player"),
-                dict(em=media_player.event_manager(), name="media_player"),
-                dict(em=media_list.event_manager(), name="media_list"),
-                dict(em=media.event_manager(), name="media"),
-            ]:
-                self.register_error_callback(em_struct["em"], em_struct["name"])
+            if logger.level == logging.DEBUG:
+                self.register_debug_callbacks()
+
+            for event_type, callback in self.callbacks.items():
+                for event_manager_struct in (
+                    dict(em=instance.vlm_get_event_manager(), called_from="instance"),
+                    dict(em=media_player.event_manager(), called_from="media_player"),
+                    dict(
+                        em=self.list_player.event_manager(), called_from="list_player"
+                    ),
+                    dict(em=media_list.event_manager(), called_from="media_list"),
+                    dict(em=media.event_manager(), called_from="media"),
+                ):
+                    if event_manager_struct["em"] is not None and isinstance(
+                        event_manager_struct["em"], vlc.EventManager
+                    ):
+                        event_manager_struct["em"].event_attach(
+                            event_type,
+                            lambda x: threading.Thread(
+                                target=callback,
+                                args=(x, event_manager_struct["called_from"]),
+                            ).start(),
+                        )
 
             logger.info("starting audio %s", self.url)
             self.list_player.play()
 
         except Exception as e:
             logger.error("error: %s", traceback.format_exc())
-            super().error_callback()
+            self.callbacks.get(
+                vlc.EventType.MediaPlayerEncounteredError, lambda: None
+            )()
 
     def stop(self):
         if self.list_player is None:
             return
 
-        if self.list_player.get_state() == vlc.State.Playing:
-            self.list_player.stop()
+        self.list_player.stop()
         self.list_player = None
         logger.info(f"stopped audio")
 
@@ -162,12 +159,13 @@ class Speaker:
 
     def get_player(self, audio_stream: AudioStream) -> MediaPlayer:
         player: MediaPlayer = MediaListPlayer(audio_stream.stream_url)
-        player.set_error_callback(self.handle_player_error)
-        player.set_playing_callback(self.handle_player_playing)
+        player.add_callback(
+            vlc.EventType.MediaPlayerEncounteredError, self.handle_player_error
+        )
         return player
 
-    def handle_player_error(self):
-        logger.info("handling player error")
+    def handle_player_error(self, *args):
+        logger.info("handling player error: %s", args)
         self.adjust_streaming(None)
         self.event_bus.emit(SpeakerErrorEvent())
 
