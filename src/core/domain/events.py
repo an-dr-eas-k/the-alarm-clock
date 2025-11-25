@@ -130,3 +130,8 @@ class RegularDisplayContentUpdateEvent(BaseEvent):
 @dataclass(frozen=True)
 class SpeakerErrorEvent(BaseEvent):
     pass
+
+
+@dataclass(frozen=True)
+class SpeakerPlayingEvent(BaseEvent):
+    pass

@@ -12,6 +12,7 @@ from core.domain.events import (
     ConfigChangedEvent,
     ForcedDisplayUpdateEvent,
     SpeakerErrorEvent,
+    SpeakerPlayingEvent,
     SpotifyApiEvent,
     ToggleAudioEvent,
     AlarmTriggeredEvent,
@@ -49,6 +50,7 @@ default_store = "default"
 class SchedulerJobIds(Enum):
     hide_volume_meter = "hide_volume_meter_trigger"
     stop_alarm = "stop_alarm_trigger"
+    ensure_alarm = "ensure_alarm_trigger"
 
 
 class Controls:
@@ -77,6 +79,7 @@ class Controls:
         self.event_bus.on(ConfigChangedEvent)(self._config_changed)
         self.event_bus.on(AlarmTriggeredEvent)(self._alarm_triggered)
         self.event_bus.on(SpeakerErrorEvent)(self._handle_speaker_error)
+        self.event_bus.on(SpeakerPlayingEvent)(self._handle_speaker_playing)
         self.event_bus.on(SpotifyApiEvent)(self._spotify_api_event)
 
         self.alarm_clock_context.environment.is_daytime = (
@@ -291,7 +294,11 @@ class Controls:
     def get_room_brightness(self):
         return self.brightness_sensor.get_room_brightness()
 
-    def _handle_speaker_error(self, _: SpeakerErrorEvent):
+    def _handle_speaker_playing(self, _: SpeakerPlayingEvent = None):
+        logger.info("speaker playing event occurred")
+        self.stop_generic_trigger(SchedulerJobIds.ensure_alarm.value)
+
+    def _handle_speaker_error(self, _: SpeakerErrorEvent = None):
         logger.warning("speaker error occurred")
         if self.playback_content.playback_mode == Mode.Alarm:
             if isinstance(self.playback_content.audio_stream, OfflineStream):
@@ -407,6 +414,11 @@ class Controls:
                 minutes=self.alarm_clock_context.config.alarm_duration_in_mins
             ),
             func=lambda: self.set_to_idle_mode(alarm_stopped_reason="timeout"),
+        )
+        self.start_generic_trigger(
+            SchedulerJobIds.ensure_alarm.value,
+            datetime.timedelta(seconds=5),
+            func=self._handle_speaker_error,
         )
 
         self.display_content.update_next_alarm(self.get_next_alarm_job())

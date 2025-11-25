@@ -1,12 +1,15 @@
 import logging
-import os
 import traceback
 import vlc
 import time
 import subprocess
 import threading
 
-from core.domain.events import AudioStreamChangedEvent, SpeakerErrorEvent
+from core.domain.events import (
+    AudioStreamChangedEvent,
+    SpeakerErrorEvent,
+    SpeakerPlayingEvent,
+)
 from core.domain.model import (
     AlarmClockContext,
     PlaybackContent,
@@ -16,16 +19,15 @@ from core.domain.model import (
     StreamAudioEffect,
 )
 from core.infrastructure.event_bus import EventBus
-from resources.resources import alarms_dir, init_logging, default_volume
+from resources.resources import init_logging, default_volume
 
 logger = logging.getLogger("tac.audio")
-
-debug_callback: bool = True
 
 
 class MediaPlayer:
 
     error_callback: callable
+    playing_callback: callable
 
     def play(self):
         pass
@@ -35,6 +37,9 @@ class MediaPlayer:
 
     def set_error_callback(self, callback: callable):
         self.error_callback = callback
+
+    def set_playing_callback(self, callback: callable):
+        self.playing_callback = callback
 
 
 class MediaListPlayer(MediaPlayer):
@@ -51,16 +56,21 @@ class MediaListPlayer(MediaPlayer):
                 "callback called: %s, from %s, player state: %s",
                 event.type,
                 args[0],
-                "unknown",
+                (
+                    self.list_player.get_state()
+                    if self.list_player is not None
+                    else "unknown"
+                ),
             )
 
             if event.type == vlc.EventType.MediaPlayerPlaying:
-                pass
+                logger.info("vlc player playing: %s", event.type)
+                threading.Thread(target=self.playing_callback).start()
 
             if (
                 False
                 or event.type == vlc.EventType.MediaPlayerEncounteredError
-                or event.type == vlc.EventType.MediaPlayerEndReached
+                # or event.type == vlc.EventType.MediaPlayerEndReached
             ):
                 logger.info("vlc player error: %s", event.type)
                 threading.Thread(target=self.error_callback).start()
@@ -88,16 +98,6 @@ class MediaListPlayer(MediaPlayer):
             self.list_player: vlc.MediaListPlayer = instance.media_list_player_new()
             self.list_player.set_playback_mode(vlc.PlaybackMode.loop)
             media_player: vlc.MediaPlayer = self.list_player.get_media_player()
-            media_player.event_manager().event_attach(
-                vlc.EventType.MediaPlayerEncounteredError,
-                self.callback_from_player,
-                "media_player",
-            )
-            media_player.event_manager().event_attach(
-                vlc.EventType.MediaPlayerPlaying,
-                self.callback_from_player,
-                "media_player",
-            )
 
             media: vlc.Media = instance.media_new(self.url)
 
@@ -105,15 +105,14 @@ class MediaListPlayer(MediaPlayer):
             self.list_player.set_media_list(media_list)
             media_list.add_media(media)
 
-            if debug_callback:
-                for em_struct in [
-                    dict(em=instance.vlm_get_event_manager(), name="instance"),
-                    dict(em=self.list_player.event_manager(), name="list_player"),
-                    dict(em=media_player.event_manager(), name="media_player"),
-                    dict(em=media_list.event_manager(), name="media_list"),
-                    dict(em=media.event_manager(), name="media"),
-                ]:
-                    self.register_error_callback(em_struct["em"], em_struct["name"])
+            for em_struct in [
+                dict(em=instance.vlm_get_event_manager(), name="instance"),
+                dict(em=self.list_player.event_manager(), name="list_player"),
+                dict(em=media_player.event_manager(), name="media_player"),
+                dict(em=media_list.event_manager(), name="media_list"),
+                dict(em=media.event_manager(), name="media"),
+            ]:
+                self.register_error_callback(em_struct["em"], em_struct["name"])
 
             logger.info("starting audio %s", self.url)
             self.list_player.play()
@@ -126,7 +125,8 @@ class MediaListPlayer(MediaPlayer):
         if self.list_player is None:
             return
 
-        self.list_player.stop()
+        if self.list_player.get_state() == vlc.State.Playing:
+            self.list_player.stop()
         self.list_player = None
         logger.info(f"stopped audio")
 
@@ -163,11 +163,17 @@ class Speaker:
     def get_player(self, audio_stream: AudioStream) -> MediaPlayer:
         player: MediaPlayer = MediaListPlayer(audio_stream.stream_url)
         player.set_error_callback(self.handle_player_error)
+        player.set_playing_callback(self.handle_player_playing)
         return player
 
     def handle_player_error(self):
         logger.info("handling player error")
+        self.adjust_streaming(None)
         self.event_bus.emit(SpeakerErrorEvent())
+
+    def handle_player_playing(self):
+        logger.info("handling player playing")
+        self.event_bus.emit(SpeakerPlayingEvent())
 
     def start_streaming(self, audio_stream: AudioStream):
         try:
@@ -178,21 +184,7 @@ class Speaker:
             logger.error("error: %s", traceback.format_exc())
             self.handle_player_error()
 
-    def start_streaming_alternative(self):
-        self.stop_streaming()
-        logger.info("starting alternative fallback player")
-        self.fallback_player_proc = subprocess.Popen(
-            ["ogg123", "-r", os.path.join(alarms_dir, "fallback", "Timer.ogg")],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-
     def stop_streaming(self):
-        if self.fallback_player_proc is not None:
-            self.fallback_player_proc.kill()
-            logger.info("killed fallback player")
-        self.fallback_player_proc = None
-
         if self.media_player is not None:
             self.media_player.stop()
         self.media_player = None
