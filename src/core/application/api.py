@@ -212,11 +212,11 @@ class ConfigApiHandler(tornado.web.RequestHandler):
                 self.parse_alarm_definition(form_arguments)
             )
         elif type == "stream":
-            self.config.add_audio_stream(self.parse_stream_definition(form_arguments))
+            self.config.add_audio_stream(self.parse_audio_stream(form_arguments))
         elif type == "start_powernap":
             self.config.add_alarm_definition_for_powernap()
 
-    def parse_stream_definition(self, form_arguments) -> AudioStream:
+    def parse_audio_stream(self, form_arguments) -> AudioStream:
         stream_name = form_arguments["streamName"]
         stream_url = form_arguments["streamUrl"]
         return AudioStream(stream_name=stream_name, stream_url=stream_url)
@@ -233,7 +233,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
     def parse_audio_effect(self, form_arguments) -> AudioEffect:
         stream_id = int(form_arguments["streamId"])
         return StreamAudioEffect(
-            stream_definition=self.config.get_audio_stream(stream_id),
+            audio_stream=self.config.get_audio_stream_by_id(stream_id),
             volume=float(form_arguments["volume"]),
         )
 

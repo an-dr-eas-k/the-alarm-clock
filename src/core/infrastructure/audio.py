@@ -196,7 +196,7 @@ def main():
     pc = PlaybackContent(AlarmClockContext(c))
     pc.audio_stream = StreamAudioEffect(
         volume=default_volume,
-        stream_definition=AudioStream(
+        audio_stream=AudioStream(
             stream_name="test", stream_url="https://streams.br.de/bayern2sued_2.m3u"
         ),
     )

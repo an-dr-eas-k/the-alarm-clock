@@ -82,10 +82,6 @@ class Controls:
         self.event_bus.on(SpeakerPlayingEvent)(self._handle_speaker_playing)
         self.event_bus.on(SpotifyApiEvent)(self._spotify_api_event)
 
-        self.alarm_clock_context.environment.is_daytime = (
-            alarm_clock_context.environment.geo_location.last_sun_event()
-            == SunEvent.sunrise
-        )
         self._update_weather_status()
         self._add_scheduler_jobs()
         self.scheduler.start()
@@ -221,8 +217,11 @@ class Controls:
             self.set_to_idle_mode()
             return
 
-        if self.playback_content.audio_stream and isinstance(
-            self.playback_content.audio_stream, AudioStream
+        if (
+            True
+            and self.playback_content.audio_stream
+            and isinstance(self.playback_content.audio_stream, AudioStream)
+            and not isinstance(self.playback_content.audio_stream, OfflineStream)
         ):
             self._play_music(self.playback_content.audio_stream)
         else:
@@ -393,6 +392,7 @@ class Controls:
                 Mode.Spotify,
             ]
         ):
+            logger.info("adjusting alarm to use offline stream")
             alarm_definition.audio_effect = StreamAudioEffect(
                 audio_stream=self.alarm_clock_context.config.get_offline_stream(),
                 volume=alarm_definition.audio_effect.volume,
@@ -411,7 +411,7 @@ class Controls:
             self.event_bus.emit(AlarmTriggeredEvent(alarm_definition))
             self.postprocess_ring_alarm()
 
-        Controls.action(do, "ring alarm %s" % alarm_definition.alarm_name)
+        Controls.action(do, "ring alarm '%s'" % alarm_definition.alarm_name)
 
     def postprocess_ring_alarm(self):
         self.start_generic_trigger(

@@ -14,7 +14,7 @@ from apscheduler.triggers.cron import CronTrigger
 from core.domain.edit_mode import AlarmRecurrence
 from utils.extensions import T, Value, respect_ranges
 
-from utils.geolocation import GeoLocation, Weather
+from utils.geolocation import GeoLocation, SunEvent, Weather
 from resources.resources import alarms_dir, default_volume
 from utils.sound_device import SoundDevice
 
@@ -105,6 +105,7 @@ class EnvironmentContext:
         self._is_online = True
         self._is_daytime = True
         self._current_weather: Weather = None
+        self.is_daytime = self.geo_location.last_sun_event() == SunEvent.sunrise
 
     @property
     def geo_location(self) -> GeoLocation:
@@ -208,12 +209,12 @@ class AudioEffect:
 class StreamAudioEffect(AudioEffect):
     audio_stream: AudioStream = None
 
-    def __init__(self, stream_definition: AudioStream = None, volume: float = None):
+    def __init__(self, audio_stream: AudioStream = None, volume: float = None):
         super().__init__(volume)
-        self.audio_stream = stream_definition
+        self.audio_stream = audio_stream
 
     def __str__(self):
-        return f"stream_definition: {self.audio_stream} {super().__str__()}"
+        return f"audio_stream: {self.audio_stream} {super().__str__()}"
 
     def title(self):
         return self.audio_stream.stream_name
@@ -365,9 +366,6 @@ class Config:
     def get_alarm_definition(self, id: int) -> AlarmDefinition:
         return next((alarm for alarm in self.alarm_definitions if alarm.id == id), None)
 
-    def get_audio_stream(self, id: int) -> AudioStream:
-        return next((stream for stream in self.audio_streams if stream.id == id), None)
-
     def add_audio_stream(self, value: AudioStream):
         self.audio_streams = self._append_item_with_id(value, self.audio_streams)
 
@@ -402,7 +400,7 @@ class Config:
             minutes=(1 + self.powernap_duration_in_mins)
         )
         audio_effect = StreamAudioEffect(
-            stream_definition=self.audio_streams[0], volume=self.default_volume
+            audio_stream=self.audio_streams[0], volume=self.default_volume
         )
 
         powernap_alarm_def = AlarmDefinition()

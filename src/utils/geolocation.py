@@ -116,7 +116,9 @@ class GeoLocation:
 
         day = self.now().date() if day is None else day
 
-        event_time = self.get_sun_event(event, day + datetime.timedelta(days=1))
+        event_time = self.get_sun_event(event, day)
+        if event_time < self.now():
+            event_time = self.get_sun_event(event, day + datetime.timedelta(days=1))
         return CronTrigger(
             start_date=event_time.date(),
             end_date=event_time.date() + datetime.timedelta(days=1),

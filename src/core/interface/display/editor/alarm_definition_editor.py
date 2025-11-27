@@ -99,6 +99,6 @@ class AlarmDefinitionProperties:
 
     def update_value_lists(self, config: Config, volume: float):
         self._editable_properties[AlarmProperty.AUDIO_EFFECT].value_list = [
-            StreamAudioEffect(stream_definition=stream, volume=volume)
+            StreamAudioEffect(audio_stream=stream, volume=volume)
             for stream in config.audio_streams
         ]

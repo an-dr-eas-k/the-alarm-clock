@@ -245,7 +245,7 @@ class AlarmEditingService:
 
         if self.alarm_clock_context.config.audio_streams:
             alarm.audio_effect = StreamAudioEffect(
-                stream_definition=self.alarm_clock_context.config.audio_streams[0],
+                audio_stream=self.alarm_clock_context.config.get_audio_stream_by_id(0),
                 volume=self.alarm_clock_context.config.default_volume,
             )
         alarm.visual_effect = VisualEffect()
