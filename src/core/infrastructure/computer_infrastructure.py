@@ -1,6 +1,8 @@
 import logging
 import traceback
 from pynput import keyboard
+from core.domain.events import AlarmTriggeredEvent
+from core.domain.model import Config
 from core.infrastructure.brightness_sensor import IBrightnessSensor
 from core.infrastructure.event_bus import EventBus
 from core.infrastructure.events_infrastructure import (
@@ -16,9 +18,10 @@ logger = logging.getLogger("tac.keyboard_buttons")
 class ComputerInfrastructure(IBrightnessSensor):
     simulated_brightness: int = 10000
 
-    def __init__(self, event_bus: EventBus):
+    def __init__(self, event_bus: EventBus, config: Config):
         super().__init__()
         self.event_bus = event_bus
+        self.config = config
         self.listener = keyboard.Listener(on_press=self.on_press)
         self.listener.start()
         self.log = logging.getLogger(self.__class__.__name__)
@@ -49,6 +52,10 @@ class ComputerInfrastructure(IBrightnessSensor):
                     % len(brightness_examples)
                 ]
                 logger.info("simulated brightness: %s", self.simulated_brightness)
+            if key.char == "6":
+                self.event_bus.emit(
+                    AlarmTriggeredEvent(self.config.alarm_definitions[0])
+                )
 
         except Exception:
             logger.warning("%s", traceback.format_exc())
