@@ -127,6 +127,7 @@ class ActionApiHandler(tornado.web.RequestHandler):
     def post(self, *args):
         try:
             (type, id, _1) = parse_path_arguments(args)
+            logger.info("API action requested: %s %s", type, id)
 
             if type == "play":
                 self.event_bus.emit(

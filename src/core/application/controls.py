@@ -51,6 +51,7 @@ class SchedulerJobIds(Enum):
     hide_volume_meter = "hide_volume_meter_trigger"
     stop_alarm = "stop_alarm_trigger"
     ensure_alarm = "ensure_alarm_trigger"
+    ensure_stable_wifi = "ensure_stable_wifi_trigger"
 
 
 class Controls:
@@ -253,12 +254,12 @@ class Controls:
             self.event_bus.emit(VolumeChangedEvent(0))
 
     def _alarm_triggered(self, event: AlarmTriggeredEvent):
-        """Handle alarm triggered event - start playback."""
+        adjusted_audio_effect = self.adjust_audio_effect_if_needed_for_alarm(
+            event.alarm_definition.audio_effect
+        )
         self.set_to_idle_mode()
         self.playback_content.playback_mode = Mode.Alarm
-        self.event_bus.emit(
-            AudioEffectChangedEvent(event.alarm_definition.audio_effect)
-        )
+        self.event_bus.emit(AudioEffectChangedEvent(adjusted_audio_effect))
 
     def set_to_idle_mode(self, alarm_stopped_reason: str = None):
         was_alarm = self.playback_content.playback_mode == Mode.Alarm
@@ -273,6 +274,7 @@ class Controls:
 
         if was_alarm:
             self.event_bus.emit(AlarmStoppedEvent(reason=alarm_stopped_reason))
+            self.stop_generic_trigger(SchedulerJobIds.ensure_stable_wifi.value)
 
     def _volume_changed(self, _: VolumeChangedEvent):
         self.start_hide_volume_meter_trigger()
@@ -294,7 +296,7 @@ class Controls:
         return self.brightness_sensor.get_room_brightness()
 
     def _handle_speaker_playing(self, _: SpeakerPlayingEvent = None):
-        logger.info("speaker playing event occurred")
+        logger.info("speaker playing successfully")
         self.stop_generic_trigger(SchedulerJobIds.ensure_alarm.value)
 
     def _handle_speaker_error(self, _: SpeakerErrorEvent = None):
@@ -327,7 +329,6 @@ class Controls:
                 new_blink_state = not self.display_content.show_blink_segment
                 self._previous_second = current_second
 
-            # Update ViewModel presentation state directly
             if self.display_content.update_presentation_state(
                 show_blink_segment=new_blink_state,
                 room_brightness=RoomBrightness(self.get_room_brightness()),
@@ -340,8 +341,10 @@ class Controls:
     def _wifi_status_changed(self, event: WifiStatusChangedEvent):
         if event.is_online:
             self._update_weather_status()
+            # todo
         else:
             self.alarm_clock_context.environment.current_weather = None
+            # todo
 
     def _update_weather_status(self):
         def do():
@@ -366,10 +369,11 @@ class Controls:
             self.event_bus.emit(WifiStatusChangedEvent(is_online))
             self.alarm_clock_context.environment.is_online = is_online
 
-            if not is_online and self.playback_content.playback_mode in [
-                Mode.Music,
-                Mode.Spotify,
-            ]:
+            if (
+                True
+                and not is_online
+                and self.playback_content.playback_mode in [Mode.Music, Mode.Spotify]
+            ):
                 self.set_to_idle_mode()
 
         Controls.action(do)
@@ -382,7 +386,7 @@ class Controls:
 
         Controls.action(do, "sun event %s" % event)
 
-    def adjust_alarm_if_needed(self, alarm_definition: AlarmDefinition):
+    def adjust_audio_effect_if_needed_for_alarm(self, audio_effect: StreamAudioEffect):
         if (
             False
             or not is_internet_available()
@@ -393,15 +397,14 @@ class Controls:
             ]
         ):
             logger.info("adjusting alarm to use offline stream")
-            alarm_definition.audio_effect = StreamAudioEffect(
+            return StreamAudioEffect(
                 audio_stream=self.alarm_clock_context.config.get_offline_stream(),
-                volume=alarm_definition.audio_effect.volume,
+                volume=audio_effect.volume,
             )
+        return audio_effect
 
     def _ring_alarm(self, alarm_definition: AlarmDefinition):
         def do():
-
-            self.adjust_alarm_if_needed(alarm_definition)
 
             if alarm_definition.is_onetime() and alarm_definition.id >= 0:
                 self.alarm_clock_context.config.remove_alarm_definition(
@@ -425,6 +428,13 @@ class Controls:
             SchedulerJobIds.ensure_alarm.value,
             datetime.timedelta(seconds=5),
             func=self._handle_speaker_error,
+        )
+        self.scheduler.add_job(
+            self.update_wifi_status,
+            "interval",
+            seconds=5,
+            id=SchedulerJobIds.ensure_stable_wifi.value,
+            jobstore=default_store,
         )
 
         self.display_content.update_next_alarm(self.get_next_alarm_job())
