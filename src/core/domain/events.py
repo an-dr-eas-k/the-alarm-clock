@@ -27,6 +27,7 @@ class WifiStatusChangedEvent(BaseEvent):
 @dataclass(frozen=True)
 class AlarmTriggeredEvent(BaseEvent):
     alarm_definition: AlarmDefinition
+    use_offline_media: bool = False
 
 
 @dataclass(frozen=True)
@@ -45,7 +46,7 @@ class SunEventOccurredEvent(BaseEvent):
     event: SunEvent
 
 
-class SpotifyApiEvent(BaseEvent):
+class SpotifyStreamChangeRequest(BaseEvent):
 
     name: str
     player_event: str = None
@@ -78,9 +79,28 @@ class SpotifyApiEvent(BaseEvent):
         return json.dumps(self.__dict__)
 
 
+class VolumeChangeRequest(BaseEvent):
+
+    relative: int | None = None
+    absolute: int | None = None
+
+    def __init__(self, relative: int = None, absolute: int = None):
+        self.relative = relative
+        self.absolute = absolute
+        if relative is not None and absolute is not None:
+            raise ValueError(
+                "Only one of relative or absolute volume change can be set."
+            )
+
+
+@dataclass(frozen=True)
+class AudioStreamChangeRequest(BaseEvent):
+    audio_stream: AudioStream
+
+
 @dataclass(frozen=True)
 class VolumeChangedEvent(BaseEvent):
-    volume_delta: int
+    new_volume: int = None
 
 
 @dataclass(frozen=True)
@@ -90,13 +110,8 @@ class AudioStreamChangedEvent(BaseEvent):
 
 
 @dataclass(frozen=True)
-class ToggleAudioEvent(BaseEvent):
+class ToggleAudioRequest(BaseEvent):
     pass
-
-
-@dataclass(frozen=True)
-class AudioEffectChangedEvent(BaseEvent):
-    audio_effect: AudioEffect
 
 
 @dataclass(frozen=True)
@@ -128,9 +143,4 @@ class RegularDisplayContentUpdateEvent(BaseEvent):
 
 @dataclass(frozen=True)
 class SpeakerErrorEvent(BaseEvent):
-    pass
-
-
-@dataclass(frozen=True)
-class SpeakerPlayingEvent(BaseEvent):
-    pass
+    audio_stream: AudioStream = None

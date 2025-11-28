@@ -27,9 +27,10 @@ if TYPE_CHECKING:
     from core.infrastructure.event_bus import EventBus
     from core.domain.mode_coordinator import AlarmClockModeCoordinator
 from core.domain.events import (
+    AudioStreamChangeRequest,
     AudioStreamChangedEvent,
+    VolumeChangeRequest,
     VolumeChangedEvent,
-    AudioEffectChangedEvent,
 )
 
 
@@ -347,9 +348,14 @@ class Config:
         self.remove_alarm_definition(alarm_definition.id)
         self.add_alarm_definition(alarm_definition)
 
+    def get_default_audio_stream(self) -> AudioStream:
+        if len(self.audio_streams) > 0:
+            return self.audio_streams[0]
+        return None
+
     def get_audio_stream_by_id(self, stream_id: int) -> AudioStream:
         streams = self.audio_streams
-        return next((s for s in streams if s.id == stream_id), streams[0])
+        return next((s for s in streams if s.id == stream_id), None)
 
     def add_alarm_definition(self, value: AlarmDefinition):
         self.alarm_definitions = self._append_item_with_id(
@@ -363,7 +369,12 @@ class Config:
             alarm_def for alarm_def in self.alarm_definitions if alarm_def.id != id
         ]
 
-    def get_alarm_definition(self, id: int) -> AlarmDefinition:
+    def get_default_alarm_definition(self) -> AlarmDefinition:
+        if len(self.alarm_definitions) > 0:
+            return self.alarm_definitions[0]
+        return None
+
+    def get_alarm_definition_by_id(self, id: int) -> AlarmDefinition:
         return next((alarm for alarm in self.alarm_definitions if alarm.id == id), None)
 
     def add_audio_stream(self, value: AudioStream):
@@ -463,39 +474,16 @@ class Config:
 
 
 class AlarmClockContext:
-    """
-    Aggregate Root: Central context for the alarm clock domain.
 
-    Coordinates between configuration, environment conditions,
-    and UI mode management. This is the main entry point for domain operations.
-    """
+    config: Config
+    environment: EnvironmentContext
+    mode_coordinator: "AlarmClockModeCoordinator"
+    active_alarm_definition: AlarmDefinition = None
 
     def __init__(self, config: Config) -> None:
-        self._config = config
-        self._environment = EnvironmentContext()
-        self._mode_coordinator: "AlarmClockModeCoordinator" = None
-
-    # ========== Aggregate Properties ==========
-
-    @property
-    def config(self) -> Config:
-        """The alarm clock configuration."""
-        return self._config
-
-    @property
-    def environment(self) -> EnvironmentContext:
-        """Environmental and network conditions."""
-        return self._environment
-
-    @property
-    def mode_coordinator(self) -> "AlarmClockModeCoordinator":
-        """UI mode coordinator (set during initialization)."""
-        return self._mode_coordinator
-
-    @mode_coordinator.setter
-    def mode_coordinator(self, coordinator: "AlarmClockModeCoordinator"):
-        """Set the mode coordinator (should only be called during initialization)."""
-        self._mode_coordinator = coordinator
+        self.config = config
+        self.environment = EnvironmentContext()
+        self.mode_coordinator: "AlarmClockModeCoordinator" = None
 
 
 class MediaContent:
@@ -507,7 +495,15 @@ class MediaContent:
 
 class PlaybackContent(MediaContent):
 
-    playback_mode: Mode
+    @property
+    def playback_mode(self) -> Mode:
+        return self._playback_mode
+
+    @playback_mode.setter
+    def playback_mode(self, value: Mode):
+        logger.debug("setting playback mode to: %s", value)
+        self._playback_mode = value
+
     audio_stream: AudioStream
 
     @property
@@ -527,46 +523,33 @@ class PlaybackContent(MediaContent):
         super().__init__(alarm_clock_context)
         self.sound_device = sound_device
         self.event_bus = event_bus
-        self.playback_mode = Mode.Boot
+        self._playback_mode: Mode = Mode.Boot
 
         default_volume = self.alarm_clock_context.config.default_volume
         self.sound_device.set_system_volume(default_volume)
         self.audio_stream = None
-        self.event_bus.on(AudioEffectChangedEvent)(self._audio_effect_changed)
-        self.event_bus.on(AudioStreamChangedEvent)(self._audio_stream_changed)
-        self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
+        self.event_bus.on(AudioStreamChangeRequest)(self._audio_stream_change_request)
+        self.event_bus.on(VolumeChangeRequest)(self._volume_change_request)
 
-    def _audio_effect_changed(self, event: AudioEffectChangedEvent):
-        self.event_bus.emit(
-            AudioStreamChangedEvent(
-                event.audio_effect.audio_stream
-                if event.audio_effect is not None
-                and isinstance(event.audio_effect, StreamAudioEffect)
-                else None
-            )
-        )
-
-        self.event_bus.emit(
-            VolumeChangedEvent(
-                event.audio_effect.volume
-                if event.audio_effect is not None
-                and event.audio_effect.volume is not None
-                else self.alarm_clock_context.config.default_volume
-            )
-        )
-
-    def _audio_stream_changed(self, event: AudioStreamChangedEvent):
+    def _audio_stream_change_request(self, event: AudioStreamChangeRequest):
         if event.audio_stream is not None:
             self.audio_stream = event.audio_stream
+        self.event_bus.emit(AudioStreamChangedEvent(event.audio_stream))
 
-    def _volume_changed(self, event: VolumeChangedEvent):
-        if event.volume_delta > 0:
-            self.increase_volume()
-        elif event.volume_delta < 0:
-            self.decrease_volume()
+    def _volume_change_request(self, event: VolumeChangeRequest):
+        if event.relative is not None:
+            if event.relative > 0:
+                self._increase_volume()
+            elif event.relative < 0:
+                self._decrease_volume()
 
-    def increase_volume(self):
+        elif event.absolute is not None:
+            self.volume = event.absolute
+
+        self.event_bus.emit(VolumeChangedEvent(new_volume=self.volume))
+
+    def _increase_volume(self):
         self.volume = min(self.volume + 0.05, 1.0)
 
-    def decrease_volume(self):
+    def _decrease_volume(self):
         self.volume = max(self.volume - 0.05, 0.0)

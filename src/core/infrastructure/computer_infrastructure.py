@@ -1,6 +1,7 @@
 import logging
 import traceback
 from pynput import keyboard
+from core.application.controls import Controls
 from core.domain.events import AlarmTriggeredEvent
 from core.domain.model import Config
 from core.infrastructure.brightness_sensor import IBrightnessSensor
@@ -18,13 +19,15 @@ logger = logging.getLogger("tac.keyboard_buttons")
 class ComputerInfrastructure(IBrightnessSensor):
     simulated_brightness: int = 10000
 
-    def __init__(self, event_bus: EventBus, config: Config):
-        super().__init__()
-        self.event_bus = event_bus
-        self.config = config
+    def __init__(self):
+        self.log = logging.getLogger(self.__class__.__name__)
         self.listener = keyboard.Listener(on_press=self.on_press)
         self.listener.start()
-        self.log = logging.getLogger(self.__class__.__name__)
+
+    def configure(self, controls: Controls):
+        self.controls = controls
+        self.config = controls.alarm_clock_context.config
+        self.event_bus = controls.event_bus
 
     def on_press(self, key):
         logger.debug("pressed %s", key)
@@ -53,9 +56,11 @@ class ComputerInfrastructure(IBrightnessSensor):
                 ]
                 logger.info("simulated brightness: %s", self.simulated_brightness)
             if key.char == "6":
-                self.event_bus.emit(
-                    AlarmTriggeredEvent(self.config.alarm_definitions[0])
-                )
+                self.controls._ring_alarm(self.config.get_default_alarm_definition())
+            if key.char == "7":
+                ad = self.config.get_default_alarm_definition()
+                ad.audio_effect.audio_stream.stream_url = "invalid_stream_url"
+                self.controls._ring_alarm(ad)
 
         except Exception:
             logger.warning("%s", traceback.format_exc())

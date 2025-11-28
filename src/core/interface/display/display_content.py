@@ -28,15 +28,6 @@ logger = logging.getLogger("tac.interface.display")
 
 
 class NextAlarmInfo:
-    """
-    Value Object: Complete information about the next scheduled alarm.
-
-    Encapsulates alarm timing, name, and visual effects without exposing
-    scheduler infrastructure. This bridges between the Infrastructure layer
-    (APScheduler) and the Interface layer (DisplayContent).
-
-    DDD Pattern: Rich Value Object - contains all data needed for presentation
-    """
 
     def __init__(
         self,
@@ -50,59 +41,36 @@ class NextAlarmInfo:
 
     @property
     def next_run_time(self) -> datetime:
-        """When the alarm will trigger."""
         return self._next_run_time
 
     @property
     def alarm_name(self) -> str:
-        """Name of the alarm (e.g., 'Wake Up', 'Powernap')."""
         return self._alarm_name
 
     @property
     def visual_effect(self) -> "VisualEffect":
-        """Visual effect configuration for this alarm."""
         return self._visual_effect
 
     def has_alarm(self) -> bool:
-        """Whether there is a scheduled alarm."""
         return self._next_run_time is not None
 
     def get_timedelta_to_alarm(self) -> timedelta:
-        """Time remaining until alarm triggers."""
         if not self.has_alarm():
             return timedelta.max
         return self._calculate_time_delta()
 
     def _calculate_time_delta(self) -> timedelta:
-        """Calculate time delta to alarm time."""
         from utils.geolocation import GeoLocation
 
         now = GeoLocation().now()
         return self._next_run_time - now
 
     def minutes_until_alarm(self) -> int:
-        """Minutes until alarm triggers."""
         return int(self.get_timedelta_to_alarm().total_seconds() / 60)
 
 
 class DisplayContent:
-    """
-    ViewModel (MVVM Pattern): Aggregates all data needed for display presentation.
 
-    This is the Interface Layer component that serves the View (Presenter).
-    It owns presentation state and coordinates data from multiple domain aggregates.
-
-    Responsibilities:
-    - Owns presentation state (brightness, blinking, scrolling)
-    - Aggregates data from domain (alarms, weather, playback)
-    - Provides convenient accessors for the View layer
-    - Handles presentation-related events
-
-    DDD Pattern: Anti-Corruption Layer between Domain and View
-    MVVM Pattern: ViewModel
-    """
-
-    # ========== Presentation State (ViewModel owns this) ==========
     show_volume_meter: bool = False
     next_alarm_info: NextAlarmInfo = None
     show_blink_segment: bool = True
@@ -115,14 +83,6 @@ class DisplayContent:
         playback_content: "PlaybackContent",
         event_bus: "EventBus" = None,
     ):
-        """
-        Initialize the ViewModel.
-
-        Args:
-            alarm_clock_context: Domain aggregate root
-            playback_content: Playback state (should also be moved to interface layer)
-            event_bus: Event infrastructure for reactive updates
-        """
         self.alarm_clock_context = alarm_clock_context
         self.playback_content = playback_content
         self.event_bus = event_bus
@@ -135,13 +95,11 @@ class DisplayContent:
     # ========== Event Handlers ==========
 
     def _audio_stream_changed(self, event: AudioStreamChangedEvent):
-        """Handle audio stream changes (show/hide volume meter)."""
         if event.audio_stream is None:
             self.hide_volume_meter()
         self.event_bus.emit(ForcedDisplayUpdateEvent())
 
     def _volume_changed(self, _: VolumeChangedEvent):
-        """Handle volume changes (show volume meter)."""
         self.show_volume_meter = True
         self.event_bus.emit(ForcedDisplayUpdateEvent())
 
@@ -153,20 +111,6 @@ class DisplayContent:
         room_brightness: RoomBrightness = None,
         is_scrolling: bool = None,
     ) -> bool:
-        """
-        Update presentation state. Returns True if any value changed.
-
-        This allows efficient display refresh only when presentation state changes.
-        The ViewModel decides what requires a redraw.
-
-        Args:
-            show_blink_segment: Whether to show blinking elements (colon)
-            room_brightness: Ambient brightness for display adjustment
-            is_scrolling: Whether content is currently scrolling
-
-        Returns:
-            True if any state changed (indicating redraw needed)
-        """
         changed = False
 
         if (
@@ -189,13 +133,6 @@ class DisplayContent:
     # ========== Alarm Information (Domain Delegation) ==========
 
     def update_next_alarm(self, job: Job):
-        """
-        Update next alarm from scheduler job (infrastructure adapter).
-
-        This method acts as an adapter between Infrastructure (APScheduler Job)
-        and Interface (NextAlarmInfo value object). Extracts all relevant
-        alarm information including visual effects.
-        """
         if job is None:
             self.next_alarm_info = NextAlarmInfo()
             return
@@ -212,11 +149,6 @@ class DisplayContent:
         )
 
     def show_alarm_preview(self) -> bool:
-        """
-        Whether to show alarm preview based on proximity.
-
-        Business rule: Show preview if alarm is within configured hours.
-        """
         if not self.next_alarm_info.has_alarm():
             return False
         hours_until = (
@@ -225,34 +157,28 @@ class DisplayContent:
         return hours_until <= self.alarm_clock_context.config.alarm_preview_hours
 
     def get_next_alarm(self) -> datetime:
-        """Get next alarm datetime (or None)."""
         return self.next_alarm_info.next_run_time
 
     def get_timedelta_to_alarm(self) -> timedelta:
-        """Get time remaining until next alarm."""
         return self.next_alarm_info.get_timedelta_to_alarm()
 
     # ========== Environment Information (Domain Delegation) ==========
 
     def get_is_online(self) -> bool:
-        """Delegate to environment context (domain aggregate)."""
         return self.alarm_clock_context.environment.is_online
 
     @property
     def current_weather(self) -> Weather:
-        """Delegate to environment context (domain aggregate)."""
         return self.alarm_clock_context.environment.current_weather
 
     # ========== Volume Meter ==========
 
     def hide_volume_meter(self):
-        """Hide the volume meter display element."""
         self.show_volume_meter = False
 
     # ========== Playback Information (Delegation) ==========
 
     def current_playback_title(self) -> str:
-        """Get current playback title (or None if idle)."""
         return (
             self.playback_content.audio_stream.stream_name
             if self.playback_content.playback_mode != Mode.Idle
@@ -261,5 +187,4 @@ class DisplayContent:
         )
 
     def current_volume(self) -> float:
-        """Get current playback volume."""
         return self.playback_content.volume

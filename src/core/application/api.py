@@ -10,10 +10,10 @@ import tornado.web
 from PIL.Image import Image
 from core.application.controls import Controls
 from core.domain.events import (
-    AudioStreamChangedEvent,
+    AudioStreamChangeRequest,
     ConfigChangedEvent,
-    SpotifyApiEvent,
-    VolumeChangedEvent,
+    SpotifyStreamChangeRequest,
+    VolumeChangeRequest,
 )
 from core.infrastructure.event_bus import EventBus
 from core.interface.display.display import Display
@@ -80,7 +80,7 @@ class LibreSpotifyEventHandler(tornado.web.RequestHandler):
                 key: value for key, value in spotify_event_payload.items()
             }
 
-            spotify_event = SpotifyApiEvent(spotify_event_dict)
+            spotify_event = SpotifyStreamChangeRequest(spotify_event_dict)
             logger.info("received librespotify event %s", spotify_event)
             self.event_bus.emit(spotify_event)
         except Exception:
@@ -131,15 +131,15 @@ class ActionApiHandler(tornado.web.RequestHandler):
 
             if type == "play":
                 self.event_bus.emit(
-                    AudioStreamChangedEvent(self.config.get_audio_stream_by_id(id))
+                    AudioStreamChangeRequest(self.config.get_audio_stream_by_id(id))
                 )
             elif type == "stop":
-                self.event_bus.emit(AudioStreamChangedEvent(None))
+                self.event_bus.emit(AudioStreamChangeRequest(None))
             elif type == "volume":
                 if id == 1:
-                    self.event_bus.emit(VolumeChangedEvent(+1))
+                    self.event_bus.emit(VolumeChangeRequest(relative=+1))
                 else:
-                    self.event_bus.emit(VolumeChangedEvent(-1))
+                    self.event_bus.emit(VolumeChangeRequest(relative=-1))
             elif type == "update":
                 tornado.ioloop.IOLoop.instance().stop()
             elif type == "reboot":
@@ -192,7 +192,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
         simpleValue = tornado.escape.to_unicode(self.request.body)
         if try_update(self.config, type, simpleValue):
             return
-        alarmDef = self.config.get_alarm_definition(id)
+        alarmDef = self.config.get_alarm_definition_by_id(id)
         if (
             True
             and alarmDef is not None

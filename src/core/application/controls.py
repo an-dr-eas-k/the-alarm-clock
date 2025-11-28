@@ -7,17 +7,17 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
 from core.domain.events import (
-    AudioEffectChangedEvent,
+    AudioStreamChangeRequest,
     AudioStreamChangedEvent,
     ConfigChangedEvent,
     ForcedDisplayUpdateEvent,
     SpeakerErrorEvent,
-    SpeakerPlayingEvent,
-    SpotifyApiEvent,
-    ToggleAudioEvent,
+    SpotifyStreamChangeRequest,
+    ToggleAudioRequest,
     AlarmTriggeredEvent,
     AlarmStoppedEvent,
     SunEventOccurredEvent,
+    VolumeChangeRequest,
     VolumeChangedEvent,
     WifiStatusChangedEvent,
 )
@@ -50,7 +50,6 @@ default_store = "default"
 class SchedulerJobIds(Enum):
     hide_volume_meter = "hide_volume_meter_trigger"
     stop_alarm = "stop_alarm_trigger"
-    ensure_alarm = "ensure_alarm_trigger"
     ensure_stable_wifi = "ensure_stable_wifi_trigger"
 
 
@@ -74,14 +73,16 @@ class Controls:
         self.playback_content = playback_content
         self.brightness_sensor = brightness_sensor
         self.event_bus = event_bus
-        self.event_bus.on(ToggleAudioEvent)(self._toggle_stream)
+        self.event_bus.on(ToggleAudioRequest)(self._toggle_stream)
         self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
         self.event_bus.on(WifiStatusChangedEvent)(self._wifi_status_changed)
         self.event_bus.on(ConfigChangedEvent)(self._config_changed)
         self.event_bus.on(AlarmTriggeredEvent)(self._alarm_triggered)
+        self.event_bus.on(AlarmStoppedEvent)(self._alarm_stopped_event)
         self.event_bus.on(SpeakerErrorEvent)(self._handle_speaker_error)
-        self.event_bus.on(SpeakerPlayingEvent)(self._handle_speaker_playing)
-        self.event_bus.on(SpotifyApiEvent)(self._spotify_api_event)
+        self.event_bus.on(SpotifyStreamChangeRequest)(
+            self._spotify_stream_change_request
+        )
 
         self._update_weather_status()
         self._add_scheduler_jobs()
@@ -206,29 +207,31 @@ class Controls:
         except:
             logger.error("%s", traceback.format_exc())
 
-    def _toggle_stream(self, _: ToggleAudioEvent):
+    def _toggle_stream(self, _: ToggleAudioRequest):
         if self.playback_content.playback_mode == Mode.Alarm:
-            self.set_to_idle_mode(alarm_stopped_reason="manual")
+            self._set_to_idle_mode(alarm_stopped_reason="manual")
             return
 
         if self.playback_content.playback_mode in [
             Mode.Music,
             Mode.Spotify,
         ]:
-            self.set_to_idle_mode()
+            self._set_to_idle_mode()
             return
 
+        audio_stream = self.alarm_clock_context.config.get_default_audio_stream()
         if (
             True
             and self.playback_content.audio_stream
             and isinstance(self.playback_content.audio_stream, AudioStream)
             and not isinstance(self.playback_content.audio_stream, OfflineStream)
         ):
-            self._play_music(self.playback_content.audio_stream)
-        else:
-            self.play_music_by_id(0)
+            audio_stream = self.playback_content.audio_stream
 
-    def _spotify_api_event(self, spotify_event: SpotifyApiEvent):
+        self.playback_content.playback_mode = Mode.Music
+        self.event_bus.emit(AudioStreamChangeRequest(audio_stream))
+
+    def _spotify_stream_change_request(self, spotify_event: SpotifyStreamChangeRequest):
 
         spotify_stream = SpotifyStream()
         if hasattr(spotify_event, "track_id"):
@@ -245,23 +248,23 @@ class Controls:
             spotify_event.is_playback_stopped()
             and self.playback_content.playback_mode != Mode.Idle
         ):
-            self.set_to_idle_mode()
+            self._set_to_idle_mode()
 
         if (
             spotify_event.is_volume_changed()
             and self.playback_content.playback_mode == Mode.Spotify
         ):
-            self.event_bus.emit(VolumeChangedEvent(0))
+            self.event_bus.emit(VolumeChangedEvent())
 
-    def _alarm_triggered(self, event: AlarmTriggeredEvent):
-        adjusted_audio_effect = self.adjust_audio_effect_if_needed_for_alarm(
-            event.alarm_definition.audio_effect
-        )
-        self.set_to_idle_mode()
+    def _alarm_triggered(self, _: AlarmTriggeredEvent = None):
+        audio_effect = self.get_appropriate_audio_effect()
         self.playback_content.playback_mode = Mode.Alarm
-        self.event_bus.emit(AudioEffectChangedEvent(adjusted_audio_effect))
+        self.event_bus.emit(VolumeChangeRequest(absolute=audio_effect.volume))
+        self.event_bus.emit(AudioStreamChangeRequest(audio_effect.audio_stream))
 
-    def set_to_idle_mode(self, alarm_stopped_reason: str = None):
+    def _set_to_idle_mode(self, alarm_stopped_reason: str = None):
+        if self.playback_content.playback_mode == Mode.Idle:
+            return
         was_alarm = self.playback_content.playback_mode == Mode.Alarm
 
         if self.playback_content.playback_mode == Mode.Spotify:
@@ -270,53 +273,41 @@ class Controls:
         self.stop_generic_trigger(SchedulerJobIds.stop_alarm.value)
         self.stop_generic_trigger(SchedulerJobIds.hide_volume_meter.value)
         self.playback_content.playback_mode = Mode.Idle
-        self.event_bus.emit(AudioStreamChangedEvent(None))
+        self.event_bus.emit(AudioStreamChangeRequest(None))
 
         if was_alarm:
-            self.event_bus.emit(AlarmStoppedEvent(reason=alarm_stopped_reason))
+            self.event_bus.emit(
+                AlarmStoppedEvent(
+                    reason=alarm_stopped_reason,
+                    alarm_definition=self.alarm_clock_context.active_alarm_definition,
+                )
+            )
             self.stop_generic_trigger(SchedulerJobIds.ensure_stable_wifi.value)
 
     def _volume_changed(self, _: VolumeChangedEvent):
         self.start_hide_volume_meter_trigger()
 
-    def play_music_by_id(self, stream_id: int):
-        stream = self.alarm_clock_context.config.get_audio_stream_by_id(stream_id)
-        self._play_music(stream)
-
-    def _play_music(self, audio_stream: AudioStream):
-        self.set_to_idle_mode()
-
-        self.playback_content.playback_mode = Mode.Music
-        self.event_bus.emit(AudioStreamChangedEvent(audio_stream))
-
-    def configure(self):
-        pass
-
     def get_room_brightness(self):
         return self.brightness_sensor.get_room_brightness()
 
-    def _handle_speaker_playing(self, _: SpeakerPlayingEvent = None):
-        logger.info("speaker playing successfully")
-        self.stop_generic_trigger(SchedulerJobIds.ensure_alarm.value)
+    def ignore_offline_stream_events(self, event: SpeakerErrorEvent):
+        if event is not None and isinstance(event.audio_stream, OfflineStream):
+            return True
+        return False
 
-    def _handle_speaker_error(self, _: SpeakerErrorEvent = None):
-        logger.warning("speaker error occurred")
+    def _handle_speaker_error(self, event: SpeakerErrorEvent = None):
+        if self.ignore_offline_stream_events(event):
+            return
         if self.playback_content.playback_mode == Mode.Alarm:
-            if isinstance(self.playback_content.audio_stream, OfflineStream):
-                self.event_bus.emit(
-                    AudioStreamChangedEvent(
-                        self.alarm_clock_context.config.get_offline_stream(),
-                        use_alternative_player=True,
-                    )
+            logger.warning("alarm error occurred: continuing with offline stream")
+            self.event_bus.emit(
+                AudioStreamChangeRequest(
+                    self.alarm_clock_context.config.get_offline_stream()
                 )
-            else:
-                self.event_bus.emit(
-                    AudioStreamChangedEvent(
-                        self.alarm_clock_context.config.get_offline_stream()
-                    )
-                )
+            )
         else:
-            self.set_to_idle_mode()
+            logger.warning("music playback error occurred: switching to idle mode")
+            self._set_to_idle_mode()
 
     def _emit_regular_display_update(self):
 
@@ -341,10 +332,20 @@ class Controls:
     def _wifi_status_changed(self, event: WifiStatusChangedEvent):
         if event.is_online:
             self._update_weather_status()
-            # todo
+            if self.playback_content.playback_mode == Mode.Alarm:
+                self.event_bus.emit(
+                    AudioStreamChangeRequest(
+                        self.alarm_clock_context.active_alarm_definition.audio_effect.audio_stream
+                    )
+                )
         else:
             self.alarm_clock_context.environment.current_weather = None
-            # todo
+            if self.playback_content.playback_mode == Mode.Alarm:
+                self.event_bus.emit(
+                    AudioStreamChangeRequest(
+                        self.alarm_clock_context.config.get_offline_stream()
+                    )
+                )
 
     def _update_weather_status(self):
         def do():
@@ -374,7 +375,7 @@ class Controls:
                 and not is_online
                 and self.playback_content.playback_mode in [Mode.Music, Mode.Spotify]
             ):
-                self.set_to_idle_mode()
+                self._set_to_idle_mode()
 
         Controls.action(do)
 
@@ -386,7 +387,11 @@ class Controls:
 
         Controls.action(do, "sun event %s" % event)
 
-    def adjust_audio_effect_if_needed_for_alarm(self, audio_effect: StreamAudioEffect):
+    def get_appropriate_audio_effect(self) -> StreamAudioEffect:
+        active_alarm_effect = (
+            self.alarm_clock_context.active_alarm_definition.audio_effect
+        )
+        audio_effect = StreamAudioEffect(volume=active_alarm_effect.volume)
         if (
             False
             or not is_internet_available()
@@ -397,37 +402,30 @@ class Controls:
             ]
         ):
             logger.info("adjusting alarm to use offline stream")
-            return StreamAudioEffect(
-                audio_stream=self.alarm_clock_context.config.get_offline_stream(),
-                volume=audio_effect.volume,
+            audio_effect.audio_stream = (
+                self.alarm_clock_context.config.get_offline_stream()
             )
+        else:
+            audio_effect.audio_stream = active_alarm_effect.audio_stream
+
         return audio_effect
 
     def _ring_alarm(self, alarm_definition: AlarmDefinition):
         def do():
 
-            if alarm_definition.is_onetime() and alarm_definition.id >= 0:
-                self.alarm_clock_context.config.remove_alarm_definition(
-                    alarm_definition.id
-                )
-
+            self.preprocess_ring_alarm(alarm_definition)
             self.event_bus.emit(AlarmTriggeredEvent(alarm_definition))
-            self.postprocess_ring_alarm()
 
         Controls.action(do, "ring alarm '%s'" % alarm_definition.alarm_name)
 
-    def postprocess_ring_alarm(self):
+    def preprocess_ring_alarm(self, alarm_definition: AlarmDefinition):
+        self.alarm_clock_context.active_alarm_definition = alarm_definition
         self.start_generic_trigger(
             SchedulerJobIds.stop_alarm.value,
             datetime.timedelta(
                 minutes=self.alarm_clock_context.config.alarm_duration_in_mins
             ),
-            func=lambda: self.set_to_idle_mode(alarm_stopped_reason="timeout"),
-        )
-        self.start_generic_trigger(
-            SchedulerJobIds.ensure_alarm.value,
-            datetime.timedelta(seconds=5),
-            func=self._handle_speaker_error,
+            func=lambda: self._set_to_idle_mode(alarm_stopped_reason="timeout"),
         )
         self.scheduler.add_job(
             self.update_wifi_status,
@@ -437,10 +435,21 @@ class Controls:
             jobstore=default_store,
         )
 
+    def _alarm_stopped_event(self, alarm_stopped_event: AlarmStoppedEvent):
         self.display_content.update_next_alarm(self.get_next_alarm_job())
+
+        alarm_definition = alarm_stopped_event.alarm_definition
+        if alarm_definition.is_onetime() and alarm_definition.id >= 0:
+            self.alarm_clock_context.config.remove_alarm_definition(alarm_definition.id)
+            self.event_bus.emit(ConfigChangedEvent(self.alarm_clock_context.config))
+        self.alarm_clock_context.active_alarm_definition = None
 
     def cleanup_alarms(self):
         job: Job
+        config_changed = False
         for job in self.scheduler.get_jobs(jobstore=alarm_store):
             if job.next_run_time is None:
                 self.alarm_clock_context.config.remove_alarm_definition(int(job.id))
+                config_changed = True
+        if config_changed:
+            self.event_bus.emit(ConfigChangedEvent(self.alarm_clock_context.config))

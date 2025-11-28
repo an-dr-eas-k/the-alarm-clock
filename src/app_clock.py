@@ -50,17 +50,15 @@ class ClockApp:
                 ComputerInfrastructure,
             )
 
-            ci = ComputerInfrastructure(
-                event_bus=self.container.event_bus(), config=config
-            )
+            ci = ComputerInfrastructure()
             self.container.brightness_sensor.override(providers.Object(ci))
             self.container.device.override(
                 providers.Singleton(dummy, height=64, width=256, mode="RGB")
             )
 
         controls: Controls = self.container.controls()
-
-        controls.configure()
+        if ci is not None:
+            ci.configure(controls)
 
         api = self.container.api()
         api.start()
