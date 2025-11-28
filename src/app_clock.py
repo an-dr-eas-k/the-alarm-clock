@@ -41,6 +41,7 @@ class ClockApp:
         self.container.persistence()
 
         logger.info("config available")
+        ci: any = None
 
         if self.is_on_hardware():
             self.container.button_manager()
