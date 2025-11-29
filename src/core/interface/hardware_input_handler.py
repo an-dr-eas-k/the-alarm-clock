@@ -33,8 +33,6 @@ class HardwareInputHandler:
         self.event_bus.on(HwButtonEvent)(self._handle_button_event)
         self.event_bus.on(HwRotaryEvent)(self._handle_rotary_event)
 
-        logger.info("Hardware input handler initialized")
-
     def _handle_button_event(self, event: HwButtonEvent):
         current_mode = self.mode_coordinator.current_mode_name
         if event.direction != ButtonDirection.DOWN:
