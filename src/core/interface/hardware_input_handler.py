@@ -10,6 +10,7 @@ import logging
 from core.domain.mode_coordinator import AlarmClockModeCoordinator, ModeName
 from core.domain.events import ToggleAudioRequest, VolumeChangeRequest
 from core.infrastructure.events_infrastructure import (
+    ButtonDirection,
     DeviceName,
     HwButtonEvent,
     HwRotaryEvent,
@@ -36,6 +37,8 @@ class HardwareInputHandler:
 
     def _handle_button_event(self, event: HwButtonEvent):
         current_mode = self.mode_coordinator.current_mode_name
+        if event.direction != ButtonDirection.DOWN:
+            return
 
         if event.device_name == DeviceName.MODE_BUTTON:
             self.mode_coordinator.handle_mode_button()
