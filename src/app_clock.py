@@ -70,9 +70,9 @@ class ClockApp:
         context.mode_coordinator = self.container.mode_coordinator()
         self.container.hardware_input_handler()
 
+        self.container.event_bus().emit(ConfigChangedEvent(config=config))
         self.container.playback_content().playback_mode = Mode.Idle
         controls.consider_failed_alarm()
-        self.container.event_bus().emit(ConfigChangedEvent(config=config))
         tornado.ioloop.IOLoop.current().start()
 
 
