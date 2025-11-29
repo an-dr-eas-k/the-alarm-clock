@@ -1,3 +1,4 @@
+from enum import Enum
 import logging
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Optional, List
@@ -8,7 +9,14 @@ from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.job import Job
 
+from utils.geolocation import GeoLocation
+
 logger = logging.getLogger("tac.scheduler")
+
+
+class SchedulerStores(Enum):
+    alarm = "alarm"
+    default = "default"
 
 
 class SchedulerService:
@@ -26,10 +34,6 @@ class SchedulerService:
         kwargs: Dict[str, Any] = None,
         **trigger_args,
     ) -> Job:
-        """
-        Add a job to the scheduler.
-        trigger: 'cron', 'date', 'interval'
-        """
         logger.debug(
             f"Adding job {id} to {jobstore} with trigger {trigger} and args {trigger_args}"
         )
@@ -109,3 +113,44 @@ class SchedulerService:
 
     def shutdown(self):
         self.scheduler.shutdown()
+
+    def stop_generic_trigger(
+        self, job_id: str, job_store=SchedulerStores.default.value
+    ):
+        if self.get_job(id=job_id, jobstore=job_store) is not None:
+            self.remove_job(id=job_id, jobstore=job_store)
+
+    def start_generic_trigger(
+        self,
+        job_id: str,
+        duration: datetime.timedelta,
+        func,
+        job_store=SchedulerStores.default.value,
+    ):
+        run_date = GeoLocation().now() + duration
+
+        logger.debug("starting generic trigger %s for %s", job_id, duration)
+        existing_job = self.get_job(id=job_id, jobstore=job_store)
+        if existing_job:
+            self.reschedule_date_job(id=job_id, run_date=run_date, jobstore=job_store)
+        else:
+            self.add_date_job(
+                id=job_id, run_date=run_date, func=func, jobstore=job_store
+            )
+
+    def get_next_alarm_job(self) -> Job:
+        jobs = sorted(
+            self.get_jobs(jobstore=SchedulerStores.alarm.value),
+            key=lambda job: job.next_run_time,
+        )
+        return jobs[0] if len(jobs) > 0 else None
+
+    def log_active_jobs(self, jobstore):
+        job: Job
+        for job in self.get_jobs(jobstore=jobstore):
+            if hasattr(job, "next_run_time") and job.next_run_time is not None:
+                logger.info(
+                    "next runtime for job '%s': %s",
+                    job.id,
+                    job.next_run_time.strftime(f"%Y-%m-%d %H:%M:%S"),
+                )

@@ -34,16 +34,13 @@ from core.domain.model import (
 from core.interface.display.display_content import DisplayContent
 from core.infrastructure.brightness_sensor import IBrightnessSensor
 from core.infrastructure.event_bus import EventBus
-from core.infrastructure.scheduler import SchedulerService
+from core.infrastructure.scheduler import SchedulerService, SchedulerStores
 from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon
 from resources.resources import active_alarm_definition_file
 
 logger = logging.getLogger("tac.controls")
-
-alarm_store = "alarm"
-default_store = "default"
 
 
 class SchedulerJobIds(Enum):
@@ -86,7 +83,7 @@ class Controls:
 
         self._update_weather_status()
         self._add_scheduler_jobs()
-        self._print_active_jobs(default_store)
+        self.scheduler_service.log_active_jobs(SchedulerStores.default.value)
 
     def consider_failed_alarm(self):
         if os.path.exists(active_alarm_definition_file):
@@ -104,7 +101,7 @@ class Controls:
             start_date=datetime.datetime.today(),
             seconds=self.alarm_clock_context.config.refresh_timeout_in_secs,
             id="display_interval",
-            jobstore=default_store,
+            jobstore=SchedulerStores.default.value,
         )
 
         self.scheduler_service.add_job(
@@ -112,7 +109,7 @@ class Controls:
             trigger="interval",
             seconds=60,
             id="wifi_check_interval",
-            jobstore=default_store,
+            jobstore=SchedulerStores.default.value,
         )
 
         self.scheduler_service.add_job(
@@ -120,7 +117,7 @@ class Controls:
             trigger="interval",
             minutes=5,
             id="weather_check_interval",
-            jobstore=default_store,
+            jobstore=SchedulerStores.default.value,
         )
 
         for event in SunEvent.__members__.values():
@@ -130,42 +127,22 @@ class Controls:
         self.scheduler_service.add_cron_job(
             lambda: self.sun_event_occured(event),
             id=event.value,
-            jobstore=default_store,
+            jobstore=SchedulerStores.default.value,
             **self.alarm_clock_context.environment.geo_location.get_sun_event_cron_args(
                 event
             ),
         )
 
     def start_hide_volume_meter_trigger(self):
-        self.start_generic_trigger(
+        self.scheduler_service.start_generic_trigger(
             SchedulerJobIds.hide_volume_meter.value,
             datetime.timedelta(seconds=5),
             func=self.display_content.hide_volume_meter,
         )
 
-    def stop_generic_trigger(self, job_id: str, job_store=default_store):
-        if self.scheduler_service.get_job(id=job_id, jobstore=job_store) is not None:
-            self.scheduler_service.remove_job(id=job_id, jobstore=job_store)
-
-    def start_generic_trigger(
-        self, job_id: str, duration: datetime.timedelta, func, job_store=default_store
-    ):
-        run_date = GeoLocation().now() + duration
-
-        logger.debug("starting generic trigger %s for %s", job_id, duration)
-        existing_job = self.scheduler_service.get_job(id=job_id, jobstore=job_store)
-        if existing_job:
-            self.scheduler_service.reschedule_date_job(
-                id=job_id, run_date=run_date, jobstore=job_store
-            )
-        else:
-            self.scheduler_service.add_date_job(
-                id=job_id, run_date=run_date, func=func, jobstore=job_store
-            )
-
     def _config_changed(self, event: ConfigChangedEvent):
         config: Config = event.config
-        self.scheduler_service.remove_all_jobs(jobstore=alarm_store)
+        self.scheduler_service.remove_all_jobs(jobstore=SchedulerStores.alarm.value)
         alDef: AlarmDefinition
         for alDef in config.alarm_definitions:
             if not alDef.is_active:
@@ -175,28 +152,14 @@ class Controls:
                 func=self._ring_alarm,
                 args=(alDef,),
                 id=f"{alDef.id}",
-                jobstore=alarm_store,
+                jobstore=SchedulerStores.alarm.value,
                 **alDef.get_cron_args(),
             )
         self.cleanup_alarms()
-        self.display_content.update_next_alarm(self.get_next_alarm_job())
-        self._print_active_jobs(alarm_store)
-
-    def get_next_alarm_job(self) -> Job:
-        jobs = sorted(
-            self.scheduler_service.get_jobs(jobstore=alarm_store),
-            key=lambda job: job.next_run_time,
+        self.display_content.update_next_alarm(
+            self.scheduler_service.get_next_alarm_job()
         )
-        return jobs[0] if len(jobs) > 0 else None
-
-    def _print_active_jobs(self, jobstore):
-        for job in self.scheduler_service.get_jobs(jobstore=jobstore):
-            if hasattr(job, "next_run_time") and job.next_run_time is not None:
-                logger.info(
-                    "next runtime for job '%s': %s",
-                    job.id,
-                    job.next_run_time.strftime(f"%Y-%m-%d %H:%M:%S"),
-                )
+        self.scheduler_service.log_active_jobs(jobstore=SchedulerStores.alarm.value)
 
     def action(action, info: str = None):
         try:
@@ -269,8 +232,10 @@ class Controls:
         if self.playback_content.playback_mode == Mode.Spotify:
             restart_spotify_daemon()
 
-        self.stop_generic_trigger(SchedulerJobIds.stop_alarm.value)
-        self.stop_generic_trigger(SchedulerJobIds.hide_volume_meter.value)
+        self.scheduler_service.stop_generic_trigger(SchedulerJobIds.stop_alarm.value)
+        self.scheduler_service.stop_generic_trigger(
+            SchedulerJobIds.hide_volume_meter.value
+        )
         self.playback_content.playback_mode = Mode.Idle
         self.event_bus.emit(AudioStreamChangeRequest(None))
 
@@ -281,7 +246,9 @@ class Controls:
                     alarm_definition=self.alarm_clock_context.active_alarm_definition,
                 )
             )
-            self.stop_generic_trigger(SchedulerJobIds.ensure_stable_wifi.value)
+            self.scheduler_service.stop_generic_trigger(
+                SchedulerJobIds.ensure_stable_wifi.value
+            )
 
     def _volume_changed(self, _: VolumeChangedEvent):
         self.start_hide_volume_meter_trigger()
@@ -419,7 +386,7 @@ class Controls:
 
     def preprocess_ring_alarm(self, alarm_definition: AlarmDefinition):
         self.alarm_clock_context.active_alarm_definition = alarm_definition
-        self.start_generic_trigger(
+        self.scheduler_service.start_generic_trigger(
             SchedulerJobIds.stop_alarm.value,
             datetime.timedelta(
                 minutes=self.alarm_clock_context.config.alarm_duration_in_mins
@@ -431,11 +398,13 @@ class Controls:
             trigger="interval",
             seconds=5,
             id=SchedulerJobIds.ensure_stable_wifi.value,
-            jobstore=default_store,
+            jobstore=SchedulerStores.default.value,
         )
 
     def _alarm_stopped_event(self, alarm_stopped_event: AlarmStoppedEvent):
-        self.display_content.update_next_alarm(self.get_next_alarm_job())
+        self.display_content.update_next_alarm(
+            self.scheduler_service.get_next_alarm_job()
+        )
 
         alarm_definition = alarm_stopped_event.alarm_definition
         if alarm_definition.is_onetime() and alarm_definition.id >= 0:
@@ -446,7 +415,9 @@ class Controls:
     def cleanup_alarms(self):
         job: Job
         config_changed = False
-        for job in self.scheduler_service.get_jobs(jobstore=alarm_store):
+        for job in self.scheduler_service.get_jobs(
+            jobstore=SchedulerStores.alarm.value
+        ):
             if job.next_run_time is None:
                 self.alarm_clock_context.config.remove_alarm_definition(int(job.id))
                 config_changed = True
