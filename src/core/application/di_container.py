@@ -7,6 +7,7 @@ from core.infrastructure.brightness_sensor import BrightnessSensor
 from core.infrastructure.i2c_devices import I2CManager, MCPManager
 from core.infrastructure.mcp23017.buttons import ButtonsManager
 from core.infrastructure.mcp23017.rotary_encoder import RotaryEncoderManager
+from core.infrastructure.scheduler import SchedulerService
 from core.interface.display.display import Display
 from core.application.api import Api
 from core.infrastructure.audio import Speaker
@@ -99,6 +100,11 @@ class DIContainer(containers.DeclarativeContainer):
         RotaryEncoderManager, mcp_manager=mcp_manager, event_bus=event_bus
     )
 
+    scheduler_service = providers.Singleton(
+        SchedulerService,
+        jobstores={"alarm": {"type": "memory"}, "default": {"type": "memory"}},
+    )
+
     controls = providers.Singleton(
         Controls,
         alarm_clock_context=alarm_clock_context,
@@ -106,6 +112,7 @@ class DIContainer(containers.DeclarativeContainer):
         playback_content=playback_content,
         brightness_sensor=brightness_sensor,
         event_bus=event_bus,
+        scheduler_service=scheduler_service,
     )
 
     serial_interface = providers.Singleton(spi, device=0, port=0)

@@ -10,7 +10,6 @@ from enum import Enum
 import logging
 
 import jsonpickle
-from apscheduler.triggers.cron import CronTrigger
 from core.domain.edit_mode import AlarmRecurrence
 from utils.extensions import T, Value, respect_ranges
 
@@ -254,22 +253,23 @@ class AlarmDefinition:
     visual_effect: VisualEffect
     audio_effect: StreamAudioEffect
 
-    def to_cron_trigger(self) -> CronTrigger:
+    def get_cron_args(self) -> dict:
         if self.is_recurring():
-            return CronTrigger(
-                day_of_week=",".join(
+            return {
+                "day_of_week": ",".join(
                     [str(Weekday[wd].value - 1) for wd in self.recurring]
                 ),
-                hour=self.hour,
-                minute=self.min,
-            )
+                "hour": self.hour,
+                "minute": self.min,
+            }
         elif self.is_onetime():
-            return CronTrigger(
-                start_date=self.onetime,
-                end_date=self.onetime + timedelta(days=1),
-                hour=self.hour,
-                minute=self.min,
-            )
+            return {
+                "start_date": self.onetime,
+                "end_date": self.onetime + timedelta(days=1),
+                "hour": self.hour,
+                "minute": self.min,
+            }
+        return {}
 
         raise ValueError("AlarmDefinition is neither recurring nor onetime")
 
