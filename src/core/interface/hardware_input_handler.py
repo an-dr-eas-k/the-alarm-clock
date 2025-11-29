@@ -35,6 +35,9 @@ class HardwareInputHandler:
 
     def _handle_button_event(self, event: HwButtonEvent):
         current_mode = self.mode_coordinator.current_mode_name
+        logger.debug(
+            f"translating button event: {event.device_name} in mode {current_mode}"
+        )
         if event.direction != ButtonDirection.DOWN:
             return
 
@@ -47,13 +50,12 @@ class HardwareInputHandler:
             else:
                 self.mode_coordinator.handle_invoke_button()
 
-        logger.debug(
-            f"Button event translated: {event.device_name} in mode {current_mode}"
-        )
-
     def _handle_rotary_event(self, event: HwRotaryEvent):
         current_mode = self.mode_coordinator.current_mode_name
         direction = 1 if event.direction == RotaryDirection.CLOCKWISE else -1
+        logger.debug(
+            f"translating rotary event: {event.direction} in mode {current_mode}"
+        )
 
         if current_mode == ModeName.DEFAULT:
             self.event_bus.emit(VolumeChangeRequest(relative=direction))
@@ -66,7 +68,3 @@ class HardwareInputHandler:
 
         elif current_mode == ModeName.PROPERTY_EDIT:
             self.mode_coordinator.navigate_property_values(direction)
-
-        logger.debug(
-            f"Rotary event translated: {event.direction} in mode {current_mode}"
-        )
