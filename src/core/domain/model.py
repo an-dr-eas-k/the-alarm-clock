@@ -11,6 +11,7 @@ import logging
 
 import jsonpickle
 from core.domain.edit_mode import AlarmRecurrence
+from core.infrastructure.scheduler import SchedulerService, SchedulerStores
 from utils.extensions import T, Value, respect_ranges
 
 from utils.geolocation import GeoLocation, SunEvent, Weather

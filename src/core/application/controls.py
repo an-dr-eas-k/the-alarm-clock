@@ -105,7 +105,7 @@ class Controls:
         )
 
         self.scheduler_service.add_job(
-            self.update_wifi_status,
+            self._update_wifi_status,
             trigger="interval",
             seconds=60,
             id="wifi_check_interval",
@@ -125,7 +125,7 @@ class Controls:
 
     def init_sun_event_scheduler(self, event: SunEvent):
         self.scheduler_service.add_cron_job(
-            lambda: self.sun_event_occured(event),
+            lambda: self._sun_event_occured(event),
             id=event.value,
             jobstore=SchedulerStores.default.value,
             **self.alarm_clock_context.environment.geo_location.get_sun_event_cron_args(
@@ -155,11 +155,10 @@ class Controls:
                 jobstore=SchedulerStores.alarm.value,
                 **alDef.get_cron_args(),
             )
-        self.cleanup_alarms()
+        self.scheduler_service.cleanup_alarms(config)
         self.display_content.update_next_alarm(
             self.scheduler_service.get_next_alarm_job()
         )
-        self.scheduler_service.log_active_jobs(jobstore=SchedulerStores.alarm.value)
 
     def action(action, info: str = None):
         try:
@@ -219,7 +218,7 @@ class Controls:
             self.event_bus.emit(VolumeChangedEvent())
 
     def _alarm_triggered(self, _: AlarmTriggeredEvent = None):
-        audio_effect = self.get_appropriate_audio_effect()
+        audio_effect = self._get_appropriate_audio_effect()
         self.playback_content.playback_mode = Mode.Alarm
         self.event_bus.emit(VolumeChangeRequest(absolute=audio_effect.volume))
         self.event_bus.emit(AudioStreamChangeRequest(audio_effect.audio_stream))
@@ -256,13 +255,13 @@ class Controls:
     def get_room_brightness(self):
         return self.brightness_sensor.get_room_brightness()
 
-    def ignore_offline_stream_events(self, event: SpeakerErrorEvent):
+    def _ignore_offline_stream_events(self, event: SpeakerErrorEvent):
         if event is not None and isinstance(event.audio_stream, OfflineStream):
             return True
         return False
 
     def _handle_speaker_error(self, event: SpeakerErrorEvent = None):
-        if self.ignore_offline_stream_events(event):
+        if self._ignore_offline_stream_events(event):
             return
         if self.playback_content.playback_mode == Mode.Alarm:
             logger.warning("alarm error occurred: continuing with offline stream")
@@ -325,7 +324,7 @@ class Controls:
 
         Controls.action(do)
 
-    def update_wifi_status(self):
+    def _update_wifi_status(self):
         def do():
             is_online = is_internet_available()
 
@@ -345,7 +344,7 @@ class Controls:
 
         Controls.action(do)
 
-    def sun_event_occured(self, event: SunEvent):
+    def _sun_event_occured(self, event: SunEvent):
         def do():
             self.event_bus.emit(SunEventOccurredEvent(event))
             self.alarm_clock_context.environment.is_daytime = event == SunEvent.sunrise
@@ -353,7 +352,7 @@ class Controls:
 
         Controls.action(do, "sun event %s" % event)
 
-    def get_appropriate_audio_effect(self) -> StreamAudioEffect:
+    def _get_appropriate_audio_effect(self) -> StreamAudioEffect:
         active_alarm_effect = (
             self.alarm_clock_context.active_alarm_definition.audio_effect
         )
@@ -379,12 +378,12 @@ class Controls:
     def _ring_alarm(self, alarm_definition: AlarmDefinition):
         def do():
 
-            self.preprocess_ring_alarm(alarm_definition)
+            self._preprocess_ring_alarm(alarm_definition)
             self.event_bus.emit(AlarmTriggeredEvent(alarm_definition))
 
         Controls.action(do, "ring alarm '%s'" % alarm_definition.alarm_name)
 
-    def preprocess_ring_alarm(self, alarm_definition: AlarmDefinition):
+    def _preprocess_ring_alarm(self, alarm_definition: AlarmDefinition):
         self.alarm_clock_context.active_alarm_definition = alarm_definition
         self.scheduler_service.start_generic_trigger(
             SchedulerJobIds.stop_alarm.value,
@@ -394,7 +393,7 @@ class Controls:
             func=lambda: self._set_to_idle_mode(alarm_stopped_reason="timeout"),
         )
         self.scheduler_service.add_job(
-            self.update_wifi_status,
+            self._update_wifi_status,
             trigger="interval",
             seconds=5,
             id=SchedulerJobIds.ensure_stable_wifi.value,
@@ -411,15 +410,3 @@ class Controls:
             self.alarm_clock_context.config.remove_alarm_definition(alarm_definition.id)
             self.event_bus.emit(ConfigChangedEvent(self.alarm_clock_context.config))
         self.alarm_clock_context.active_alarm_definition = None
-
-    def cleanup_alarms(self):
-        job: Job
-        config_changed = False
-        for job in self.scheduler_service.get_jobs(
-            jobstore=SchedulerStores.alarm.value
-        ):
-            if job.next_run_time is None:
-                self.alarm_clock_context.config.remove_alarm_definition(int(job.id))
-                config_changed = True
-        if config_changed:
-            self.event_bus.emit(ConfigChangedEvent(self.alarm_clock_context.config))

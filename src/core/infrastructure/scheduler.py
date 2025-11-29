@@ -8,6 +8,8 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
 
+from core.domain.events import ConfigChangedEvent
+from core.domain.model import Config
 from utils.geolocation import GeoLocation
 
 logger = logging.getLogger("tac.scheduler")
@@ -19,9 +21,11 @@ class SchedulerStores(Enum):
 
 
 class SchedulerService:
-    def __init__(self, jobstores: Dict[str, Any]):
+    def __init__(self, event_bus):
+        jobstores = ({"alarm": {"type": "memory"}, "default": {"type": "memory"}},)
         self.scheduler = BackgroundScheduler(jobstores=jobstores)
         self.scheduler.start()
+        self.event_bus = event_bus
 
     def add_job(
         self,
@@ -153,3 +157,14 @@ class SchedulerService:
                     job.id,
                     job.next_run_time.strftime(f"%Y-%m-%d %H:%M:%S"),
                 )
+
+    def cleanup_alarms(self, config: Config):
+        job: Job
+        config_changed = False
+        for job in self.get_jobs(jobstore=SchedulerStores.alarm.value):
+            if job.next_run_time is None:
+                config.remove_alarm_definition(int(job.id))
+                config_changed = True
+        if config_changed:
+            self.event_bus.emit(ConfigChangedEvent(config))
+        self.log_active_jobs(SchedulerStores.alarm.value)

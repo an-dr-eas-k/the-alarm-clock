@@ -102,7 +102,7 @@ class DIContainer(containers.DeclarativeContainer):
 
     scheduler_service = providers.Singleton(
         SchedulerService,
-        jobstores={"alarm": {"type": "memory"}, "default": {"type": "memory"}},
+        event_bus=event_bus,
     )
 
     controls = providers.Singleton(
