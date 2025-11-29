@@ -1,12 +1,11 @@
 from enum import Enum
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Callable, Dict, Optional, List
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
-from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.job import Job
 
 from utils.geolocation import GeoLocation
