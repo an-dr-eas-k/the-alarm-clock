@@ -124,6 +124,7 @@ class MediaListPlayer(MediaPlayer):
                 event_man.event_attach(
                     event_type,
                     lambda event_type: threading.Thread(
+                        daemon=True,
                         target=self.callback_from_player,
                         args=(
                             event_type,
