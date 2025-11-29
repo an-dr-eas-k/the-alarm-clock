@@ -74,9 +74,9 @@ echo "config sudoers"
 rm /etc/sudoers.d/the-alarm-clock
 cat $app/rpi/resources/sudoers > /etc/sudoers.d/the-alarm-clock
 
-echo "configure log rotation"
-rm /etc/logrotate.d/the-alarm-clock
-cat $app/rpi/resources/logrotate > /etc/logrotate.d/the-alarm-clock
+echo "configure cron"
+rm /etc/cron.d/the-alarm-clock
+cat $app/rpi/resources/cron.conf > /etc/cron.d/the-alarm-clock
 
 echo "setup equalizer"
 ln -fs $app/rpi/resources/asoundrc $uhome/.asoundrc
