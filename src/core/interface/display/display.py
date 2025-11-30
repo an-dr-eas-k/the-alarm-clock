@@ -194,7 +194,8 @@ class Display(DisplayContentProvider):
             now, self.display_content.show_blink_segment
         )
         clock_label = QtWidgets.QLabel(clock_string)
-        clock_label.setFont(QtGui.QFont("Roboto Mono", 20, QtGui.QFont.Normal))
+        font_family = getattr(self, "roboto_font_family", "Roboto Mono")
+        clock_label.setFont(QtGui.QFont(font_family, 20, QtGui.QFont.Normal))
         clock_label.setAlignment(
             QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft
         )
@@ -213,7 +214,8 @@ class Display(DisplayContentProvider):
             alarm_time = self.display_content.get_next_alarm()
             alarm_text = alarm_time.strftime("%H:%M")
             alarm_label = QtWidgets.QLabel(f"🔔 {alarm_text}")
-            alarm_label.setFont(QtGui.QFont("Arial", 10))
+            font_family = getattr(self, "nerd_font_family", "Monospace")
+            alarm_label.setFont(QtGui.QFont(font_family, 10))
             alarm_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
             info_layout.addWidget(alarm_label)
 
@@ -264,6 +266,7 @@ class Display(DisplayContentProvider):
             blink_char,
             self.display_content.show_blink_segment,
             fg_color,
+            font_family=getattr(self, "roboto_font_family", "Roboto Mono"),
         )
         layout.addWidget(clock_widget, stretch=3)
 
@@ -280,7 +283,8 @@ class Display(DisplayContentProvider):
             alarm_time = self.display_content.get_next_alarm()
             alarm_text = alarm_time.strftime("%H:%M")
             alarm_label = QtWidgets.QLabel(f"🔔 {alarm_text}")
-            alarm_label.setFont(QtGui.QFont("Arial", 10))
+            font_family = getattr(self, "nerd_font_family", "Monospace")
+            alarm_label.setFont(QtGui.QFont(font_family, 10))
             alarm_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
             info_layout.addWidget(alarm_label)
 
@@ -303,7 +307,8 @@ class Display(DisplayContentProvider):
                     weather_layout.addWidget(symbol_label)
 
                 weather_label = QtWidgets.QLabel(f"{temp:.1f}°C")
-                weather_label.setFont(QtGui.QFont("Arial", 10))
+                font_family = getattr(self, "nerd_font_family", "Monospace")
+                weather_label.setFont(QtGui.QFont(font_family, 10))
                 weather_layout.addWidget(weather_label)
 
                 info_layout.addWidget(weather_container)
@@ -314,7 +319,8 @@ class Display(DisplayContentProvider):
             if len(playback_title) > 12:
                 playback_title = playback_title[:10] + "..."
             playback_label = QtWidgets.QLabel(f"♫ {playback_title}")
-            playback_label.setFont(QtGui.QFont("Arial", 10))
+            font_family = getattr(self, "nerd_font_family", "Monospace")
+            playback_label.setFont(QtGui.QFont(font_family, 10))
             playback_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
             info_layout.addWidget(playback_label)
 
@@ -322,7 +328,8 @@ class Display(DisplayContentProvider):
         if self.display_content.show_volume_meter:
             vol = self.display_content.current_volume()
             vol_label = QtWidgets.QLabel(f"Vol: {int(vol * 100)}%")
-            vol_label.setFont(QtGui.QFont("Arial", 10, QtGui.QFont.Bold))
+            font_family = getattr(self, "nerd_font_family", "Monospace")
+            vol_label.setFont(QtGui.QFont(font_family, 10, QtGui.QFont.Bold))
             vol_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
             info_layout.addWidget(vol_label)
 
@@ -365,6 +372,15 @@ class Display(DisplayContentProvider):
                 families = QtGui.QFontDatabase.applicationFontFamilies(id_nerd)
                 if families:
                     self.nerd_font_family = families[0]
+
+            # Load Roboto Font
+            id_roboto = QtGui.QFontDatabase.addApplicationFont(
+                PresentationFont.roboto_font
+            )
+            if id_roboto != -1:
+                families = QtGui.QFontDatabase.applicationFontFamilies(id_roboto)
+                if families:
+                    self.roboto_font_family = families[0]
 
         self.formatter.update_formatter()
         self.widget = QtWidgets.QFrame()
