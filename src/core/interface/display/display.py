@@ -33,13 +33,7 @@ logger = logging.getLogger("tac.display")
 
 class ClockWidget(QtWidgets.QWidget):
     def __init__(
-        self,
-        hour_str,
-        min_str,
-        blink_char,
-        show_blink,
-        fg_color,
-        font_family="Roboto Mono",
+        self, hour_str, min_str, blink_char, show_blink, fg_color, font_family
     ):
         super().__init__()
         self.hour_str = hour_str
@@ -98,7 +92,7 @@ class ClockWidget(QtWidgets.QWidget):
         h, s, v, a = self.fg_color.getHsv()
         white_color = self.fg_color
         # 16-level grayscale has steps of ~17 (255/15). Use the next darker level.
-        gray_color = QtGui.QColor.fromHsv(h, s, max(0, v - 18), a)
+        gray_color = QtGui.QColor.fromHsv(h, s, max(17, v - 2 * 18), a)
 
         # Draw Hours
         for i, char in enumerate(self.hour_str):
@@ -116,6 +110,7 @@ class ClockWidget(QtWidgets.QWidget):
             else:
                 x += fm.width(char)
 
+        x += -20
         # Draw Separator
         sep_width = fm.width(self.blink_char)
         if self.show_blink:
@@ -123,6 +118,7 @@ class ClockWidget(QtWidgets.QWidget):
             painter.drawText(x, base_y, self.blink_char)
 
         x += sep_width
+        x += -10
 
         # Draw Minutes
         for i, char in enumerate(self.min_str):
@@ -145,6 +141,9 @@ class Display(DisplayContentProvider):
 
     device: luma_device
     display_content: DisplayContent
+    roboto_font_family: str
+    nerd_font_family: str
+    weather_font_family: str
 
     def __init__(
         self,
@@ -163,7 +162,7 @@ class Display(DisplayContentProvider):
         self.formatter = DisplayFormatter(
             self.display_content, self.alarm_clock_context
         )
-        self.app = QtWidgets.QApplication([])
+        self.initialize_qt_app()
         self.event_bus.on(ForcedDisplayUpdateEvent)(self._forced_update)
 
     def _forced_update(self, _: ForcedDisplayUpdateEvent):
@@ -195,7 +194,7 @@ class Display(DisplayContentProvider):
             now, self.display_content.show_blink_segment
         )
         clock_label = QtWidgets.QLabel(clock_string)
-        font_family = getattr(self, "roboto_font_family", "Roboto Mono")
+        font_family = self.roboto_font_family
         clock_label.setFont(QtGui.QFont(font_family, 20, QtGui.QFont.Normal))
         clock_label.setAlignment(
             QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft
@@ -215,7 +214,7 @@ class Display(DisplayContentProvider):
             alarm_time = self.display_content.get_next_alarm()
             alarm_text = alarm_time.strftime("%H:%M")
             alarm_label = QtWidgets.QLabel(f"🔔 {alarm_text}")
-            font_family = getattr(self, "nerd_font_family", "Monospace")
+            font_family = self.nerd_font_family
             alarm_label.setFont(QtGui.QFont(font_family, 10))
             alarm_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
             info_layout.addWidget(alarm_label)
@@ -267,7 +266,7 @@ class Display(DisplayContentProvider):
             blink_char,
             self.display_content.show_blink_segment,
             fg_color,
-            font_family=getattr(self, "roboto_font_family", "Roboto Mono"),
+            font_family=self.roboto_font_family,
         )
         layout.addWidget(clock_widget, stretch=3)
 
@@ -315,12 +314,12 @@ class Display(DisplayContentProvider):
                 symbol = weather.code.to_character() if weather.code else None
                 if symbol:
                     symbol_label = QtWidgets.QLabel(symbol)
-                    font_family = getattr(self, "weather_font_family", "Weather Icons")
+                    font_family = self.weather_font_family
                     symbol_label.setFont(QtGui.QFont(font_family, 16))
                     weather_layout.addWidget(symbol_label)
 
                 weather_label = QtWidgets.QLabel(f"{temp:.1f}°C")
-                font_family = getattr(self, "nerd_font_family", "Monospace")
+                font_family = self.nerd_font_family
                 weather_label.setFont(QtGui.QFont(font_family, 12))
                 weather_layout.addWidget(weather_label)
 
@@ -339,7 +338,7 @@ class Display(DisplayContentProvider):
             playback_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
             playback_symbol = QtWidgets.QLabel("♫")
-            font_family = getattr(self, "nerd_font_family", "Monospace")
+            font_family = self.nerd_font_family
             playback_symbol.setFont(QtGui.QFont(font_family, 16))
             playback_layout.addWidget(playback_symbol)
 
@@ -353,7 +352,7 @@ class Display(DisplayContentProvider):
         if self.display_content.show_volume_meter:
             vol = self.display_content.current_volume()
             vol_label = QtWidgets.QLabel(f"Vol: {int(vol * 100)}%")
-            font_family = getattr(self, "nerd_font_family", "Monospace")
+            font_family = self.nerd_font_family
             vol_label.setFont(QtGui.QFont(font_family, 12, QtGui.QFont.Bold))
             vol_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
             info_layout.addWidget(vol_label)
@@ -378,39 +377,32 @@ class Display(DisplayContentProvider):
         # Placeholder for Property Edit Mode
         pass
 
+    def initialize_qt_app(self):
+        self.app = QtWidgets.QApplication([])
+
+        id = QtGui.QFontDatabase.addApplicationFont(PresentationFont.weather_font)
+        if id != -1:
+            families = QtGui.QFontDatabase.applicationFontFamilies(id)
+            if families:
+                self.weather_font_family = families[0]
+        else:
+            logger.error(
+                f"Failed to load weather font from {PresentationFont.weather_font}"
+            )
+
+        id_nerd = QtGui.QFontDatabase.addApplicationFont(PresentationFont.default_font)
+        if id_nerd != -1:
+            families = QtGui.QFontDatabase.applicationFontFamilies(id_nerd)
+            if families:
+                self.nerd_font_family = families[0]
+
+        id_roboto = QtGui.QFontDatabase.addApplicationFont(PresentationFont.roboto_font)
+        if id_roboto != -1:
+            families = QtGui.QFontDatabase.applicationFontFamilies(id_roboto)
+            if families:
+                self.roboto_font_family = families[0]
+
     def draw_widget(self) -> Image.Image:
-        if not QtWidgets.QApplication.instance():
-            self.app = QtWidgets.QApplication([])
-
-            # Load Weather Font
-            id = QtGui.QFontDatabase.addApplicationFont(PresentationFont.weather_font)
-            if id != -1:
-                families = QtGui.QFontDatabase.applicationFontFamilies(id)
-                if families:
-                    self.weather_font_family = families[0]
-            else:
-                logger.error(
-                    f"Failed to load weather font from {PresentationFont.weather_font}"
-                )
-
-            # Load Nerd Font
-            id_nerd = QtGui.QFontDatabase.addApplicationFont(
-                PresentationFont.default_font
-            )
-            if id_nerd != -1:
-                families = QtGui.QFontDatabase.applicationFontFamilies(id_nerd)
-                if families:
-                    self.nerd_font_family = families[0]
-
-            # Load Roboto Font
-            id_roboto = QtGui.QFontDatabase.addApplicationFont(
-                PresentationFont.roboto_font
-            )
-            if id_roboto != -1:
-                families = QtGui.QFontDatabase.applicationFontFamilies(id_roboto)
-                if families:
-                    self.roboto_font_family = families[0]
-
         self.formatter.update_formatter()
         self.widget = QtWidgets.QFrame()
         self.widget.setFixedSize(self.device.width, self.device.height)
@@ -456,7 +448,6 @@ class Display(DisplayContentProvider):
     def refresh(self):
         logger.debug("refreshing display...")
         start_time = GeoLocation().now()
-        # self.current_display_image = self.present_my()
         self.current_display_image = self.draw_widget()
         self.device.display(self.current_display_image)
         if isinstance(self.device, luma_dummy):
