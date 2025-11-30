@@ -396,10 +396,6 @@ class Display(DisplayContentProvider):
             (GeoLocation().now() - start_time).total_seconds() * 1000,
         )
 
-    def present(self) -> Image.Image:
-        self.composable_presenters.refresh()
-        return self.composable_presenters()
-
 
 if __name__ == "__main__":
     import argparse
