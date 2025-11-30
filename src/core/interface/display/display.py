@@ -173,23 +173,38 @@ class Display(DisplayContentProvider):
                 draw.text((20, 20), f"exception! ({e})", fill="white")
 
     def _draw_dimmed_content(self, layout: QtWidgets.QHBoxLayout):
+        now = GeoLocation().now()
+        day = now.day
+
+        # Screensaver logic: shift content based on day of month
+        x_offset = day * 3
+        y_offset = (day % 5) * 4
+
+        layout.setContentsMargins(x_offset, y_offset, 0, 0)
+
+        # Container
+        container = QtWidgets.QWidget()
+        container_layout = QtWidgets.QHBoxLayout(container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setSpacing(10)
+
         # Clock
         clock_string = self.formatter.format_clock_string(
-            GeoLocation().now(), self.display_content.show_blink_segment
+            now, self.display_content.show_blink_segment
         )
         clock_label = QtWidgets.QLabel(clock_string)
         clock_label.setFont(QtGui.QFont("Roboto Mono", 20, QtGui.QFont.Normal))
         clock_label.setAlignment(
             QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft
         )
-        layout.addWidget(clock_label, stretch=1)
+        container_layout.addWidget(clock_label)
 
         # Info Stack
         info_layout = QtWidgets.QVBoxLayout()
-        info_layout.setContentsMargins(0, 5, 0, 5)
+        info_layout.setContentsMargins(0, 0, 0, 0)
         info_layout.setSpacing(0)
         info_layout.setAlignment(
-            QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignRight
+            QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft
         )
 
         # Next Alarm
@@ -198,21 +213,29 @@ class Display(DisplayContentProvider):
             alarm_text = alarm_time.strftime("%H:%M")
             alarm_label = QtWidgets.QLabel(f"🔔 {alarm_text}")
             alarm_label.setFont(QtGui.QFont("Arial", 10))
-            alarm_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+            alarm_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
             info_layout.addWidget(alarm_label)
 
         # WiFi
         is_online = self.display_content.get_is_online()
-        wifi_text = "\uf1eb" if is_online else "\uf06a"
+        # Use Link (\uf0c1) for online, Broken Link (\uf127) for offline
+        wifi_text = "\uf0c1" if is_online else "\uf127"
         wifi_label = QtWidgets.QLabel(wifi_text)
-        
+
         font_family = getattr(self, "nerd_font_family", "Monospace")
         wifi_label.setFont(QtGui.QFont(font_family, 14))
-        
-        wifi_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+
+        wifi_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
         info_layout.addWidget(wifi_label)
 
-        layout.addLayout(info_layout, stretch=1)
+        container_layout.addLayout(info_layout)
+
+        layout.addWidget(
+            container,
+            alignment=QtCore.Qt.AlignmentFlag.AlignTop
+            | QtCore.Qt.AlignmentFlag.AlignLeft,
+        )
+        layout.addStretch()
 
     def _draw_normal_content(self, layout: QtWidgets.QHBoxLayout):
         # --- Left: Clock ---
@@ -307,7 +330,7 @@ class Display(DisplayContentProvider):
     def draw_widget(self) -> Image.Image:
         if not QtWidgets.QApplication.instance():
             self.app = QtWidgets.QApplication([])
-            
+
             # Load Weather Font
             id = QtGui.QFontDatabase.addApplicationFont(PresentationFont.weather_font)
             if id != -1:
@@ -316,7 +339,9 @@ class Display(DisplayContentProvider):
                     self.weather_font_family = families[0]
 
             # Load Nerd Font
-            id_nerd = QtGui.QFontDatabase.addApplicationFont(PresentationFont.default_font)
+            id_nerd = QtGui.QFontDatabase.addApplicationFont(
+                PresentationFont.default_font
+            )
             if id_nerd != -1:
                 families = QtGui.QFontDatabase.applicationFontFamilies(id_nerd)
                 if families:
