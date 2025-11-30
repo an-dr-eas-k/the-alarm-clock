@@ -18,6 +18,7 @@ from core.domain.model import (
     PlaybackContent,
     SpotifyStream,
 )
+from core.domain.mode_coordinator import ModeName
 from core.interface.display.display_content import DisplayContent
 from core.infrastructure.event_bus import EventBus
 from core.interface.display.format import ColorType, DisplayFormatter
@@ -327,6 +328,24 @@ class Display(DisplayContentProvider):
 
         layout.addLayout(info_layout, stretch=1)
 
+    def _draw_default_view(self, layout: QtWidgets.QHBoxLayout):
+        if self.display_content.room_brightness.is_highly_dimmed():
+            self._draw_dimmed_content(layout)
+        else:
+            self._draw_normal_content(layout)
+
+    def _draw_alarm_view(self, layout: QtWidgets.QHBoxLayout):
+        # Placeholder for Alarm View Mode
+        pass
+
+    def _draw_alarm_edit_view(self, layout: QtWidgets.QHBoxLayout):
+        # Placeholder for Alarm Edit Mode
+        pass
+
+    def _draw_property_edit_view(self, layout: QtWidgets.QHBoxLayout):
+        # Placeholder for Property Edit Mode
+        pass
+
     def draw_widget(self) -> Image.Image:
         if not QtWidgets.QApplication.instance():
             self.app = QtWidgets.QApplication([])
@@ -363,10 +382,20 @@ class Display(DisplayContentProvider):
         layout.setContentsMargins(10, 0, 10, 0)
         layout.setSpacing(0)
 
-        if self.display_content.room_brightness.is_highly_dimmed():
-            self._draw_dimmed_content(layout)
-        else:
-            self._draw_normal_content(layout)
+        mode = (
+            self.alarm_clock_context.mode_coordinator.current_mode_name
+            if self.alarm_clock_context.mode_coordinator
+            else ModeName.DEFAULT
+        )
+
+        if mode == ModeName.DEFAULT:
+            self._draw_default_view(layout)
+        elif mode == ModeName.ALARM_VIEW:
+            self._draw_alarm_view(layout)
+        elif mode == ModeName.ALARM_EDIT:
+            self._draw_alarm_edit_view(layout)
+        elif mode == ModeName.PROPERTY_EDIT:
+            self._draw_property_edit_view(layout)
 
         self.widget.adjustSize()
 
