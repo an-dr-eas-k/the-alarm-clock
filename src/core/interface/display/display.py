@@ -15,6 +15,7 @@ from core.domain.model import (
     AlarmClockContext,
     Config,
     DisplayContentProvider,
+    Mode,
     PlaybackContent,
     SpotifyStream,
 )
@@ -213,19 +214,19 @@ class Display(DisplayContentProvider):
         if self.display_content.next_alarm_info.has_alarm():
             alarm_time = self.display_content.get_next_alarm()
             alarm_text = alarm_time.strftime("%H:%M")
-            alarm_label = QtWidgets.QLabel(f"🔔 {alarm_text}")
+            alarm_label = QtWidgets.QLabel(f"\uf49a {alarm_text}")
             font_family = self.nerd_font_family
-            alarm_label.setFont(QtGui.QFont(font_family, 10))
+            alarm_label.setFont(QtGui.QFont(font_family, 14))
             alarm_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
             info_layout.addWidget(alarm_label)
 
         # WiFi
         is_online = self.display_content.get_is_online()
         # Use Link (\uf0c1) for online, Broken Link (\uf127) for offline
-        wifi_text = "\uf0c1" if is_online else "\uf127"
+        wifi_text = "" if is_online else "!"
         wifi_label = QtWidgets.QLabel(wifi_text)
 
-        font_family = getattr(self, "nerd_font_family", "Monospace")
+        font_family = self.nerd_font_family
         wifi_label.setFont(QtGui.QFont(font_family, 14))
 
         wifi_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
@@ -289,9 +290,9 @@ class Display(DisplayContentProvider):
             alarm_layout.setSpacing(5)
             alarm_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
-            alarm_symbol = QtWidgets.QLabel("🔔")
-            font_family = getattr(self, "nerd_font_family", "Monospace")
-            alarm_symbol.setFont(QtGui.QFont(font_family, 16))
+            alarm_symbol = QtWidgets.QLabel("\uf49a")
+            font_family = self.nerd_font_family
+            alarm_symbol.setFont(QtGui.QFont(font_family, 20))
             alarm_layout.addWidget(alarm_symbol)
 
             alarm_label = QtWidgets.QLabel(alarm_text)
@@ -303,7 +304,7 @@ class Display(DisplayContentProvider):
         # 2. Weather
         weather = self.display_content.current_weather
         if weather:
-            temp = getattr(weather, "temperature", None)
+            temp = weather.temperature if weather is not None else None
             if temp is not None:
                 weather_container = QtWidgets.QWidget()
                 weather_layout = QtWidgets.QHBoxLayout(weather_container)
@@ -337,7 +338,7 @@ class Display(DisplayContentProvider):
             playback_layout.setSpacing(5)
             playback_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
-            playback_symbol = QtWidgets.QLabel("♫")
+            playback_symbol = QtWidgets.QLabel("\uf2eb")
             font_family = self.nerd_font_family
             playback_symbol.setFont(QtGui.QFont(font_family, 16))
             playback_layout.addWidget(playback_symbol)
@@ -360,10 +361,14 @@ class Display(DisplayContentProvider):
         layout.addLayout(info_layout, stretch=1)
 
     def _draw_default_view(self, layout: QtWidgets.QHBoxLayout):
-        if self.display_content.room_brightness.is_highly_dimmed():
-            self._draw_dimmed_content(layout)
-        else:
+        if (
+            False
+            or not self.display_content.room_brightness.is_highly_dimmed()
+            or self.playback_content.playback_mode != Mode.Idle
+        ):
             self._draw_normal_content(layout)
+        else:
+            self._draw_dimmed_content(layout)
 
     def _draw_alarm_view(self, layout: QtWidgets.QHBoxLayout):
         # Placeholder for Alarm View Mode
