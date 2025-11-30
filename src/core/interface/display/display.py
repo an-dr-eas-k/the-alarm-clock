@@ -97,7 +97,8 @@ class ClockWidget(QtWidgets.QWidget):
 
         h, s, v, a = self.fg_color.getHsv()
         white_color = self.fg_color
-        gray_color = QtGui.QColor.fromHsv(h, s, int(v * 0.6), a)
+        # 16-level grayscale has steps of ~17 (255/15). Use the next darker level.
+        gray_color = QtGui.QColor.fromHsv(h, s, max(0, v - 18), a)
 
         # Draw Hours
         for i, char in enumerate(self.hour_str):
@@ -272,7 +273,7 @@ class Display(DisplayContentProvider):
 
         # --- Right: Info Stack ---
         info_layout = QtWidgets.QVBoxLayout()
-        info_layout.setContentsMargins(0, 5, 0, 5)
+        info_layout.setContentsMargins(0, 0, 0, 0)
         info_layout.setSpacing(0)
         info_layout.setAlignment(
             QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignRight
@@ -282,11 +283,23 @@ class Display(DisplayContentProvider):
         if self.display_content.next_alarm_info.has_alarm():
             alarm_time = self.display_content.get_next_alarm()
             alarm_text = alarm_time.strftime("%H:%M")
-            alarm_label = QtWidgets.QLabel(f"🔔 {alarm_text}")
+
+            alarm_container = QtWidgets.QWidget()
+            alarm_layout = QtWidgets.QHBoxLayout(alarm_container)
+            alarm_layout.setContentsMargins(0, 0, 0, 0)
+            alarm_layout.setSpacing(5)
+            alarm_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+
+            alarm_symbol = QtWidgets.QLabel("🔔")
             font_family = getattr(self, "nerd_font_family", "Monospace")
-            alarm_label.setFont(QtGui.QFont(font_family, 10))
-            alarm_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
-            info_layout.addWidget(alarm_label)
+            alarm_symbol.setFont(QtGui.QFont(font_family, 16))
+            alarm_layout.addWidget(alarm_symbol)
+
+            alarm_label = QtWidgets.QLabel(alarm_text)
+            alarm_label.setFont(QtGui.QFont(font_family, 12))
+            alarm_layout.addWidget(alarm_label)
+
+            info_layout.addWidget(alarm_container)
 
         # 2. Weather
         weather = self.display_content.current_weather
@@ -303,12 +316,12 @@ class Display(DisplayContentProvider):
                 if symbol:
                     symbol_label = QtWidgets.QLabel(symbol)
                     font_family = getattr(self, "weather_font_family", "Weather Icons")
-                    symbol_label.setFont(QtGui.QFont(font_family, 10))
+                    symbol_label.setFont(QtGui.QFont(font_family, 16))
                     weather_layout.addWidget(symbol_label)
 
                 weather_label = QtWidgets.QLabel(f"{temp:.1f}°C")
                 font_family = getattr(self, "nerd_font_family", "Monospace")
-                weather_label.setFont(QtGui.QFont(font_family, 10))
+                weather_label.setFont(QtGui.QFont(font_family, 12))
                 weather_layout.addWidget(weather_label)
 
                 info_layout.addWidget(weather_container)
@@ -318,18 +331,30 @@ class Display(DisplayContentProvider):
         if playback_title:
             if len(playback_title) > 12:
                 playback_title = playback_title[:10] + "..."
-            playback_label = QtWidgets.QLabel(f"♫ {playback_title}")
+
+            playback_container = QtWidgets.QWidget()
+            playback_layout = QtWidgets.QHBoxLayout(playback_container)
+            playback_layout.setContentsMargins(0, 0, 0, 0)
+            playback_layout.setSpacing(5)
+            playback_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+
+            playback_symbol = QtWidgets.QLabel("♫")
             font_family = getattr(self, "nerd_font_family", "Monospace")
-            playback_label.setFont(QtGui.QFont(font_family, 10))
-            playback_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
-            info_layout.addWidget(playback_label)
+            playback_symbol.setFont(QtGui.QFont(font_family, 16))
+            playback_layout.addWidget(playback_symbol)
+
+            playback_label = QtWidgets.QLabel(playback_title)
+            playback_label.setFont(QtGui.QFont(font_family, 12))
+            playback_layout.addWidget(playback_label)
+
+            info_layout.addWidget(playback_container)
 
         # 4. Volume
         if self.display_content.show_volume_meter:
             vol = self.display_content.current_volume()
             vol_label = QtWidgets.QLabel(f"Vol: {int(vol * 100)}%")
             font_family = getattr(self, "nerd_font_family", "Monospace")
-            vol_label.setFont(QtGui.QFont(font_family, 10, QtGui.QFont.Bold))
+            vol_label.setFont(QtGui.QFont(font_family, 12, QtGui.QFont.Bold))
             vol_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
             info_layout.addWidget(vol_label)
 
@@ -363,6 +388,10 @@ class Display(DisplayContentProvider):
                 families = QtGui.QFontDatabase.applicationFontFamilies(id)
                 if families:
                     self.weather_font_family = families[0]
+            else:
+                logger.error(
+                    f"Failed to load weather font from {PresentationFont.weather_font}"
+                )
 
             # Load Nerd Font
             id_nerd = QtGui.QFontDatabase.addApplicationFont(
@@ -395,7 +424,7 @@ class Display(DisplayContentProvider):
 
         # Main Layout
         layout = QtWidgets.QHBoxLayout(self.widget)
-        layout.setContentsMargins(10, 0, 10, 0)
+        layout.setContentsMargins(10, 0, 5, 0)
         layout.setSpacing(0)
 
         mode = (
