@@ -111,7 +111,7 @@ class ClockWidget(QtWidgets.QWidget):
             else:
                 x += fm.width(char)
 
-        x += -20
+        x += -15
         # Draw Separator
         sep_width = fm.width(self.blink_char)
         if self.show_blink:
@@ -271,37 +271,22 @@ class Display(DisplayContentProvider):
         )
         layout.addWidget(clock_widget, stretch=3)
 
+        # Vertical Line
+        line = QtWidgets.QWidget()
+        line.setFixedWidth(1)
+        line.setStyleSheet(f"background-color: {fg_color};")
+        layout.addWidget(line)
+        layout.addSpacing(10)
+
         # --- Right: Info Stack ---
         info_layout = QtWidgets.QVBoxLayout()
         info_layout.setContentsMargins(0, 0, 0, 0)
         info_layout.setSpacing(0)
         info_layout.setAlignment(
-            QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignRight
+            QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft
         )
 
-        # 1. Next Alarm
-        if self.display_content.next_alarm_info.has_alarm():
-            alarm_time = self.display_content.get_next_alarm()
-            alarm_text = alarm_time.strftime("%H:%M")
-
-            alarm_container = QtWidgets.QWidget()
-            alarm_layout = QtWidgets.QHBoxLayout(alarm_container)
-            alarm_layout.setContentsMargins(0, 0, 0, 0)
-            alarm_layout.setSpacing(5)
-            alarm_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
-
-            alarm_symbol = QtWidgets.QLabel("\uf49a")
-            font_family = self.nerd_font_family
-            alarm_symbol.setFont(QtGui.QFont(font_family, 20))
-            alarm_layout.addWidget(alarm_symbol)
-
-            alarm_label = QtWidgets.QLabel(alarm_text)
-            alarm_label.setFont(QtGui.QFont(font_family, 12))
-            alarm_layout.addWidget(alarm_label)
-
-            info_layout.addWidget(alarm_container)
-
-        # 2. Weather
+        # 1. Weather
         weather = self.display_content.current_weather
         if weather:
             temp = weather.temperature if weather is not None else None
@@ -310,7 +295,7 @@ class Display(DisplayContentProvider):
                 weather_layout = QtWidgets.QHBoxLayout(weather_container)
                 weather_layout.setContentsMargins(0, 0, 0, 0)
                 weather_layout.setSpacing(5)
-                weather_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+                weather_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
 
                 symbol = weather.code.to_character() if weather.code else None
                 if symbol:
@@ -336,7 +321,7 @@ class Display(DisplayContentProvider):
             playback_layout = QtWidgets.QHBoxLayout(playback_container)
             playback_layout.setContentsMargins(0, 0, 0, 0)
             playback_layout.setSpacing(5)
-            playback_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+            playback_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
 
             playback_symbol = QtWidgets.QLabel("\uf2eb")
             font_family = self.nerd_font_family
@@ -349,13 +334,34 @@ class Display(DisplayContentProvider):
 
             info_layout.addWidget(playback_container)
 
+        # 3. Next Alarm
+        if self.display_content.next_alarm_info.has_alarm():
+            alarm_time = self.display_content.get_next_alarm()
+            alarm_text = alarm_time.strftime("%H:%M")
+
+            alarm_container = QtWidgets.QWidget()
+            alarm_layout = QtWidgets.QHBoxLayout(alarm_container)
+            alarm_layout.setContentsMargins(0, 0, 0, 0)
+            alarm_layout.setSpacing(5)
+            alarm_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
+
+            alarm_symbol = QtWidgets.QLabel("\uf49a")
+            font_family = self.nerd_font_family
+            alarm_symbol.setFont(QtGui.QFont(font_family, 20))
+            alarm_layout.addWidget(alarm_symbol)
+
+            alarm_label = QtWidgets.QLabel(alarm_text)
+            alarm_label.setFont(QtGui.QFont(font_family, 12))
+            alarm_layout.addWidget(alarm_label)
+
+            info_layout.addWidget(alarm_container)
         # 4. Volume
         if self.display_content.show_volume_meter:
             vol = self.display_content.current_volume()
             vol_label = QtWidgets.QLabel(f"Vol: {int(vol * 100)}%")
             font_family = self.nerd_font_family
             vol_label.setFont(QtGui.QFont(font_family, 12, QtGui.QFont.Bold))
-            vol_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+            vol_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
             info_layout.addWidget(vol_label)
 
         layout.addLayout(info_layout, stretch=1)
