@@ -27,7 +27,7 @@ class ClockApp:
     def is_on_hardware(self):
         return not self.container.argument_args().software
 
-    def shutdown_function(self):
+    def shutdown_function(self, *args):
         logger.info("graceful shutdown")
         app_os.restart_spotify_daemon()
         tornado.ioloop.IOLoop.current().stop()
@@ -74,6 +74,12 @@ class ClockApp:
         self.container.playback_content().playback_mode = Mode.Idle
         controls.consider_failed_alarm()
         tornado.ioloop.IOLoop.current().start()
+
+        controls.scheduler_service.shutdown()
+        if self.is_on_hardware():
+            self.container.mcp_manager().close()
+        elif ci is not None:
+            ci.stop()
 
 
 if __name__ == "__main__":

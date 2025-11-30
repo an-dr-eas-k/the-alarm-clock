@@ -28,6 +28,9 @@ class SchedulerService:
         self.scheduler = BackgroundScheduler(jobstores=jobstores)
         self.scheduler.start()
 
+    def shutdown(self):
+        self.scheduler.shutdown()
+
     def add_job(
         self,
         func: Callable,

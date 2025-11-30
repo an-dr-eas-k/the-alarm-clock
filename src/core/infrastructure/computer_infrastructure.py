@@ -67,3 +67,6 @@ class ComputerInfrastructure(IBrightnessSensor):
 
     def get_room_brightness(self) -> float:
         return self.simulated_brightness
+
+    def stop(self):
+        self.listener.stop()
