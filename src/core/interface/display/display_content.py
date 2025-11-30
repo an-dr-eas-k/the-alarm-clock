@@ -7,6 +7,7 @@ from apscheduler.job import Job
 from core.domain.model import (
     AlarmClockContext,
     Mode,
+    NextAlarmInfo,
     RoomBrightness,
     Weather,
     VisualEffect,
@@ -25,48 +26,6 @@ from core.domain.events import (
 import logging
 
 logger = logging.getLogger("tac.interface.display")
-
-
-class NextAlarmInfo:
-
-    def __init__(
-        self,
-        next_run_time: datetime = None,
-        alarm_name: str = None,
-        visual_effect: "VisualEffect" = None,
-    ):
-        self._next_run_time = next_run_time
-        self._alarm_name = alarm_name
-        self._visual_effect = visual_effect
-
-    @property
-    def next_run_time(self) -> datetime:
-        return self._next_run_time
-
-    @property
-    def alarm_name(self) -> str:
-        return self._alarm_name
-
-    @property
-    def visual_effect(self) -> "VisualEffect":
-        return self._visual_effect
-
-    def has_alarm(self) -> bool:
-        return self._next_run_time is not None
-
-    def get_timedelta_to_alarm(self) -> timedelta:
-        if not self.has_alarm():
-            return timedelta.max
-        return self._calculate_time_delta()
-
-    def _calculate_time_delta(self) -> timedelta:
-        from utils.geolocation import GeoLocation
-
-        now = GeoLocation().now()
-        return self._next_run_time - now
-
-    def minutes_until_alarm(self) -> int:
-        return int(self.get_timedelta_to_alarm().total_seconds() / 60)
 
 
 class DisplayContent:
@@ -132,21 +91,11 @@ class DisplayContent:
 
     # ========== Alarm Information (Domain Delegation) ==========
 
-    def update_next_alarm(self, job: Job):
-        if job is None:
-            self.next_alarm_info = NextAlarmInfo()
+    def update_next_alarm(self, next_alarm_info: NextAlarmInfo):
+        if next_alarm_info is None:
             return
 
-        from core.domain.model import AlarmDefinition
-        from utils.extensions import get_job_arg
-
-        alarm_def = get_job_arg(job, AlarmDefinition)
-
-        self.next_alarm_info = NextAlarmInfo(
-            next_run_time=job.next_run_time,
-            alarm_name=alarm_def.alarm_name if alarm_def else None,
-            visual_effect=alarm_def.visual_effect if alarm_def else None,
-        )
+        self.next_alarm_info = next_alarm_info
 
     def show_alarm_preview(self) -> bool:
         if not self.next_alarm_info.has_alarm():

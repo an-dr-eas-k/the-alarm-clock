@@ -8,8 +8,9 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
 
+from core.domain.model import AlarmDefinition, Config, NextAlarmInfo
 from core.domain.events import ConfigChangedEvent
-from core.domain.model import Config
+from utils.extensions import get_job_arg
 from utils.geolocation import GeoLocation
 
 logger = logging.getLogger("tac.scheduler")
@@ -22,10 +23,10 @@ class SchedulerStores(Enum):
 
 class SchedulerService:
     def __init__(self, event_bus):
-        jobstores = ({"alarm": {"type": "memory"}, "default": {"type": "memory"}},)
+        self.event_bus = event_bus
+        jobstores = {"alarm": {"type": "memory"}, "default": {"type": "memory"}}
         self.scheduler = BackgroundScheduler(jobstores=jobstores)
         self.scheduler.start()
-        self.event_bus = event_bus
 
     def add_job(
         self,
@@ -141,12 +142,19 @@ class SchedulerService:
                 id=job_id, run_date=run_date, func=func, jobstore=job_store
             )
 
-    def get_next_alarm_job(self) -> Job:
+    def get_next_alarm_info(self) -> NextAlarmInfo:
         jobs = sorted(
             self.get_jobs(jobstore=SchedulerStores.alarm.value),
             key=lambda job: job.next_run_time,
         )
-        return jobs[0] if len(jobs) > 0 else None
+        next_job: Job = jobs[0] if len(jobs) > 0 else None
+
+        alarm_def = get_job_arg(next_job, AlarmDefinition)
+        if next_job is None or alarm_def is None:
+            return NextAlarmInfo()
+        return NextAlarmInfo(
+            next_job.next_run_time, alarm_def.alarm_name, alarm_def.visual_effect
+        )
 
     def log_active_jobs(self, jobstore):
         job: Job

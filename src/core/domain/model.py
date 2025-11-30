@@ -11,7 +11,6 @@ import logging
 
 import jsonpickle
 from core.domain.edit_mode import AlarmRecurrence
-from core.infrastructure.scheduler import SchedulerService, SchedulerStores
 from utils.extensions import T, Value, respect_ranges
 
 from utils.geolocation import GeoLocation, SunEvent, Weather
@@ -554,3 +553,45 @@ class PlaybackContent(MediaContent):
 
     def _decrease_volume(self):
         self.volume = max(self.volume - 0.05, 0.0)
+
+
+class NextAlarmInfo:
+
+    def __init__(
+        self,
+        next_run_time: datetime = None,
+        alarm_name: str = None,
+        visual_effect: "VisualEffect" = None,
+    ):
+        self._next_run_time = next_run_time
+        self._alarm_name = alarm_name
+        self._visual_effect = visual_effect
+
+    @property
+    def next_run_time(self) -> datetime:
+        return self._next_run_time
+
+    @property
+    def alarm_name(self) -> str:
+        return self._alarm_name
+
+    @property
+    def visual_effect(self) -> "VisualEffect":
+        return self._visual_effect
+
+    def has_alarm(self) -> bool:
+        return self._next_run_time is not None
+
+    def get_timedelta_to_alarm(self) -> timedelta:
+        if not self.has_alarm():
+            return timedelta.max
+        return self._calculate_time_delta()
+
+    def _calculate_time_delta(self) -> timedelta:
+        from utils.geolocation import GeoLocation
+
+        now = GeoLocation().now()
+        return self._next_run_time - now
+
+    def minutes_until_alarm(self) -> int:
+        return int(self.get_timedelta_to_alarm().total_seconds() / 60)

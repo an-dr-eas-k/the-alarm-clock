@@ -157,7 +157,7 @@ class Controls:
             )
         self.scheduler_service.cleanup_alarms(config)
         self.display_content.update_next_alarm(
-            self.scheduler_service.get_next_alarm_job()
+            self.scheduler_service.get_next_alarm_info()
         )
 
     def action(action, info: str = None):
@@ -402,7 +402,7 @@ class Controls:
 
     def _alarm_stopped_event(self, alarm_stopped_event: AlarmStoppedEvent):
         self.display_content.update_next_alarm(
-            self.scheduler_service.get_next_alarm_job()
+            self.scheduler_service.get_next_alarm_info()
         )
 
         alarm_definition = alarm_stopped_event.alarm_definition
