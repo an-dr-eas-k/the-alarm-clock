@@ -56,8 +56,10 @@ class ClockWidget(QtWidgets.QWidget):
             else:
                 x += fm.width(char)
 
+        x += -15
         # Separator
         x += fm.width(self.blink_char)
+        x += -10
 
         # Minutes
         for i, char in enumerate(self.min_str):
@@ -93,7 +95,7 @@ class ClockWidget(QtWidgets.QWidget):
         h, s, v, a = self.fg_color.getHsv()
         white_color = self.fg_color
         # 16-level grayscale has steps of ~17 (255/15). Use the next darker level.
-        gray_color = QtGui.QColor.fromHsv(h, s, max(17, v - 2 * 18), a)
+        gray_color = QtGui.QColor.fromHsv(h, s, max(17, v - 1 * 18), a)
 
         # Draw Hours
         for i, char in enumerate(self.hour_str):
@@ -242,6 +244,7 @@ class Display(DisplayContentProvider):
         layout.addStretch()
 
     def _draw_normal_content(self, layout: QtWidgets.QHBoxLayout):
+        layout.addSpacing(10)
         # --- Left: Clock ---
         fmt = self.alarm_clock_context.config.clock_format_string
         parts = fmt.split("<blinkSegment>")
