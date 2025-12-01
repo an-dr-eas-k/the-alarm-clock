@@ -6,6 +6,7 @@ import json
 import subprocess
 import traceback
 import tornado
+import tornado.ioloop
 import tornado.web
 from PIL.Image import Image
 from core.application.controls import Controls
@@ -141,7 +142,7 @@ class ActionApiHandler(tornado.web.RequestHandler):
                 else:
                     self.event_bus.emit(VolumeChangeRequest(relative=-1))
             elif type == "update":
-                tornado.ioloop.IOLoop.instance().stop()
+                tornado.ioloop.IOLoop.current().stop()
             elif type == "reboot":
                 reboot_system()
             elif type == "shutdown":

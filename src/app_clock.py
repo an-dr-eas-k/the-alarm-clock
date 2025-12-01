@@ -1,6 +1,7 @@
 import logging
 from logging import config
 import signal
+import sys
 from luma.core.device import dummy
 
 import tornado.ioloop
@@ -80,6 +81,9 @@ class ClockApp:
             self.container.mcp_manager().close()
         elif ci is not None:
             ci.stop()
+
+        logger.info("shutdown complete")
+        sys.exit(0)
 
 
 if __name__ == "__main__":
