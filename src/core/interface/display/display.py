@@ -11,6 +11,7 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 from core.domain.events import (
     ForcedDisplayUpdateEvent,
 )
+from core.domain.edit_mode import AlarmProperty, EditorAction
 from core.domain.model import (
     AlarmClockContext,
     Config,
@@ -380,16 +381,152 @@ class Display(DisplayContentProvider):
             self._draw_dimmed_content(layout)
 
     def _draw_alarm_view(self, layout: QtWidgets.QHBoxLayout):
-        # Placeholder for Alarm View Mode
-        pass
+        coordinator = self.alarm_clock_context.mode_coordinator
+        service = coordinator.editing_service
+        if not service:
+            return
+
+        alarm = service.current_alarm
+
+        # Main Container
+        container = QtWidgets.QWidget()
+        # Use a grid layout for better control
+        grid = QtWidgets.QGridLayout(container)
+        grid.setContentsMargins(10, 5, 10, 5)
+
+        # Row 0: Header (Alarm Index)
+        index = service.current_alarm_index + 1
+        total = len(self.alarm_clock_context.config.alarm_definitions) + 1
+        header_label = QtWidgets.QLabel(f"ALARM {index}/{total}")
+        header_label.setFont(QtGui.QFont(self.roboto_font_family, 10, QtGui.QFont.Bold))
+        header_label.setStyleSheet(
+            f"color: {self.formatter.foreground_color(color_type=ColorType.INHEX)};"
+        )
+        grid.addWidget(header_label, 0, 0, 1, 2, QtCore.Qt.AlignmentFlag.AlignLeft)
+
+        # Row 1: Time (Big)
+        time_str = f"{alarm.hour:02d}:{alarm.min:02d}"
+        time_label = QtWidgets.QLabel(time_str)
+        time_label.setFont(QtGui.QFont(self.roboto_font_family, 32, QtGui.QFont.Bold))
+        grid.addWidget(time_label, 1, 0, 2, 1, QtCore.Qt.AlignmentFlag.AlignLeft)
+
+        # Row 1, Col 1: Active Status
+        status_icon = "\uf205" if alarm.is_active else "\uf204"  # Toggle On/Off
+        status_label = QtWidgets.QLabel(status_icon)
+        status_label.setFont(QtGui.QFont(self.nerd_font_family, 20))
+        grid.addWidget(status_label, 1, 1, QtCore.Qt.AlignmentFlag.AlignRight)
+
+        # Row 2, Col 1: Days
+        days_str = "New Alarm"
+        if alarm.id is not None:
+            try:
+                days_str = alarm.to_day_string()
+                if len(days_str) > 15:
+                    days_str = days_str[:12] + "..."
+            except:
+                days_str = "Invalid"
+
+        days_label = QtWidgets.QLabel(days_str)
+        days_label.setFont(QtGui.QFont(self.roboto_font_family, 12))
+        grid.addWidget(days_label, 2, 1, QtCore.Qt.AlignmentFlag.AlignRight)
+
+        layout.addWidget(container)
 
     def _draw_alarm_edit_view(self, layout: QtWidgets.QHBoxLayout):
-        # Placeholder for Alarm Edit Mode
-        pass
+        coordinator = self.alarm_clock_context.mode_coordinator
+        service = coordinator.editing_service
+        if not service or not service.editing_session:
+            return
+
+        current_prop = service.property_to_edit
+
+        container = QtWidgets.QWidget()
+        v_layout = QtWidgets.QVBoxLayout(container)
+        v_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+
+        # Property Name
+        prop_name = ""
+        if isinstance(current_prop, AlarmProperty):
+            prop_name = current_prop.name.replace("_", " ")
+        elif isinstance(current_prop, EditorAction):
+            prop_name = current_prop.value.upper()
+
+        prop_label = QtWidgets.QLabel(prop_name)
+        prop_label.setFont(QtGui.QFont(self.roboto_font_family, 18, QtGui.QFont.Bold))
+        prop_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        v_layout.addWidget(prop_label)
+
+        # Current Value Preview (if not an action)
+        if isinstance(current_prop, AlarmProperty):
+            val = service.editing_session.get_current_value()
+            val_str = str(val)
+            # Format specific values
+            if current_prop == AlarmProperty.RECURRING:
+                # val is list of strings
+                val_str = f"{len(val)} days"
+            elif current_prop == AlarmProperty.AUDIO_EFFECT:
+                val_str = val.title() if val else "None"
+
+            val_label = QtWidgets.QLabel(val_str)
+            val_label.setFont(QtGui.QFont(self.roboto_font_family, 12))
+            val_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            v_layout.addWidget(val_label)
+
+        layout.addWidget(container)
 
     def _draw_property_edit_view(self, layout: QtWidgets.QHBoxLayout):
-        # Placeholder for Property Edit Mode
-        pass
+        coordinator = self.alarm_clock_context.mode_coordinator
+        service = coordinator.editing_service
+        if not service or not service.editing_session:
+            return
+
+        current_prop = service.property_to_edit
+        current_val = service.editing_session.get_current_value()
+
+        container = QtWidgets.QWidget()
+        v_layout = QtWidgets.QVBoxLayout(container)
+        v_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+
+        # Property Name
+        prop_name = (
+            current_prop.name.replace("_", " ")
+            if isinstance(current_prop, AlarmProperty)
+            else ""
+        )
+        header = QtWidgets.QLabel(f"SET {prop_name}")
+        header.setFont(QtGui.QFont(self.roboto_font_family, 10))
+        header.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        v_layout.addWidget(header)
+
+        # Value with arrows
+        h_layout = QtWidgets.QHBoxLayout()
+        h_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+
+        left_arrow = QtWidgets.QLabel("\uf053")  # Chevron Left
+        left_arrow.setFont(QtGui.QFont(self.nerd_font_family, 16))
+        h_layout.addWidget(left_arrow)
+
+        val_str = str(current_val)
+        # Formatting
+        if current_prop == AlarmProperty.RECURRING:
+            # val is list of strings
+            # We might want to show a summary or the raw list
+            val_str = ", ".join([d[:3] for d in current_val])
+        elif current_prop == AlarmProperty.AUDIO_EFFECT:
+            val_str = current_val.title() if current_val else "None"
+        elif current_prop == AlarmProperty.HOUR or current_prop == AlarmProperty.MIN:
+            val_str = f"{current_val:02d}"
+
+        val_label = QtWidgets.QLabel(f" {val_str} ")
+        val_label.setFont(QtGui.QFont(self.roboto_font_family, 18, QtGui.QFont.Bold))
+        h_layout.addWidget(val_label)
+
+        right_arrow = QtWidgets.QLabel("\uf054")  # Chevron Right
+        right_arrow.setFont(QtGui.QFont(self.nerd_font_family, 16))
+        h_layout.addWidget(right_arrow)
+
+        v_layout.addLayout(h_layout)
+        layout.addWidget(container)
 
     def initialize_qt_app(self):
         self.app = QtWidgets.QApplication([])
