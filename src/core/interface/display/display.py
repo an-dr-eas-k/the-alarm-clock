@@ -1,6 +1,7 @@
 import io
 import logging
 import traceback
+import time
 from luma.core.device import device as luma_device
 from luma.core.device import dummy as luma_dummy
 from luma.core.render import canvas
@@ -143,6 +144,77 @@ class ClockWidget(QtWidgets.QWidget):
                 x += fm.width(char)
 
 
+class ScrollingLabel(QtWidgets.QWidget):
+    def __init__(self, text, font_family, font_size, start_time, speed=30):
+        super().__init__()
+        self.text = text
+        self.font_obj = QtGui.QFont(font_family, font_size)
+        self.start_time = start_time
+        self.speed = speed
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
+        )
+
+    def minimumSizeHint(self):
+        fm = QtGui.QFontMetrics(self.font_obj)
+        return QtCore.QSize(10, fm.height())
+
+    def paintEvent(self, event):
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setRenderHint(QtGui.QPainter.TextAntialiasing)
+
+        painter.setFont(self.font_obj)
+        fm = QtGui.QFontMetrics(self.font_obj)
+        text_width = fm.width(self.text)
+        widget_width = self.width()
+
+        # Center vertically
+        # drawText(x, y, string) draws with baseline at y.
+        # But drawText(rect, flags, string) handles alignment.
+
+        if text_width <= widget_width:
+            painter.drawText(
+                self.rect(),
+                QtCore.Qt.AlignmentFlag.AlignLeft
+                | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                self.text,
+            )
+        else:
+            elapsed = time.time() - self.start_time
+
+            # Add a pause at the beginning
+            pause_duration = 2.0
+            if elapsed < pause_duration:
+                offset = 0
+            else:
+                offset = (elapsed - pause_duration) * self.speed
+
+            gap = 30
+            total_cycle_width = text_width + gap
+
+            current_offset = offset % total_cycle_width
+
+            # Calculate y for baseline
+            # rect().center().y() + fm.ascent()/2 - fm.descent()/2 roughly?
+            # Or just use rect with alignment? No, manual x is needed.
+
+            # Using drawText(x, y, text)
+            # y is baseline.
+            # widget height center:
+            y = (self.height() + fm.ascent() - fm.descent()) // 2
+
+            # Draw first instance
+            x1 = -current_offset
+            if x1 + text_width > 0:
+                painter.drawText(int(x1), int(y), self.text)
+
+            # Draw second instance if needed
+            x2 = x1 + total_cycle_width
+            if x2 < widget_width:
+                painter.drawText(int(x2), int(y), self.text)
+
+
 class Display(DisplayContentProvider):
 
     device: luma_device
@@ -150,6 +222,9 @@ class Display(DisplayContentProvider):
     roboto_font_family: str
     nerd_font_family: str
     weather_font_family: str
+
+    _last_playback_title: str = None
+    _playback_title_scroll_start_time: float = 0
 
     def __init__(
         self,
@@ -324,8 +399,9 @@ class Display(DisplayContentProvider):
         # 3. Playback
         playback_title = self.display_content.current_playback_title()
         if playback_title:
-            if len(playback_title) > 12:
-                playback_title = playback_title[:10] + "..."
+            if playback_title != self._last_playback_title:
+                self._last_playback_title = playback_title
+                self._playback_title_scroll_start_time = time.time()
 
             playback_container = QtWidgets.QWidget()
             playback_layout = QtWidgets.QHBoxLayout(playback_container)
@@ -338,8 +414,12 @@ class Display(DisplayContentProvider):
             playback_symbol.setFont(QtGui.QFont(font_family, 16))
             playback_layout.addWidget(playback_symbol)
 
-            playback_label = QtWidgets.QLabel(playback_title)
-            playback_label.setFont(QtGui.QFont(font_family, 12))
+            playback_label = ScrollingLabel(
+                playback_title,
+                self.nerd_font_family,
+                12,
+                self._playback_title_scroll_start_time,
+            )
             playback_layout.addWidget(playback_label)
 
             info_layout.addWidget(playback_container)
