@@ -11,7 +11,7 @@ import tornado.web
 from PIL.Image import Image
 from core.application.controls import Controls
 from core.domain.events import (
-    AudioStreamChangeRequest,
+    PlaybackChangedEvent,
     ConfigChangedEvent,
     SpotifyStreamChangeRequest,
     VolumeChangeRequest,
@@ -27,6 +27,7 @@ from core.domain.model import (
     AudioStream,
     Config,
     DisplayContentProvider,
+    Mode,
     StreamAudioEffect,
     VisualEffect,
     Weekday,
@@ -132,10 +133,13 @@ class ActionApiHandler(tornado.web.RequestHandler):
 
             if type == "play":
                 self.event_bus.emit(
-                    AudioStreamChangeRequest(self.config.get_audio_stream_by_id(id))
+                    PlaybackChangedEvent(
+                        playback_mode=Mode.Music,
+                        audio_stream=self.config.get_audio_stream_by_id(id),
+                    )
                 )
             elif type == "stop":
-                self.event_bus.emit(AudioStreamChangeRequest(None))
+                self.event_bus.emit(PlaybackChangedEvent(Mode.Idle))
             elif type == "volume":
                 if id == 1:
                     self.event_bus.emit(VolumeChangeRequest(relative=+1))

@@ -295,7 +295,7 @@ class Display(DisplayContentProvider):
         # Next Alarm
         if (
             self.display_content.next_alarm_info.has_alarm()
-            and self.display_content.get_timedelta_to_alarm().min
+            and self.display_content.get_timedelta_to_alarm().total_seconds() * 60
             <= timespan_to_show_next_alarm_in_min
         ):
             alarm_time = self.display_content.get_next_alarm()
@@ -430,7 +430,8 @@ class Display(DisplayContentProvider):
         # 3. Next Alarm
         if (
             self.display_content.next_alarm_info.has_alarm()
-            and self.display_content.next_alarm_info.get_timedelta_to_alarm().min
+            and self.display_content.next_alarm_info.get_timedelta_to_alarm().total_seconds()
+            * 60
             <= timespan_to_show_next_alarm_in_min
         ):
             alarm_time = self.display_content.get_next_alarm()

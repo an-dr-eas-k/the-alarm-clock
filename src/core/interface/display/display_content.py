@@ -18,8 +18,8 @@ if TYPE_CHECKING:
     from core.domain.model import PlaybackContent
 
 from core.domain.events import (
-    AudioStreamChangedEvent,
     ForcedDisplayUpdateEvent,
+    PlaybackChangedEvent,
     VolumeChangedEvent,
 )
 
@@ -48,12 +48,12 @@ class DisplayContent:
         self.next_alarm_info = NextAlarmInfo()
         self.room_brightness = RoomBrightness(1.0)
 
-        self.event_bus.on(AudioStreamChangedEvent)(self._audio_stream_changed)
+        self.event_bus.on(PlaybackChangedEvent)(self._playback_changed)
         self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
 
     # ========== Event Handlers ==========
 
-    def _audio_stream_changed(self, event: AudioStreamChangedEvent):
+    def _playback_changed(self, event: PlaybackChangedEvent):
         if event.audio_stream is None:
             self.hide_volume_meter()
         self.event_bus.emit(ForcedDisplayUpdateEvent())

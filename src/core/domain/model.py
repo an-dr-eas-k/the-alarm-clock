@@ -26,8 +26,7 @@ if TYPE_CHECKING:
     from core.infrastructure.event_bus import EventBus
     from core.domain.mode_coordinator import AlarmClockModeCoordinator
 from core.domain.events import (
-    AudioStreamChangeRequest,
-    AudioStreamChangedEvent,
+    PlaybackChangedEvent,
     VolumeChangeRequest,
     VolumeChangedEvent,
 )
@@ -528,13 +527,14 @@ class PlaybackContent(MediaContent):
         default_volume = self.alarm_clock_context.config.default_volume
         self.sound_device.set_system_volume(default_volume)
         self.audio_stream = None
-        self.event_bus.on(AudioStreamChangeRequest)(self._audio_stream_change_request)
+        self.event_bus.on(PlaybackChangedEvent)(self._playback_change_request)
         self.event_bus.on(VolumeChangeRequest)(self._volume_change_request)
 
-    def _audio_stream_change_request(self, event: AudioStreamChangeRequest):
+    def _playback_change_request(self, event: PlaybackChangedEvent):
+        self.playback_mode = event.playback_mode
         if event.audio_stream is not None:
             self.audio_stream = event.audio_stream
-        self.event_bus.emit(AudioStreamChangedEvent(event.audio_stream))
+        self._volume_change_request(event)
 
     def _volume_change_request(self, event: VolumeChangeRequest):
         if event.relative is not None:

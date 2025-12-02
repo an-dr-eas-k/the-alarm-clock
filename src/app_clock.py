@@ -9,7 +9,10 @@ import tornado.ioloop
 from core.application.di_container import DIContainer
 from dependency_injector import providers
 
-from core.domain.events import AudioStreamChangedEvent, ConfigChangedEvent
+from core.domain.events import (
+    ConfigChangedEvent,
+    PlaybackChangedEvent,
+)
 from core.domain.model import (
     Mode,
 )
@@ -72,7 +75,7 @@ class ClockApp:
         self.container.hardware_input_handler()
 
         self.container.event_bus().emit(ConfigChangedEvent(config=config))
-        self.container.playback_content().playback_mode = Mode.Idle
+        self.container.event_bus().emit(PlaybackChangedEvent(Mode.Idle))
         controls.consider_failed_alarm()
         tornado.ioloop.IOLoop.current().start()
 

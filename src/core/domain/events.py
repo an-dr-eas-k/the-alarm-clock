@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from core.domain.model import (
-        AudioEffect,
+        Mode,
         AudioStream,
         RoomBrightness,
         AlarmDefinition,
@@ -93,20 +93,25 @@ class VolumeChangeRequest(BaseEvent):
             )
 
 
-@dataclass(frozen=True)
-class AudioStreamChangeRequest(BaseEvent):
-    audio_stream: AudioStream
+class PlaybackChangedEvent(VolumeChangeRequest):
+    playback_mode: Mode
+    audio_stream: AudioStream = None
+
+    def __init__(
+        self,
+        playback_mode: Mode,
+        audio_stream: AudioStream = None,
+        relative_volume=None,
+        absolute_volume=None,
+    ):
+        super().__init__(relative_volume, absolute_volume)
+        self.playback_mode = playback_mode
+        self.audio_stream = audio_stream
 
 
 @dataclass(frozen=True)
 class VolumeChangedEvent(BaseEvent):
     new_volume: int = None
-
-
-@dataclass(frozen=True)
-class AudioStreamChangedEvent(BaseEvent):
-    audio_stream: AudioStream
-    use_alternative_player: bool = False
 
 
 @dataclass(frozen=True)
