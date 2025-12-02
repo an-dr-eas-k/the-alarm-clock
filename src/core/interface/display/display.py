@@ -145,10 +145,11 @@ class ClockWidget(QtWidgets.QWidget):
 
 
 class ScrollingLabel(QtWidgets.QWidget):
-    def __init__(self, text, font_family, font_size, start_time, speed=30):
+    def __init__(self, text, font_family, font_size, color, start_time, speed=30):
         super().__init__()
         self.text = text
         self.font_obj = QtGui.QFont(font_family, font_size)
+        self.color = QtGui.QColor(color)
         self.start_time = start_time
         self.speed = speed
         self.setSizePolicy(
@@ -165,6 +166,7 @@ class ScrollingLabel(QtWidgets.QWidget):
         painter.setRenderHint(QtGui.QPainter.TextAntialiasing)
 
         painter.setFont(self.font_obj)
+        painter.setPen(self.color)
         fm = QtGui.QFontMetrics(self.font_obj)
         text_width = fm.width(self.text)
         widget_width = self.width()
@@ -418,6 +420,7 @@ class Display(DisplayContentProvider):
                 playback_title,
                 self.nerd_font_family,
                 12,
+                fg_color,
                 self._playback_title_scroll_start_time,
             )
             playback_layout.addWidget(playback_label)
