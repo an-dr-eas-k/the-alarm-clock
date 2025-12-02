@@ -189,10 +189,12 @@ class OfflineStream(AudioStream):
         )
 
 
-@dataclass
 class SpotifyStream(AudioStream):
     track_name: str = "Spotify"
     track_id: str = None
+
+    def __init__(self):
+        super().__init__(stream_name="Spotify Stream", stream_url="")
 
     def __str__(self):
         return f"track_name: {self.track_name}, track_id: {self.track_id}"
