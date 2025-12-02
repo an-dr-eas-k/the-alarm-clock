@@ -2,8 +2,10 @@ import datetime
 from enum import Enum
 import logging
 from PIL import Image
+from PyQt5 import QtGui
 from core.domain.model import (
     AlarmClockContext,
+    Mode,
     VisualEffect,
 )
 from core.interface.display.display_content import DisplayContent
@@ -32,13 +34,28 @@ class DisplayFormatter:
         self.display_content = content
         self.alarm_clock_context = alarm_clock_context
 
-    def clock_font(self, size: int = 50):
+    def clock_font_pil(self, size: int = 50):
         if self.highly_dimmed():
             return PresentationFont.get_font(PresentationFont.light_clock_font, 20)
         return PresentationFont.get_font(PresentationFont.bold_clock_font, size)
 
-    def default_font(self, size: int = 18):
-        return PresentationFont.get_font(PresentationFont.default_font, size)
+    def clock_font(self, size: int = 20, weight: int = QtGui.QFont.Bold):
+        font_family = PresentationFont.get_font_family(PresentationFont.roboto_font)
+        return QtGui.QFont(font_family, size, weight)
+
+    def info_font_pil(self, size: int = 18):
+        return PresentationFont.get_font(PresentationFont.info_font, size)
+
+    def info_font(self, size: int = 18, weight: int = QtGui.QFont.Normal):
+        font_family = PresentationFont.get_font_family(PresentationFont.info_font)
+        return QtGui.QFont(font_family, size, weight)
+
+    def weather_font_pil(self, size: int = 18):
+        return PresentationFont.get_font(PresentationFont.weather_font, size)
+
+    def weather_font(self, size: int = 18):
+        font_family = PresentationFont.get_font_family(PresentationFont.weather_font)
+        return QtGui.QFont(font_family, size, QtGui.QFont.Normal)
 
     def clear_display(self):
         clear_display = self._clear_display
@@ -46,7 +63,11 @@ class DisplayFormatter:
         return clear_display
 
     def highly_dimmed(self):
-        return self.display_content.room_brightness.is_highly_dimmed
+        return (
+            True
+            and self.display_content.room_brightness.is_highly_dimmed
+            and self.display_content.playback_content.playback_mode != Mode.Idle
+        )
 
     def update_formatter(self):
         self.adjust_display()

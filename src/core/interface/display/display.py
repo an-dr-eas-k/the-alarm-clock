@@ -37,16 +37,14 @@ timespan_to_show_next_alarm_in_min = 8 * 60  # 8 hours
 
 
 class ClockWidget(QtWidgets.QWidget):
-    def __init__(
-        self, hour_str, min_str, blink_char, show_blink, fg_color, font_family
-    ):
+    def __init__(self, hour_str, min_str, blink_char, show_blink, fg_color, font_obj):
         super().__init__()
         self.hour_str = hour_str
         self.min_str = min_str
         self.blink_char = blink_char
         self.show_blink = show_blink
         self.fg_color = QtGui.QColor(fg_color)
-        self.font_family = font_family
+        self.font_obj = font_obj
         self.setSizePolicy(
             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
         )
@@ -75,8 +73,7 @@ class ClockWidget(QtWidgets.QWidget):
         return x
 
     def minimumSizeHint(self):
-        font = QtGui.QFont(self.font_family, 42, QtGui.QFont.Bold)
-        fm = QtGui.QFontMetrics(font)
+        fm = QtGui.QFontMetrics(self.font_obj)
         overlap = 12
         width = self._calculate_layout(fm, overlap)
         return QtCore.QSize(width, fm.height() + 10)
@@ -86,9 +83,8 @@ class ClockWidget(QtWidgets.QWidget):
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
         painter.setRenderHint(QtGui.QPainter.TextAntialiasing)
 
-        font = QtGui.QFont(self.font_family, 42, QtGui.QFont.Bold)
-        painter.setFont(font)
-        fm = QtGui.QFontMetrics(font)
+        painter.setFont(self.font_obj)
+        fm = QtGui.QFontMetrics(self.font_obj)
 
         overlap = 12
         vertical_shift = 2
@@ -148,8 +144,7 @@ class ScrollingLabel(QtWidgets.QWidget):
     def __init__(
         self,
         text,
-        font_family,
-        font_size,
+        font_obj,
         color,
         start_time,
         display_content: DisplayContent,
@@ -157,7 +152,7 @@ class ScrollingLabel(QtWidgets.QWidget):
     ):
         super().__init__()
         self.text = text
-        self.font_obj = QtGui.QFont(font_family, font_size)
+        self.font_obj = font_obj
         self.color = QtGui.QColor(color)
         self.start_time = start_time
         self.display_content = display_content
@@ -235,9 +230,6 @@ class Display(DisplayContentProvider):
 
     device: luma_device
     display_content: DisplayContent
-    roboto_font_family: str
-    nerd_font_family: str
-    weather_font_family: str
 
     _last_playback_title: str = None
     _playback_title_scroll_start_time: float = 0
@@ -291,8 +283,7 @@ class Display(DisplayContentProvider):
             now, self.display_content.show_blink_segment
         )
         clock_label = QtWidgets.QLabel(clock_string)
-        font_family = self.roboto_font_family
-        clock_label.setFont(QtGui.QFont(font_family, 20, QtGui.QFont.Normal))
+        clock_label.setFont(self.formatter.clock_font(size=20))
         clock_label.setAlignment(
             QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft
         )
@@ -315,19 +306,17 @@ class Display(DisplayContentProvider):
             alarm_time = self.display_content.get_next_alarm()
             alarm_text = alarm_time.strftime("%H:%M")
             alarm_label = QtWidgets.QLabel(f"\uf49a {alarm_text}")
-            font_family = self.nerd_font_family
-            alarm_label.setFont(QtGui.QFont(font_family, 14))
+            alarm_label.setFont(self.formatter.info_font(size=14))
             alarm_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
             info_layout.addWidget(alarm_label)
 
         # WiFi
         is_online = self.display_content.get_is_online()
-        # Use Link (\uf0c1) for online, Broken Link (\uf127) for offline
-        wifi_text = "" if is_online else "!"
+        no_wifi_symbol = "\U000f05aa"
+        wifi_text = "" if is_online else no_wifi_symbol
         wifi_label = QtWidgets.QLabel(wifi_text)
 
-        font_family = self.nerd_font_family
-        wifi_label.setFont(QtGui.QFont(font_family, 14))
+        wifi_label.setFont(self.formatter.info_font(size=14))
 
         wifi_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
         info_layout.addWidget(wifi_label)
@@ -368,7 +357,7 @@ class Display(DisplayContentProvider):
             blink_char,
             self.display_content.show_blink_segment,
             fg_color,
-            font_family=self.roboto_font_family,
+            font_obj=self.formatter.clock_font(size=42),
         )
         layout.addWidget(clock_widget, stretch=3)
 
@@ -401,13 +390,11 @@ class Display(DisplayContentProvider):
                 symbol = weather.code.to_character() if weather.code else None
                 if symbol:
                     symbol_label = QtWidgets.QLabel(symbol)
-                    font_family = self.weather_font_family
-                    symbol_label.setFont(QtGui.QFont(font_family, 16))
+                    symbol_label.setFont(self.formatter.weather_font(size=16))
                     weather_layout.addWidget(symbol_label)
 
                 weather_label = QtWidgets.QLabel(f"{temp:.1f}°C")
-                font_family = self.nerd_font_family
-                weather_label.setFont(QtGui.QFont(font_family, 12))
+                weather_label.setFont(self.formatter.info_font(size=12))
                 weather_layout.addWidget(weather_label)
 
                 info_layout.addWidget(weather_container)
@@ -426,14 +413,12 @@ class Display(DisplayContentProvider):
             playback_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
 
             playback_symbol = QtWidgets.QLabel("\uf2eb")
-            font_family = self.nerd_font_family
-            playback_symbol.setFont(QtGui.QFont(font_family, 16))
+            playback_symbol.setFont(self.formatter.info_font(size=16))
             playback_layout.addWidget(playback_symbol)
 
             playback_label = ScrollingLabel(
                 playback_title,
-                self.nerd_font_family,
-                12,
+                self.formatter.info_font(size=12),
                 fg_color,
                 self._playback_title_scroll_start_time,
                 self.display_content,
@@ -459,12 +444,11 @@ class Display(DisplayContentProvider):
             alarm_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
 
             alarm_symbol = QtWidgets.QLabel("\uf49a")
-            font_family = self.nerd_font_family
-            alarm_symbol.setFont(QtGui.QFont(font_family, 20))
+            alarm_symbol.setFont(self.formatter.info_font(size=20))
             alarm_layout.addWidget(alarm_symbol)
 
             alarm_label = QtWidgets.QLabel(alarm_text)
-            alarm_label.setFont(QtGui.QFont(font_family, 12))
+            alarm_label.setFont(self.formatter.info_font(size=12))
             alarm_layout.addWidget(alarm_label)
 
             info_layout.addWidget(alarm_container)
@@ -472,22 +456,19 @@ class Display(DisplayContentProvider):
         if self.display_content.show_volume_meter:
             vol = self.display_content.current_volume()
             vol_label = QtWidgets.QLabel(f"Vol: {int(vol * 100)}%")
-            font_family = self.nerd_font_family
-            vol_label.setFont(QtGui.QFont(font_family, 12, QtGui.QFont.Bold))
+            vol_label.setFont(
+                self.formatter.info_font(size=12, weight=QtGui.QFont.Bold)
+            )
             vol_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
             info_layout.addWidget(vol_label)
 
         layout.addLayout(info_layout, stretch=1)
 
     def _draw_default_view(self, layout: QtWidgets.QHBoxLayout):
-        if (
-            False
-            or not self.display_content.room_brightness.is_highly_dimmed()
-            or self.playback_content.playback_mode != Mode.Idle
-        ):
-            self._draw_normal_content(layout)
-        else:
+        if not self.formatter.highly_dimmed():
             self._draw_dimmed_content(layout)
+        else:
+            self._draw_normal_content(layout)
 
     def _draw_alarm_view(self, layout: QtWidgets.QHBoxLayout):
         coordinator = self.alarm_clock_context.mode_coordinator
@@ -507,7 +488,7 @@ class Display(DisplayContentProvider):
         index = service.current_alarm_index + 1
         total = len(self.alarm_clock_context.config.alarm_definitions) + 1
         header_label = QtWidgets.QLabel(f"ALARM {index}/{total}")
-        header_label.setFont(QtGui.QFont(self.roboto_font_family, 10, QtGui.QFont.Bold))
+        header_label.setFont(self.formatter.info_font(size=10, weight=QtGui.QFont.Bold))
         header_label.setStyleSheet(
             f"color: {self.formatter.foreground_color(color_type=ColorType.INHEX)};"
         )
@@ -516,13 +497,13 @@ class Display(DisplayContentProvider):
         # Row 1: Time (Big)
         time_str = f"{alarm.hour:02d}:{alarm.min:02d}"
         time_label = QtWidgets.QLabel(time_str)
-        time_label.setFont(QtGui.QFont(self.roboto_font_family, 32, QtGui.QFont.Bold))
+        time_label.setFont(self.formatter.info_font(size=32, weight=QtGui.QFont.Bold))
         grid.addWidget(time_label, 1, 0, 2, 1, QtCore.Qt.AlignmentFlag.AlignLeft)
 
         # Row 1, Col 1: Active Status
         status_icon = "\uf205" if alarm.is_active else "\uf204"  # Toggle On/Off
         status_label = QtWidgets.QLabel(status_icon)
-        status_label.setFont(QtGui.QFont(self.nerd_font_family, 20))
+        status_label.setFont(self.formatter.info_font(size=20))
         grid.addWidget(status_label, 1, 1, QtCore.Qt.AlignmentFlag.AlignRight)
 
         # Row 2, Col 1: Days
@@ -536,7 +517,7 @@ class Display(DisplayContentProvider):
                 days_str = "Invalid"
 
         days_label = QtWidgets.QLabel(days_str)
-        days_label.setFont(QtGui.QFont(self.roboto_font_family, 12))
+        days_label.setFont(self.formatter.info_font(size=12))
         grid.addWidget(days_label, 2, 1, QtCore.Qt.AlignmentFlag.AlignRight)
 
         layout.addWidget(container)
@@ -561,7 +542,7 @@ class Display(DisplayContentProvider):
             prop_name = current_prop.value.upper()
 
         prop_label = QtWidgets.QLabel(prop_name)
-        prop_label.setFont(QtGui.QFont(self.roboto_font_family, 18, QtGui.QFont.Bold))
+        prop_label.setFont(self.formatter.info_font(size=18, weight=QtGui.QFont.Bold))
         prop_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         v_layout.addWidget(prop_label)
 
@@ -577,7 +558,7 @@ class Display(DisplayContentProvider):
                 val_str = val.title() if val else "None"
 
             val_label = QtWidgets.QLabel(val_str)
-            val_label.setFont(QtGui.QFont(self.roboto_font_family, 12))
+            val_label.setFont(self.formatter.info_font(size=12))
             val_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
             v_layout.addWidget(val_label)
 
@@ -603,7 +584,7 @@ class Display(DisplayContentProvider):
             else ""
         )
         header = QtWidgets.QLabel(f"SET {prop_name}")
-        header.setFont(QtGui.QFont(self.roboto_font_family, 10))
+        header.setFont(self.formatter.info_font(size=10))
         header.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         v_layout.addWidget(header)
 
@@ -612,7 +593,7 @@ class Display(DisplayContentProvider):
         h_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
 
         left_arrow = QtWidgets.QLabel("\uf053")  # Chevron Left
-        left_arrow.setFont(QtGui.QFont(self.nerd_font_family, 16))
+        left_arrow.setFont(self.formatter.info_font(size=16))
         h_layout.addWidget(left_arrow)
 
         val_str = str(current_val)
@@ -627,11 +608,11 @@ class Display(DisplayContentProvider):
             val_str = f"{current_val:02d}"
 
         val_label = QtWidgets.QLabel(f" {val_str} ")
-        val_label.setFont(QtGui.QFont(self.roboto_font_family, 18, QtGui.QFont.Bold))
+        val_label.setFont(self.formatter.info_font(size=18, weight=QtGui.QFont.Bold))
         h_layout.addWidget(val_label)
 
         right_arrow = QtWidgets.QLabel("\uf054")  # Chevron Right
-        right_arrow.setFont(QtGui.QFont(self.nerd_font_family, 16))
+        right_arrow.setFont(self.formatter.info_font(size=16))
         h_layout.addWidget(right_arrow)
 
         v_layout.addLayout(h_layout)
@@ -639,28 +620,6 @@ class Display(DisplayContentProvider):
 
     def initialize_qt_app(self):
         self.app = QtWidgets.QApplication([])
-
-        id = QtGui.QFontDatabase.addApplicationFont(PresentationFont.weather_font)
-        if id != -1:
-            families = QtGui.QFontDatabase.applicationFontFamilies(id)
-            if families:
-                self.weather_font_family = families[0]
-        else:
-            logger.error(
-                f"Failed to load weather font from {PresentationFont.weather_font}"
-            )
-
-        id_nerd = QtGui.QFontDatabase.addApplicationFont(PresentationFont.default_font)
-        if id_nerd != -1:
-            families = QtGui.QFontDatabase.applicationFontFamilies(id_nerd)
-            if families:
-                self.nerd_font_family = families[0]
-
-        id_roboto = QtGui.QFontDatabase.addApplicationFont(PresentationFont.roboto_font)
-        if id_roboto != -1:
-            families = QtGui.QFontDatabase.applicationFontFamilies(id_roboto)
-            if families:
-                self.roboto_font_family = families[0]
 
     def draw_widget(self):
         self.formatter.update_formatter()

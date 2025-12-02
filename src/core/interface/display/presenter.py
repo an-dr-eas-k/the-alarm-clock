@@ -22,7 +22,7 @@ logger = logging.getLogger("tac.display")
 
 class Presenter(ComposableImage):
     font_file_7segment = PresentationFont.bold_clock_font
-    font_file_nerd = PresentationFont.default_font
+    font_file_nerd = PresentationFont.info_font
 
     content: DisplayContent
 
@@ -93,7 +93,7 @@ class SimpleTextPresenter(AlarmEditorPresenter):
 
     def draw(self) -> Image.Image:
         service = self.editing_service()
-        font = self.formatter.default_font(size=20)
+        font = self.formatter.info_font_pil(size=20)
         effect_image = text_to_image(
             self.text(self.get_alarm_definition()),
             font,

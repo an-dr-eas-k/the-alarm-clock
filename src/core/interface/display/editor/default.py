@@ -37,7 +37,7 @@ class AlarmNamePresenter(AlarmEditorPresenter):
         super().__init__(formatter, content, position)
 
     def draw(self) -> Image.Image:
-        font = self.formatter.default_font(size=15)
+        font = self.formatter.info_font_pil(size=15)
 
         return text_to_image(
             self.get_alarm_definition().alarm_name,
@@ -55,7 +55,7 @@ class AlarmTimePresenter(AlarmEditorPresenter):
 
     def draw(self) -> Image.Image:
         machine_state = self.machine_state(AlarmEditingService)
-        font = self.formatter.default_font(size=20)
+        font = self.formatter.info_font_pil(size=20)
         alarm_def = self.get_alarm_definition()
         if machine_state is None or not machine_state.is_in_edit_mode(["hour", "min"]):
             return text_to_image(
@@ -106,7 +106,7 @@ class AlarmDatePresenter(AlarmEditorPresenter):
 
     def draw(self) -> Image.Image:
         machine_state = self.machine_state(AlarmEditingService)
-        font = self.formatter.default_font(size=15)
+        font = self.formatter.info_font_pil(size=15)
         alarm_def = self.get_alarm_definition()
         day_string = alarm_def.to_day_string()
         day_image = text_to_image(
@@ -218,7 +218,7 @@ class ClockPresenter(DefaultPresenter):
         ):
             return self.draw_analog_clock()
 
-        font = self.formatter.clock_font()
+        font = self.formatter.clock_font_pil()
         clock_string = self.formatter.format_dseg7_clock_string(
             GeoLocation().now(), self.content.show_blink_segment
         )
