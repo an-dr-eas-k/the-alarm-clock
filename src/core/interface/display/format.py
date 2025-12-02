@@ -109,6 +109,8 @@ class DisplayFormatter:
         self.adjust_display_by_room_brightness()
         self.adjust_display_by_mode()
         self.adjust_display_by_alarm()
+        if not self.be_gloomy():
+            self._foreground_grayscale_16 = min(3, self._foreground_grayscale_16)
 
     def adjust_display_by_room_brightness(self):
         self._background_grayscale_16 = 0
