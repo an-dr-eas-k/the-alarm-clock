@@ -12,6 +12,7 @@ from core.interface.display.display import Display
 from core.application.api import Api
 from core.infrastructure.audio import Speaker
 from core.application.controls import Controls
+from core.application.system_service import SystemService
 from core.infrastructure.persistence import Persistence
 from core.infrastructure.event_bus import EventBus
 from resources.resources import config_file
@@ -103,6 +104,15 @@ class DIContainer(containers.DeclarativeContainer):
     scheduler_service = providers.Singleton(
         SchedulerService,
         event_bus=event_bus,
+    )
+
+    system_service = providers.Singleton(
+        SystemService,
+        alarm_clock_context=alarm_clock_context,
+        scheduler_service=scheduler_service,
+        event_bus=event_bus,
+        display_content=display_content,
+        brightness_sensor=brightness_sensor,
     )
 
     controls = providers.Singleton(

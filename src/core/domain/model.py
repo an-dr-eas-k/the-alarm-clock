@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from core.infrastructure.event_bus import EventBus
     from core.domain.mode_coordinator import AlarmClockModeCoordinator
 from core.domain.events import (
+    AlarmStoppedEvent,
     PlaybackChangedEvent,
     VolumeChangeRequest,
     VolumeChangedEvent,
@@ -33,6 +34,12 @@ from core.domain.events import (
 
 
 logger = logging.getLogger("tac.domain")
+
+
+class SchedulerJobIds(Enum):
+    hide_volume_meter = "hide_volume_meter_trigger"
+    stop_alarm = "stop_alarm_trigger"
+    ensure_stable_wifi = "ensure_stable_wifi_trigger"
 
 
 class DisplayContentProvider:
@@ -531,10 +538,17 @@ class PlaybackContent(MediaContent):
         self.event_bus.on(VolumeChangeRequest)(self._volume_change_request)
 
     def _playback_change_request(self, event: PlaybackChangedEvent):
+        wasAlarm = self.playback_mode == Mode.Alarm
+
         self.playback_mode = event.playback_mode
         if event.audio_stream is not None:
             self.audio_stream = event.audio_stream
         self._volume_change_request(event)
+
+        if wasAlarm and self.playback_mode != Mode.Alarm:
+            self.event_bus.emit(
+                AlarmStoppedEvent(self.alarm_clock_context.active_alarm_definition)
+            )
 
     def _volume_change_request(self, event: VolumeChangeRequest):
         if event.relative is not None:

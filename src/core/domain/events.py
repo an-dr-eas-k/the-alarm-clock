@@ -33,7 +33,6 @@ class AlarmTriggeredEvent(BaseEvent):
 @dataclass(frozen=True)
 class AlarmStoppedEvent(BaseEvent):
     alarm_definition: AlarmDefinition = None
-    reason: str = None  # e.g., "manual", "timeout", "snooze"
 
 
 @dataclass(frozen=True)

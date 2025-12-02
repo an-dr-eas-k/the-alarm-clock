@@ -62,6 +62,7 @@ class ClockApp:
             )
 
         controls: Controls = self.container.controls()
+        self.container.system_service()
         if ci is not None:
             ci.configure(controls)
 
