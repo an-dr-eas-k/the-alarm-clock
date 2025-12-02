@@ -28,7 +28,6 @@ class DisplayFormatter:
     _background_grayscale_16: int
 
     _visual_effect_active: bool = False
-    _clear_display: bool = False
 
     def __init__(self, content: DisplayContent, alarm_clock_context: AlarmClockContext):
         self.display_content = content
@@ -56,11 +55,6 @@ class DisplayFormatter:
     def weather_font(self, size: int = 18):
         font_family = PresentationFont.get_font_family(PresentationFont.weather_font)
         return QtGui.QFont(font_family, size, QtGui.QFont.Normal)
-
-    def clear_display(self):
-        clear_display = self._clear_display
-        self._clear_display = False
-        return clear_display
 
     def highly_dimmed(self):
         return (
@@ -139,9 +133,6 @@ class DisplayFormatter:
             self._foreground_grayscale_16 = 15
 
     def adjust_display_by_alarm(self):
-        """
-        Adjust display based on upcoming alarm proximity and visual effects.
-        """
         next_alarm_info = self.display_content.next_alarm_info
 
         visual_effect = (
@@ -160,7 +151,6 @@ class DisplayFormatter:
 
         if not visual_effect or not visual_effect.is_active(alarm_in_minutes):
             if self._visual_effect_active:
-                self._clear_display = True
                 self._visual_effect_active = False
             return
 

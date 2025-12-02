@@ -10,6 +10,7 @@ from PIL import Image
 from PyQt5 import QtWidgets, QtCore, QtGui
 
 from core.domain.events import (
+    AlarmStoppedEvent,
     ForcedDisplayUpdateEvent,
 )
 from core.domain.edit_mode import AlarmProperty, EditorAction
@@ -17,7 +18,6 @@ from core.domain.model import (
     AlarmClockContext,
     Config,
     DisplayContentProvider,
-    Mode,
     PlaybackContent,
     SpotifyStream,
 )
@@ -253,6 +253,11 @@ class Display(DisplayContentProvider):
         )
         self.initialize_qt_app()
         self.event_bus.on(ForcedDisplayUpdateEvent)(self._forced_update)
+        self.event_bus.on(AlarmStoppedEvent)(self._alarm_stopped)
+
+    def _alarm_stopped(self, _: AlarmStoppedEvent):
+        self.device.clear()
+        self._forced_update(None)
 
     def _forced_update(self, _: ForcedDisplayUpdateEvent):
         try:
