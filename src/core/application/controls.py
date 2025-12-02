@@ -114,7 +114,7 @@ class Controls:
 
     def _toggle_stream(self, _: ToggleAudioRequest):
         if self.playback_content.playback_mode == Mode.Alarm:
-            self._set_to_idle_mode(alarm_stopped_reason="manual")
+            self._set_to_idle_mode()
             return
 
         if self.playback_content.playback_mode in [
@@ -169,7 +169,7 @@ class Controls:
             )
         )
 
-    def _set_to_idle_mode(self, alarm_stopped_reason: str = None):
+    def _set_to_idle_mode(self):
         if self.playback_content.playback_mode == Mode.Idle:
             return
 
@@ -261,7 +261,7 @@ class Controls:
             datetime.timedelta(
                 minutes=self.alarm_clock_context.config.alarm_duration_in_mins
             ),
-            func=lambda: self._set_to_idle_mode(alarm_stopped_reason="timeout"),
+            func=lambda: self._set_to_idle_mode(),
         )
         # ensure_stable_wifi trigger is now handled by SystemService via AlarmTriggeredEvent
 
