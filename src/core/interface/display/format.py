@@ -59,7 +59,7 @@ class DisplayFormatter:
     def be_gloomy(self):
         return (
             True
-            and self.display_content.room_brightness.is_highly_dimmed
+            and self.display_content.room_brightness.is_highly_dimmed()
             and self.display_content.playback_content.playback_mode == Mode.Idle
         )
 
