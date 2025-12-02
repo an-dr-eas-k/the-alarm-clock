@@ -662,7 +662,7 @@ class Display(DisplayContentProvider):
             if families:
                 self.roboto_font_family = families[0]
 
-    def draw_widget(self) -> Image.Image:
+    def draw_widget(self):
         self.formatter.update_formatter()
         # Reset scrolling state; widgets will set it to True if they need high refresh rate
         self.display_content.is_scrolling = False
@@ -699,6 +699,8 @@ class Display(DisplayContentProvider):
 
         self.widget.adjustSize()
 
+    def grab_widget_image(self) -> Image.Image:
+
         pixmap = self.widget.grab()
 
         buffer = QtCore.QBuffer()
@@ -711,7 +713,10 @@ class Display(DisplayContentProvider):
     def refresh(self):
         logger.debug("refreshing display...")
         start_time = GeoLocation().now()
-        self.current_display_image = self.draw_widget()
+        self.draw_widget()
+        self.current_display_image = self.formatter.postprocess_image(
+            self.grab_widget_image()
+        )
         self.device.display(self.current_display_image)
         if isinstance(self.device, luma_dummy):
             self.current_display_image.save(
