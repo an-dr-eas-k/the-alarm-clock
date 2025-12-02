@@ -38,14 +38,18 @@ class DisplayFormatter:
             return PresentationFont.get_font(PresentationFont.light_clock_font, 20)
         return PresentationFont.get_font(PresentationFont.bold_clock_font, size)
 
-    def clock_font(self, size: int = 20, weight: int = QtGui.QFont.Bold):
-        font_family = PresentationFont.get_font_family(PresentationFont.roboto_font)
+    def clock_font(self, size: int = 20, weight: int = QtGui.QFont.Weight.Bold):
+        font_family = PresentationFont.get_font_family(
+            PresentationFont.roboto_font
+            if not self.be_gloomy()
+            else PresentationFont.light_clock_font
+        )
         return QtGui.QFont(font_family, size, weight)
 
     def info_font_pil(self, size: int = 18):
         return PresentationFont.get_font(PresentationFont.info_font, size)
 
-    def info_font(self, size: int = 18, weight: int = QtGui.QFont.Normal):
+    def info_font(self, size: int = 18, weight: int = QtGui.QFont.Weight.Normal):
         font_family = PresentationFont.get_font_family(PresentationFont.info_font)
         return QtGui.QFont(font_family, size, weight)
 
@@ -54,7 +58,7 @@ class DisplayFormatter:
 
     def weather_font(self, size: int = 18):
         font_family = PresentationFont.get_font_family(PresentationFont.weather_font)
-        return QtGui.QFont(font_family, size, QtGui.QFont.Normal)
+        return QtGui.QFont(font_family, size, QtGui.QFont.Weight.Normal)
 
     def be_gloomy(self):
         return (
@@ -98,6 +102,7 @@ class DisplayFormatter:
     def foreground_color(
         self, min_value: int = 1, color_type: ColorType = ColorType.INCOLOR
     ):
+        logger.debug("foreground_color: %s", self._foreground_grayscale_16)
         return self._color(
             self._foreground_grayscale_16, min_value, color_type=color_type
         )
@@ -110,7 +115,7 @@ class DisplayFormatter:
         self.adjust_display_by_mode()
         self.adjust_display_by_alarm()
         if not self.be_gloomy():
-            self._foreground_grayscale_16 = min(3, self._foreground_grayscale_16)
+            self._foreground_grayscale_16 = max(3, self._foreground_grayscale_16)
 
     def adjust_display_by_room_brightness(self):
         self._background_grayscale_16 = 0

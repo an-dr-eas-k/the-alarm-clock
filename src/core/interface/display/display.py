@@ -288,7 +288,9 @@ class Display(DisplayContentProvider):
             now, self.display_content.show_blink_segment
         )
         clock_label = QtWidgets.QLabel(clock_string)
-        clock_label.setFont(self.formatter.clock_font(size=20))
+        clock_label.setFont(
+            self.formatter.clock_font(size=20, weight=QtGui.QFont.Weight.Light)
+        )
         clock_label.setAlignment(
             QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft
         )
@@ -353,7 +355,6 @@ class Display(DisplayContentProvider):
 
         blink_char = self.alarm_clock_context.config.blink_segment
 
-        # Get current foreground color
         fg_color = self.formatter.foreground_color(color_type=ColorType.INHEX)
 
         clock_widget = ClockWidget(
@@ -461,9 +462,7 @@ class Display(DisplayContentProvider):
         if self.display_content.show_volume_meter:
             vol = self.display_content.current_volume()
             vol_label = QtWidgets.QLabel(f"Vol: {int(vol * 100)}%")
-            vol_label.setFont(
-                self.formatter.info_font(size=12, weight=QtGui.QFont.Bold)
-            )
+            vol_label.setFont(self.formatter.info_font(size=12))
             vol_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
             info_layout.addWidget(vol_label)
 
@@ -493,16 +492,13 @@ class Display(DisplayContentProvider):
         index = service.current_alarm_index + 1
         total = len(self.alarm_clock_context.config.alarm_definitions) + 1
         header_label = QtWidgets.QLabel(f"ALARM {index}/{total}")
-        header_label.setFont(self.formatter.info_font(size=10, weight=QtGui.QFont.Bold))
-        header_label.setStyleSheet(
-            f"color: {self.formatter.foreground_color(color_type=ColorType.INHEX)};"
-        )
+        header_label.setFont(self.formatter.info_font(size=10))
         grid.addWidget(header_label, 0, 0, 1, 2, QtCore.Qt.AlignmentFlag.AlignLeft)
 
         # Row 1: Time (Big)
         time_str = f"{alarm.hour:02d}:{alarm.min:02d}"
         time_label = QtWidgets.QLabel(time_str)
-        time_label.setFont(self.formatter.info_font(size=32, weight=QtGui.QFont.Bold))
+        time_label.setFont(self.formatter.info_font(size=32))
         grid.addWidget(time_label, 1, 0, 2, 1, QtCore.Qt.AlignmentFlag.AlignLeft)
 
         # Row 1, Col 1: Active Status
@@ -547,7 +543,7 @@ class Display(DisplayContentProvider):
             prop_name = current_prop.value.upper()
 
         prop_label = QtWidgets.QLabel(prop_name)
-        prop_label.setFont(self.formatter.info_font(size=18, weight=QtGui.QFont.Bold))
+        prop_label.setFont(self.formatter.info_font(size=18))
         prop_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         v_layout.addWidget(prop_label)
 
@@ -613,7 +609,7 @@ class Display(DisplayContentProvider):
             val_str = f"{current_val:02d}"
 
         val_label = QtWidgets.QLabel(f" {val_str} ")
-        val_label.setFont(self.formatter.info_font(size=18, weight=QtGui.QFont.Bold))
+        val_label.setFont(self.formatter.info_font(size=18))
         h_layout.addWidget(val_label)
 
         right_arrow = QtWidgets.QLabel("\uf054")  # Chevron Right

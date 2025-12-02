@@ -347,7 +347,7 @@ class Api:
                 is_daytime=self.controls.alarm_clock_context.environment.is_daytime,
                 geo_location=self.controls.alarm_clock_context.environment.geo_location.location_info.__dict__,
                 playback_content=dict(
-                    audio_effect=self.controls.playback_content.audio_stream.__str__(),
+                    audio_stream=self.controls.playback_content.audio_stream.__str__(),
                     volume=self.controls.playback_content.volume,
                     mode=self.controls.playback_content.playback_mode.name,
                 ),
