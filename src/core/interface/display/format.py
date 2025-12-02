@@ -102,7 +102,6 @@ class DisplayFormatter:
     def foreground_color(
         self, min_value: int = 1, color_type: ColorType = ColorType.INCOLOR
     ):
-        logger.debug("foreground_color: %s", self._foreground_grayscale_16)
         return self._color(
             self._foreground_grayscale_16, min_value, color_type=color_type
         )
