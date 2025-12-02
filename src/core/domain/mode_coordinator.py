@@ -95,7 +95,7 @@ class AlarmEditingSession:
         setattr(self._draft_alarm, self.current_property.name.lower(), value)
         logger.debug(f"Changed {self.current_property} from {old_value} to {value}")
 
-        if self.current_property == AlarmProperty.RECURRENCY:
+        if self.current_property == AlarmProperty.RECURRENCE:
             self._properties = self._build_property_list()
 
     def navigate_value(self, direction: int):

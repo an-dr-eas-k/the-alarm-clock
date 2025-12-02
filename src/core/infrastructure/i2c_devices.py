@@ -58,8 +58,9 @@ class MCPManager:
         self.mcp_callbacks = {}
 
         if logger.level == logging.DEBUG:
-            self.log_thread = threading.Thread(target=self._log_thread_callback)
-            self.log_thread.daemon = True
+            self.log_thread = threading.Thread(
+                daemon=True, target=self._log_thread_callback
+            )
             self.log_thread.start()
 
     def add_callback(self, pin_num, callback):

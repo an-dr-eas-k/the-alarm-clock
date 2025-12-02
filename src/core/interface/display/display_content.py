@@ -18,8 +18,8 @@ if TYPE_CHECKING:
     from core.domain.model import PlaybackContent
 
 from core.domain.events import (
-    AudioStreamChangedEvent,
     ForcedDisplayUpdateEvent,
+    PlaybackChangedEvent,
     VolumeChangedEvent,
 )
 
@@ -48,12 +48,12 @@ class DisplayContent:
         self.next_alarm_info = NextAlarmInfo()
         self.room_brightness = RoomBrightness(1.0)
 
-        self.event_bus.on(AudioStreamChangedEvent)(self._audio_stream_changed)
+        self.event_bus.on(PlaybackChangedEvent)(self._playback_changed)
         self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
 
     # ========== Event Handlers ==========
 
-    def _audio_stream_changed(self, event: AudioStreamChangedEvent):
+    def _playback_changed(self, event: PlaybackChangedEvent):
         if event.audio_stream is None:
             self.hide_volume_meter()
         self.event_bus.emit(ForcedDisplayUpdateEvent())
@@ -66,25 +66,20 @@ class DisplayContent:
 
     def update_presentation_state(
         self,
-        show_blink_segment: bool = None,
-        room_brightness: RoomBrightness = None,
-        is_scrolling: bool = None,
+        show_blink_segment: bool,
+        room_brightness: RoomBrightness,
     ) -> bool:
         changed = False
 
-        if (
-            show_blink_segment is not None
-            and self.show_blink_segment != show_blink_segment
-        ):
+        if self.show_blink_segment != show_blink_segment:
             self.show_blink_segment = show_blink_segment
             changed = True
 
-        if room_brightness is not None and self.room_brightness != room_brightness:
+        if self.room_brightness != room_brightness:
             self.room_brightness = room_brightness
             changed = True
 
-        if is_scrolling is not None and self.is_scrolling != is_scrolling:
-            self.is_scrolling = is_scrolling
+        if self.is_scrolling:
             changed = True
 
         return changed

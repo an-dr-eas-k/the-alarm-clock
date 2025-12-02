@@ -3,6 +3,7 @@ from PIL import ImageDraw, Image
 from PIL.ImageFont import FreeTypeFont
 from PIL import ImageFont, Image
 from luma.core.image_composition import ComposableImage
+from PyQt5 import QtGui
 
 import logging
 
@@ -272,7 +273,8 @@ class PresentationFontSingleton:
 class PresentationFont:
     bold_clock_font = f"{fonts_dir}/DSEG7Classic-Regular.ttf"
     light_clock_font = f"{fonts_dir}/DSEG7ClassicMini-Light.ttf"
-    default_font = f"{fonts_dir}/IosevkaNerdFontMono-Regular.ttf"
+    info_font = f"{fonts_dir}/IosevkaNerdFontMono-Regular.ttf"
+    roboto_font = f"{fonts_dir}/RobotoMonoNerdFont-Regular.ttf"
     weather_font = f"{weather_icons_dir}/weathericons-regular-webfont.ttf"
 
     def get_font(font: str, size: int = 50) -> ImageFont:
@@ -283,3 +285,11 @@ class PresentationFont:
         except Exception as e:
             logger.error(f"Error loading font {font}: {e}")
             raise e
+
+    def get_font_family(font: str) -> str:
+        id = QtGui.QFontDatabase.addApplicationFont(font)
+        if id != -1:
+            families = QtGui.QFontDatabase.applicationFontFamilies(id)
+            if families:
+                return families[0]
+        raise ValueError(f"Could not load font family for font {font}")

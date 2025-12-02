@@ -28,8 +28,8 @@ class AlarmDefinitionProperties:
         self._editable_properties = {
             AlarmProperty.HOUR: EditableProperty(AlarmProperty.HOUR, list(range(24))),
             AlarmProperty.MIN: EditableProperty(AlarmProperty.MIN, list(range(60))),
-            AlarmProperty.RECURRENCY: EditableProperty(
-                AlarmProperty.RECURRENCY,
+            AlarmProperty.RECURRENCE: EditableProperty(
+                AlarmProperty.RECURRENCE,
                 [AlarmRecurrence.ONETIME, AlarmRecurrence.RECURRING],
             ),
             AlarmProperty.ONETIME: EditableProperty(
@@ -87,7 +87,7 @@ class AlarmDefinitionProperties:
         pes.append(AlarmProperty.IS_ACTIVE)
         pes.append(AlarmProperty.HOUR)
         pes.append(AlarmProperty.MIN)
-        pes.append(AlarmProperty.RECURRENCY)
+        pes.append(AlarmProperty.RECURRENCE)
 
         if alarm_definition.recurrence == AlarmRecurrence.ONETIME:
             pes.append(AlarmProperty.ONETIME)

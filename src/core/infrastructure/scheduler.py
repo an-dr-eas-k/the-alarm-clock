@@ -1,6 +1,6 @@
 from enum import Enum
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Optional, List
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -27,6 +27,9 @@ class SchedulerService:
         jobstores = {"alarm": {"type": "memory"}, "default": {"type": "memory"}}
         self.scheduler = BackgroundScheduler(jobstores=jobstores)
         self.scheduler.start()
+
+    def shutdown(self):
+        self.scheduler.shutdown()
 
     def add_job(
         self,
@@ -127,7 +130,7 @@ class SchedulerService:
     def start_generic_trigger(
         self,
         job_id: str,
-        duration: datetime.timedelta,
+        duration: timedelta,
         func,
         job_store=SchedulerStores.default.value,
     ):

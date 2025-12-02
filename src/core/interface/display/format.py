@@ -2,8 +2,10 @@ import datetime
 from enum import Enum
 import logging
 from PIL import Image
+from PyQt5 import QtGui
 from core.domain.model import (
     AlarmClockContext,
+    Mode,
     VisualEffect,
 )
 from core.interface.display.display_content import DisplayContent
@@ -26,27 +28,40 @@ class DisplayFormatter:
     _background_grayscale_16: int
 
     _visual_effect_active: bool = False
-    _clear_display: bool = False
 
     def __init__(self, content: DisplayContent, alarm_clock_context: AlarmClockContext):
         self.display_content = content
         self.alarm_clock_context = alarm_clock_context
 
-    def clock_font(self, size: int = 50):
-        if self.highly_dimmed():
+    def clock_font_pil(self, size: int = 50):
+        if self.be_gloomy():
             return PresentationFont.get_font(PresentationFont.light_clock_font, 20)
         return PresentationFont.get_font(PresentationFont.bold_clock_font, size)
 
-    def default_font(self, size: int = 18):
-        return PresentationFont.get_font(PresentationFont.default_font, size)
+    def clock_font(self, size: int = 20, weight: int = QtGui.QFont.Bold):
+        font_family = PresentationFont.get_font_family(PresentationFont.roboto_font)
+        return QtGui.QFont(font_family, size, weight)
 
-    def clear_display(self):
-        clear_display = self._clear_display
-        self._clear_display = False
-        return clear_display
+    def info_font_pil(self, size: int = 18):
+        return PresentationFont.get_font(PresentationFont.info_font, size)
 
-    def highly_dimmed(self):
-        return self.display_content.room_brightness.is_highly_dimmed
+    def info_font(self, size: int = 18, weight: int = QtGui.QFont.Normal):
+        font_family = PresentationFont.get_font_family(PresentationFont.info_font)
+        return QtGui.QFont(font_family, size, weight)
+
+    def weather_font_pil(self, size: int = 18):
+        return PresentationFont.get_font(PresentationFont.weather_font, size)
+
+    def weather_font(self, size: int = 18):
+        font_family = PresentationFont.get_font_family(PresentationFont.weather_font)
+        return QtGui.QFont(font_family, size, QtGui.QFont.Normal)
+
+    def be_gloomy(self):
+        return (
+            True
+            and self.display_content.room_brightness.is_highly_dimmed()
+            and self.display_content.playback_content.playback_mode == Mode.Idle
+        )
 
     def update_formatter(self):
         self.adjust_display()
@@ -118,9 +133,6 @@ class DisplayFormatter:
             self._foreground_grayscale_16 = 15
 
     def adjust_display_by_alarm(self):
-        """
-        Adjust display based on upcoming alarm proximity and visual effects.
-        """
         next_alarm_info = self.display_content.next_alarm_info
 
         visual_effect = (
@@ -139,7 +151,6 @@ class DisplayFormatter:
 
         if not visual_effect or not visual_effect.is_active(alarm_in_minutes):
             if self._visual_effect_active:
-                self._clear_display = True
                 self._visual_effect_active = False
             return
 
@@ -185,7 +196,7 @@ class DisplayFormatter:
         return dseg7
 
     def postprocess_image(self, im: Image.Image) -> Image.Image:
-        if self.highly_dimmed():
+        if self.be_gloomy():
             fg_color = self.foreground_color(color_type=ColorType.IN256)
             bg_color = self.background_color(color_type=ColorType.IN256)
 

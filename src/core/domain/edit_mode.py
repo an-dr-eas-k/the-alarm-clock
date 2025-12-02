@@ -17,7 +17,7 @@ class AlarmProperty(Enum):
     IS_ACTIVE = "is_active"
     HOUR = "hour"
     MIN = "min"
-    RECURRENCY = "recurrence"
+    RECURRENCE = "recurrence"
     ONETIME = "onetime"
     RECURRING = "recurring"
     AUDIO_EFFECT = "audio_effect"

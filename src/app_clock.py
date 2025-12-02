@@ -1,6 +1,7 @@
 import logging
 from logging import config
 import signal
+import sys
 from luma.core.device import dummy
 
 import tornado.ioloop
@@ -8,7 +9,10 @@ import tornado.ioloop
 from core.application.di_container import DIContainer
 from dependency_injector import providers
 
-from core.domain.events import AudioStreamChangedEvent, ConfigChangedEvent
+from core.domain.events import (
+    ConfigChangedEvent,
+    PlaybackChangedEvent,
+)
 from core.domain.model import (
     Mode,
 )
@@ -27,7 +31,7 @@ class ClockApp:
     def is_on_hardware(self):
         return not self.container.argument_args().software
 
-    def shutdown_function(self):
+    def shutdown_function(self, *args):
         logger.info("graceful shutdown")
         app_os.restart_spotify_daemon()
         tornado.ioloop.IOLoop.current().stop()
@@ -71,9 +75,18 @@ class ClockApp:
         self.container.hardware_input_handler()
 
         self.container.event_bus().emit(ConfigChangedEvent(config=config))
-        self.container.playback_content().playback_mode = Mode.Idle
+        self.container.event_bus().emit(PlaybackChangedEvent(Mode.Idle))
         controls.consider_failed_alarm()
         tornado.ioloop.IOLoop.current().start()
+
+        controls.scheduler_service.shutdown()
+        if self.is_on_hardware():
+            self.container.mcp_manager().close()
+        elif ci is not None:
+            ci.stop()
+
+        logger.info("shutdown complete")
+        sys.exit(0)
 
 
 if __name__ == "__main__":

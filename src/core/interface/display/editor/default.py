@@ -2,7 +2,7 @@ import logging
 from PIL import ImageFont, Image, ImageOps
 
 from core.domain.edit_mode import AlarmProperty
-from core.domain.events import AudioStreamChangedEvent
+from core.domain.events import PlaybackChangedEvent
 from core.domain.mode_coordinator import AlarmEditingService
 from core.interface.display.display_content import DisplayContent
 from core.infrastructure.event_bus import EventBus
@@ -37,7 +37,7 @@ class AlarmNamePresenter(AlarmEditorPresenter):
         super().__init__(formatter, content, position)
 
     def draw(self) -> Image.Image:
-        font = self.formatter.default_font(size=15)
+        font = self.formatter.info_font_pil(size=15)
 
         return text_to_image(
             self.get_alarm_definition().alarm_name,
@@ -55,7 +55,7 @@ class AlarmTimePresenter(AlarmEditorPresenter):
 
     def draw(self) -> Image.Image:
         machine_state = self.machine_state(AlarmEditingService)
-        font = self.formatter.default_font(size=20)
+        font = self.formatter.info_font_pil(size=20)
         alarm_def = self.get_alarm_definition()
         if machine_state is None or not machine_state.is_in_edit_mode(["hour", "min"]):
             return text_to_image(
@@ -106,7 +106,7 @@ class AlarmDatePresenter(AlarmEditorPresenter):
 
     def draw(self) -> Image.Image:
         machine_state = self.machine_state(AlarmEditingService)
-        font = self.formatter.default_font(size=15)
+        font = self.formatter.info_font_pil(size=15)
         alarm_def = self.get_alarm_definition()
         day_string = alarm_def.to_day_string()
         day_image = text_to_image(
@@ -213,12 +213,12 @@ class ClockPresenter(DefaultPresenter):
 
     def draw(self) -> Image.Image:
         if (
-            self.formatter.highly_dimmed()
+            self.formatter.be_gloomy()
             and self.formatter.alarm_clock_context.config.use_analog_clock
         ):
             return self.draw_analog_clock()
 
-        font = self.formatter.clock_font()
+        font = self.formatter.clock_font_pil()
         clock_string = self.formatter.format_dseg7_clock_string(
             GeoLocation().now(), self.content.show_blink_segment
         )
@@ -284,7 +284,7 @@ class WifiStatusPresenter(DefaultPresenter):
         no_wifi_symbol = "\U000f05aa"
         font_size = 30
         min_value = 2
-        if self.formatter.highly_dimmed():
+        if self.formatter.be_gloomy():
             no_wifi_symbol = "!"
             font_size = 15
             min_value = 1
@@ -310,9 +310,9 @@ class PlaybackTitlePresenter(ScrollingPresenter):
     ) -> None:
         super().__init__(formatter, content, 70, position)
         self.event_bus = event_bus
-        self.event_bus.on(AudioStreamChangedEvent)(self._audio_stream_changed)
+        self.event_bus.on(PlaybackChangedEvent)(self._playback_changed)
 
-    def _audio_stream_changed(self, event: AudioStreamChangedEvent):
+    def _playback_changed(self, event: PlaybackChangedEvent):
         if event.audio_stream is not None:
             self.rewind_scroller()
 
@@ -412,7 +412,7 @@ class WeatherStatusPresenter(DefaultPresenter):
         return (
             super().is_present()
             and not self.content.show_volume_meter
-            and not self.formatter.highly_dimmed()
+            and not self.formatter.be_gloomy()
             and self.content.get_is_online()
             and self.content.current_weather is not None
         )

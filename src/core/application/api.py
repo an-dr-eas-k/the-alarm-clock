@@ -6,11 +6,12 @@ import json
 import subprocess
 import traceback
 import tornado
+import tornado.ioloop
 import tornado.web
 from PIL.Image import Image
 from core.application.controls import Controls
 from core.domain.events import (
-    AudioStreamChangeRequest,
+    PlaybackChangedEvent,
     ConfigChangedEvent,
     SpotifyStreamChangeRequest,
     VolumeChangeRequest,
@@ -26,6 +27,7 @@ from core.domain.model import (
     AudioStream,
     Config,
     DisplayContentProvider,
+    Mode,
     StreamAudioEffect,
     VisualEffect,
     Weekday,
@@ -131,17 +133,26 @@ class ActionApiHandler(tornado.web.RequestHandler):
 
             if type == "play":
                 self.event_bus.emit(
-                    AudioStreamChangeRequest(self.config.get_audio_stream_by_id(id))
+                    PlaybackChangedEvent(
+                        playback_mode=Mode.Music,
+                        audio_stream=self.config.get_audio_stream_by_id(id),
+                    )
                 )
             elif type == "stop":
-                self.event_bus.emit(AudioStreamChangeRequest(None))
+                self.event_bus.emit(PlaybackChangedEvent(Mode.Idle))
             elif type == "volume":
                 if id == 1:
                     self.event_bus.emit(VolumeChangeRequest(relative=+1))
                 else:
                     self.event_bus.emit(VolumeChangeRequest(relative=-1))
             elif type == "update":
-                tornado.ioloop.IOLoop.instance().stop()
+                import threading
+
+                for thread in threading.enumerate():
+                    logger.info("Thread: %s", thread)
+
+                tornado.ioloop.IOLoop.current().stop()
+
             elif type == "reboot":
                 reboot_system()
             elif type == "shutdown":

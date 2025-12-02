@@ -5,8 +5,7 @@ import os
 import traceback
 from apscheduler.job import Job
 from core.domain.events import (
-    AudioStreamChangeRequest,
-    AudioStreamChangedEvent,
+    PlaybackChangedEvent,
     ConfigChangedEvent,
     ForcedDisplayUpdateEvent,
     SpeakerErrorEvent,
@@ -15,7 +14,6 @@ from core.domain.events import (
     AlarmTriggeredEvent,
     AlarmStoppedEvent,
     SunEventOccurredEvent,
-    VolumeChangeRequest,
     VolumeChangedEvent,
     WifiStatusChangedEvent,
 )
@@ -189,8 +187,7 @@ class Controls:
         ):
             audio_stream = self.playback_content.audio_stream
 
-        self.playback_content.playback_mode = Mode.Music
-        self.event_bus.emit(AudioStreamChangeRequest(audio_stream))
+        self.event_bus.emit(PlaybackChangedEvent(Mode.Music, audio_stream))
 
     def _spotify_stream_change_request(self, spotify_event: SpotifyStreamChangeRequest):
 
@@ -202,8 +199,7 @@ class Controls:
             spotify_event.is_playback_started()
             and self.playback_content.playback_mode != Mode.Spotify
         ):
-            self.playback_content.playback_mode = Mode.Spotify
-            self.event_bus.emit(AudioStreamChangedEvent(spotify_stream))
+            self.event_bus.emit(PlaybackChangedEvent(Mode.Spotify, spotify_stream))
 
         if (
             spotify_event.is_playback_stopped()
@@ -219,9 +215,13 @@ class Controls:
 
     def _alarm_triggered(self, _: AlarmTriggeredEvent = None):
         audio_effect = self._get_appropriate_audio_effect()
-        self.playback_content.playback_mode = Mode.Alarm
-        self.event_bus.emit(VolumeChangeRequest(absolute=audio_effect.volume))
-        self.event_bus.emit(AudioStreamChangeRequest(audio_effect.audio_stream))
+        self.event_bus.emit(
+            PlaybackChangedEvent(
+                Mode.Alarm,
+                audio_effect.audio_stream,
+                absolute_volume=audio_effect.volume,
+            )
+        )
 
     def _set_to_idle_mode(self, alarm_stopped_reason: str = None):
         if self.playback_content.playback_mode == Mode.Idle:
@@ -235,8 +235,7 @@ class Controls:
         self.scheduler_service.stop_generic_trigger(
             SchedulerJobIds.hide_volume_meter.value
         )
-        self.playback_content.playback_mode = Mode.Idle
-        self.event_bus.emit(AudioStreamChangeRequest(None))
+        self.event_bus.emit(PlaybackChangedEvent(Mode.Idle))
 
         if was_alarm:
             self.event_bus.emit(
@@ -266,8 +265,8 @@ class Controls:
         if self.playback_content.playback_mode == Mode.Alarm:
             logger.warning("alarm error occurred: continuing with offline stream")
             self.event_bus.emit(
-                AudioStreamChangeRequest(
-                    self.alarm_clock_context.config.get_offline_stream()
+                PlaybackChangedEvent(
+                    Mode.Alarm, self.alarm_clock_context.config.get_offline_stream()
                 )
             )
         else:
@@ -288,7 +287,6 @@ class Controls:
             if self.display_content.update_presentation_state(
                 show_blink_segment=new_blink_state,
                 room_brightness=RoomBrightness(self.get_room_brightness()),
-                is_scrolling=self.display_content.is_scrolling,
             ):
                 self.event_bus.emit(ForcedDisplayUpdateEvent(suppress_logging=True))
 
@@ -299,16 +297,17 @@ class Controls:
             self._update_weather_status()
             if self.playback_content.playback_mode == Mode.Alarm:
                 self.event_bus.emit(
-                    AudioStreamChangeRequest(
-                        self.alarm_clock_context.active_alarm_definition.audio_effect.audio_stream
+                    PlaybackChangedEvent(
+                        Mode.Alarm,
+                        self.alarm_clock_context.active_alarm_definition.audio_effect.audio_stream,
                     )
                 )
         else:
             self.alarm_clock_context.environment.current_weather = None
             if self.playback_content.playback_mode == Mode.Alarm:
                 self.event_bus.emit(
-                    AudioStreamChangeRequest(
-                        self.alarm_clock_context.config.get_offline_stream()
+                    PlaybackChangedEvent(
+                        Mode.Alarm, self.alarm_clock_context.config.get_offline_stream()
                     )
                 )
 

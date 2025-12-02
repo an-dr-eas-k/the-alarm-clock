@@ -6,7 +6,7 @@ import subprocess
 import threading
 
 from core.domain.events import (
-    AudioStreamChangedEvent,
+    PlaybackChangedEvent,
     SpeakerErrorEvent,
 )
 from core.domain.model import (
@@ -152,9 +152,9 @@ class Speaker:
     ) -> None:
         self.threadLock = threading.Lock()
         self.event_bus = event_bus
-        self.event_bus.on(AudioStreamChangedEvent)(self._audio_stream_changed)
+        self.event_bus.on(PlaybackChangedEvent)(self._playback_changed)
 
-    def _audio_stream_changed(self, event: AudioStreamChangedEvent):
+    def _playback_changed(self, event: PlaybackChangedEvent):
         if isinstance(event.audio_stream, SpotifyStream):
             self.adjust_streaming(None)
             return
