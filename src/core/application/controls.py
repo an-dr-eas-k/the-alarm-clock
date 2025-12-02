@@ -287,7 +287,6 @@ class Controls:
             if self.display_content.update_presentation_state(
                 show_blink_segment=new_blink_state,
                 room_brightness=RoomBrightness(self.get_room_brightness()),
-                is_scrolling=self.display_content.is_scrolling,
             ):
                 self.event_bus.emit(ForcedDisplayUpdateEvent(suppress_logging=True))
 

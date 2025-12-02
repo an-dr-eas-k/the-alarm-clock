@@ -145,12 +145,22 @@ class ClockWidget(QtWidgets.QWidget):
 
 
 class ScrollingLabel(QtWidgets.QWidget):
-    def __init__(self, text, font_family, font_size, color, start_time, speed=30):
+    def __init__(
+        self,
+        text,
+        font_family,
+        font_size,
+        color,
+        start_time,
+        display_content: DisplayContent,
+        speed=30,
+    ):
         super().__init__()
         self.text = text
         self.font_obj = QtGui.QFont(font_family, font_size)
         self.color = QtGui.QColor(color)
         self.start_time = start_time
+        self.display_content = display_content
         self.speed = speed
         self.setSizePolicy(
             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
@@ -183,6 +193,10 @@ class ScrollingLabel(QtWidgets.QWidget):
                 self.text,
             )
         else:
+            # DDD Note: Updating the ViewModel (DisplayContent) from the View (ScrollingLabel)
+            # is acceptable within the Interface Layer to signal presentation requirements (refresh rate).
+            self.display_content.is_scrolling = True
+
             elapsed = time.time() - self.start_time
 
             # Add a pause at the beginning
@@ -422,6 +436,7 @@ class Display(DisplayContentProvider):
                 12,
                 fg_color,
                 self._playback_title_scroll_start_time,
+                self.display_content,
             )
             playback_layout.addWidget(playback_label)
 
@@ -649,6 +664,9 @@ class Display(DisplayContentProvider):
 
     def draw_widget(self) -> Image.Image:
         self.formatter.update_formatter()
+        # Reset scrolling state; widgets will set it to True if they need high refresh rate
+        self.display_content.is_scrolling = False
+
         self.widget = QtWidgets.QFrame()
         self.widget.setFixedSize(self.device.width, self.device.height)
 
