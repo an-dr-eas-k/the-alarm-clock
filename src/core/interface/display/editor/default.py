@@ -213,7 +213,7 @@ class ClockPresenter(DefaultPresenter):
 
     def draw(self) -> Image.Image:
         if (
-            self.formatter.highly_dimmed()
+            self.formatter.be_gloomy()
             and self.formatter.alarm_clock_context.config.use_analog_clock
         ):
             return self.draw_analog_clock()
@@ -284,7 +284,7 @@ class WifiStatusPresenter(DefaultPresenter):
         no_wifi_symbol = "\U000f05aa"
         font_size = 30
         min_value = 2
-        if self.formatter.highly_dimmed():
+        if self.formatter.be_gloomy():
             no_wifi_symbol = "!"
             font_size = 15
             min_value = 1
@@ -412,7 +412,7 @@ class WeatherStatusPresenter(DefaultPresenter):
         return (
             super().is_present()
             and not self.content.show_volume_meter
-            and not self.formatter.highly_dimmed()
+            and not self.formatter.be_gloomy()
             and self.content.get_is_online()
             and self.content.current_weather is not None
         )

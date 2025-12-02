@@ -470,7 +470,7 @@ class Display(DisplayContentProvider):
         layout.addLayout(info_layout, stretch=1)
 
     def _draw_default_view(self, layout: QtWidgets.QHBoxLayout):
-        if not self.formatter.highly_dimmed():
+        if not self.formatter.be_gloomy():
             self._draw_dimmed_content(layout)
         else:
             self._draw_normal_content(layout)

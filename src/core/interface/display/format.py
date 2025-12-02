@@ -34,7 +34,7 @@ class DisplayFormatter:
         self.alarm_clock_context = alarm_clock_context
 
     def clock_font_pil(self, size: int = 50):
-        if self.highly_dimmed():
+        if self.be_gloomy():
             return PresentationFont.get_font(PresentationFont.light_clock_font, 20)
         return PresentationFont.get_font(PresentationFont.bold_clock_font, size)
 
@@ -56,11 +56,11 @@ class DisplayFormatter:
         font_family = PresentationFont.get_font_family(PresentationFont.weather_font)
         return QtGui.QFont(font_family, size, QtGui.QFont.Normal)
 
-    def highly_dimmed(self):
+    def be_gloomy(self):
         return (
             True
             and self.display_content.room_brightness.is_highly_dimmed
-            and self.display_content.playback_content.playback_mode != Mode.Idle
+            and self.display_content.playback_content.playback_mode == Mode.Idle
         )
 
     def update_formatter(self):
@@ -196,7 +196,7 @@ class DisplayFormatter:
         return dseg7
 
     def postprocess_image(self, im: Image.Image) -> Image.Image:
-        if self.highly_dimmed():
+        if self.be_gloomy():
             fg_color = self.foreground_color(color_type=ColorType.IN256)
             bg_color = self.background_color(color_type=ColorType.IN256)
 
