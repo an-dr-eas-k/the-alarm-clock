@@ -146,7 +146,13 @@ class ActionApiHandler(tornado.web.RequestHandler):
                 else:
                     self.event_bus.emit(VolumeChangeRequest(relative=-1))
             elif type == "update":
+                import threading
+
+                for thread in threading.enumerate():
+                    logger.info("Thread: %s", thread)
+
                 tornado.ioloop.IOLoop.current().stop()
+
             elif type == "reboot":
                 reboot_system()
             elif type == "shutdown":
