@@ -275,7 +275,7 @@ class Display(DisplayContentProvider):
                 draw.text((20, 20), f"exception!\n({e})", fill="white")
 
         update_duration_ms = (GeoLocation().now() - start_time).total_seconds() * 1000
-        logger.debug("refreshed display in %dms", int(update_duration_ms))
+        logger.info("refreshed display in %dms", int(update_duration_ms))
 
         if (
             True
