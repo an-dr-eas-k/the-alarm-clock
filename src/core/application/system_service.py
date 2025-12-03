@@ -1,5 +1,6 @@
 import datetime
 import logging
+from timeit import timeit
 from core.application.controls import safe_action
 from core.domain.events import (
     ForcedDisplayUpdateEvent,
@@ -181,13 +182,19 @@ class SystemService:
                 show_blink_segment=new_blink_state,
                 room_brightness=RoomBrightness(self.get_room_brightness()),
             ):
-                self.event_bus.emit(
-                    ForcedDisplayUpdateEvent(
-                        suppress_logging=False,
+                self.display_content.refresh_duration_in_ms = int(
+                    timeit(
+                        lambda: self.event_bus.emit(
+                            ForcedDisplayUpdateEvent(
+                                suppress_logging=True,
+                            )
+                        ),
+                        number=1,
                     )
+                    * 1000
                 )
 
-        safe_action(do, "regular display update", logger=logger)
+        safe_action(do, debug_msg="regular display update", logger=logger)
 
     def get_room_brightness(self):
         return self.brightness_sensor.get_room_brightness()

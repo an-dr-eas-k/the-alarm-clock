@@ -342,6 +342,7 @@ class Api:
                     background_color=self.display.formatter.background_color(
                         color_type=ColorType.IN16
                     ),
+                    refresh_duration_in_ms=self.controls.display_content.refresh_duration_in_ms,
                 ),
                 is_online=self.controls.alarm_clock_context.environment.is_online,
                 is_daytime=self.controls.alarm_clock_context.environment.is_daytime,

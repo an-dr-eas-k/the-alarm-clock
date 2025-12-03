@@ -35,6 +35,7 @@ class DisplayContent:
     show_blink_segment: bool = True
     room_brightness: RoomBrightness = None
     is_scrolling: bool = False
+    refresh_duration_in_ms: int = None
 
     def __init__(
         self,

@@ -677,9 +677,7 @@ class Display(DisplayContentProvider):
         return pil_image
 
     def refresh(self):
-        # logger.debug("refreshing display...")
-        logger.info("draw_widget: %sms", timeit(self.draw_widget, number=1) * 1000)
-        # self.draw_widget()
+        logger.debug("draw_widget: %sms", timeit(self.draw_widget, number=1) * 1000)
         self.current_display_image = self.formatter.postprocess_image(
             self.grab_widget_image()
         )
