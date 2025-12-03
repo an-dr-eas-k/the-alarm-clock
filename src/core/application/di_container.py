@@ -13,6 +13,7 @@ from core.application.api import Api
 from core.infrastructure.audio import Speaker
 from core.application.controls import Controls
 from core.application.system_service import SystemService
+from core.application.cast_service import CastService
 from core.infrastructure.persistence import Persistence
 from core.infrastructure.event_bus import EventBus
 from resources.resources import config_file
@@ -113,6 +114,11 @@ class DIContainer(containers.DeclarativeContainer):
         event_bus=event_bus,
         display_content=display_content,
         brightness_sensor=brightness_sensor,
+    )
+
+    cast_service = providers.Singleton(
+        CastService,
+        event_bus=event_bus,
     )
 
     controls = providers.Singleton(

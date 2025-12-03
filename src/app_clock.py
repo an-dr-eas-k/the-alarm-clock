@@ -63,6 +63,8 @@ class ClockApp:
 
         controls: Controls = self.container.controls()
         self.container.system_service()
+        cast_service = self.container.cast_service()
+        cast_service.start_cast_receiver()
         if ci is not None:
             ci.configure(controls)
 
@@ -81,6 +83,7 @@ class ClockApp:
         tornado.ioloop.IOLoop.current().start()
 
         controls.scheduler_service.shutdown()
+        cast_service.stop_cast_receiver()
         if self.is_on_hardware():
             self.container.mcp_manager().close()
         elif ci is not None:
