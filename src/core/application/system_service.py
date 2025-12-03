@@ -188,18 +188,11 @@ class SystemService:
                         suppress_logging=True,
                     )
                 )
-                # self.display_content.refresh_duration_in_ms = int(
-                #     (GeoLocation().now() - start_time).total_seconds() * 1000
-                # )
+                self.display_content.refresh_duration_in_ms = int(
+                    (GeoLocation().now() - start_time).total_seconds() * 1000
+                )
 
         safe_action(do, debug_msg="regular display update", logger=logger)
 
     def get_room_brightness(self):
-        start_time = GeoLocation().now()
-
-        rb = self.brightness_sensor.get_room_brightness()
-
-        self.display_content.refresh_duration_in_ms = int(
-            (GeoLocation().now() - start_time).total_seconds() * 1000
-        )
-        return rb
+        return self.brightness_sensor.get_room_brightness()
