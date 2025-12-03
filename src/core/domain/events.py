@@ -140,7 +140,6 @@ class AlarmPropertyValueSelectedEvent(BaseEvent):
 @dataclass(frozen=True)
 class ForcedDisplayUpdateEvent(BaseEvent):
     suppress_logging: bool = False
-    max_display_update_duration_ms: int = 1000
 
 
 @dataclass(frozen=True)

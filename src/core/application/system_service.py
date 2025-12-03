@@ -63,7 +63,7 @@ class SystemService:
             trigger="interval",
             start_date=datetime.datetime.today(),
             seconds=self.alarm_clock_context.config.refresh_timeout_in_secs,
-            id="display_interval",
+            id=SchedulerJobIds.regular_display_refresh.value,
             jobstore=SchedulerStores.default.value,
         )
 
@@ -71,7 +71,7 @@ class SystemService:
             self._update_wifi_status,
             trigger="interval",
             seconds=60,
-            id="wifi_check_interval",
+            id=SchedulerJobIds.wifi_check.value,
             jobstore=SchedulerStores.default.value,
         )
 
@@ -79,7 +79,7 @@ class SystemService:
             self._update_weather_status,
             trigger="interval",
             minutes=5,
-            id="weather_check_interval",
+            id=SchedulerJobIds.weather_update_interval.value,
             jobstore=SchedulerStores.default.value,
         )
 
@@ -185,14 +185,13 @@ class SystemService:
                 self.event_bus.emit(
                     ForcedDisplayUpdateEvent(
                         suppress_logging=True,
-                        max_display_update_duration_ms=(
-                            self.alarm_clock_context.config.refresh_timeout_in_secs
-                            * 900
-                        ),
                     )
                 )
 
+        start_time = GeoLocation().now()
         save_action(do, debug="regular display update", logger=logger)
+        update_duration_ms = (GeoLocation().now() - start_time).total_seconds() * 1000
+        logger.info("refreshed display in %dms", int(update_duration_ms))
 
     def get_room_brightness(self):
         return self.brightness_sensor.get_room_brightness()

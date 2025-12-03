@@ -260,12 +260,10 @@ class Display(DisplayContentProvider):
         self.device.clear()
         self.safe_refresh_display()
 
-    def _handle_forced_display_update_event(self, event: ForcedDisplayUpdateEvent):
-        self.safe_refresh_display(event.max_display_update_duration_ms)
+    def _handle_forced_display_update_event(self, _: ForcedDisplayUpdateEvent = None):
+        self.safe_refresh_display()
 
-    def safe_refresh_display(self, max_display_update_duration_ms: int = None):
-
-        start_time = GeoLocation().now()
+    def safe_refresh_display(self):
 
         try:
             self.refresh()
@@ -273,20 +271,6 @@ class Display(DisplayContentProvider):
             logger.error("%s", traceback.format_exc())
             with canvas(self.device) as draw:
                 draw.text((20, 20), f"exception!\n({e})", fill="white")
-
-        update_duration_ms = (GeoLocation().now() - start_time).total_seconds() * 1000
-        logger.info("refreshed display in %dms", int(update_duration_ms))
-
-        if (
-            True
-            and max_display_update_duration_ms is not None
-            and update_duration_ms > max_display_update_duration_ms
-        ):
-            logger.warning(
-                "display update took %dms which exceeds the max of %dms",
-                update_duration_ms,
-                max_display_update_duration_ms,
-            )
 
     def _draw_dimmed_content(self, layout: QtWidgets.QHBoxLayout):
         now = GeoLocation().now()
