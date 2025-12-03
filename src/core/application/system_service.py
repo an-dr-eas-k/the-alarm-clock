@@ -172,7 +172,7 @@ class SystemService:
     def _emit_regular_display_update(self):
         def do():
             start_time = GeoLocation().now()
-            current_second = GeoLocation().now().second
+            current_second = start_time.second
             new_blink_state = self.display_content.show_blink_segment
 
             if self._previous_second != current_second:
@@ -188,11 +188,18 @@ class SystemService:
                         suppress_logging=True,
                     )
                 )
-                self.display_content.refresh_duration_in_ms = int(
-                    (GeoLocation().now() - start_time).total_seconds() * 1000
-                )
+                # self.display_content.refresh_duration_in_ms = int(
+                #     (GeoLocation().now() - start_time).total_seconds() * 1000
+                # )
 
         safe_action(do, debug_msg="regular display update", logger=logger)
 
     def get_room_brightness(self):
-        return self.brightness_sensor.get_room_brightness()
+        start_time = GeoLocation().now()
+
+        rb = self.brightness_sensor.get_room_brightness()
+
+        self.display_content.refresh_duration_in_ms = int(
+            (GeoLocation().now() - start_time).total_seconds() * 1000
+        )
+        return rb
