@@ -187,7 +187,7 @@ class SystemService:
                     )
                 )
 
-        safe_action(do, debug_msg="regular display update", logger=logger)
+        safe_action(do, "regular display update", logger=logger)
 
     def get_room_brightness(self):
         return self.brightness_sensor.get_room_brightness()

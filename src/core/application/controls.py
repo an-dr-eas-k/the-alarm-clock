@@ -37,14 +37,14 @@ logger = logging.getLogger("tac.core.application.controls")
 
 
 def safe_action(
-    action, info: str = None, debug: str = None, logger: logging.Logger = None
+    action, info_msg: str = None, debug_msg: str = None, logger: logging.Logger = None
 ):
     try:
         if logger:
-            if debug:
-                logger.debug(debug)
-            if info:
-                logger.info(info)
+            if debug_msg:
+                logger.debug(debug_msg)
+            if info_msg:
+                logger.info(info_msg)
         else:
             raise ValueError("logger must be provided to save_action")
         action()

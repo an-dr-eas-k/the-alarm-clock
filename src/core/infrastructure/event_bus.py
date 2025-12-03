@@ -2,11 +2,13 @@ from datetime import datetime
 import logging
 from timeit import timeit
 from typing import Callable, Dict, List, Type
+from dataclasses import dataclass
 
 
 logger = logging.getLogger("tac.core.infrastructure.event_bus")
 
 
+@dataclass(frozen=True, kw_only=True)
 class BaseEvent:
     suppress_logging: bool = False
 
@@ -48,16 +50,23 @@ class EventBus:
         handler_times = {}
         for handler in handlers:
             try:
-                handler_times[handler] = timeit(lambda: handler(event), number=1) * 1000
+                handler_name = (
+                    f"{handler.__func__.__qualname__}"
+                    if hasattr(handler, "__func__")
+                    else handler.__name__
+                )
+                handler_times[handler_name] = (
+                    timeit(lambda: handler(event), number=1) * 1000
+                )
             except Exception as e:
                 logger.error(
-                    f"Error in handler {handler.__name__} for {event_type.__name__}: {e}",
+                    f"Error in handler {handler_name} for {event_type.__name__}: {e}",
                     exc_info=True,
                 )
         if not suppress_logging:
             msg = f"Emitted {event_type.__name__} to {len(handlers)} handler(s) with execution times:"
             for handler, exec_time in handler_times.items():
-                msg += f"\n - {f"{handler.__name__}: {exec_time:.2f} ms"}"
+                msg += f"\n - {f"{handler}: {exec_time:.2f} ms"}"
             logger.info(msg)
 
     def emit_all(self, events: List[BaseEvent]):
