@@ -50,7 +50,7 @@ class DisplayFormatter:
         return PresentationFont.get_font(PresentationFont.info_font, size)
 
     def info_font(self, size: int = 18, weight: int = QtGui.QFont.Weight.Normal):
-        font_family = PresentationFont.get_font_family(PresentationFont.info_font)
+        font_family = PresentationFont.get_font_family(PresentationFont.roboto_font)
         return QtGui.QFont(font_family, size, weight)
 
     def weather_font_pil(self, size: int = 18):
