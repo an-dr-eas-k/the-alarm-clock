@@ -182,16 +182,14 @@ class SystemService:
                 show_blink_segment=new_blink_state,
                 room_brightness=RoomBrightness(self.get_room_brightness()),
             ):
-                self.display_content.refresh_duration_in_ms = int(
-                    timeit(
-                        lambda: self.event_bus.emit(
-                            ForcedDisplayUpdateEvent(
-                                suppress_logging=True,
-                            )
-                        ),
-                        number=1,
+                start_time = GeoLocation().now()
+                self.event_bus.emit(
+                    ForcedDisplayUpdateEvent(
+                        suppress_logging=True,
                     )
-                    * 1000
+                )
+                self.display_content.refresh_duration_in_ms = int(
+                    (GeoLocation().now() - start_time).total_seconds() * 1000
                 )
 
         safe_action(do, debug_msg="regular display update", logger=logger)
