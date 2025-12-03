@@ -171,6 +171,7 @@ class SystemService:
 
     def _emit_regular_display_update(self):
         def do():
+            start_time = GeoLocation().now()
             current_second = GeoLocation().now().second
             new_blink_state = self.display_content.show_blink_segment
 
@@ -182,7 +183,6 @@ class SystemService:
                 show_blink_segment=new_blink_state,
                 room_brightness=RoomBrightness(self.get_room_brightness()),
             ):
-                start_time = GeoLocation().now()
                 self.event_bus.emit(
                     ForcedDisplayUpdateEvent(
                         suppress_logging=True,
