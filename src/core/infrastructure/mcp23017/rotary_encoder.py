@@ -13,7 +13,7 @@ from core.infrastructure.i2c_devices import (
 import logging
 
 
-logger = logging.getLogger("tac.mcp_rotary_encoder")
+logger = logging.getLogger("tac.core.infrastructure.mcp.rotary_encoder")
 
 
 class RotaryEncoderManager:

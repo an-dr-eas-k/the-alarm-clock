@@ -24,7 +24,7 @@ from utils.geolocation import GeoLocation
 
 from resources.resources import weather_icons_dir
 
-logger = logging.getLogger("tac.display.default")
+logger = logging.getLogger("tac.core.interface.display.editor.default")
 
 
 class AlarmNamePresenter(AlarmEditorPresenter):

@@ -13,7 +13,7 @@ from core.application.controls import Controls
 from core.domain.events import (
     PlaybackChangedEvent,
     ConfigChangedEvent,
-    SpotifyStreamChangeRequest,
+    SpotifyApiEvent,
     VolumeChangeRequest,
 )
 from core.infrastructure.event_bus import EventBus
@@ -34,7 +34,7 @@ from core.domain.model import (
 )
 from utils.os import reboot_system, shutdown_system
 
-logger = logging.getLogger("tac.api")
+logger = logging.getLogger("tac.core.application.api")
 
 
 def try_update(object, property_name: str, value: str) -> bool:
@@ -82,7 +82,7 @@ class LibreSpotifyEventHandler(tornado.web.RequestHandler):
                 key: value for key, value in spotify_event_payload.items()
             }
 
-            spotify_event = SpotifyStreamChangeRequest(spotify_event_dict)
+            spotify_event = SpotifyApiEvent(spotify_event_dict)
             logger.info("received librespotify event %s", spotify_event)
             self.event_bus.emit(spotify_event)
         except Exception:

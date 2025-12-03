@@ -17,7 +17,7 @@ from utils.drawing import (
 from core.interface.display.format import DisplayFormatter
 from utils.extensions import T
 
-logger = logging.getLogger("tac.display")
+logger = logging.getLogger("tac.core.interface.display.presenter")
 
 
 class Presenter(ComposableImage):

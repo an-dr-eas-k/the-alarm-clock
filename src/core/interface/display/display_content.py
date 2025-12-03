@@ -25,7 +25,7 @@ from core.domain.events import (
 
 import logging
 
-logger = logging.getLogger("tac.interface.display")
+logger = logging.getLogger("tac.core.interface.display.display_content")
 
 
 class DisplayContent:
@@ -54,7 +54,7 @@ class DisplayContent:
     # ========== Event Handlers ==========
 
     def _playback_changed(self, event: PlaybackChangedEvent):
-        if event.audio_stream is None:
+        if event.playback_mode == Mode.Idle:
             self.hide_volume_meter()
         self.event_bus.emit(ForcedDisplayUpdateEvent())
 

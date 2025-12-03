@@ -20,7 +20,7 @@ from core.domain.model import (
 from core.infrastructure.event_bus import EventBus
 from resources.resources import init_logging, default_volume
 
-logger = logging.getLogger("tac.audio")
+logger = logging.getLogger("tac.core.infrastructure.audio")
 
 
 class MediaPlayer:

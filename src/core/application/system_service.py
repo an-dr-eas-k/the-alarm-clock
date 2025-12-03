@@ -1,10 +1,13 @@
 import datetime
 import logging
 import traceback
+from core.application.controls import save_action
 from core.domain.events import (
     ForcedDisplayUpdateEvent,
     PlaybackChangedEvent,
+    SpotifyStoppedEvent,
     SunEventOccurredEvent,
+    VolumeChangedEvent,
     WifiStatusChangedEvent,
     AlarmTriggeredEvent,
     AlarmStoppedEvent,
@@ -23,7 +26,7 @@ from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon
 
-logger = logging.getLogger("tac.system_service")
+logger = logging.getLogger("tac.core.application.system_service")
 
 
 class SystemService:
@@ -47,6 +50,8 @@ class SystemService:
         self.event_bus.on(AlarmTriggeredEvent)(self.handle_alarm_triggered)
         self.event_bus.on(AlarmStoppedEvent)(self.handle_alarm_stopped)
         self.event_bus.on(PlaybackChangedEvent)(self.handle_playback_changed)
+        self.event_bus.on(SpotifyStoppedEvent)(self.handle_spotify_stopped)
+        self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
 
         self._update_weather_status()
         self._add_scheduler_jobs()
@@ -101,20 +106,29 @@ class SystemService:
             jobstore=SchedulerStores.default.value,
         )
 
-    def handle_playback_changed(self, event: PlaybackChangedEvent):
-        if (
-            True
-            and event.playback_mode != Mode.Spotify
-            and self.display_content.playback_content.playback_mode == Mode.Spotify
-        ):
-            restart_spotify_daemon()
+    def handle_spotify_stopped(self, _: SpotifyStoppedEvent):
+        restart_spotify_daemon()
 
-        self.scheduler_service.stop_generic_trigger(
-            SchedulerJobIds.hide_volume_meter.value
+    def _volume_changed(self, _: VolumeChangedEvent):
+        self.start_hide_volume_meter_trigger()
+
+    def start_hide_volume_meter_trigger(self):
+        self.scheduler_service.start_generic_trigger(
+            SchedulerJobIds.hide_volume_meter.value,
+            datetime.timedelta(seconds=5),
+            func=self.display_content.hide_volume_meter,
         )
 
+    def handle_playback_changed(self, event: PlaybackChangedEvent):
+        if event.playback_mode == Mode.Idle:
+            self.scheduler_service.stop_generic_trigger(
+                SchedulerJobIds.hide_volume_meter.value
+            )
+
     def handle_alarm_stopped(self, _: AlarmStoppedEvent):
-        self.scheduler_service.stop_generic_trigger(SchedulerJobIds.ensure_stable_wifi)
+        self.scheduler_service.stop_generic_trigger(
+            SchedulerJobIds.ensure_stable_wifi.value
+        )
 
     def handle_wifi_status_changed(self, event: WifiStatusChangedEvent):
         if event.is_online:
@@ -132,7 +146,7 @@ class SystemService:
             logger.info("weather updating: %s", new_weather)
             self.alarm_clock_context.environment.current_weather = new_weather
 
-        self._action(do)
+        save_action(do, "updating weather status", logger=logger)
 
     def _update_wifi_status(self):
         def do():
@@ -145,7 +159,7 @@ class SystemService:
             self.event_bus.emit(WifiStatusChangedEvent(is_online))
             self.alarm_clock_context.environment.is_online = is_online
 
-        self._action(do)
+        save_action(do, "updating wifi status", logger=logger)
 
     def _sun_event_occured(self, event: SunEvent):
         def do():
@@ -153,11 +167,10 @@ class SystemService:
             self.alarm_clock_context.environment.is_daytime = event == SunEvent.sunrise
             self.init_sun_event_scheduler(event)
 
-        self._action(do, "sun event %s" % event)
+        save_action(do, "sun event %s" % event, logger=logger)
 
     def _emit_regular_display_update(self):
         def do():
-            logger.debug("update display")
             current_second = GeoLocation().now().second
             new_blink_state = self.display_content.show_blink_segment
 
@@ -169,17 +182,17 @@ class SystemService:
                 show_blink_segment=new_blink_state,
                 room_brightness=RoomBrightness(self.get_room_brightness()),
             ):
-                self.event_bus.emit(ForcedDisplayUpdateEvent(suppress_logging=True))
+                self.event_bus.emit(
+                    ForcedDisplayUpdateEvent(
+                        suppress_logging=True,
+                        max_display_update_duration_ms=(
+                            self.alarm_clock_context.config.refresh_timeout_in_secs
+                            * 900
+                        ),
+                    )
+                )
 
-        self._action(do)
+        save_action(do, debug="regular display update", logger=logger)
 
     def get_room_brightness(self):
         return self.brightness_sensor.get_room_brightness()
-
-    def _action(self, action, info: str = None):
-        try:
-            if info:
-                logger.info(info)
-            action()
-        except:
-            logger.error("%s", traceback.format_exc())

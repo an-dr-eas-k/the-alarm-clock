@@ -11,7 +11,7 @@ from core.infrastructure.i2c_devices import (
 )
 import logging
 
-logger = logging.getLogger("tac.mcp_buttons")
+logger = logging.getLogger("tac.core.infrastructure.mcp.buttons")
 
 
 class ButtonsManager:

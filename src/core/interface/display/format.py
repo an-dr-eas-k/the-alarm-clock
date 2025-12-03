@@ -12,7 +12,7 @@ from core.interface.display.display_content import DisplayContent
 from utils.drawing import PresentationFont, grayscale_to_color
 from utils.extensions import respect_ranges
 
-logger = logging.getLogger("tac.display")
+logger = logging.getLogger("tac.core.interface.display.format")
 
 
 class ColorType(Enum):

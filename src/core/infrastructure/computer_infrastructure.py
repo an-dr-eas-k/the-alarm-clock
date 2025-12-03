@@ -13,7 +13,7 @@ from core.infrastructure.events_infrastructure import (
     RotaryDirection,
 )
 
-logger = logging.getLogger("tac.keyboard_buttons")
+logger = logging.getLogger("tac.core.infrastructure.keyboard_buttons")
 
 
 class ComputerInfrastructure(IBrightnessSensor):

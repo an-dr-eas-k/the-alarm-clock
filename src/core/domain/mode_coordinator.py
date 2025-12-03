@@ -22,7 +22,7 @@ from utils.geolocation import GeoLocation
 if TYPE_CHECKING:
     from core.domain.model import Config
 
-logger = logging.getLogger("tac.mode_coordinator")
+logger = logging.getLogger("tac.core.domain.mode_coordinator")
 
 
 class ModeName(Enum):

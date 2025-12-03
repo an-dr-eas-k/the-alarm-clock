@@ -8,7 +8,7 @@ from core.domain.model import AlarmDefinition, Config, StreamAudioEffect, Weekda
 
 from datetime import datetime, timedelta
 
-logger = logging.getLogger("tac.alarm_definition_properties")
+logger = logging.getLogger("tac.core.interface.display.editor.alarm_definition_editor")
 
 
 class EditableProperty:

@@ -26,7 +26,7 @@ class I2CManager:
         self.i2c = busio.I2C(board.SCL, board.SDA)
 
 
-logger = logging.getLogger("tac.mcp")
+logger = logging.getLogger("tac.core.infrastructure.mcp")
 
 
 class MCPManager:

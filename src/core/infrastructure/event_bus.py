@@ -1,13 +1,9 @@
-"""Event bus for dispatching domain events to registered handlers."""
-
 from datetime import datetime
 import logging
 from typing import Callable, Dict, List, Type
-import uuid
 
-from attrs import field
 
-logger = logging.getLogger("tac.event_bus")
+logger = logging.getLogger("tac.core.infrastructure.event_bus")
 
 
 class BaseEvent:

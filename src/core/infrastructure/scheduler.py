@@ -13,7 +13,7 @@ from core.domain.events import ConfigChangedEvent
 from utils.extensions import get_job_arg
 from utils.geolocation import GeoLocation
 
-logger = logging.getLogger("tac.scheduler")
+logger = logging.getLogger("tac.core.infrastructure.scheduler")
 
 
 class SchedulerStores(Enum):

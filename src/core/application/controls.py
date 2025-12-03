@@ -1,5 +1,4 @@
 import datetime
-from enum import Enum
 import logging
 import os
 import traceback
@@ -8,7 +7,7 @@ from core.domain.events import (
     PlaybackChangedEvent,
     ConfigChangedEvent,
     SpeakerErrorEvent,
-    SpotifyStreamChangeRequest,
+    SpotifyApiEvent,
     ToggleAudioRequest,
     AlarmTriggeredEvent,
     AlarmStoppedEvent,
@@ -34,7 +33,23 @@ from core.infrastructure.scheduler import SchedulerService, SchedulerStores
 from utils.network import is_internet_available
 from resources.resources import active_alarm_definition_file
 
-logger = logging.getLogger("tac.controls")
+logger = logging.getLogger("tac.core.application.controls")
+
+
+def save_action(
+    action, info: str = None, debug: str = None, logger: logging.Logger = None
+):
+    try:
+        if logger:
+            if debug:
+                logger.debug(debug)
+            if info:
+                logger.info(info)
+        else:
+            raise ValueError("logger must be provided to save_action")
+        action()
+    except:
+        logger.error("%s", traceback.format_exc())
 
 
 class Controls:
@@ -58,15 +73,12 @@ class Controls:
         self.event_bus = event_bus
         self.scheduler_service = scheduler_service
         self.event_bus.on(ToggleAudioRequest)(self._toggle_stream)
-        self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
         self.event_bus.on(WifiStatusChangedEvent)(self._wifi_status_changed)
         self.event_bus.on(ConfigChangedEvent)(self._config_changed)
         self.event_bus.on(AlarmTriggeredEvent)(self._alarm_triggered)
         self.event_bus.on(AlarmStoppedEvent)(self._alarm_stopped_event)
         self.event_bus.on(SpeakerErrorEvent)(self._handle_speaker_error)
-        self.event_bus.on(SpotifyStreamChangeRequest)(
-            self._spotify_stream_change_request
-        )
+        self.event_bus.on(SpotifyApiEvent)(self._spotify_stream_change_request)
 
     def consider_failed_alarm(self):
         if os.path.exists(active_alarm_definition_file):
@@ -76,13 +88,6 @@ class Controls:
             ad.id = -1
             logger.info("failed audioeffect found %s", ad.alarm_name)
             self._ring_alarm(ad)
-
-    def start_hide_volume_meter_trigger(self):
-        self.scheduler_service.start_generic_trigger(
-            SchedulerJobIds.hide_volume_meter.value,
-            datetime.timedelta(seconds=5),
-            func=self.display_content.hide_volume_meter,
-        )
 
     def _config_changed(self, event: ConfigChangedEvent):
         config: Config = event.config
@@ -104,24 +109,10 @@ class Controls:
             self.scheduler_service.get_next_alarm_info()
         )
 
-    def action(action, info: str = None):
-        try:
-            if info:
-                logger.info(info)
-            action()
-        except:
-            logger.error("%s", traceback.format_exc())
-
     def _toggle_stream(self, _: ToggleAudioRequest):
-        if self.playback_content.playback_mode == Mode.Alarm:
-            self._set_to_idle_mode()
-            return
 
-        if self.playback_content.playback_mode in [
-            Mode.Music,
-            Mode.Spotify,
-        ]:
-            self._set_to_idle_mode()
+        if self.playback_content.playback_mode != Mode.Idle:
+            self.event_bus.emit(PlaybackChangedEvent(Mode.Idle))
             return
 
         audio_stream = self.alarm_clock_context.config.get_default_audio_stream()
@@ -135,7 +126,7 @@ class Controls:
 
         self.event_bus.emit(PlaybackChangedEvent(Mode.Music, audio_stream))
 
-    def _spotify_stream_change_request(self, spotify_event: SpotifyStreamChangeRequest):
+    def _spotify_stream_change_request(self, spotify_event: SpotifyApiEvent):
 
         spotify_stream = SpotifyStream()
         if hasattr(spotify_event, "track_id"):
@@ -174,9 +165,6 @@ class Controls:
             return
 
         self.event_bus.emit(PlaybackChangedEvent(Mode.Idle))
-
-    def _volume_changed(self, _: VolumeChangedEvent):
-        self.start_hide_volume_meter_trigger()
 
     def get_room_brightness(self):
         return self.brightness_sensor.get_room_brightness()
@@ -252,7 +240,7 @@ class Controls:
             self._preprocess_ring_alarm(alarm_definition)
             self.event_bus.emit(AlarmTriggeredEvent(alarm_definition))
 
-        Controls.action(do, "ring alarm '%s'" % alarm_definition.alarm_name)
+        save_action(do, "ring alarm '%s'" % alarm_definition.alarm_name, logger=logger)
 
     def _preprocess_ring_alarm(self, alarm_definition: AlarmDefinition):
         self.alarm_clock_context.active_alarm_definition = alarm_definition
@@ -261,9 +249,8 @@ class Controls:
             datetime.timedelta(
                 minutes=self.alarm_clock_context.config.alarm_duration_in_mins
             ),
-            func=lambda: self._set_to_idle_mode(),
+            func=self._set_to_idle_mode,
         )
-        # ensure_stable_wifi trigger is now handled by SystemService via AlarmTriggeredEvent
 
     def _alarm_stopped_event(self, alarm_stopped_event: AlarmStoppedEvent):
         self.scheduler_service.stop_generic_trigger(SchedulerJobIds.stop_alarm.value)

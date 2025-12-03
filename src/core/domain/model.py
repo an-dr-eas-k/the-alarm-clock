@@ -28,12 +28,13 @@ if TYPE_CHECKING:
 from core.domain.events import (
     AlarmStoppedEvent,
     PlaybackChangedEvent,
+    SpotifyStoppedEvent,
     VolumeChangeRequest,
     VolumeChangedEvent,
 )
 
 
-logger = logging.getLogger("tac.domain")
+logger = logging.getLogger("tac.core.domain.model")
 
 
 class SchedulerJobIds(Enum):
@@ -541,28 +542,40 @@ class PlaybackContent(MediaContent):
 
     def _playback_change_request(self, event: PlaybackChangedEvent):
         wasAlarm = self.playback_mode == Mode.Alarm
+        wasSpotify = self.playback_mode == Mode.Spotify
 
         self.playback_mode = event.playback_mode
+
         if event.audio_stream is not None:
             self.audio_stream = event.audio_stream
-        self._volume_change_request(event)
+
+        if event.playback_mode != Mode.Idle:
+            self._volume_change_request(event)
 
         if wasAlarm and self.playback_mode != Mode.Alarm:
             self.event_bus.emit(
                 AlarmStoppedEvent(self.alarm_clock_context.active_alarm_definition)
             )
 
+        if wasSpotify and self.playback_mode != Mode.Spotify:
+            self.event_bus.emit(SpotifyStoppedEvent())
+
     def _volume_change_request(self, event: VolumeChangeRequest):
+        volume_changed = False
         if event.relative is not None:
             if event.relative > 0:
                 self._increase_volume()
+                volume_changed = True
             elif event.relative < 0:
                 self._decrease_volume()
+                volume_changed = True
 
         elif event.absolute is not None:
             self.volume = event.absolute
+            volume_changed = True
 
-        self.event_bus.emit(VolumeChangedEvent(new_volume=self.volume))
+        if volume_changed:
+            self.event_bus.emit(VolumeChangedEvent(new_volume=self.volume))
 
     def _increase_volume(self):
         self.volume = min(self.volume + 0.05, 1.0)

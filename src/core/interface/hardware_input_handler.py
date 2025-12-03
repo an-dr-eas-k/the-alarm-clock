@@ -17,7 +17,7 @@ from core.infrastructure.events_infrastructure import (
     RotaryDirection,
 )
 
-logger = logging.getLogger("tac.hardware_input_handler")
+logger = logging.getLogger("tac.core.interface.hardware_input_handler")
 
 
 class HardwareInputHandler:

@@ -27,11 +27,10 @@ from core.infrastructure.event_bus import EventBus
 from core.interface.display.format import ColorType, DisplayFormatter
 
 from utils.geolocation import GeoLocation
-from utils.drawing import PresentationFont
 
 from resources.resources import display_shot_file
 
-logger = logging.getLogger("tac.display")
+logger = logging.getLogger("tac.core.interface.display.display")
 
 timespan_to_show_next_alarm_in_min = 8 * 60  # 8 hours
 
@@ -252,20 +251,42 @@ class Display(DisplayContentProvider):
             self.display_content, self.alarm_clock_context
         )
         self.initialize_qt_app()
-        self.event_bus.on(ForcedDisplayUpdateEvent)(self._forced_update)
+        self.event_bus.on(ForcedDisplayUpdateEvent)(
+            self._handle_forced_display_update_event
+        )
         self.event_bus.on(AlarmStoppedEvent)(self._alarm_stopped)
 
     def _alarm_stopped(self, _: AlarmStoppedEvent):
         self.device.clear()
-        self._forced_update(None)
+        self.safe_refresh_display()
 
-    def _forced_update(self, _: ForcedDisplayUpdateEvent):
+    def _handle_forced_display_update_event(self, event: ForcedDisplayUpdateEvent):
+        self.safe_refresh_display(event.max_display_update_duration_ms)
+
+    def safe_refresh_display(self, max_display_update_duration_ms: int = None):
+
+        start_time = GeoLocation().now()
+
         try:
             self.refresh()
         except Exception as e:
-            logger.warning("%s", traceback.format_exc())
+            logger.error("%s", traceback.format_exc())
             with canvas(self.device) as draw:
-                draw.text((20, 20), f"exception! ({e})", fill="white")
+                draw.text((20, 20), f"exception!\n({e})", fill="white")
+
+        update_duration_ms = (GeoLocation().now() - start_time).total_seconds() * 1000
+        logger.debug("refreshed display in %dms", int(update_duration_ms))
+
+        if (
+            True
+            and max_display_update_duration_ms is not None
+            and update_duration_ms > max_display_update_duration_ms
+        ):
+            logger.warning(
+                "display update took %dms which exceeds the max of %dms",
+                update_duration_ms,
+                max_display_update_duration_ms,
+            )
 
     def _draw_dimmed_content(self, layout: QtWidgets.QHBoxLayout):
         now = GeoLocation().now()
@@ -672,22 +693,19 @@ class Display(DisplayContentProvider):
 
     def refresh(self):
         logger.debug("refreshing display...")
-        start_time = GeoLocation().now()
         self.draw_widget()
         self.current_display_image = self.formatter.postprocess_image(
             self.grab_widget_image()
         )
-        self.device.display(self.current_display_image)
-        if isinstance(self.device, luma_dummy):
-            self.current_display_image.save(
-                display_shot_file,
-                format="png",
-            )
-
-        logger.debug(
-            "refreshed display in %dms",
-            (GeoLocation().now() - start_time).total_seconds() * 1000,
-        )
+        try:
+            self.device.display(self.current_display_image)
+            if isinstance(self.device, luma_dummy):
+                self.current_display_image.save(
+                    display_shot_file,
+                    format="png",
+                )
+        except AssertionError as e:
+            pass
 
 
 if __name__ == "__main__":
