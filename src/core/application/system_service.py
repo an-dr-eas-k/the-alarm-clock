@@ -1,7 +1,6 @@
 import datetime
 import logging
-import traceback
-from core.application.controls import save_action
+from core.application.controls import safe_action
 from core.domain.events import (
     ForcedDisplayUpdateEvent,
     PlaybackChangedEvent,
@@ -146,7 +145,7 @@ class SystemService:
             logger.info("weather updating: %s", new_weather)
             self.alarm_clock_context.environment.current_weather = new_weather
 
-        save_action(do, "updating weather status", logger=logger)
+        safe_action(do, "updating weather status", logger=logger)
 
     def _update_wifi_status(self):
         def do():
@@ -159,7 +158,7 @@ class SystemService:
             self.event_bus.emit(WifiStatusChangedEvent(is_online))
             self.alarm_clock_context.environment.is_online = is_online
 
-        save_action(do, "updating wifi status", logger=logger)
+        safe_action(do, "updating wifi status", logger=logger)
 
     def _sun_event_occured(self, event: SunEvent):
         def do():
@@ -167,7 +166,7 @@ class SystemService:
             self.alarm_clock_context.environment.is_daytime = event == SunEvent.sunrise
             self.init_sun_event_scheduler(event)
 
-        save_action(do, "sun event %s" % event, logger=logger)
+        safe_action(do, "sun event %s" % event, logger=logger)
 
     def _emit_regular_display_update(self):
         def do():
@@ -184,14 +183,11 @@ class SystemService:
             ):
                 self.event_bus.emit(
                     ForcedDisplayUpdateEvent(
-                        suppress_logging=True,
+                        suppress_logging=False,
                     )
                 )
 
-        start_time = GeoLocation().now()
-        save_action(do, debug="regular display update", logger=logger)
-        update_duration_ms = (GeoLocation().now() - start_time).total_seconds() * 1000
-        logger.info("refreshed display in %dms", int(update_duration_ms))
+        safe_action(do, debug_msg="regular display update", logger=logger)
 
     def get_room_brightness(self):
         return self.brightness_sensor.get_room_brightness()

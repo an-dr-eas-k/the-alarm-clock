@@ -1,5 +1,6 @@
 import io
 import logging
+from timeit import timeit
 import traceback
 import time
 from luma.core.device import device as luma_device
@@ -676,8 +677,9 @@ class Display(DisplayContentProvider):
         return pil_image
 
     def refresh(self):
-        logger.debug("refreshing display...")
-        self.draw_widget()
+        # logger.debug("refreshing display...")
+        logger.info("draw_widget: %sms", timeit(self.draw_widget, number=1) * 1000)
+        # self.draw_widget()
         self.current_display_image = self.formatter.postprocess_image(
             self.grab_widget_image()
         )

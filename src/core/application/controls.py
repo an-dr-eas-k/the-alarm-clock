@@ -36,7 +36,7 @@ from resources.resources import active_alarm_definition_file
 logger = logging.getLogger("tac.core.application.controls")
 
 
-def save_action(
+def safe_action(
     action, info: str = None, debug: str = None, logger: logging.Logger = None
 ):
     try:
@@ -240,7 +240,7 @@ class Controls:
             self._preprocess_ring_alarm(alarm_definition)
             self.event_bus.emit(AlarmTriggeredEvent(alarm_definition))
 
-        save_action(do, "ring alarm '%s'" % alarm_definition.alarm_name, logger=logger)
+        safe_action(do, "ring alarm '%s'" % alarm_definition.alarm_name, logger=logger)
 
     def _preprocess_ring_alarm(self, alarm_definition: AlarmDefinition):
         self.alarm_clock_context.active_alarm_definition = alarm_definition

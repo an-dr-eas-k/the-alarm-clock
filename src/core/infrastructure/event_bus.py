@@ -1,5 +1,6 @@
 from datetime import datetime
 import logging
+from timeit import timeit
 from typing import Callable, Dict, List, Type
 
 
@@ -33,25 +34,31 @@ class EventBus:
 
     def emit(self, event: BaseEvent):
         event_type = type(event)
+        suppress_logging = getattr(event, "suppress_logging", False)
         handlers = self._handlers.get(event_type, [])
 
         if not handlers:
             logger.debug(f"No handlers registered for {event_type.__name__}")
             return
 
-        if not getattr(event, "suppress_logging", False):
+        if not suppress_logging:
             logger.debug(
                 f"Emitting {event_type.__name__} to {len(handlers)} handler(s)"
             )
-
+        handler_times = {}
         for handler in handlers:
             try:
-                handler(event)
+                handler_times[handler] = timeit(lambda: handler(event), number=1) * 1000
             except Exception as e:
                 logger.error(
                     f"Error in handler {handler.__name__} for {event_type.__name__}: {e}",
                     exc_info=True,
                 )
+        if not suppress_logging:
+            msg = f"Emitted {event_type.__name__} to {len(handlers)} handler(s) with execution times:"
+            for handler, exec_time in handler_times.items():
+                msg += f"\n - {f"{handler.__name__}: {exec_time:.2f} ms"}"
+            logger.info(msg)
 
     def emit_all(self, events: List[BaseEvent]):
         for event in events:
