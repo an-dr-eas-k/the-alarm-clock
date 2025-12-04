@@ -260,6 +260,7 @@ class Scroller:
 @singleton
 class PresentationFontSingleton:
     _font_cache: Dict[str, BinaryIO] = {}
+    _font_family_cache: Dict[str, str] = {}
 
     def _get_cached_font_file(self, font_path: str) -> BinaryIO:
         if font_path not in self._font_cache:
@@ -268,6 +269,19 @@ class PresentationFontSingleton:
                 self._font_cache[font_path] = font_data
         self._font_cache[font_path].seek(0)
         return self._font_cache[font_path]
+
+    def _get_cached_font_family(self, font_path: str) -> str:
+        if font_path not in self._font_family_cache:
+            id = QtGui.QFontDatabase.addApplicationFont(font_path)
+            if id != -1:
+                families = QtGui.QFontDatabase.applicationFontFamilies(id)
+                if families:
+                    self._font_family_cache[font_path] = families[0]
+
+        if font_path in self._font_family_cache:
+            return self._font_family_cache[font_path]
+
+        raise ValueError(f"Could not load font family for font {font_path}")
 
 
 class PresentationFont:
@@ -287,9 +301,4 @@ class PresentationFont:
             raise e
 
     def get_font_family(font: str) -> str:
-        id = QtGui.QFontDatabase.addApplicationFont(font)
-        if id != -1:
-            families = QtGui.QFontDatabase.applicationFontFamilies(id)
-            if families:
-                return families[0]
-        raise ValueError(f"Could not load font family for font {font}")
+        return PresentationFontSingleton()._get_cached_font_family(font)
