@@ -39,26 +39,22 @@ class DisplayFormatter:
         return PresentationFont.get_font(PresentationFont.bold_clock_font, size)
 
     def clock_font(self, size: int = 20, weight: int = QtGui.QFont.Weight.Bold):
-        font_family = PresentationFont.get_font_family(
-            PresentationFont.roboto_font
+        font_path = (PresentationFont.roboto_font
             if not self.be_gloomy()
-            else PresentationFont.light_clock_font
-        )
-        return QtGui.QFont(font_family, size, weight)
+            else PresentationFont.light_clock_font)
+        return PresentationFont.get_font_family(font_path, size, weight)
 
     def info_font_pil(self, size: int = 18):
         return PresentationFont.get_font(PresentationFont.info_font, size)
 
     def info_font(self, size: int = 18, weight: int = QtGui.QFont.Weight.Normal):
-        font_family = PresentationFont.get_font_family(PresentationFont.roboto_font)
-        return QtGui.QFont(font_family, size, weight)
+        return PresentationFont.get_font_family(PresentationFont.roboto_font, size, weight)
 
     def weather_font_pil(self, size: int = 18):
         return PresentationFont.get_font(PresentationFont.weather_font, size)
 
-    def weather_font(self, size: int = 18):
-        font_family = PresentationFont.get_font_family(PresentationFont.weather_font)
-        return QtGui.QFont(font_family, size, QtGui.QFont.Weight.Normal)
+    def weather_font(self, size: int = 18, weight: int = QtGui.QFont.Weight.Normal):
+        return PresentationFont.get_font_family(PresentationFont.weather_font, size, weight)
 
     def be_gloomy(self):
         return (
