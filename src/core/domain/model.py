@@ -44,6 +44,7 @@ class SchedulerJobIds(Enum):
     weather_update_interval = "weather_update_trigger"
     wifi_check = "wifi_check_trigger"
     regular_display_refresh = "regular_display_refresh_trigger"
+    memory_usage_logger = "memory_usage_logger_trigger"
 
 
 class DisplayContentProvider:
