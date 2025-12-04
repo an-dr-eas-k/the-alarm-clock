@@ -258,7 +258,7 @@ class Display(DisplayContentProvider):
         self.event_bus.on(AlarmStoppedEvent)(self._alarm_stopped)
 
     def _alarm_stopped(self, _: AlarmStoppedEvent):
-        self.device.clear()
+        self.device.cleanup()
         self.safe_refresh_display()
 
     def _handle_forced_display_update_event(self, _: ForcedDisplayUpdateEvent = None):
@@ -313,7 +313,7 @@ class Display(DisplayContentProvider):
         # Next Alarm
         if (
             self.display_content.next_alarm_info.has_alarm()
-            and self.display_content.get_timedelta_to_alarm().total_seconds() * 60
+            and self.display_content.next_alarm_info.minutes_until_alarm()
             <= timespan_to_show_next_alarm_in_min
         ):
             alarm_time = self.display_content.get_next_alarm()
@@ -442,8 +442,7 @@ class Display(DisplayContentProvider):
         # 3. Next Alarm
         if (
             self.display_content.next_alarm_info.has_alarm()
-            and self.display_content.next_alarm_info.get_timedelta_to_alarm().total_seconds()
-            * 60
+            and self.display_content.next_alarm_info.minutes_until_alarm()
             <= timespan_to_show_next_alarm_in_min
         ):
             alarm_time = self.display_content.get_next_alarm()
@@ -456,7 +455,7 @@ class Display(DisplayContentProvider):
             alarm_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
 
             alarm_symbol = QtWidgets.QLabel("\uf49a")
-            alarm_symbol.setFont(self.formatter.info_font(size=20))
+            alarm_symbol.setFont(self.formatter.info_font(size=12))
             alarm_layout.addWidget(alarm_symbol)
 
             alarm_label = QtWidgets.QLabel(alarm_text)

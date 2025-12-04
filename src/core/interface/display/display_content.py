@@ -104,9 +104,6 @@ class DisplayContent:
     def get_next_alarm(self) -> datetime:
         return self.next_alarm_info.next_run_time
 
-    def get_timedelta_to_alarm(self) -> timedelta:
-        return self.next_alarm_info.get_timedelta_to_alarm()
-
     # ========== Environment Information (Domain Delegation) ==========
 
     def get_is_online(self) -> bool:

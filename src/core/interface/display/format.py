@@ -70,11 +70,9 @@ class DisplayFormatter:
     def update_formatter(self):
         self.adjust_display()
         logger.debug(
-            "room_brightness: %s, time_delta_to_alarm: %sh, display_formatter: %s",
+            "room_brightness: %s, time_delta_to_alarm: %smin, display_formatter: %s",
             self.display_content.room_brightness,
-            "{:.2f}".format(
-                self.display_content.get_timedelta_to_alarm().total_seconds() / 3600
-            ),
+            "{:.2f}".format(self.display_content.next_alarm_info.minutes_until_alarm()),
             self.__dict__,
         )
 
