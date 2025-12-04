@@ -239,6 +239,7 @@ class Display(DisplayContentProvider):
         device: luma_device,
         display_content: DisplayContent,
         playback_content: PlaybackContent,
+        display_formatter: DisplayFormatter,
         alarm_clock_context: AlarmClockContext,
         event_bus: EventBus = None,
     ) -> None:
@@ -248,9 +249,7 @@ class Display(DisplayContentProvider):
         self.playback_content = playback_content
         self.alarm_clock_context = alarm_clock_context
         self.event_bus = event_bus
-        self.formatter = DisplayFormatter(
-            self.display_content, self.alarm_clock_context
-        )
+        self.formatter = display_formatter
         self.initialize_qt_app()
         self.event_bus.on(ForcedDisplayUpdateEvent)(
             self._handle_forced_display_update_event

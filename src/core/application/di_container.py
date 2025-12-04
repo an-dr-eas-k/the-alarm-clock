@@ -2,6 +2,7 @@ import os
 import argparse
 from dependency_injector import containers, providers
 from core.domain.mode_coordinator import AlarmClockModeCoordinator
+from core.interface.display.format import DisplayFormatter
 from core.interface.hardware_input_handler import HardwareInputHandler
 from core.infrastructure.brightness_sensor import BrightnessSensor
 from core.infrastructure.i2c_devices import I2CManager, MCPManager
@@ -128,11 +129,18 @@ class DIContainer(containers.DeclarativeContainer):
     serial_interface = providers.Singleton(spi, device=0, port=0)
     device = providers.Singleton(ssd1322, serial_interface=serial_interface)
 
+    display_formatter = providers.Singleton(
+        DisplayFormatter,
+        content=display_content,
+        alarm_clock_context=alarm_clock_context,
+    )
+
     display = providers.Singleton(
         Display,
         device=device,
         display_content=display_content,
         playback_content=playback_content,
+        display_formatter=display_formatter,
         event_bus=event_bus,
         alarm_clock_context=alarm_clock_context,
     )
