@@ -259,6 +259,7 @@ class Display(DisplayContentProvider):
 
     def _alarm_stopped(self, _: AlarmStoppedEvent):
         self.device.cleanup()
+        self.device.show()
         self.safe_refresh_display()
 
     def _handle_forced_display_update_event(self, _: ForcedDisplayUpdateEvent = None):
