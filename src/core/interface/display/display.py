@@ -258,7 +258,7 @@ class Display(DisplayContentProvider):
         self.event_bus.on(AlarmStoppedEvent)(self._alarm_stopped)
 
     def _alarm_stopped(self, _: AlarmStoppedEvent):
-        self.device.cleanup()
+        self.device.hide()
         self.device.show()
         self.safe_refresh_display()
 
