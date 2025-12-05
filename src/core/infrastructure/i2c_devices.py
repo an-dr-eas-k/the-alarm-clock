@@ -59,6 +59,7 @@ class MCPManager:
 
         if logger.level == logging.DEBUG:
             self.log_thread = threading.Thread(
+                name="mcp debug",
                 daemon=True, target=self._log_thread_callback
             )
             self.log_thread.start()

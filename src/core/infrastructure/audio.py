@@ -83,21 +83,21 @@ class MediaListPlayer(MediaPlayer):
 
         stream_url = self.audio_stream.stream_url
 
-        instance: vlc.Instance = vlc.Instance(
+        self.instance: vlc.Instance = vlc.Instance(
             ["--no-video", "--network-caching=3000", "--live-caching=3000"]
         )
 
-        self.list_player: vlc.MediaListPlayer = instance.media_list_player_new()
+        self.list_player: vlc.MediaListPlayer = self.instance.media_list_player_new()
         self.list_player.set_playback_mode(vlc.PlaybackMode.loop)
-        media_player: vlc.MediaPlayer = self.list_player.get_media_player()
+        self.media_player: vlc.MediaPlayer = self.list_player.get_media_player()
 
-        media: vlc.Media = instance.media_new(stream_url)
+        self.media: vlc.Media = self.instance.media_new(stream_url)
 
-        media_list: vlc.MediaList = instance.media_list_new([])
-        self.list_player.set_media_list(media_list)
-        media_list.add_media(media)
+        self.media_list: vlc.MediaList = self.instance.media_list_new([])
+        self.list_player.set_media_list(self.media_list)
+        self.media_list.add_media(self.media)
 
-        self.add_callbacks(instance, media_player, media_list, media)
+        self.add_callbacks(self.instance, self.media_player, self.media_list, self.media)
 
         logger.info("starting audio %s", stream_url)
         self.list_player.play()
@@ -124,6 +124,7 @@ class MediaListPlayer(MediaPlayer):
                 event_man.event_attach(
                     event_type,
                     lambda event_type: threading.Thread(
+                        name=f"vlc {event_type}",
                         daemon=True,
                         target=self.callback_from_player,
                         args=(
@@ -138,6 +139,12 @@ class MediaListPlayer(MediaPlayer):
             return
 
         self.list_player.stop()
+
+        self.media_list.release()
+        self.media.release()
+        self.media_player.release()
+        self.list_player.release()
+        self.instance.release()
         self.list_player = None
         logger.info(f"stopped audio")
 
