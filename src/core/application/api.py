@@ -66,7 +66,11 @@ class LibreSpotifyEventHandler(tornado.web.RequestHandler):
         self.event_bus = event_bus
 
     def post(self):
-        self.handle_spotify_event()
+        threading.Thread(
+            name=f"spotify api",
+            daemon=True,
+            target=self.handle_spotify_event,
+        ).start()
         self.finish()
 
     def handle_spotify_event(self):
