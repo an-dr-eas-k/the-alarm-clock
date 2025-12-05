@@ -6,6 +6,7 @@ import json
 import subprocess
 import traceback
 import tornado
+import threading
 import tornado.ioloop
 import tornado.web
 from PIL.Image import Image
