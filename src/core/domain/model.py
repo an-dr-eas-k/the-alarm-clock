@@ -615,7 +615,7 @@ class NextAlarmInfo:
     def has_alarm(self) -> bool:
         return self._next_run_time is not None
 
-    def get_timedelta_to_alarm(self) -> timedelta:
+    def _get_timedelta_to_alarm(self) -> timedelta:
         if not self.has_alarm():
             return timedelta.max
         return self._calculate_time_delta()
@@ -627,4 +627,4 @@ class NextAlarmInfo:
         return self._next_run_time - now
 
     def minutes_until_alarm(self) -> int:
-        return int(self.get_timedelta_to_alarm().total_seconds() / 60)
+        return int(self._get_timedelta_to_alarm().total_seconds() / 60)

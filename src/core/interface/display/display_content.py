@@ -96,9 +96,7 @@ class DisplayContent:
     def show_alarm_preview(self) -> bool:
         if not self.next_alarm_info.has_alarm():
             return False
-        hours_until = (
-            self.next_alarm_info.get_timedelta_to_alarm().total_seconds() / 3600
-        )
+        hours_until = self.next_alarm_info.minutes_until_alarm() / 60
         return hours_until <= self.alarm_clock_context.config.alarm_preview_hours
 
     def get_next_alarm(self) -> datetime:

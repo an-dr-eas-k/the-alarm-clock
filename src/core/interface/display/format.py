@@ -39,28 +39,41 @@ class DisplayFormatter:
         return PresentationFont.get_font(PresentationFont.bold_clock_font, size)
 
     def clock_font(self, size: int = 20, weight: int = QtGui.QFont.Weight.Bold):
-        font_path = (PresentationFont.roboto_font
+        font_path = (
+            PresentationFont.roboto_font
             if not self.be_gloomy()
-            else PresentationFont.light_clock_font)
+            else PresentationFont.light_clock_font
+        )
         return PresentationFont.get_font_family(font_path, size, weight)
 
     def info_font_pil(self, size: int = 18):
         return PresentationFont.get_font(PresentationFont.info_font, size)
 
     def info_font(self, size: int = 18, weight: int = QtGui.QFont.Weight.Normal):
-        return PresentationFont.get_font_family(PresentationFont.roboto_font, size, weight)
+        return PresentationFont.get_font_family(
+            PresentationFont.roboto_font, size, weight
+        )
 
     def weather_font_pil(self, size: int = 18):
         return PresentationFont.get_font(PresentationFont.weather_font, size)
 
     def weather_font(self, size: int = 18, weight: int = QtGui.QFont.Weight.Normal):
-        return PresentationFont.get_font_family(PresentationFont.weather_font, size, weight)
+        return PresentationFont.get_font_family(
+            PresentationFont.weather_font, size, weight
+        )
 
     def be_gloomy(self):
         return (
             True
             and self.display_content.room_brightness.is_highly_dimmed()
             and self.display_content.playback_content.playback_mode == Mode.Idle
+            and self.alarm_clock_context.active_alarm_definition is None
+            and (
+                False
+                or self.display_content.next_alarm_info is None
+                or self.display_content.next_alarm_info.visual_effect is None
+                or not self.display_content.next_alarm_info.visual_effect.is_active()
+            )
         )
 
     def update_formatter(self):
@@ -140,14 +153,12 @@ class DisplayFormatter:
         )
 
         self.adjust_display_by_alarm_visual_effect(
-            next_alarm_info.get_timedelta_to_alarm(), visual_effect
+            next_alarm_info.minutes_until_alarm(), visual_effect
         )
 
     def adjust_display_by_alarm_visual_effect(
-        self, time_delta_to_alarm: datetime.timedelta, visual_effect: VisualEffect
+        self, alarm_in_minutes: int, visual_effect: VisualEffect
     ):
-
-        alarm_in_minutes = time_delta_to_alarm.total_seconds() / 60
 
         if not visual_effect or not visual_effect.is_active(alarm_in_minutes):
             if self._visual_effect_active:
