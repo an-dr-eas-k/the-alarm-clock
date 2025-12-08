@@ -33,8 +33,6 @@ from resources.resources import display_shot_file
 
 logger = logging.getLogger("tac.core.interface.display.display")
 
-timespan_to_show_next_alarm_in_min = 8 * 60  # 8 hours
-
 
 class ClockWidget(QtWidgets.QWidget):
     def __init__(self, hour_str, min_str, blink_char, show_blink, fg_color, font_obj):
@@ -314,7 +312,7 @@ class Display(DisplayContentProvider):
         if (
             self.display_content.next_alarm_info.has_alarm()
             and self.display_content.next_alarm_info.minutes_until_alarm()
-            <= timespan_to_show_next_alarm_in_min
+            <= self.display_content.alarm_clock_context.config.alarm_duration_in_mins
         ):
             alarm_time = self.display_content.get_next_alarm()
             alarm_text = self.formatter.format_clock_string(alarm_time)
@@ -443,7 +441,7 @@ class Display(DisplayContentProvider):
         if (
             self.display_content.next_alarm_info.has_alarm()
             and self.display_content.next_alarm_info.minutes_until_alarm()
-            <= timespan_to_show_next_alarm_in_min
+            <= self.display_content.alarm_clock_context.config.alarm_duration_in_mins
         ):
             alarm_time = self.display_content.get_next_alarm()
             alarm_text = alarm_time.strftime("%H:%M")
