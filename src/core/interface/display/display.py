@@ -290,12 +290,12 @@ class Display(DisplayContentProvider):
         container_layout.setSpacing(10)
 
         # Clock
-        clock_string = self.formatter.format_clock_string(
+        clock_string = self.formatter.format_dseg7_clock_string(
             now, self.display_content.show_blink_segment
         )
         clock_label = QtWidgets.QLabel(clock_string)
         clock_label.setFont(
-            self.formatter.clock_font(size=20, weight=QtGui.QFont.Weight.Light)
+            self.formatter.clock_font(size=18, weight=QtGui.QFont.Weight.Light)
         )
         clock_label.setAlignment(
             QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft
@@ -317,9 +317,9 @@ class Display(DisplayContentProvider):
             <= timespan_to_show_next_alarm_in_min
         ):
             alarm_time = self.display_content.get_next_alarm()
-            alarm_text = alarm_time.strftime("%H:%M")
+            alarm_text = self.formatter.format_clock_string(alarm_time)
             alarm_label = QtWidgets.QLabel(f"\uf49a {alarm_text}")
-            alarm_label.setFont(self.formatter.info_font(size=14))
+            alarm_label.setFont(self.formatter.info_font(size=12))
             alarm_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
             info_layout.addWidget(alarm_label)
 
