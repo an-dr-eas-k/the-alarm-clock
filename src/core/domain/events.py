@@ -123,21 +123,6 @@ class ToggleAudioRequest(BaseEvent):
 
 
 @dataclass(frozen=True)
-class AlarmPropertySelectedEvent(BaseEvent):
-    alarm_property_index_delta: int
-
-
-@dataclass(frozen=True)
-class StartAlarmPropertyEditEvent(BaseEvent):
-    pass
-
-
-@dataclass(frozen=True)
-class AlarmPropertyValueSelectedEvent(BaseEvent):
-    alarm_property_value_index_delta: int
-
-
-@dataclass(frozen=True)
 class ForcedDisplayUpdateEvent(BaseEvent):
     pass
 

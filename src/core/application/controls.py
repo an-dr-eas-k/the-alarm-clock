@@ -52,10 +52,9 @@ def safe_action(
         logger.error("%s", traceback.format_exc())
 
 
-class Controls:
+class BasicAudioControls:
     scheduler_service: SchedulerService
     alarm_clock_context: AlarmClockContext
-    rotary_encoder_manager = None
 
     def __init__(
         self,
@@ -75,39 +74,8 @@ class Controls:
         self.event_bus.on(ToggleAudioRequest)(self._toggle_stream)
         self.event_bus.on(WifiStatusChangedEvent)(self._wifi_status_changed)
         self.event_bus.on(ConfigChangedEvent)(self._config_changed)
-        self.event_bus.on(AlarmTriggeredEvent)(self._alarm_triggered)
-        self.event_bus.on(AlarmStoppedEvent)(self._alarm_stopped_event)
         self.event_bus.on(SpeakerErrorEvent)(self._handle_speaker_error)
         self.event_bus.on(SpotifyApiEvent)(self._spotify_stream_change_request)
-
-    def consider_failed_alarm(self):
-        if os.path.exists(active_alarm_definition_file):
-            ad: AlarmDefinition = AlarmDefinition.deserialize(
-                active_alarm_definition_file
-            )
-            ad.id = -1
-            logger.info("failed audioeffect found %s", ad.alarm_name)
-            self._ring_alarm(ad)
-
-    def _config_changed(self, event: ConfigChangedEvent):
-        config: Config = event.config
-        self.scheduler_service.remove_all_jobs(jobstore=SchedulerStores.alarm.value)
-        alDef: AlarmDefinition
-        for alDef in config.alarm_definitions:
-            if not alDef.is_active:
-                continue
-            logger.info("adding job for '%s'", alDef.alarm_name)
-            self.scheduler_service.add_cron_job(
-                func=self._ring_alarm,
-                args=(alDef,),
-                id=f"{alDef.id}",
-                jobstore=SchedulerStores.alarm.value,
-                **alDef.get_cron_args(),
-            )
-        self.scheduler_service.cleanup_alarms(config)
-        self.display_content.update_next_alarm(
-            self.scheduler_service.get_next_alarm_info()
-        )
 
     def _toggle_stream(self, _: ToggleAudioRequest):
 
@@ -149,16 +117,6 @@ class Controls:
             and self.playback_content.playback_mode == Mode.Spotify
         ):
             self.event_bus.emit(VolumeChangedEvent())
-
-    def _alarm_triggered(self, _: AlarmTriggeredEvent = None):
-        audio_effect = self._get_appropriate_audio_effect()
-        self.event_bus.emit(
-            PlaybackChangedEvent(
-                Mode.Alarm,
-                audio_effect.audio_stream,
-                absolute_volume=audio_effect.volume,
-            )
-        )
 
     def _set_to_idle_mode(self):
         if self.playback_content.playback_mode == Mode.Idle:
@@ -211,7 +169,78 @@ class Controls:
             ]:
                 self._set_to_idle_mode()
 
-    def _get_appropriate_audio_effect(self) -> StreamAudioEffect:
+
+class AlarmAudioControls(BasicAudioControls):
+    def __init__(
+        self,
+        alarm_clock_context: AlarmClockContext,
+        display_content: DisplayContent,
+        playback_content: PlaybackContent,
+        brightness_sensor: IBrightnessSensor,
+        event_bus: EventBus,
+        scheduler_service: SchedulerService,
+    ) -> None:
+        super().__init__(
+            alarm_clock_context,
+            display_content,
+            playback_content,
+            brightness_sensor,
+            event_bus,
+            scheduler_service,
+        )
+        self.event_bus.on(AlarmTriggeredEvent)(self._alarm_triggered)
+        self.event_bus.on(AlarmStoppedEvent)(self._alarm_stopped_event)
+
+    def consider_failed_alarm(self):
+        if os.path.exists(active_alarm_definition_file):
+            ad: AlarmDefinition = AlarmDefinition.deserialize(
+                active_alarm_definition_file
+            )
+            ad.id = -1
+            logger.info("failed audioeffect found %s", ad.alarm_name)
+            self._ring_alarm(ad)
+
+    def _config_changed(self, event: ConfigChangedEvent):
+        config: Config = event.config
+        self.scheduler_service.remove_all_jobs(jobstore=SchedulerStores.alarm.value)
+        alDef: AlarmDefinition
+        for alDef in config.alarm_definitions:
+            if not alDef.is_active:
+                continue
+            logger.info("adding job for '%s'", alDef.alarm_name)
+            self.scheduler_service.add_cron_job(
+                func=self._ring_alarm,
+                args=(alDef,),
+                id=f"{alDef.id}",
+                jobstore=SchedulerStores.alarm.value,
+                **alDef.get_cron_args(),
+            )
+        self.scheduler_service.cleanup_alarms(config)
+        self.display_content.update_next_alarm(
+            self.scheduler_service.get_next_alarm_info()
+        )
+
+    def _alarm_triggered(self, event: AlarmTriggeredEvent = None):
+        self._preprocess_ring_alarm(event.alarm_definition)
+        audio_effect = self._get_appropriate_alarm_effect()
+        self.event_bus.emit(
+            PlaybackChangedEvent(
+                Mode.Alarm,
+                audio_effect.audio_stream,
+                absolute_volume=audio_effect.volume,
+            )
+        )
+        self.display_content.update_next_alarm(
+            self.scheduler_service.get_next_alarm_info()
+        )
+
+        if event.alarm_definition.is_onetime() and event.alarm_definition.id >= 0:
+            self.alarm_clock_context.config.remove_alarm_definition(
+                event.alarm_definition.id
+            )
+            self.event_bus.emit(ConfigChangedEvent(self.alarm_clock_context.config))
+
+    def _get_appropriate_alarm_effect(self) -> StreamAudioEffect:
         active_alarm_effect = (
             self.alarm_clock_context.active_alarm_definition.audio_effect
         )
@@ -237,7 +266,6 @@ class Controls:
     def _ring_alarm(self, alarm_definition: AlarmDefinition):
         def do():
 
-            self._preprocess_ring_alarm(alarm_definition)
             self.event_bus.emit(AlarmTriggeredEvent(alarm_definition))
 
         safe_action(do, "ring alarm '%s'" % alarm_definition.alarm_name, logger=logger)
@@ -252,14 +280,6 @@ class Controls:
             func=self._set_to_idle_mode,
         )
 
-    def _alarm_stopped_event(self, alarm_stopped_event: AlarmStoppedEvent):
+    def _alarm_stopped_event(self, _: AlarmStoppedEvent):
         self.scheduler_service.stop_generic_trigger(SchedulerJobIds.stop_alarm.value)
-        self.display_content.update_next_alarm(
-            self.scheduler_service.get_next_alarm_info()
-        )
-
-        alarm_definition = alarm_stopped_event.alarm_definition
-        if alarm_definition.is_onetime() and alarm_definition.id >= 0:
-            self.alarm_clock_context.config.remove_alarm_definition(alarm_definition.id)
-            self.event_bus.emit(ConfigChangedEvent(self.alarm_clock_context.config))
         self.alarm_clock_context.active_alarm_definition = None

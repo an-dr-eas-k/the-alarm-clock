@@ -10,7 +10,7 @@ import threading
 import tornado.ioloop
 import tornado.web
 from PIL.Image import Image
-from core.application.controls import Controls
+from core.application.controls import AlarmAudioControls
 from core.domain.events import (
     PlaybackChangedEvent,
     ConfigChangedEvent,
@@ -284,7 +284,11 @@ class Api:
     app: tornado.web.Application
 
     def __init__(
-        self, controls: Controls, display: Display, event_bus: EventBus, encrypted: bool
+        self,
+        controls: AlarmAudioControls,
+        display: Display,
+        event_bus: EventBus,
+        encrypted: bool,
     ):
         self.controls = controls
         self.display = display

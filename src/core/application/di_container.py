@@ -12,7 +12,7 @@ from core.infrastructure.scheduler import SchedulerService
 from core.interface.display.display import Display
 from core.application.api import Api
 from core.infrastructure.audio import Speaker
-from core.application.controls import Controls
+from core.application.controls import AlarmAudioControls
 from core.application.system_service import SystemService
 from core.infrastructure.persistence import Persistence
 from core.infrastructure.event_bus import EventBus
@@ -117,7 +117,7 @@ class DIContainer(containers.DeclarativeContainer):
     )
 
     controls = providers.Singleton(
-        Controls,
+        AlarmAudioControls,
         alarm_clock_context=alarm_clock_context,
         display_content=display_content,
         playback_content=playback_content,

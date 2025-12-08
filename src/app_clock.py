@@ -16,7 +16,7 @@ from core.domain.events import (
 from core.domain.model import (
     Mode,
 )
-from core.application.controls import Controls
+from core.application.controls import BasicAudioControls
 from resources.resources import init_logging
 from utils import os as app_os
 
@@ -61,7 +61,7 @@ class ClockApp:
                 providers.Singleton(dummy, height=64, width=256, mode="RGB")
             )
 
-        controls: Controls = self.container.controls()
+        controls: BasicAudioControls = self.container.controls()
         self.container.system_service()
         if ci is not None:
             ci.configure(controls)

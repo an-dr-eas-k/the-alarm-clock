@@ -1,11 +1,8 @@
 import logging
 import traceback
 from pynput import keyboard
-from core.application.controls import Controls
-from core.domain.events import AlarmTriggeredEvent
-from core.domain.model import Config
+from core.application.controls import AlarmAudioControls
 from core.infrastructure.brightness_sensor import IBrightnessSensor
-from core.infrastructure.event_bus import EventBus
 from core.infrastructure.events_infrastructure import (
     DeviceName,
     HwButtonEvent,
@@ -24,7 +21,7 @@ class ComputerInfrastructure(IBrightnessSensor):
         self.listener = keyboard.Listener(on_press=self.on_press)
         self.listener.start()
 
-    def configure(self, controls: Controls):
+    def configure(self, controls: BasicAudioControls):
         self.controls = controls
         self.config = controls.alarm_clock_context.config
         self.event_bus = controls.event_bus
