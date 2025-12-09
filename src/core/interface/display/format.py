@@ -67,7 +67,6 @@ class DisplayFormatter:
             True
             and self.display_content.room_brightness.is_highly_dimmed()
             and self.display_content.playback_content.playback_mode == Mode.Idle
-            and self.alarm_clock_context.active_alarm_definition is None
             and (
                 False
                 or self.display_content.next_alarm_info is None
@@ -152,23 +151,18 @@ class DisplayFormatter:
             next_alarm_info.visual_effect if next_alarm_info.has_alarm() else None
         )
 
-        self.adjust_display_by_alarm_visual_effect(
-            next_alarm_info.minutes_until_alarm(), visual_effect
-        )
+        self.adjust_display_by_alarm_visual_effect(visual_effect)
 
-    def adjust_display_by_alarm_visual_effect(
-        self, alarm_in_minutes: int, visual_effect: VisualEffect
-    ):
+    def adjust_display_by_alarm_visual_effect(self, visual_effect: VisualEffect):
 
-        if not visual_effect or not visual_effect.is_active(alarm_in_minutes):
+        if not visual_effect or not visual_effect.is_active():
             if self._visual_effect_active:
                 self._visual_effect_active = False
             return
 
-        logger.debug("visual effect active: %s", alarm_in_minutes)
         self._visual_effect_active = True
 
-        style = visual_effect.get_style(alarm_in_minutes)
+        style = visual_effect.get_style()
         self._background_grayscale_16 = style.background_grayscale_16
         self._foreground_grayscale_16 = style.foreground_grayscale_16
 

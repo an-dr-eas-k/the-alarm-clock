@@ -156,10 +156,15 @@ class EnvironmentContext:
 
 class VisualEffect:
 
-    def is_active(self, alarm_in_minutes: int) -> bool:
+    next_alarm_info: NextAlarmInfo = None
+
+    def is_active(self) -> bool:
+        alarm_in_minutes = self.next_alarm_info.minutes_until_alarm()
         return alarm_in_minutes <= 8
 
-    def get_style(self, alarm_in_minutes: int):
+    def get_style(self) -> Style:
+        alarm_in_minutes = self.next_alarm_info.minutes_until_alarm()
+        logger.debug("visual effect active for: %smin", alarm_in_minutes)
         if alarm_in_minutes <= 2:
             return Style(
                 background_grayscale_16=15, foreground_grayscale_16=0, be_bold=True
@@ -599,6 +604,8 @@ class NextAlarmInfo:
         self._next_run_time = next_run_time
         self._alarm_name = alarm_name
         self._visual_effect = visual_effect
+        if self._visual_effect is not None:
+            self._visual_effect.next_alarm_info = self
 
     @property
     def next_run_time(self) -> datetime:
