@@ -14,4 +14,5 @@ spotify
 pyalsaaudio
 dependency-injector
 pillow
+psutil
 # PyQt5 # only needed for local development

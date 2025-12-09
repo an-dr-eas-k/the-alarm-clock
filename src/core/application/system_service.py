@@ -26,6 +26,7 @@ from utils.geolocation import GeoLocation, SunEvent
 from utils.network import is_internet_available
 from utils.os import restart_spotify_daemon
 from utils.memory_profiler import print_memory_usage
+from utils.thread_profiler import print_thread_usage
 
 logger = logging.getLogger("tac.core.application.system_service")
 
@@ -89,6 +90,14 @@ class SystemService:
             trigger="cron",
             hour="*",
             id=SchedulerJobIds.memory_usage_logger.value,
+            jobstore=SchedulerStores.default.value,
+        )
+
+        self.scheduler_service.add_job(
+            print_thread_usage,
+            trigger="cron",
+            hour="*",
+            id=SchedulerJobIds.thread_usage_logger.value,
             jobstore=SchedulerStores.default.value,
         )
 
