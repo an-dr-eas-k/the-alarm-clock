@@ -97,6 +97,7 @@ class SystemService:
             print_thread_usage,
             trigger="cron",
             hour="*",
+            minute="5-59/10",
             id=SchedulerJobIds.thread_usage_logger.value,
             jobstore=SchedulerStores.default.value,
         )
