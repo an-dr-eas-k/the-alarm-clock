@@ -312,7 +312,7 @@ class Display(DisplayContentProvider):
         if (
             self.display_content.next_alarm_info.has_alarm()
             and self.display_content.next_alarm_info.minutes_until_alarm()
-            <= self.display_content.alarm_clock_context.config.alarm_duration_in_mins
+            <= self.display_content.alarm_clock_context.config.alarm_preview_hours * 60
         ):
             alarm_time = self.display_content.get_next_alarm()
             alarm_text = self.formatter.format_clock_string(alarm_time)
@@ -441,7 +441,7 @@ class Display(DisplayContentProvider):
         if (
             self.display_content.next_alarm_info.has_alarm()
             and self.display_content.next_alarm_info.minutes_until_alarm()
-            <= self.display_content.alarm_clock_context.config.alarm_duration_in_mins
+            <= self.display_content.alarm_clock_context.config.alarm_preview_hours * 60
         ):
             alarm_time = self.display_content.get_next_alarm()
             alarm_text = alarm_time.strftime("%H:%M")
