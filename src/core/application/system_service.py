@@ -32,7 +32,7 @@ logger = logging.getLogger("tac.core.application.system_service")
 
 
 class SystemService:
-    _previous_second = GeoLocation().now().second
+    _previous_tac_time = GeoLocation().now()
 
     def __init__(
         self,
@@ -54,6 +54,7 @@ class SystemService:
         self.event_bus.on(PlaybackChangedEvent)(self.handle_playback_changed)
         self.event_bus.on(SpotifyStoppedEvent)(self.handle_spotify_stopped)
         self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
+        self.event_bus.on(ForcedDisplayUpdateEvent)(self.handle_forced_display_update)
 
         self._update_weather_status()
         self._add_scheduler_jobs()
@@ -155,6 +156,9 @@ class SystemService:
         else:
             self.alarm_clock_context.environment.current_weather = None
 
+    def handle_forced_display_update(self, _: ForcedDisplayUpdateEvent):
+        self._previous_tac_time = GeoLocation().now()
+
     def _update_weather_status(self):
         def do():
             if not self.alarm_clock_context.environment.is_online:
@@ -190,13 +194,12 @@ class SystemService:
 
     def _emit_regular_display_update(self):
         def do():
-            start_time = GeoLocation().now()
-            current_second = start_time.second
+            tac_time = GeoLocation().now()
             new_blink_state = self.display_content.show_blink_segment
 
-            if self._previous_second != current_second:
+            if self._previous_tac_time.second != tac_time.second:
                 new_blink_state = not self.display_content.show_blink_segment
-                self._previous_second = current_second
+                self._previous_tac_time = tac_time
 
             if self.display_content.update_presentation_state(
                 show_blink_segment=new_blink_state,
@@ -208,7 +211,7 @@ class SystemService:
                     )
                 )
                 self.display_content.refresh_duration_in_ms = int(
-                    (GeoLocation().now() - start_time).total_seconds() * 1000
+                    (GeoLocation().now() - tac_time).total_seconds() * 1000
                 )
 
         safe_action(do, debug_msg="regular display update", logger=logger)
