@@ -202,14 +202,15 @@ class DisplayFormatter:
 
     def postprocess_image(self, im: Image.Image) -> Image.Image:
         if self.be_gloomy():
-            fg_color = self.foreground_color(color_type=ColorType.IN256)
-            bg_color = self.background_color(color_type=ColorType.IN256)
+            fg_color = int(self.foreground_color(color_type=ColorType.IN256))
+            bg_color = int(self.background_color(color_type=ColorType.IN256))
 
-            def replace_colors(pixel):
-                if pixel == bg_color:
-                    return bg_color
-                return fg_color
+            # Optimized: Use Lookup Table (LUT) instead of per-pixel function call
+            lut = [fg_color] * 256
+            # Ensure bg_color is within bounds
+            bg_idx = max(0, min(255, bg_color))
+            lut[bg_idx] = bg_color
 
-            im = im.point(replace_colors)
+            im = im.point(lut)
 
         return im

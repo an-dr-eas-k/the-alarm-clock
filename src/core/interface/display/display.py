@@ -767,15 +767,21 @@ class Display(DisplayContentProvider):
         self.widget.adjustSize()
 
     def grab_widget_image(self) -> Image.Image:
+        # Optimized: Convert QImage directly to PIL Image avoiding PNG encoding/decoding
+        qimage = self.widget.grab().toImage()
+        qimage = qimage.convertToFormat(QtGui.QImage.Format.Format_RGBA8888)
+        width = qimage.width()
+        height = qimage.height()
 
-        pixmap = self.widget.grab()
+        ptr = qimage.bits()
+        ptr.setsize(qimage.byteCount())
 
-        buffer = QtCore.QBuffer()
-        buffer.open(QtCore.QBuffer.OpenModeFlag.WriteOnly)
-        pixmap.save(buffer, "PNG")
-
-        pil_image = Image.open(io.BytesIO(buffer.data()))
-        return pil_image
+        # Create PIL Image from raw bytes (copying to avoid segfaults when qimage is collected)
+        # We convert to 'L' (grayscale) immediately as the rest of the pipeline expects it
+        # and it reduces memory usage.
+        return Image.frombuffer(
+            "RGBA", (width, height), ptr, "raw", "RGBA", 0, 1
+        ).convert("L")
 
     def refresh(self):
         logger.debug("update_ui: %sms", timeit(self.update_ui, number=1) * 1000)
