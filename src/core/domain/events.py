@@ -41,6 +41,11 @@ class ConfigChangedEvent(BaseEvent):
 
 
 @dataclass(frozen=True)
+class WeatherUpdatedEvent(BaseEvent):
+    pass
+
+
+@dataclass(frozen=True)
 class SunEventOccurredEvent(BaseEvent):
     event: SunEvent
 

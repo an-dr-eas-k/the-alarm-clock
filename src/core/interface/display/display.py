@@ -310,7 +310,7 @@ class Display(DisplayContentProvider):
 
         # Next Alarm
         if (
-            self.display_content.next_alarm_info.has_alarm()
+            self.display_content.has_next_alarm()
             and self.display_content.next_alarm_info.minutes_until_alarm()
             <= self.display_content.alarm_clock_context.config.alarm_preview_hours * 60
         ):
@@ -439,7 +439,7 @@ class Display(DisplayContentProvider):
 
         # 3. Next Alarm
         if (
-            self.display_content.next_alarm_info.has_alarm()
+            self.display_content.has_next_alarm()
             and self.display_content.next_alarm_info.minutes_until_alarm()
             <= self.display_content.alarm_clock_context.config.alarm_preview_hours * 60
         ):
