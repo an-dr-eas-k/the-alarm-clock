@@ -2,7 +2,7 @@ from datetime import datetime
 import logging
 from timeit import timeit
 from typing import Callable, Dict, List, Type
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import uuid
 
 
@@ -12,7 +12,7 @@ logger = logging.getLogger("tac.core.infrastructure.event_bus")
 @dataclass(frozen=True, kw_only=True)
 class BaseEvent:
     suppress_logging: bool = False
-    id: uuid.UUID = uuid.uuid4()
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
 
 
 class EventBus:
