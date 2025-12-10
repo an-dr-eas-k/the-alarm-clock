@@ -74,9 +74,16 @@ echo "config sudoers"
 rm /etc/sudoers.d/the-alarm-clock
 cat $app/rpi/resources/sudoers > /etc/sudoers.d/the-alarm-clock
 
-echo "configure cron"
-rm /etc/cron.d/the-alarm-clock
-cat $app/rpi/resources/cron.conf > /etc/cron.d/the-alarm-clock
+# echo "configure cron"
+# rm /etc/cron.d/the-alarm-clock
+# cat $app/rpi/resources/cron.conf > /etc/cron.d/the-alarm-clock
+
+echo "wifi-watchdog"
+ln -fs $app/rpi/resources/wifi-watchdog/wifi-watchdog.service /lib/systemd/system/
+ln -fs $app/rpi/resources/wifi-watchdog /opt/
+chmod +x $app/rpi/resources/wifi-watchdog/*.sh
+systemctl daemon-reload
+systemctl enable wifi-watchdog.service
 
 echo "setup equalizer"
 ln -fs $app/rpi/resources/asoundrc $uhome/.asoundrc
