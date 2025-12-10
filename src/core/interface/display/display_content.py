@@ -1,8 +1,7 @@
 from __future__ import annotations
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from apscheduler.job import Job
 
 from core.domain.model import (
     AlarmClockContext,
@@ -10,7 +9,6 @@ from core.domain.model import (
     NextAlarmInfo,
     RoomBrightness,
     Weather,
-    VisualEffect,
 )
 
 if TYPE_CHECKING:
@@ -21,6 +19,15 @@ from core.domain.events import (
     ForcedDisplayUpdateEvent,
     PlaybackChangedEvent,
     VolumeChangedEvent,
+    WeatherUpdatedEvent,
+)
+
+from core.interface.display.display_events import (
+    DisplayNextAlarmUpdatedEvent,
+    DisplayPlaybackUpdatedEvent,
+    DisplayVolumeUpdatedEvent,
+    DisplayBrightnessUpdatedEvent,
+    DisplayWeatherUpdatedEvent,
 )
 
 import logging
@@ -51,34 +58,23 @@ class DisplayContent:
 
         self.event_bus.on(PlaybackChangedEvent)(self._playback_changed)
         self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
-
-        self._observers = []
-
-    def add_observer(self, observer):
-        if observer not in self._observers:
-            self._observers.append(observer)
-
-    def remove_observer(self, observer):
-        if observer in self._observers:
-            self._observers.remove(observer)
-
-    def _notify(self, method: str, *args, **kwargs):
-        for obs in self._observers:
-            if hasattr(obs, method):
-                getattr(obs, method)(*args, **kwargs)
+        self.event_bus.on(WeatherUpdatedEvent)(self._weather_updated)
 
     # ========== Event Handlers ==========
 
     def _playback_changed(self, event: PlaybackChangedEvent):
         if event.playback_mode == Mode.Idle:
             self.hide_volume_meter()
+        self.event_bus.emit(DisplayPlaybackUpdatedEvent())
         self.event_bus.emit(ForcedDisplayUpdateEvent())
-        self._notify("on_display_playback_changed")
 
     def _volume_changed(self, _: VolumeChangedEvent):
         self.show_volume_meter = True
+        self.event_bus.emit(DisplayVolumeUpdatedEvent())
         self.event_bus.emit(ForcedDisplayUpdateEvent())
-        self._notify("on_display_volume_changed")
+
+    def _weather_updated(self, _: WeatherUpdatedEvent):
+        self.event_bus.emit(DisplayWeatherUpdatedEvent())
 
     # ========== Presentation State Updates ==========
 
@@ -95,7 +91,7 @@ class DisplayContent:
 
         if self.room_brightness != room_brightness:
             self.room_brightness = room_brightness
-            self._notify("on_display_brightness_changed")
+            self.event_bus.emit(DisplayBrightnessUpdatedEvent())
             changed = True
 
         if self.is_scrolling:
@@ -105,15 +101,18 @@ class DisplayContent:
 
     # ========== Alarm Information (Domain Delegation) ==========
 
-    def update_next_alarm(self, next_alarm_info: NextAlarmInfo):
-        if next_alarm_info is None:
-            return
+    def has_next_alarm(self) -> bool:
+        return (
+            self.next_alarm_info is not None
+            and self.next_alarm_info.next_run_time is not None
+        )
 
+    def update_next_alarm(self, next_alarm_info: NextAlarmInfo):
         self.next_alarm_info = next_alarm_info
-        self._notify("on_display_alarm_changed")
+        self.event_bus.emit(DisplayNextAlarmUpdatedEvent())
 
     def show_alarm_preview(self) -> bool:
-        if not self.next_alarm_info.has_alarm():
+        if not self.has_next_alarm():
             return False
         hours_until = self.next_alarm_info.minutes_until_alarm() / 60
         return hours_until <= self.alarm_clock_context.config.alarm_preview_hours
@@ -134,6 +133,8 @@ class DisplayContent:
 
     def hide_volume_meter(self):
         self.show_volume_meter = False
+        self.event_bus.emit(DisplayVolumeUpdatedEvent())
+        self.event_bus.emit(ForcedDisplayUpdateEvent())
 
     # ========== Playback Information (Delegation) ==========
 

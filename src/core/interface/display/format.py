@@ -148,7 +148,9 @@ class DisplayFormatter:
         next_alarm_info = self.display_content.next_alarm_info
 
         visual_effect = (
-            next_alarm_info.visual_effect if next_alarm_info.has_alarm() else None
+            next_alarm_info.visual_effect
+            if self.display_content.has_next_alarm()
+            else None
         )
 
         self.adjust_display_by_alarm_visual_effect(visual_effect)

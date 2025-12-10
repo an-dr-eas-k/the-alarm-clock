@@ -14,6 +14,13 @@ from core.domain.events import (
     AlarmStoppedEvent,
     ForcedDisplayUpdateEvent,
 )
+from core.interface.display.display_events import (
+    DisplayPlaybackUpdatedEvent,
+    DisplayVolumeUpdatedEvent,
+    DisplayNextAlarmUpdatedEvent,
+    DisplayWeatherUpdatedEvent,
+    DisplayBrightnessUpdatedEvent,
+)
 from core.domain.edit_mode import AlarmProperty, EditorAction
 from core.domain.model import (
     AlarmClockContext,
@@ -166,9 +173,12 @@ class ScrollingLabel(QtWidgets.QWidget):
             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
         )
 
-    def update_content(self, text, color, start_time=None):
-        self.text = text
+    def update_color(self, color):
         self.color = QtGui.QColor(color)
+        self.update()
+
+    def update_content(self, text, start_time=None):
+        self.text = text
         if start_time is not None:
             self.start_time = start_time
         self.update()
@@ -264,8 +274,6 @@ class Display(DisplayContentProvider):
         self.formatter = display_formatter
         self.initialize_qt_app()
 
-        self.display_content.add_observer(self)
-
         self.widget = None
         self.current_layout_type = None
 
@@ -298,6 +306,13 @@ class Display(DisplayContentProvider):
             self._handle_forced_display_update_event
         )
         self.event_bus.on(AlarmStoppedEvent)(self._alarm_stopped)
+        self.event_bus.on(DisplayPlaybackUpdatedEvent)(self.on_display_playback_changed)
+        self.event_bus.on(DisplayVolumeUpdatedEvent)(self.on_display_volume_changed)
+        self.event_bus.on(DisplayNextAlarmUpdatedEvent)(self.on_display_alarm_changed)
+        self.event_bus.on(DisplayWeatherUpdatedEvent)(self.on_display_weather_changed)
+        self.event_bus.on(DisplayBrightnessUpdatedEvent)(
+            self.on_display_brightness_changed
+        )
 
     def _alarm_stopped(self, _: AlarmStoppedEvent):
         self.device.hide()
@@ -380,7 +395,7 @@ class Display(DisplayContentProvider):
 
         # Next Alarm
         if (
-            self.display_content.next_alarm_info.has_alarm()
+            self.display_content.has_next_alarm()
             and self.display_content.next_alarm_info.minutes_until_alarm()
             <= self.display_content.alarm_clock_context.config.alarm_preview_hours * 60
         ):
@@ -514,7 +529,7 @@ class Display(DisplayContentProvider):
         # Line color
         self.line.setStyleSheet(f"background-color: {fg_color};")
 
-    def on_display_weather_changed(self):
+    def on_display_weather_changed(self, _=None):
         if self.current_layout_type != "DEFAULT_NORMAL":
             return
 
@@ -533,11 +548,10 @@ class Display(DisplayContentProvider):
         else:
             self.weather_container.hide()
 
-    def on_display_playback_changed(self):
+    def on_display_playback_changed(self, _=None):
         if self.current_layout_type != "DEFAULT_NORMAL":
             return
 
-        fg_color = self.formatter.foreground_color(color_type=ColorType.INHEX)
         # Playback
         playback_title = self.display_content.current_playback_title()
         if playback_title:
@@ -546,19 +560,19 @@ class Display(DisplayContentProvider):
                 self._playback_title_scroll_start_time = time.time()
 
             self.playback_label.update_content(
-                playback_title, fg_color, self._playback_title_scroll_start_time
+                playback_title, self._playback_title_scroll_start_time
             )
             self.playback_container.show()
         else:
             self.playback_container.hide()
 
-    def on_display_alarm_changed(self):
+    def on_display_alarm_changed(self, _=None):
         if self.current_layout_type != "DEFAULT_NORMAL":
             return
 
         # Next Alarm
         if (
-            self.display_content.next_alarm_info.has_alarm()
+            self.display_content.has_next_alarm()
             and self.display_content.next_alarm_info.minutes_until_alarm()
             <= self.display_content.alarm_clock_context.config.alarm_preview_hours * 60
         ):
@@ -569,7 +583,7 @@ class Display(DisplayContentProvider):
         else:
             self.alarm_container.hide()
 
-    def on_display_volume_changed(self):
+    def on_display_volume_changed(self, _=None):
         if self.current_layout_type != "DEFAULT_NORMAL":
             return
 
@@ -581,7 +595,7 @@ class Display(DisplayContentProvider):
         else:
             self.vol_label.hide()
 
-    def on_display_brightness_changed(self):
+    def on_display_brightness_changed(self, _=None):
         # This affects colors, so we might need to update everything or just colors.
         # For simplicity, trigger a full content update for the current layout.
         self._update_content(self.current_layout_type)
@@ -862,6 +876,7 @@ class Display(DisplayContentProvider):
         if layout_type == "DEFAULT_NORMAL":
             # Optimized: Only update clock in the loop, other elements are event-driven
             self._update_clock_only()
+            self.playback_label.update_color(fg_color)
             # We still need to update scrolling text if active
             if self.display_content.is_scrolling:
                 self.on_display_playback_changed()

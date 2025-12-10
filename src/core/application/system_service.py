@@ -1,20 +1,18 @@
 import datetime
 import logging
-from timeit import timeit
 from core.application.controls import safe_action
 from core.domain.events import (
     ForcedDisplayUpdateEvent,
-    PlaybackChangedEvent,
     SpotifyStoppedEvent,
     SunEventOccurredEvent,
     VolumeChangedEvent,
+    WeatherUpdatedEvent,
     WifiStatusChangedEvent,
     AlarmTriggeredEvent,
     AlarmStoppedEvent,
 )
 from core.domain.model import (
     AlarmClockContext,
-    Mode,
     RoomBrightness,
     SchedulerJobIds,
 )
@@ -51,7 +49,6 @@ class SystemService:
         self.event_bus.on(WifiStatusChangedEvent)(self.handle_wifi_status_changed)
         self.event_bus.on(AlarmTriggeredEvent)(self.handle_alarm_triggered)
         self.event_bus.on(AlarmStoppedEvent)(self.handle_alarm_stopped)
-        self.event_bus.on(PlaybackChangedEvent)(self.handle_playback_changed)
         self.event_bus.on(SpotifyStoppedEvent)(self.handle_spotify_stopped)
         self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
         self.event_bus.on(ForcedDisplayUpdateEvent)(self.handle_forced_display_update)
@@ -139,12 +136,6 @@ class SystemService:
             func=self.display_content.hide_volume_meter,
         )
 
-    def handle_playback_changed(self, event: PlaybackChangedEvent):
-        if event.playback_mode == Mode.Idle:
-            self.scheduler_service.stop_generic_trigger(
-                SchedulerJobIds.hide_volume_meter.value
-            )
-
     def handle_alarm_stopped(self, _: AlarmStoppedEvent):
         self.scheduler_service.stop_generic_trigger(
             SchedulerJobIds.ensure_stable_wifi.value
@@ -168,6 +159,7 @@ class SystemService:
             new_weather = GeoLocation().get_current_weather()
             logger.info("weather updating: %s", new_weather)
             self.alarm_clock_context.environment.current_weather = new_weather
+            self.event_bus.emit(WeatherUpdatedEvent())
 
         safe_action(do, "updating weather status", logger=logger)
 

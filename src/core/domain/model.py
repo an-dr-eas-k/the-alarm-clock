@@ -620,11 +620,8 @@ class NextAlarmInfo:
     def visual_effect(self) -> "VisualEffect":
         return self._visual_effect
 
-    def has_alarm(self) -> bool:
-        return self._next_run_time is not None
-
     def _get_timedelta_to_alarm(self) -> timedelta:
-        if not self.has_alarm():
+        if self._next_run_time is None:
             return timedelta.max
         return self._calculate_time_delta()
 
