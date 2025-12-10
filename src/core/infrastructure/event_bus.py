@@ -2,8 +2,8 @@ from datetime import datetime
 import logging
 from timeit import timeit
 from typing import Callable, Dict, List, Type
-from dataclasses import dataclass, field
-import uuid
+from dataclasses import dataclass
+from uuid import uuid4
 
 
 logger = logging.getLogger("tac.core.infrastructure.event_bus")
@@ -12,7 +12,6 @@ logger = logging.getLogger("tac.core.infrastructure.event_bus")
 @dataclass(frozen=True, kw_only=True)
 class BaseEvent:
     suppress_logging: bool = False
-    id: uuid.UUID = field(default_factory=uuid.uuid4)
 
 
 class EventBus:
@@ -37,6 +36,7 @@ class EventBus:
         logger.debug(f"Registered handler {handler.__name__} for {event_type.__name__}")
 
     def emit(self, event: BaseEvent):
+        event_id = uuid4()
         event_type = type(event)
         suppress_logging = getattr(event, "suppress_logging", False)
         handlers = self._handlers.get(event_type, [])
@@ -47,7 +47,7 @@ class EventBus:
 
         if not suppress_logging:
             logger.info(
-                f"Emitting {event_type.__name__}({event.id}) to {len(handlers)} handler(s)"
+                f"Emitting {event_type.__name__}({event_id}) to {len(handlers)} handler(s)"
             )
         handler_times = {}
         for handler in handlers:
@@ -66,7 +66,7 @@ class EventBus:
                     exc_info=True,
                 )
         if not suppress_logging:
-            msg = f"Emitted {event_type.__name__}({event.id}) to {len(handlers)} handler(s) with execution times:"
+            msg = f"Emitted {event_type.__name__}({event_id}) to {len(handlers)} handler(s) with execution times:"
             for handler, exec_time in handler_times.items():
                 msg += f"\n - {f"{handler}: {exec_time:.2f} ms"}"
             logger.debug(msg)
