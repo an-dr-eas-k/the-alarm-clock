@@ -264,6 +264,8 @@ class Display(DisplayContentProvider):
         self.formatter = display_formatter
         self.initialize_qt_app()
 
+        self.display_content.add_observer(self)
+
         self.widget = None
         self.current_layout_type = None
 
@@ -483,6 +485,13 @@ class Display(DisplayContentProvider):
         layout.addLayout(info_layout, stretch=1)
 
     def _update_default_normal_view(self):
+        self._update_clock_only()
+        self.on_display_alarm_changed()
+        self.on_display_playback_changed()
+        self.on_display_volume_changed()
+        self.on_display_weather_changed()
+
+    def _update_clock_only(self):
         # Clock
         fmt = self.alarm_clock_context.config.clock_format_string
         parts = fmt.split("<blinkSegment>")
@@ -496,7 +505,6 @@ class Display(DisplayContentProvider):
         now = GeoLocation().now()
         hour_str = now.strftime(hour_fmt)
         minute_str = now.strftime(min_fmt)
-        blink_char = self.alarm_clock_context.config.blink_segment
         fg_color = self.formatter.foreground_color(color_type=ColorType.INHEX)
 
         self.clock_widget.update_content(
@@ -505,6 +513,10 @@ class Display(DisplayContentProvider):
 
         # Line color
         self.line.setStyleSheet(f"background-color: {fg_color};")
+
+    def on_display_weather_changed(self):
+        if self.current_layout_type != "DEFAULT_NORMAL":
+            return
 
         # Weather
         weather = self.display_content.current_weather
@@ -521,6 +533,11 @@ class Display(DisplayContentProvider):
         else:
             self.weather_container.hide()
 
+    def on_display_playback_changed(self):
+        if self.current_layout_type != "DEFAULT_NORMAL":
+            return
+
+        fg_color = self.formatter.foreground_color(color_type=ColorType.INHEX)
         # Playback
         playback_title = self.display_content.current_playback_title()
         if playback_title:
@@ -535,6 +552,10 @@ class Display(DisplayContentProvider):
         else:
             self.playback_container.hide()
 
+    def on_display_alarm_changed(self):
+        if self.current_layout_type != "DEFAULT_NORMAL":
+            return
+
         # Next Alarm
         if (
             self.display_content.next_alarm_info.has_alarm()
@@ -548,6 +569,10 @@ class Display(DisplayContentProvider):
         else:
             self.alarm_container.hide()
 
+    def on_display_volume_changed(self):
+        if self.current_layout_type != "DEFAULT_NORMAL":
+            return
+
         # Volume
         if self.display_content.show_volume_meter:
             vol = self.display_content.current_volume()
@@ -555,6 +580,11 @@ class Display(DisplayContentProvider):
             self.vol_label.show()
         else:
             self.vol_label.hide()
+
+    def on_display_brightness_changed(self):
+        # This affects colors, so we might need to update everything or just colors.
+        # For simplicity, trigger a full content update for the current layout.
+        self._update_content(self.current_layout_type)
 
     def _draw_default_view(self, layout: QtWidgets.QHBoxLayout):
         if self.formatter.be_gloomy():
@@ -762,6 +792,10 @@ class Display(DisplayContentProvider):
             self._setup_layout(layout_type)
             self.current_layout_type = layout_type
 
+            # On layout change, perform a full update of the new view
+            if layout_type == "DEFAULT_NORMAL":
+                self._update_default_normal_view()
+
         self._update_content(layout_type)
 
         self.widget.adjustSize()
@@ -826,7 +860,11 @@ class Display(DisplayContentProvider):
         )
 
         if layout_type == "DEFAULT_NORMAL":
-            self._update_default_normal_view()
+            # Optimized: Only update clock in the loop, other elements are event-driven
+            self._update_clock_only()
+            # We still need to update scrolling text if active
+            if self.display_content.is_scrolling:
+                self.on_display_playback_changed()
         elif layout_type == "DEFAULT_DIMMED":
             self._update_default_dimmed_view()
         elif layout_type == ModeName.ALARM_VIEW:

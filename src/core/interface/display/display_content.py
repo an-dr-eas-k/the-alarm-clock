@@ -52,16 +52,33 @@ class DisplayContent:
         self.event_bus.on(PlaybackChangedEvent)(self._playback_changed)
         self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
 
+        self._observers = []
+
+    def add_observer(self, observer):
+        if observer not in self._observers:
+            self._observers.append(observer)
+
+    def remove_observer(self, observer):
+        if observer in self._observers:
+            self._observers.remove(observer)
+
+    def _notify(self, method: str, *args, **kwargs):
+        for obs in self._observers:
+            if hasattr(obs, method):
+                getattr(obs, method)(*args, **kwargs)
+
     # ========== Event Handlers ==========
 
     def _playback_changed(self, event: PlaybackChangedEvent):
         if event.playback_mode == Mode.Idle:
             self.hide_volume_meter()
         self.event_bus.emit(ForcedDisplayUpdateEvent())
+        self._notify("on_display_playback_changed")
 
     def _volume_changed(self, _: VolumeChangedEvent):
         self.show_volume_meter = True
         self.event_bus.emit(ForcedDisplayUpdateEvent())
+        self._notify("on_display_volume_changed")
 
     # ========== Presentation State Updates ==========
 
@@ -78,6 +95,7 @@ class DisplayContent:
 
         if self.room_brightness != room_brightness:
             self.room_brightness = room_brightness
+            self._notify("on_display_brightness_changed")
             changed = True
 
         if self.is_scrolling:
@@ -92,6 +110,7 @@ class DisplayContent:
             return
 
         self.next_alarm_info = next_alarm_info
+        self._notify("on_display_alarm_changed")
 
     def show_alarm_preview(self) -> bool:
         if not self.next_alarm_info.has_alarm():
