@@ -3,6 +3,7 @@ import logging
 from timeit import timeit
 from typing import Callable, Dict, List, Type
 from dataclasses import dataclass
+import uuid
 
 
 logger = logging.getLogger("tac.core.infrastructure.event_bus")
@@ -11,6 +12,7 @@ logger = logging.getLogger("tac.core.infrastructure.event_bus")
 @dataclass(frozen=True, kw_only=True)
 class BaseEvent:
     suppress_logging: bool = False
+    id: uuid.UUID = uuid.uuid4()
 
 
 class EventBus:
@@ -40,12 +42,12 @@ class EventBus:
         handlers = self._handlers.get(event_type, [])
 
         if not handlers:
-            logger.debug(f"No handlers registered for {event_type.__name__}")
+            logger.warning(f"No handlers registered for {event_type.__name__}")
             return
 
         if not suppress_logging:
-            logger.debug(
-                f"Emitting {event_type.__name__} to {len(handlers)} handler(s)"
+            logger.info(
+                f"Emitting {event_type.__name__}({event.id}) to {len(handlers)} handler(s)"
             )
         handler_times = {}
         for handler in handlers:
@@ -64,10 +66,10 @@ class EventBus:
                     exc_info=True,
                 )
         if not suppress_logging:
-            msg = f"Emitted {event_type.__name__} to {len(handlers)} handler(s) with execution times:"
+            msg = f"Emitted {event_type.__name__}({event.id}) to {len(handlers)} handler(s) with execution times:"
             for handler, exec_time in handler_times.items():
                 msg += f"\n - {f"{handler}: {exec_time:.2f} ms"}"
-            logger.info(msg)
+            logger.debug(msg)
 
     def emit_all(self, events: List[BaseEvent]):
         for event in events:
