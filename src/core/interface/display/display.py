@@ -47,6 +47,13 @@ class ClockWidget(QtWidgets.QWidget):
             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
         )
 
+    def update_content(self, hour_str, min_str, show_blink, fg_color):
+        self.hour_str = hour_str
+        self.min_str = min_str
+        self.show_blink = show_blink
+        self.fg_color = QtGui.QColor(fg_color)
+        self.update()
+
     def _calculate_layout(self, fm, overlap):
         x = 0
         # Hours
@@ -159,6 +166,13 @@ class ScrollingLabel(QtWidgets.QWidget):
             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
         )
 
+    def update_content(self, text, color, start_time=None):
+        self.text = text
+        self.color = QtGui.QColor(color)
+        if start_time is not None:
+            self.start_time = start_time
+        self.update()
+
     def minimumSizeHint(self):
         fm = QtGui.QFontMetrics(self.font_obj)
         return QtCore.QSize(10, fm.height())
@@ -249,6 +263,35 @@ class Display(DisplayContentProvider):
         self.event_bus = event_bus
         self.formatter = display_formatter
         self.initialize_qt_app()
+
+        self.widget = None
+        self.current_layout_type = None
+
+        # Widget references
+        self.clock_widget = None
+        self.weather_symbol_label = None
+        self.weather_temp_label = None
+        self.playback_symbol_label = None
+        self.playback_label = None
+        self.alarm_symbol_label = None
+        self.alarm_label = None
+        self.vol_label = None
+        self.wifi_label = None
+
+        # Alarm View Widgets
+        self.av_header_label = None
+        self.av_time_label = None
+        self.av_status_label = None
+        self.av_days_label = None
+
+        # Edit View Widgets
+        self.ev_prop_label = None
+        self.ev_val_label = None
+
+        # Property Edit View Widgets
+        self.pev_header_label = None
+        self.pev_val_label = None
+
         self.event_bus.on(ForcedDisplayUpdateEvent)(
             self._handle_forced_display_update_event
         )
@@ -271,16 +314,7 @@ class Display(DisplayContentProvider):
             with canvas(self.device) as draw:
                 draw.text((20, 20), f"exception!\n({e})", fill="white")
 
-    def _draw_dimmed_content(self, layout: QtWidgets.QHBoxLayout):
-        now = GeoLocation().now()
-        day = now.day
-
-        # Screensaver logic: shift content based on day of month
-        x_offset = day * 3
-        y_offset = (day % 5) * 4
-
-        layout.setContentsMargins(x_offset, y_offset, 0, 0)
-
+    def _setup_default_dimmed_view(self, layout: QtWidgets.QHBoxLayout):
         # Container
         container = QtWidgets.QWidget()
         container_layout = QtWidgets.QHBoxLayout(container)
@@ -288,17 +322,14 @@ class Display(DisplayContentProvider):
         container_layout.setSpacing(10)
 
         # Clock
-        clock_string = self.formatter.format_dseg7_clock_string(
-            now, self.display_content.show_blink_segment
-        )
-        clock_label = QtWidgets.QLabel(clock_string)
-        clock_label.setFont(
+        self.clock_label = QtWidgets.QLabel("")
+        self.clock_label.setFont(
             self.formatter.clock_font(size=18, weight=QtGui.QFont.Weight.Light)
         )
-        clock_label.setAlignment(
+        self.clock_label.setAlignment(
             QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft
         )
-        container_layout.addWidget(clock_label)
+        container_layout.addWidget(self.clock_label)
 
         # Info Stack
         info_layout = QtWidgets.QVBoxLayout()
@@ -309,28 +340,16 @@ class Display(DisplayContentProvider):
         )
 
         # Next Alarm
-        if (
-            self.display_content.next_alarm_info.has_alarm()
-            and self.display_content.next_alarm_info.minutes_until_alarm()
-            <= self.display_content.alarm_clock_context.config.alarm_preview_hours * 60
-        ):
-            alarm_time = self.display_content.get_next_alarm()
-            alarm_text = self.formatter.format_clock_string(alarm_time)
-            alarm_label = QtWidgets.QLabel(f"\uf49a {alarm_text}")
-            alarm_label.setFont(self.formatter.info_font(size=12))
-            alarm_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
-            info_layout.addWidget(alarm_label)
+        self.alarm_label = QtWidgets.QLabel("")
+        self.alarm_label.setFont(self.formatter.info_font(size=12))
+        self.alarm_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
+        info_layout.addWidget(self.alarm_label)
 
         # WiFi
-        is_online = self.display_content.get_is_online()
-        no_wifi_symbol = "\U000f05aa"
-        wifi_text = "" if is_online else no_wifi_symbol
-        wifi_label = QtWidgets.QLabel(wifi_text)
-
-        wifi_label.setFont(self.formatter.info_font(size=14))
-
-        wifi_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
-        info_layout.addWidget(wifi_label)
+        self.wifi_label = QtWidgets.QLabel("")
+        self.wifi_label.setFont(self.formatter.info_font(size=14))
+        self.wifi_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
+        info_layout.addWidget(self.wifi_label)
 
         container_layout.addLayout(info_layout)
 
@@ -341,9 +360,130 @@ class Display(DisplayContentProvider):
         )
         layout.addStretch()
 
-    def _draw_normal_content(self, layout: QtWidgets.QHBoxLayout):
+    def _update_default_dimmed_view(self):
+        now = GeoLocation().now()
+        day = now.day
+
+        # Screensaver logic: shift content based on day of month
+        x_offset = day * 3
+        y_offset = (day % 5) * 4
+
+        self.widget.layout().setContentsMargins(x_offset, y_offset, 0, 0)
+
+        # Clock
+        clock_string = self.formatter.format_dseg7_clock_string(
+            now, self.display_content.show_blink_segment
+        )
+        self.clock_label.setText(clock_string)
+
+        # Next Alarm
+        if (
+            self.display_content.next_alarm_info.has_alarm()
+            and self.display_content.next_alarm_info.minutes_until_alarm()
+            <= self.display_content.alarm_clock_context.config.alarm_preview_hours * 60
+        ):
+            alarm_time = self.display_content.get_next_alarm()
+            alarm_text = self.formatter.format_clock_string(alarm_time)
+            self.alarm_label.setText(f"\uf49a {alarm_text}")
+            self.alarm_label.show()
+        else:
+            self.alarm_label.hide()
+
+        # WiFi
+        is_online = self.display_content.get_is_online()
+        no_wifi_symbol = "\U000f05aa"
+        wifi_text = "" if is_online else no_wifi_symbol
+        self.wifi_label.setText(wifi_text)
+
+    def _setup_default_normal_view(self, layout: QtWidgets.QHBoxLayout):
         layout.addSpacing(10)
-        # --- Left: Clock ---
+
+        # Clock Widget
+        self.clock_widget = ClockWidget(
+            "00", "00", ":", True, "#FFFFFF", self.formatter.clock_font(size=42)
+        )
+        layout.addWidget(self.clock_widget, stretch=3)
+
+        # Vertical Line
+        self.line = QtWidgets.QWidget()
+        self.line.setFixedWidth(1)
+        layout.addWidget(self.line)
+        layout.addSpacing(10)
+
+        # Info Stack
+        info_layout = QtWidgets.QVBoxLayout()
+        info_layout.setContentsMargins(0, 0, 0, 0)
+        info_layout.setSpacing(0)
+        info_layout.setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft
+        )
+
+        # 1. Weather
+        self.weather_container = QtWidgets.QWidget()
+        weather_layout = QtWidgets.QHBoxLayout(self.weather_container)
+        weather_layout.setContentsMargins(0, 0, 0, 0)
+        weather_layout.setSpacing(5)
+        weather_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
+
+        self.weather_symbol_label = QtWidgets.QLabel("")
+        self.weather_symbol_label.setFont(self.formatter.weather_font(size=16))
+        weather_layout.addWidget(self.weather_symbol_label)
+
+        self.weather_temp_label = QtWidgets.QLabel("")
+        self.weather_temp_label.setFont(self.formatter.info_font(size=12))
+        weather_layout.addWidget(self.weather_temp_label)
+
+        info_layout.addWidget(self.weather_container)
+
+        # 2. Playback
+        self.playback_container = QtWidgets.QWidget()
+        playback_layout = QtWidgets.QHBoxLayout(self.playback_container)
+        playback_layout.setContentsMargins(0, 0, 0, 0)
+        playback_layout.setSpacing(5)
+        playback_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
+
+        self.playback_symbol_label = QtWidgets.QLabel("\uf2eb")
+        self.playback_symbol_label.setFont(self.formatter.info_font(size=16))
+        playback_layout.addWidget(self.playback_symbol_label)
+
+        self.playback_label = ScrollingLabel(
+            "",
+            self.formatter.info_font(size=12),
+            "#FFFFFF",
+            0,
+            self.display_content,
+        )
+        playback_layout.addWidget(self.playback_label)
+
+        info_layout.addWidget(self.playback_container)
+
+        # 3. Next Alarm
+        self.alarm_container = QtWidgets.QWidget()
+        alarm_layout = QtWidgets.QHBoxLayout(self.alarm_container)
+        alarm_layout.setContentsMargins(0, 0, 0, 0)
+        alarm_layout.setSpacing(5)
+        alarm_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
+
+        self.alarm_symbol_label = QtWidgets.QLabel("\uf49a")
+        self.alarm_symbol_label.setFont(self.formatter.info_font(size=12))
+        alarm_layout.addWidget(self.alarm_symbol_label)
+
+        self.alarm_label = QtWidgets.QLabel("")
+        self.alarm_label.setFont(self.formatter.info_font(size=12))
+        alarm_layout.addWidget(self.alarm_label)
+
+        info_layout.addWidget(self.alarm_container)
+
+        # 4. Volume
+        self.vol_label = QtWidgets.QLabel("")
+        self.vol_label.setFont(self.formatter.info_font(size=12))
+        self.vol_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
+        info_layout.addWidget(self.vol_label)
+
+        layout.addLayout(info_layout, stretch=1)
+
+    def _update_default_normal_view(self):
+        # Clock
         fmt = self.alarm_clock_context.config.clock_format_string
         parts = fmt.split("<blinkSegment>")
         if len(parts) == 2:
@@ -356,88 +496,46 @@ class Display(DisplayContentProvider):
         now = GeoLocation().now()
         hour_str = now.strftime(hour_fmt)
         minute_str = now.strftime(min_fmt)
-
         blink_char = self.alarm_clock_context.config.blink_segment
-
         fg_color = self.formatter.foreground_color(color_type=ColorType.INHEX)
 
-        clock_widget = ClockWidget(
-            hour_str,
-            minute_str,
-            blink_char,
-            self.display_content.show_blink_segment,
-            fg_color,
-            font_obj=self.formatter.clock_font(size=42),
-        )
-        layout.addWidget(clock_widget, stretch=3)
-
-        # Vertical Line
-        line = QtWidgets.QWidget()
-        line.setFixedWidth(1)
-        line.setStyleSheet(f"background-color: {fg_color};")
-        layout.addWidget(line)
-        layout.addSpacing(10)
-
-        # --- Right: Info Stack ---
-        info_layout = QtWidgets.QVBoxLayout()
-        info_layout.setContentsMargins(0, 0, 0, 0)
-        info_layout.setSpacing(0)
-        info_layout.setAlignment(
-            QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft
+        self.clock_widget.update_content(
+            hour_str, minute_str, self.display_content.show_blink_segment, fg_color
         )
 
-        # 1. Weather
+        # Line color
+        self.line.setStyleSheet(f"background-color: {fg_color};")
+
+        # Weather
         weather = self.display_content.current_weather
-        if weather:
-            temp = weather.temperature if weather is not None else None
-            if temp is not None:
-                weather_container = QtWidgets.QWidget()
-                weather_layout = QtWidgets.QHBoxLayout(weather_container)
-                weather_layout.setContentsMargins(0, 0, 0, 0)
-                weather_layout.setSpacing(5)
-                weather_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
+        if weather and weather.temperature is not None:
+            symbol = weather.code.to_character() if weather.code else None
+            if symbol:
+                self.weather_symbol_label.setText(symbol)
+                self.weather_symbol_label.show()
+            else:
+                self.weather_symbol_label.hide()
 
-                symbol = weather.code.to_character() if weather.code else None
-                if symbol:
-                    symbol_label = QtWidgets.QLabel(symbol)
-                    symbol_label.setFont(self.formatter.weather_font(size=16))
-                    weather_layout.addWidget(symbol_label)
+            self.weather_temp_label.setText(f"{weather.temperature:.1f}°C")
+            self.weather_container.show()
+        else:
+            self.weather_container.hide()
 
-                weather_label = QtWidgets.QLabel(f"{temp:.1f}°C")
-                weather_label.setFont(self.formatter.info_font(size=12))
-                weather_layout.addWidget(weather_label)
-
-                info_layout.addWidget(weather_container)
-
-        # 3. Playback
+        # Playback
         playback_title = self.display_content.current_playback_title()
         if playback_title:
             if playback_title != self._last_playback_title:
                 self._last_playback_title = playback_title
                 self._playback_title_scroll_start_time = time.time()
 
-            playback_container = QtWidgets.QWidget()
-            playback_layout = QtWidgets.QHBoxLayout(playback_container)
-            playback_layout.setContentsMargins(0, 0, 0, 0)
-            playback_layout.setSpacing(5)
-            playback_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
-
-            playback_symbol = QtWidgets.QLabel("\uf2eb")
-            playback_symbol.setFont(self.formatter.info_font(size=16))
-            playback_layout.addWidget(playback_symbol)
-
-            playback_label = ScrollingLabel(
-                playback_title,
-                self.formatter.info_font(size=12),
-                fg_color,
-                self._playback_title_scroll_start_time,
-                self.display_content,
+            self.playback_label.update_content(
+                playback_title, fg_color, self._playback_title_scroll_start_time
             )
-            playback_layout.addWidget(playback_label)
+            self.playback_container.show()
+        else:
+            self.playback_container.hide()
 
-            info_layout.addWidget(playback_container)
-
-        # 3. Next Alarm
+        # Next Alarm
         if (
             self.display_content.next_alarm_info.has_alarm()
             and self.display_content.next_alarm_info.minutes_until_alarm()
@@ -445,31 +543,18 @@ class Display(DisplayContentProvider):
         ):
             alarm_time = self.display_content.get_next_alarm()
             alarm_text = alarm_time.strftime("%H:%M")
+            self.alarm_label.setText(alarm_text)
+            self.alarm_container.show()
+        else:
+            self.alarm_container.hide()
 
-            alarm_container = QtWidgets.QWidget()
-            alarm_layout = QtWidgets.QHBoxLayout(alarm_container)
-            alarm_layout.setContentsMargins(0, 0, 0, 0)
-            alarm_layout.setSpacing(5)
-            alarm_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
-
-            alarm_symbol = QtWidgets.QLabel("\uf49a")
-            alarm_symbol.setFont(self.formatter.info_font(size=12))
-            alarm_layout.addWidget(alarm_symbol)
-
-            alarm_label = QtWidgets.QLabel(alarm_text)
-            alarm_label.setFont(self.formatter.info_font(size=12))
-            alarm_layout.addWidget(alarm_label)
-
-            info_layout.addWidget(alarm_container)
-        # 4. Volume
+        # Volume
         if self.display_content.show_volume_meter:
             vol = self.display_content.current_volume()
-            vol_label = QtWidgets.QLabel(f"Vol: {int(vol * 100)}%")
-            vol_label.setFont(self.formatter.info_font(size=12))
-            vol_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
-            info_layout.addWidget(vol_label)
-
-        layout.addLayout(info_layout, stretch=1)
+            self.vol_label.setText(f"Vol: {int(vol * 100)}%")
+            self.vol_label.show()
+        else:
+            self.vol_label.hide()
 
     def _draw_default_view(self, layout: QtWidgets.QHBoxLayout):
         if self.formatter.be_gloomy():
@@ -477,14 +562,7 @@ class Display(DisplayContentProvider):
         else:
             self._draw_normal_content(layout)
 
-    def _draw_alarm_view(self, layout: QtWidgets.QHBoxLayout):
-        coordinator = self.alarm_clock_context.mode_coordinator
-        service = coordinator.editing_service
-        if not service:
-            return
-
-        alarm = service.current_alarm
-
+    def _setup_alarm_view(self, layout: QtWidgets.QHBoxLayout):
         # Main Container
         container = QtWidgets.QWidget()
         # Use a grid layout for better control
@@ -492,25 +570,53 @@ class Display(DisplayContentProvider):
         grid.setContentsMargins(10, 5, 10, 5)
 
         # Row 0: Header (Alarm Index)
-        index = service.current_alarm_index + 1
-        total = len(self.alarm_clock_context.config.alarm_definitions) + 1
-        header_label = QtWidgets.QLabel(f"ALARM {index}/{total}")
-        header_label.setFont(self.formatter.info_font(size=10))
-        grid.addWidget(header_label, 0, 0, 1, 2, QtCore.Qt.AlignmentFlag.AlignLeft)
+        self.av_header_label = QtWidgets.QLabel("")
+        self.av_header_label.setFont(self.formatter.info_font(size=10))
+        grid.addWidget(
+            self.av_header_label, 0, 0, 1, 2, QtCore.Qt.AlignmentFlag.AlignLeft
+        )
 
         # Row 1: Time (Big)
-        time_str = f"{alarm.hour:02d}:{alarm.min:02d}"
-        time_label = QtWidgets.QLabel(time_str)
-        time_label.setFont(self.formatter.info_font(size=32))
-        grid.addWidget(time_label, 1, 0, 2, 1, QtCore.Qt.AlignmentFlag.AlignLeft)
+        self.av_time_label = QtWidgets.QLabel("")
+        self.av_time_label.setFont(self.formatter.info_font(size=32))
+        grid.addWidget(
+            self.av_time_label, 1, 0, 2, 1, QtCore.Qt.AlignmentFlag.AlignLeft
+        )
 
         # Row 1, Col 1: Active Status
-        status_icon = "\uf205" if alarm.is_active else "\uf204"  # Toggle On/Off
-        status_label = QtWidgets.QLabel(status_icon)
-        status_label.setFont(self.formatter.info_font(size=20))
-        grid.addWidget(status_label, 1, 1, QtCore.Qt.AlignmentFlag.AlignRight)
+        self.av_status_label = QtWidgets.QLabel("")
+        self.av_status_label.setFont(self.formatter.info_font(size=20))
+        grid.addWidget(self.av_status_label, 1, 1, QtCore.Qt.AlignmentFlag.AlignRight)
 
         # Row 2, Col 1: Days
+        self.av_days_label = QtWidgets.QLabel("")
+        self.av_days_label.setFont(self.formatter.info_font(size=12))
+        grid.addWidget(self.av_days_label, 2, 1, QtCore.Qt.AlignmentFlag.AlignRight)
+
+        layout.addWidget(container)
+
+    def _update_alarm_view(self):
+        coordinator = self.alarm_clock_context.mode_coordinator
+        service = coordinator.editing_service
+        if not service:
+            return
+
+        alarm = service.current_alarm
+
+        # Header
+        index = service.current_alarm_index + 1
+        total = len(self.alarm_clock_context.config.alarm_definitions) + 1
+        self.av_header_label.setText(f"ALARM {index}/{total}")
+
+        # Time
+        time_str = f"{alarm.hour:02d}:{alarm.min:02d}"
+        self.av_time_label.setText(time_str)
+
+        # Status
+        status_icon = "\uf205" if alarm.is_active else "\uf204"  # Toggle On/Off
+        self.av_status_label.setText(status_icon)
+
+        # Days
         days_str = "New Alarm"
         if alarm.id is not None:
             try:
@@ -519,14 +625,28 @@ class Display(DisplayContentProvider):
                     days_str = days_str[:12] + "..."
             except:
                 days_str = "Invalid"
+        self.av_days_label.setText(days_str)
 
-        days_label = QtWidgets.QLabel(days_str)
-        days_label.setFont(self.formatter.info_font(size=12))
-        grid.addWidget(days_label, 2, 1, QtCore.Qt.AlignmentFlag.AlignRight)
+    def _setup_alarm_edit_view(self, layout: QtWidgets.QHBoxLayout):
+        container = QtWidgets.QWidget()
+        v_layout = QtWidgets.QVBoxLayout(container)
+        v_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+
+        # Property Name
+        self.ev_prop_label = QtWidgets.QLabel("")
+        self.ev_prop_label.setFont(self.formatter.info_font(size=18))
+        self.ev_prop_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        v_layout.addWidget(self.ev_prop_label)
+
+        # Current Value Preview
+        self.ev_val_label = QtWidgets.QLabel("")
+        self.ev_val_label.setFont(self.formatter.info_font(size=12))
+        self.ev_val_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        v_layout.addWidget(self.ev_val_label)
 
         layout.addWidget(container)
 
-    def _draw_alarm_edit_view(self, layout: QtWidgets.QHBoxLayout):
+    def _update_alarm_edit_view(self):
         coordinator = self.alarm_clock_context.mode_coordinator
         service = coordinator.editing_service
         if not service or not service.editing_session:
@@ -534,23 +654,15 @@ class Display(DisplayContentProvider):
 
         current_prop = service.property_to_edit
 
-        container = QtWidgets.QWidget()
-        v_layout = QtWidgets.QVBoxLayout(container)
-        v_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-
         # Property Name
         prop_name = ""
         if isinstance(current_prop, AlarmProperty):
             prop_name = current_prop.name.replace("_", " ")
         elif isinstance(current_prop, EditorAction):
             prop_name = current_prop.value.upper()
+        self.ev_prop_label.setText(prop_name)
 
-        prop_label = QtWidgets.QLabel(prop_name)
-        prop_label.setFont(self.formatter.info_font(size=18))
-        prop_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        v_layout.addWidget(prop_label)
-
-        # Current Value Preview (if not an action)
+        # Current Value Preview
         if isinstance(current_prop, AlarmProperty):
             val = service.editing_session.get_current_value()
             val_str = str(val)
@@ -561,36 +673,21 @@ class Display(DisplayContentProvider):
             elif current_prop == AlarmProperty.AUDIO_EFFECT:
                 val_str = val.title() if val else "None"
 
-            val_label = QtWidgets.QLabel(val_str)
-            val_label.setFont(self.formatter.info_font(size=12))
-            val_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-            v_layout.addWidget(val_label)
+            self.ev_val_label.setText(val_str)
+            self.ev_val_label.show()
+        else:
+            self.ev_val_label.hide()
 
-        layout.addWidget(container)
-
-    def _draw_property_edit_view(self, layout: QtWidgets.QHBoxLayout):
-        coordinator = self.alarm_clock_context.mode_coordinator
-        service = coordinator.editing_service
-        if not service or not service.editing_session:
-            return
-
-        current_prop = service.property_to_edit
-        current_val = service.editing_session.get_current_value()
-
+    def _setup_property_edit_view(self, layout: QtWidgets.QHBoxLayout):
         container = QtWidgets.QWidget()
         v_layout = QtWidgets.QVBoxLayout(container)
         v_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
 
         # Property Name
-        prop_name = (
-            current_prop.name.replace("_", " ")
-            if isinstance(current_prop, AlarmProperty)
-            else ""
-        )
-        header = QtWidgets.QLabel(f"SET {prop_name}")
-        header.setFont(self.formatter.info_font(size=10))
-        header.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        v_layout.addWidget(header)
+        self.pev_header_label = QtWidgets.QLabel("")
+        self.pev_header_label.setFont(self.formatter.info_font(size=10))
+        self.pev_header_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        v_layout.addWidget(self.pev_header_label)
 
         # Value with arrows
         h_layout = QtWidgets.QHBoxLayout()
@@ -600,20 +697,9 @@ class Display(DisplayContentProvider):
         left_arrow.setFont(self.formatter.info_font(size=16))
         h_layout.addWidget(left_arrow)
 
-        val_str = str(current_val)
-        # Formatting
-        if current_prop == AlarmProperty.RECURRING:
-            # val is list of strings
-            # We might want to show a summary or the raw list
-            val_str = ", ".join([d[:3] for d in current_val])
-        elif current_prop == AlarmProperty.AUDIO_EFFECT:
-            val_str = current_val.title() if current_val else "None"
-        elif current_prop == AlarmProperty.HOUR or current_prop == AlarmProperty.MIN:
-            val_str = f"{current_val:02d}"
-
-        val_label = QtWidgets.QLabel(f" {val_str} ")
-        val_label.setFont(self.formatter.info_font(size=18))
-        h_layout.addWidget(val_label)
+        self.pev_val_label = QtWidgets.QLabel("")
+        self.pev_val_label.setFont(self.formatter.info_font(size=18))
+        h_layout.addWidget(self.pev_val_label)
 
         right_arrow = QtWidgets.QLabel("\uf054")  # Chevron Right
         right_arrow.setFont(self.formatter.info_font(size=16))
@@ -622,28 +708,42 @@ class Display(DisplayContentProvider):
         v_layout.addLayout(h_layout)
         layout.addWidget(container)
 
+    def _update_property_edit_view(self):
+        coordinator = self.alarm_clock_context.mode_coordinator
+        service = coordinator.editing_service
+        if not service or not service.editing_session:
+            return
+
+        current_prop = service.property_to_edit
+        current_val = service.editing_session.get_current_value()
+
+        # Property Name
+        prop_name = (
+            current_prop.name.replace("_", " ")
+            if isinstance(current_prop, AlarmProperty)
+            else ""
+        )
+        self.pev_header_label.setText(f"SET {prop_name}")
+
+        # Value
+        val_str = str(current_val)
+        # Formatting
+        if current_prop == AlarmProperty.RECURRING:
+            val_str = ", ".join([d[:3] for d in current_val])
+        elif current_prop == AlarmProperty.AUDIO_EFFECT:
+            val_str = current_val.title() if current_val else "None"
+        elif current_prop == AlarmProperty.HOUR or current_prop == AlarmProperty.MIN:
+            val_str = f"{current_val:02d}"
+
+        self.pev_val_label.setText(f" {val_str} ")
+
     def initialize_qt_app(self):
         self.app = QtWidgets.QApplication([])
 
-    def draw_widget(self):
+    def update_ui(self):
         self.formatter.update_formatter()
         # Reset scrolling state; widgets will set it to True if they need high refresh rate
         self.display_content.is_scrolling = False
-
-        self.widget = QtWidgets.QFrame()
-        self.widget.setFixedSize(self.device.width, self.device.height)
-
-        fg_color = self.formatter.foreground_color(color_type=ColorType.INHEX)
-        bg_color = self.formatter.background_color(color_type=ColorType.INHEX)
-
-        self.widget.setStyleSheet(
-            f"background-color: {bg_color}; color: {fg_color}; border: none;"
-        )
-
-        # Main Layout
-        layout = QtWidgets.QHBoxLayout(self.widget)
-        layout.setContentsMargins(10, 0, 5, 0)
-        layout.setSpacing(0)
 
         mode = (
             self.alarm_clock_context.mode_coordinator.current_mode_name
@@ -651,14 +751,18 @@ class Display(DisplayContentProvider):
             else ModeName.DEFAULT
         )
 
+        layout_type = mode
         if mode == ModeName.DEFAULT:
-            self._draw_default_view(layout)
-        elif mode == ModeName.ALARM_VIEW:
-            self._draw_alarm_view(layout)
-        elif mode == ModeName.ALARM_EDIT:
-            self._draw_alarm_edit_view(layout)
-        elif mode == ModeName.PROPERTY_EDIT:
-            self._draw_property_edit_view(layout)
+            if self.formatter.be_gloomy():
+                layout_type = "DEFAULT_DIMMED"
+            else:
+                layout_type = "DEFAULT_NORMAL"
+
+        if self.current_layout_type != layout_type:
+            self._setup_layout(layout_type)
+            self.current_layout_type = layout_type
+
+        self._update_content(layout_type)
 
         self.widget.adjustSize()
 
@@ -674,7 +778,7 @@ class Display(DisplayContentProvider):
         return pil_image
 
     def refresh(self):
-        logger.debug("draw_widget: %sms", timeit(self.draw_widget, number=1) * 1000)
+        logger.debug("update_ui: %sms", timeit(self.update_ui, number=1) * 1000)
         self.current_display_image = self.formatter.postprocess_image(
             self.grab_widget_image()
         )
@@ -687,6 +791,44 @@ class Display(DisplayContentProvider):
                 )
         except AssertionError as e:
             pass
+
+    def _setup_layout(self, layout_type):
+        self.widget = QtWidgets.QFrame()
+        self.widget.setFixedSize(self.device.width, self.device.height)
+
+        layout = QtWidgets.QHBoxLayout(self.widget)
+        layout.setContentsMargins(10, 0, 5, 0)
+        layout.setSpacing(0)
+
+        if layout_type == "DEFAULT_NORMAL":
+            self._setup_default_normal_view(layout)
+        elif layout_type == "DEFAULT_DIMMED":
+            self._setup_default_dimmed_view(layout)
+        elif layout_type == ModeName.ALARM_VIEW:
+            self._setup_alarm_view(layout)
+        elif layout_type == ModeName.ALARM_EDIT:
+            self._setup_alarm_edit_view(layout)
+        elif layout_type == ModeName.PROPERTY_EDIT:
+            self._setup_property_edit_view(layout)
+
+    def _update_content(self, layout_type):
+        fg_color = self.formatter.foreground_color(color_type=ColorType.INHEX)
+        bg_color = self.formatter.background_color(color_type=ColorType.INHEX)
+
+        self.widget.setStyleSheet(
+            f"background-color: {bg_color}; color: {fg_color}; border: none;"
+        )
+
+        if layout_type == "DEFAULT_NORMAL":
+            self._update_default_normal_view()
+        elif layout_type == "DEFAULT_DIMMED":
+            self._update_default_dimmed_view()
+        elif layout_type == ModeName.ALARM_VIEW:
+            self._update_alarm_view()
+        elif layout_type == ModeName.ALARM_EDIT:
+            self._update_alarm_edit_view()
+        elif layout_type == ModeName.PROPERTY_EDIT:
+            self._update_property_edit_view()
 
 
 if __name__ == "__main__":
