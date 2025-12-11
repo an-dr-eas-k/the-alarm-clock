@@ -815,6 +815,14 @@ class Display(DisplayContentProvider):
         self.widget.adjustSize()
 
     def grab_widget_image(self) -> Image.Image:
+        pixmap = self.widget.grab()
+
+        buffer = QtCore.QBuffer()
+        buffer.open(QtCore.QBuffer.OpenModeFlag.WriteOnly)
+        pixmap.save(buffer, "PNG")
+
+        pil_image = Image.open(io.BytesIO(buffer.data()))
+        return pil_image
         # Optimized: Convert QImage directly to PIL Image avoiding PNG encoding/decoding
         qimage = self.widget.grab().toImage()
         qimage = qimage.convertToFormat(QtGui.QImage.Format.Format_RGBA8888)
