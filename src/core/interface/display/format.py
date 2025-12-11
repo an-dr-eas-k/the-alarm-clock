@@ -204,8 +204,8 @@ class DisplayFormatter:
 
     def postprocess_image(self, im: Image.Image) -> Image.Image:
         if self.be_gloomy():
-            fg_color = int(self.foreground_color(color_type=ColorType.IN256))
-            bg_color = int(self.background_color(color_type=ColorType.IN256))
+            fg_color = self.foreground_color(color_type=ColorType.IN256)
+            bg_color = self.background_color(color_type=ColorType.IN256)
 
             def replace_colors(pixel):
                 if pixel == bg_color:
