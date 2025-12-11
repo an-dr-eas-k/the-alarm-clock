@@ -15,6 +15,7 @@ from core.domain.events import (
     PlaybackChangedEvent,
     ConfigChangedEvent,
     SpotifyApiEvent,
+    TerminateAppRequest,
     VolumeChangeRequest,
 )
 from core.infrastructure.event_bus import EventBus
@@ -151,10 +152,7 @@ class ActionApiHandler(tornado.web.RequestHandler):
                 else:
                     self.event_bus.emit(VolumeChangeRequest(relative=-1))
             elif type == "update":
-                import threading
-
-                for thread in threading.enumerate():
-                    logger.info("Thread: %s", thread)
+                self.event_bus.emit(TerminateAppRequest())
 
                 tornado.ioloop.IOLoop.current().stop()
 

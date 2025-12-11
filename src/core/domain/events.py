@@ -135,3 +135,8 @@ class ForcedDisplayUpdateEvent(BaseEvent):
 @dataclass(frozen=True)
 class SpeakerErrorEvent(BaseEvent):
     audio_stream: AudioStream = None
+
+
+@dataclass(frozen=True)
+class TerminateAppRequest(BaseEvent):
+    pass
