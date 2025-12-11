@@ -821,7 +821,7 @@ class Display(DisplayContentProvider):
         buffer.open(QtCore.QBuffer.OpenModeFlag.WriteOnly)
         pixmap.save(buffer, "BMP")
 
-        pil_image = Image.open(io.BytesIO(buffer.data()))
+        pil_image = Image.open(io.BytesIO(buffer.data())).convert("L")
         return pil_image
 
     def grab_widget_image_fail(self) -> Image.Image:
