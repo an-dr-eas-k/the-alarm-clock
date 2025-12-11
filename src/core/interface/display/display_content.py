@@ -26,7 +26,6 @@ from core.interface.display.display_events import (
     DisplayNextAlarmUpdatedEvent,
     DisplayPlaybackUpdatedEvent,
     DisplayVolumeUpdatedEvent,
-    DisplayBrightnessUpdatedEvent,
     DisplayWeatherUpdatedEvent,
 )
 
@@ -91,7 +90,6 @@ class DisplayContent:
 
         if self.room_brightness != room_brightness:
             self.room_brightness = room_brightness
-            self.event_bus.emit(DisplayBrightnessUpdatedEvent())
             changed = True
 
         if self.is_scrolling:

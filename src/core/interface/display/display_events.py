@@ -21,8 +21,3 @@ class DisplayNextAlarmUpdatedEvent(BaseEvent):
 @dataclass(frozen=True)
 class DisplayWeatherUpdatedEvent(BaseEvent):
     pass
-
-
-@dataclass(frozen=True)
-class DisplayBrightnessUpdatedEvent(BaseEvent):
-    pass

@@ -11,10 +11,8 @@ if TYPE_CHECKING:
     from core.domain.model import (
         Mode,
         AudioStream,
-        RoomBrightness,
         AlarmDefinition,
         Config,
-        RoomBrightness,
     )
     from utils.geolocation import SunEvent
 

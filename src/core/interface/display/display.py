@@ -19,7 +19,6 @@ from core.interface.display.display_events import (
     DisplayVolumeUpdatedEvent,
     DisplayNextAlarmUpdatedEvent,
     DisplayWeatherUpdatedEvent,
-    DisplayBrightnessUpdatedEvent,
 )
 from core.domain.edit_mode import AlarmProperty, EditorAction
 from core.domain.model import (
@@ -310,9 +309,6 @@ class Display(DisplayContentProvider):
         self.event_bus.on(DisplayVolumeUpdatedEvent)(self.on_display_volume_changed)
         self.event_bus.on(DisplayNextAlarmUpdatedEvent)(self.on_display_alarm_changed)
         self.event_bus.on(DisplayWeatherUpdatedEvent)(self.on_display_weather_changed)
-        self.event_bus.on(DisplayBrightnessUpdatedEvent)(
-            self.on_display_brightness_changed
-        )
 
     def _alarm_stopped(self, _: AlarmStoppedEvent):
         self.device.hide()
@@ -594,17 +590,6 @@ class Display(DisplayContentProvider):
             self.vol_label.show()
         else:
             self.vol_label.hide()
-
-    def on_display_brightness_changed(self, _=None):
-        # This affects colors, so we might need to update everything or just colors.
-        # For simplicity, trigger a full content update for the current layout.
-        self._update_content(self.current_layout_type)
-
-    def _draw_default_view(self, layout: QtWidgets.QHBoxLayout):
-        if self.formatter.be_gloomy():
-            self._draw_dimmed_content(layout)
-        else:
-            self._draw_normal_content(layout)
 
     def _setup_alarm_view(self, layout: QtWidgets.QHBoxLayout):
         # Main Container
