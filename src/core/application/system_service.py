@@ -1,10 +1,13 @@
 import datetime
 import logging
+import threading
 from core.application.controls import safe_action
 from core.domain.events import (
     ForcedDisplayUpdateEvent,
+    PlaybackChangedEvent,
     SpotifyStoppedEvent,
     SunEventOccurredEvent,
+    TerminateAppRequest,
     VolumeChangedEvent,
     WeatherUpdatedEvent,
     WifiStatusChangedEvent,
@@ -13,6 +16,7 @@ from core.domain.events import (
 )
 from core.domain.model import (
     AlarmClockContext,
+    Mode,
     RoomBrightness,
     SchedulerJobIds,
 )
@@ -52,6 +56,7 @@ class SystemService:
         self.event_bus.on(SpotifyStoppedEvent)(self.handle_spotify_stopped)
         self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
         self.event_bus.on(ForcedDisplayUpdateEvent)(self.handle_forced_display_update)
+        self.event_bus.on(TerminateAppRequest)(self.handle_terminate_request)
 
         self._update_weather_status()
         self._add_scheduler_jobs()
@@ -149,6 +154,18 @@ class SystemService:
 
     def handle_forced_display_update(self, _: ForcedDisplayUpdateEvent):
         self._previous_tac_time = GeoLocation().now()
+
+    def handle_terminate_request(self, _: TerminateAppRequest):
+        def do():
+            for thread in threading.enumerate():
+                logger.info("Thread: %s", thread)
+            self.event_bus.emit(PlaybackChangedEvent(playback_mode=Mode.Idle))
+            # self.scheduler_service.shutdown()
+            self.event_bus.clear()
+
+            logger.info("application shutdown completed.")
+
+        safe_action(do, "terminating application", logger=logger)
 
     def _update_weather_status(self):
         def do():

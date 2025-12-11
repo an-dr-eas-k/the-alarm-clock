@@ -7,6 +7,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.job import Job
+from apscheduler.schedulers.base import STATE_STOPPED
 
 from core.domain.model import AlarmDefinition, Config, NextAlarmInfo
 from core.domain.events import ConfigChangedEvent
@@ -29,6 +30,8 @@ class SchedulerService:
         self.scheduler.start()
 
     def shutdown(self):
+        if self.scheduler.state == STATE_STOPPED:
+            return
         self.scheduler.shutdown()
 
     def add_job(
