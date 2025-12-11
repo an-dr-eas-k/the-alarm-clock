@@ -866,6 +866,8 @@ class Display(DisplayContentProvider):
             self._setup_property_edit_view(layout)
 
     def _update_content(self, layout_type):
+        if not self.widget:
+            return
         fg_color = self.formatter.foreground_color(color_type=ColorType.INHEX)
         bg_color = self.formatter.background_color(color_type=ColorType.INHEX)
 

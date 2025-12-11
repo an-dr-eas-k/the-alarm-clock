@@ -148,7 +148,8 @@ class SystemService:
             self.alarm_clock_context.environment.current_weather = None
 
     def handle_forced_display_update(self, _: ForcedDisplayUpdateEvent):
-        self._previous_tac_time = GeoLocation().now()
+        # self._previous_tac_time = GeoLocation().now()
+        pass
 
     def _update_weather_status(self):
         def do():
