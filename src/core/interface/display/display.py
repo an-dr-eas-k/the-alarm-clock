@@ -3,12 +3,13 @@ import logging
 from timeit import timeit
 import traceback
 import time
+from abc import ABC, abstractmethod
+from typing import List, Tuple, Optional
+
 from luma.core.device import device as luma_device
 from luma.core.device import dummy as luma_dummy
 from luma.core.render import canvas
-from PIL import Image
-
-from PyQt5 import QtWidgets, QtCore, QtGui
+from PIL import Image, ImageDraw, ImageFont
 
 from core.domain.events import (
     AlarmStoppedEvent,
@@ -34,166 +35,320 @@ from resources.resources import display_shot_file
 logger = logging.getLogger("tac.core.interface.display.display")
 
 
-class ClockWidget(QtWidgets.QWidget):
-    def __init__(self, hour_str, min_str, blink_char, show_blink, fg_color, font_obj):
+# --- UI Framework ---
+
+
+def darken_color(hex_color, factor=0.7):
+    if not hex_color:
+        return "white"
+    if hex_color.startswith("#"):
+        hex_color = hex_color[1:]
+    if len(hex_color) != 6:
+        return hex_color  # Fallback
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+    r = int(r * factor)
+    g = int(g * factor)
+    b = int(b * factor)
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
+class Widget(ABC):
+    def __init__(self):
+        self.rect = (0, 0, 0, 0)  # x, y, w, h
+        self.stretch = 0
+        self.align = "center"  # 'start', 'center', 'end' (cross axis)
+
+    @abstractmethod
+    def min_size(self, draw: ImageDraw.ImageDraw) -> Tuple[int, int]:
+        return (0, 0)
+
+    def set_geometry(self, x, y, w, h):
+        self.rect = (x, y, w, h)
+
+    @abstractmethod
+    def render(self, image: Image.Image, draw: ImageDraw.ImageDraw):
+        pass
+
+
+class Spacer(Widget):
+    def __init__(self, width=0, height=0):
+        super().__init__()
+        self._width = width
+        self._height = height
+
+    def min_size(self, draw):
+        return (self._width, self._height)
+
+    def render(self, image, draw):
+        pass
+
+
+class Label(Widget):
+    def __init__(self, text, font, color="white", align="left"):
+        super().__init__()
+        self.text = text
+        self.font = font
+        self.color = color
+        self.text_align = align  # 'left', 'center', 'right' (text within widget)
+
+    def min_size(self, draw):
+        if not self.text:
+            return (0, 0)
+        bbox = draw.textbbox((0, 0), self.text, font=self.font)
+        return (bbox[2] - bbox[0], bbox[3] - bbox[1])
+
+    def render(self, image, draw):
+        x, y, w, h = self.rect
+        bbox = draw.textbbox((0, 0), self.text, font=self.font)
+        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+
+        draw_x = x
+        if self.text_align == "center":
+            draw_x = x + (w - tw) // 2
+        elif self.text_align == "right":
+            draw_x = x + w - tw
+
+        # Vertical center
+        draw_y = y + (h - th) // 2 - bbox[1]
+        draw_x -= bbox[0]
+
+        draw.text((draw_x, draw_y), self.text, font=self.font, fill=self.color)
+
+
+class Layout(Widget):
+    def __init__(self):
+        super().__init__()
+        self.children: List[Widget] = []
+        self.spacing = 0
+        self.margins = (0, 0, 0, 0)  # left, top, right, bottom
+
+    def add_widget(self, widget: Widget, stretch=0, align="center"):
+        widget.stretch = stretch
+        widget.align = align
+        self.children.append(widget)
+
+    def set_margins(self, left, top, right, bottom):
+        self.margins = (left, top, right, bottom)
+
+
+class HBox(Layout):
+    def min_size(self, draw):
+        w, h = 0, 0
+        for child in self.children:
+            cw, ch = child.min_size(draw)
+            w += cw
+            h = max(h, ch)
+        w += self.spacing * max(0, len(self.children) - 1)
+        w += self.margins[0] + self.margins[2]
+        h += self.margins[1] + self.margins[3]
+        return (w, h)
+
+    def render(self, image, draw):
+        x, y, w, h = self.rect
+        content_w = w - self.margins[0] - self.margins[2]
+        content_h = h - self.margins[1] - self.margins[3]
+        start_x = x + self.margins[0]
+        start_y = y + self.margins[1]
+
+        child_sizes = [c.min_size(draw) for c in self.children]
+
+        total_stretch = sum(c.stretch for c in self.children)
+        used_width = sum(
+            s[0] for i, s in enumerate(child_sizes) if self.children[i].stretch == 0
+        )
+        used_width += self.spacing * max(0, len(self.children) - 1)
+
+        remaining_width = max(0, content_w - used_width)
+
+        current_x = start_x
+        for i, child in enumerate(self.children):
+            cw, ch = child_sizes[i]
+
+            if child.stretch > 0:
+                if total_stretch > 0:
+                    cw = int(remaining_width * (child.stretch / total_stretch))
+                else:
+                    cw = 0
+
+            # Vertical alignment
+            cy = start_y
+            if child.align == "center":
+                cy = start_y  # Layouts handle their own vertical alignment usually, but here we pass full height
+
+            child.set_geometry(current_x, start_y, cw, content_h)
+            child.render(image, draw)
+            current_x += cw + self.spacing
+
+
+class VBox(Layout):
+    def min_size(self, draw):
+        w, h = 0, 0
+        for child in self.children:
+            cw, ch = child.min_size(draw)
+            h += ch
+            w = max(w, cw)
+        h += self.spacing * max(0, len(self.children) - 1)
+        w += self.margins[0] + self.margins[2]
+        h += self.margins[1] + self.margins[3]
+        return (w, h)
+
+    def render(self, image, draw):
+        x, y, w, h = self.rect
+        content_w = w - self.margins[0] - self.margins[2]
+        content_h = h - self.margins[1] - self.margins[3]
+        start_x = x + self.margins[0]
+        start_y = y + self.margins[1]
+
+        child_sizes = [c.min_size(draw) for c in self.children]
+
+        total_stretch = sum(c.stretch for c in self.children)
+        used_height = sum(
+            s[1] for i, s in enumerate(child_sizes) if self.children[i].stretch == 0
+        )
+        used_height += self.spacing * max(0, len(self.children) - 1)
+
+        remaining_height = max(0, content_h - used_height)
+
+        current_y = start_y
+        for i, child in enumerate(self.children):
+            cw, ch = child_sizes[i]
+
+            if child.stretch > 0:
+                if total_stretch > 0:
+                    ch = int(remaining_height * (child.stretch / total_stretch))
+                else:
+                    ch = 0
+
+            child.set_geometry(start_x, current_y, content_w, ch)
+            child.render(image, draw)
+            current_y += ch + self.spacing
+
+
+class ClockWidget(Widget):
+    def __init__(self, hour_str, min_str, blink_char, show_blink, fg_color, font):
         super().__init__()
         self.hour_str = hour_str
         self.min_str = min_str
         self.blink_char = blink_char
         self.show_blink = show_blink
-        self.fg_color = QtGui.QColor(fg_color)
-        self.font_obj = font_obj
-        self.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
-        )
+        self.fg_color = fg_color
+        self.font = font
+        self.gray_color = darken_color(fg_color)
 
-    def _calculate_layout(self, fm, overlap):
-        x = 0
-        # Hours
-        for i, char in enumerate(self.hour_str):
-            if i < len(self.hour_str) - 1:
-                x += fm.width(char) - overlap
-            else:
-                x += fm.width(char)
-
-        x += -15
-        # Separator
-        x += fm.width(self.blink_char)
-        x += -10
-
-        # Minutes
-        for i, char in enumerate(self.min_str):
-            if i < len(self.min_str) - 1:
-                x += fm.width(char) - overlap
-            else:
-                x += fm.width(char)
-
-        return x
-
-    def minimumSizeHint(self):
-        fm = QtGui.QFontMetrics(self.font_obj)
+    def min_size(self, draw):
+        w = 0
         overlap = 12
-        width = self._calculate_layout(fm, overlap)
-        return QtCore.QSize(width, fm.height() + 10)
 
-    def paintEvent(self, event):
-        painter = QtGui.QPainter(self)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
-        painter.setRenderHint(QtGui.QPainter.TextAntialiasing)
+        def measure_str(s):
+            width = 0
+            for i, char in enumerate(s):
+                bbox = draw.textbbox((0, 0), char, font=self.font)
+                cw = bbox[2] - bbox[0]
+                if i < len(s) - 1:
+                    width += cw - overlap
+                else:
+                    width += cw
+            return width
 
-        painter.setFont(self.font_obj)
-        fm = QtGui.QFontMetrics(self.font_obj)
+        w += measure_str(self.hour_str)
+        w -= 15
+
+        bbox = draw.textbbox((0, 0), self.blink_char, font=self.font)
+        w += bbox[2] - bbox[0]
+        w -= 10
+
+        w += measure_str(self.min_str)
+
+        bbox_h = draw.textbbox((0, 0), "0", font=self.font)
+        h = bbox_h[3] - bbox_h[1] + 10
+        return (w, h)
+
+    def render(self, image, draw):
+        x, y, w, h = self.rect
+
+        bbox_sample = draw.textbbox((0, 0), "0", font=self.font)
+        font_h = bbox_sample[3] - bbox_sample[1]
+        base_y = y + (h - font_h) // 2 - bbox_sample[1]
 
         overlap = 12
         vertical_shift = 2
-        x = 0
-        # Center vertically
-        base_y = int((self.height() + fm.ascent() - fm.descent()) / 2)
 
-        h, s, v, a = self.fg_color.getHsv()
-        white_color = self.fg_color
-        # 16-level grayscale has steps of ~17 (255/15). Use the next darker level.
-        gray_color = QtGui.QColor.fromHsv(h, s, max(17, v - 1 * 18), a)
+        current_x = x
 
         # Draw Hours
         for i, char in enumerate(self.hour_str):
-            if i == 0:
-                painter.setPen(white_color)
-                y = base_y - vertical_shift
-            else:
-                painter.setPen(gray_color)
-                y = base_y + vertical_shift
+            color = self.fg_color if i == 0 else self.gray_color
+            offset_y = -vertical_shift if i == 0 else vertical_shift
 
-            painter.drawText(x, y, char)
+            draw.text((current_x, base_y + offset_y), char, font=self.font, fill=color)
+
+            bbox = draw.textbbox((0, 0), char, font=self.font)
+            cw = bbox[2] - bbox[0]
 
             if i < len(self.hour_str) - 1:
-                x += fm.width(char) - overlap
+                current_x += cw - overlap
             else:
-                x += fm.width(char)
+                current_x += cw
 
-        x += -15
-        # Draw Separator
-        sep_width = fm.width(self.blink_char)
+        current_x -= 15
+
+        # Separator
         if self.show_blink:
-            painter.setPen(white_color)
-            painter.drawText(x, base_y, self.blink_char)
+            draw.text(
+                (current_x, base_y), self.blink_char, font=self.font, fill=self.fg_color
+            )
 
-        x += sep_width
-        x += -10
+        bbox = draw.textbbox((0, 0), self.blink_char, font=self.font)
+        current_x += bbox[2] - bbox[0]
+        current_x -= 10
 
         # Draw Minutes
         for i, char in enumerate(self.min_str):
-            if i == 0:
-                painter.setPen(white_color)
-                y = base_y - vertical_shift
-            else:
-                painter.setPen(gray_color)
-                y = base_y + vertical_shift
+            color = self.fg_color if i == 0 else self.gray_color
+            offset_y = -vertical_shift if i == 0 else vertical_shift
 
-            painter.drawText(x, y, char)
+            draw.text((current_x, base_y + offset_y), char, font=self.font, fill=color)
+
+            bbox = draw.textbbox((0, 0), char, font=self.font)
+            cw = bbox[2] - bbox[0]
 
             if i < len(self.min_str) - 1:
-                x += fm.width(char) - overlap
+                current_x += cw - overlap
             else:
-                x += fm.width(char)
+                current_x += cw
 
 
-class ScrollingLabel(QtWidgets.QWidget):
-    def __init__(
-        self,
-        text,
-        font_obj,
-        color,
-        start_time,
-        display_content: DisplayContent,
-        speed=30,
-    ):
+class ScrollingLabel(Widget):
+    def __init__(self, text, font, color, start_time, display_content, speed=30):
         super().__init__()
         self.text = text
-        self.font_obj = font_obj
-        self.color = QtGui.QColor(color)
+        self.font = font
+        self.color = color
         self.start_time = start_time
         self.display_content = display_content
         self.speed = speed
-        self.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
-        )
 
-    def minimumSizeHint(self):
-        fm = QtGui.QFontMetrics(self.font_obj)
-        return QtCore.QSize(10, fm.height())
+    def min_size(self, draw):
+        bbox = draw.textbbox((0, 0), "A", font=self.font)
+        return (10, bbox[3] - bbox[1])
 
-    def paintEvent(self, event):
-        painter = QtGui.QPainter(self)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
-        painter.setRenderHint(QtGui.QPainter.TextAntialiasing)
+    def render(self, image, draw):
+        x, y, w, h = self.rect
+        bbox = draw.textbbox((0, 0), self.text, font=self.font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
 
-        painter.setFont(self.font_obj)
-        painter.setPen(self.color)
-        fm = QtGui.QFontMetrics(self.font_obj)
-        text_width = fm.width(self.text)
-        widget_width = self.width()
+        draw_y = y + (h - text_height) // 2 - bbox[1]
 
-        # Center vertically
-        # drawText(x, y, string) draws with baseline at y.
-        # But drawText(rect, flags, string) handles alignment.
-
-        if text_width <= widget_width:
-            painter.drawText(
-                self.rect(),
-                QtCore.Qt.AlignmentFlag.AlignLeft
-                | QtCore.Qt.AlignmentFlag.AlignVCenter,
-                self.text,
-            )
+        if text_width <= w:
+            draw.text((x - bbox[0], draw_y), self.text, font=self.font, fill=self.color)
         else:
-            # DDD Note: Updating the ViewModel (DisplayContent) from the View (ScrollingLabel)
-            # is acceptable within the Interface Layer to signal presentation requirements (refresh rate).
             self.display_content.is_scrolling = True
-
             elapsed = time.time() - self.start_time
-
-            # Add a pause at the beginning
             pause_duration = 2.0
+
             if elapsed < pause_duration:
                 offset = 0
             else:
@@ -201,27 +356,31 @@ class ScrollingLabel(QtWidgets.QWidget):
 
             gap = 30
             total_cycle_width = text_width + gap
-
             current_offset = offset % total_cycle_width
 
-            # Calculate y for baseline
-            # rect().center().y() + fm.ascent()/2 - fm.descent()/2 roughly?
-            # Or just use rect with alignment? No, manual x is needed.
+            # Create a temporary image for clipping
+            temp_img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+            temp_draw = ImageDraw.Draw(temp_img)
 
-            # Using drawText(x, y, text)
-            # y is baseline.
-            # widget height center:
-            y = (self.height() + fm.ascent() - fm.descent()) // 2
-
-            # Draw first instance
             x1 = -current_offset
             if x1 + text_width > 0:
-                painter.drawText(int(x1), int(y), self.text)
+                temp_draw.text(
+                    (x1 - bbox[0], (h - text_height) // 2 - bbox[1]),
+                    self.text,
+                    font=self.font,
+                    fill=self.color,
+                )
 
-            # Draw second instance if needed
             x2 = x1 + total_cycle_width
-            if x2 < widget_width:
-                painter.drawText(int(x2), int(y), self.text)
+            if x2 < w:
+                temp_draw.text(
+                    (x2 - bbox[0], (h - text_height) // 2 - bbox[1]),
+                    self.text,
+                    font=self.font,
+                    fill=self.color,
+                )
+
+            image.paste(temp_img, (x, y), temp_img)
 
 
 class Display(DisplayContentProvider):
@@ -248,7 +407,7 @@ class Display(DisplayContentProvider):
         self.alarm_clock_context = alarm_clock_context
         self.event_bus = event_bus
         self.formatter = display_formatter
-        self.initialize_qt_app()
+        # self.initialize_qt_app() # Removed
         self.event_bus.on(ForcedDisplayUpdateEvent)(
             self._handle_forced_display_update_event
         )
@@ -271,7 +430,7 @@ class Display(DisplayContentProvider):
             with canvas(self.device) as draw:
                 draw.text((20, 20), f"exception!\n({e})", fill="white")
 
-    def _draw_dimmed_content(self, layout: QtWidgets.QHBoxLayout):
+    def _draw_dimmed_content(self, layout: HBox):
         now = GeoLocation().now()
         day = now.day
 
@@ -279,34 +438,21 @@ class Display(DisplayContentProvider):
         x_offset = day * 3
         y_offset = (day % 5) * 4
 
-        layout.setContentsMargins(x_offset, y_offset, 0, 0)
-
-        # Container
-        container = QtWidgets.QWidget()
-        container_layout = QtWidgets.QHBoxLayout(container)
-        container_layout.setContentsMargins(0, 0, 0, 0)
-        container_layout.setSpacing(10)
+        layout.set_margins(x_offset, y_offset, 0, 0)
+        layout.spacing = 10
 
         # Clock
         clock_string = self.formatter.format_dseg7_clock_string(
             now, self.display_content.show_blink_segment
         )
-        clock_label = QtWidgets.QLabel(clock_string)
-        clock_label.setFont(
-            self.formatter.clock_font(size=18, weight=QtGui.QFont.Weight.Light)
+        clock_label = Label(
+            clock_string, self.formatter.clock_font_pil(size=18), align="left"
         )
-        clock_label.setAlignment(
-            QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft
-        )
-        container_layout.addWidget(clock_label)
+        layout.add_widget(clock_label)
 
         # Info Stack
-        info_layout = QtWidgets.QVBoxLayout()
-        info_layout.setContentsMargins(0, 0, 0, 0)
-        info_layout.setSpacing(0)
-        info_layout.setAlignment(
-            QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft
-        )
+        info_layout = VBox()
+        info_layout.spacing = 0
 
         # Next Alarm
         if (
@@ -316,33 +462,24 @@ class Display(DisplayContentProvider):
         ):
             alarm_time = self.display_content.get_next_alarm()
             alarm_text = self.formatter.format_clock_string(alarm_time)
-            alarm_label = QtWidgets.QLabel(f"\uf49a {alarm_text}")
-            alarm_label.setFont(self.formatter.info_font(size=12))
-            alarm_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
-            info_layout.addWidget(alarm_label)
+            alarm_label = Label(
+                f"\uf49a {alarm_text}", self.formatter.info_font_pil(size=12)
+            )
+            info_layout.add_widget(alarm_label)
 
         # WiFi
         is_online = self.display_content.get_is_online()
         no_wifi_symbol = "\U000f05aa"
         wifi_text = "" if is_online else no_wifi_symbol
-        wifi_label = QtWidgets.QLabel(wifi_text)
+        wifi_label = Label(wifi_text, self.formatter.info_font_pil(size=14))
+        info_layout.add_widget(wifi_label)
 
-        wifi_label.setFont(self.formatter.info_font(size=14))
+        layout.add_widget(info_layout)
+        layout.add_widget(Spacer(), stretch=1)
 
-        wifi_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
-        info_layout.addWidget(wifi_label)
+    def _draw_normal_content(self, layout: HBox):
+        layout.add_widget(Spacer(width=10))
 
-        container_layout.addLayout(info_layout)
-
-        layout.addWidget(
-            container,
-            alignment=QtCore.Qt.AlignmentFlag.AlignTop
-            | QtCore.Qt.AlignmentFlag.AlignLeft,
-        )
-        layout.addStretch()
-
-    def _draw_normal_content(self, layout: QtWidgets.QHBoxLayout):
-        layout.addSpacing(10)
         # --- Left: Clock ---
         fmt = self.alarm_clock_context.config.clock_format_string
         parts = fmt.split("<blinkSegment>")
@@ -367,47 +504,48 @@ class Display(DisplayContentProvider):
             blink_char,
             self.display_content.show_blink_segment,
             fg_color,
-            font_obj=self.formatter.clock_font(size=42),
+            font=self.formatter.clock_font_pil(size=42),
         )
-        layout.addWidget(clock_widget, stretch=3)
+        layout.add_widget(clock_widget, stretch=3)
 
         # Vertical Line
-        line = QtWidgets.QWidget()
-        line.setFixedWidth(1)
-        line.setStyleSheet(f"background-color: {fg_color};")
-        layout.addWidget(line)
-        layout.addSpacing(10)
+        # line = QtWidgets.QWidget()
+        # line.setFixedWidth(1)
+        # line.setStyleSheet(f"background-color: {fg_color};")
+        # layout.addWidget(line)
+        # layout.addSpacing(10)
+
+        # TODO: Implement Line widget or just use Spacer with draw?
+        # For now, skip line or use a thin Label?
+        # I'll skip the line for simplicity or add a custom Line widget later.
+        layout.add_widget(Spacer(width=10))
 
         # --- Right: Info Stack ---
-        info_layout = QtWidgets.QVBoxLayout()
-        info_layout.setContentsMargins(0, 0, 0, 0)
-        info_layout.setSpacing(0)
-        info_layout.setAlignment(
-            QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft
-        )
+        info_layout = VBox()
+        info_layout.spacing = 0
+        info_layout.add_widget(Spacer(), stretch=1)
 
         # 1. Weather
         weather = self.display_content.current_weather
         if weather:
             temp = weather.temperature if weather is not None else None
             if temp is not None:
-                weather_container = QtWidgets.QWidget()
-                weather_layout = QtWidgets.QHBoxLayout(weather_container)
-                weather_layout.setContentsMargins(0, 0, 0, 0)
-                weather_layout.setSpacing(5)
-                weather_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
+                weather_container = HBox()
+                weather_container.spacing = 5
 
                 symbol = weather.code.to_character() if weather.code else None
                 if symbol:
-                    symbol_label = QtWidgets.QLabel(symbol)
-                    symbol_label.setFont(self.formatter.weather_font(size=16))
-                    weather_layout.addWidget(symbol_label)
+                    symbol_label = Label(
+                        symbol, self.formatter.weather_font_pil(size=16)
+                    )
+                    weather_container.add_widget(symbol_label)
 
-                weather_label = QtWidgets.QLabel(f"{temp:.1f}°C")
-                weather_label.setFont(self.formatter.info_font(size=12))
-                weather_layout.addWidget(weather_label)
+                weather_label = Label(
+                    f"{temp:.1f}°C", self.formatter.info_font_pil(size=12)
+                )
+                weather_container.add_widget(weather_label)
 
-                info_layout.addWidget(weather_container)
+                info_layout.add_widget(weather_container)
 
         # 3. Playback
         playback_title = self.display_content.current_playback_title()
@@ -416,26 +554,22 @@ class Display(DisplayContentProvider):
                 self._last_playback_title = playback_title
                 self._playback_title_scroll_start_time = time.time()
 
-            playback_container = QtWidgets.QWidget()
-            playback_layout = QtWidgets.QHBoxLayout(playback_container)
-            playback_layout.setContentsMargins(0, 0, 0, 0)
-            playback_layout.setSpacing(5)
-            playback_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
+            playback_container = HBox()
+            playback_container.spacing = 5
 
-            playback_symbol = QtWidgets.QLabel("\uf2eb")
-            playback_symbol.setFont(self.formatter.info_font(size=16))
-            playback_layout.addWidget(playback_symbol)
+            playback_symbol = Label("\uf2eb", self.formatter.info_font_pil(size=16))
+            playback_container.add_widget(playback_symbol)
 
             playback_label = ScrollingLabel(
                 playback_title,
-                self.formatter.info_font(size=12),
+                self.formatter.info_font_pil(size=12),
                 fg_color,
                 self._playback_title_scroll_start_time,
                 self.display_content,
             )
-            playback_layout.addWidget(playback_label)
+            playback_container.add_widget(playback_label, stretch=1)
 
-            info_layout.addWidget(playback_container)
+            info_layout.add_widget(playback_container)
 
         # 3. Next Alarm
         if (
@@ -446,38 +580,35 @@ class Display(DisplayContentProvider):
             alarm_time = self.display_content.get_next_alarm()
             alarm_text = alarm_time.strftime("%H:%M")
 
-            alarm_container = QtWidgets.QWidget()
-            alarm_layout = QtWidgets.QHBoxLayout(alarm_container)
-            alarm_layout.setContentsMargins(0, 0, 0, 0)
-            alarm_layout.setSpacing(5)
-            alarm_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
+            alarm_container = HBox()
+            alarm_container.spacing = 5
 
-            alarm_symbol = QtWidgets.QLabel("\uf49a")
-            alarm_symbol.setFont(self.formatter.info_font(size=12))
-            alarm_layout.addWidget(alarm_symbol)
+            alarm_symbol = Label("\uf49a", self.formatter.info_font_pil(size=12))
+            alarm_container.add_widget(alarm_symbol)
 
-            alarm_label = QtWidgets.QLabel(alarm_text)
-            alarm_label.setFont(self.formatter.info_font(size=12))
-            alarm_layout.addWidget(alarm_label)
+            alarm_label = Label(alarm_text, self.formatter.info_font_pil(size=12))
+            alarm_container.add_widget(alarm_label)
 
-            info_layout.addWidget(alarm_container)
+            info_layout.add_widget(alarm_container)
+
         # 4. Volume
         if self.display_content.show_volume_meter:
             vol = self.display_content.current_volume()
-            vol_label = QtWidgets.QLabel(f"Vol: {int(vol * 100)}%")
-            vol_label.setFont(self.formatter.info_font(size=12))
-            vol_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
-            info_layout.addWidget(vol_label)
+            vol_label = Label(
+                f"Vol: {int(vol * 100)}%", self.formatter.info_font_pil(size=12)
+            )
+            info_layout.add_widget(vol_label)
 
-        layout.addLayout(info_layout, stretch=1)
+        info_layout.add_widget(Spacer(), stretch=1)
+        layout.add_widget(info_layout, stretch=2)
 
-    def _draw_default_view(self, layout: QtWidgets.QHBoxLayout):
+    def _draw_default_view(self, layout: HBox):
         if self.formatter.be_gloomy():
             self._draw_dimmed_content(layout)
         else:
             self._draw_normal_content(layout)
 
-    def _draw_alarm_view(self, layout: QtWidgets.QHBoxLayout):
+    def _draw_alarm_view(self, layout: HBox):
         coordinator = self.alarm_clock_context.mode_coordinator
         service = coordinator.editing_service
         if not service:
@@ -486,31 +617,40 @@ class Display(DisplayContentProvider):
         alarm = service.current_alarm
 
         # Main Container
-        container = QtWidgets.QWidget()
-        # Use a grid layout for better control
-        grid = QtWidgets.QGridLayout(container)
-        grid.setContentsMargins(10, 5, 10, 5)
+        container = VBox()
+        container.set_margins(10, 5, 10, 5)
 
         # Row 0: Header (Alarm Index)
         index = service.current_alarm_index + 1
         total = len(self.alarm_clock_context.config.alarm_definitions) + 1
-        header_label = QtWidgets.QLabel(f"ALARM {index}/{total}")
-        header_label.setFont(self.formatter.info_font(size=10))
-        grid.addWidget(header_label, 0, 0, 1, 2, QtCore.Qt.AlignmentFlag.AlignLeft)
+        header_label = Label(
+            f"ALARM {index}/{total}",
+            self.formatter.info_font_pil(size=10),
+            align="left",
+        )
+        container.add_widget(header_label)
 
-        # Row 1: Time (Big)
+        # Row 1: Content
+        content_row = HBox()
+
+        # Time (Big)
         time_str = f"{alarm.hour:02d}:{alarm.min:02d}"
-        time_label = QtWidgets.QLabel(time_str)
-        time_label.setFont(self.formatter.info_font(size=32))
-        grid.addWidget(time_label, 1, 0, 2, 1, QtCore.Qt.AlignmentFlag.AlignLeft)
+        time_label = Label(
+            time_str, self.formatter.info_font_pil(size=32), align="left"
+        )
+        content_row.add_widget(time_label, stretch=1)
 
-        # Row 1, Col 1: Active Status
+        # Right Side Info
+        right_col = VBox()
+
+        # Active Status
         status_icon = "\uf205" if alarm.is_active else "\uf204"  # Toggle On/Off
-        status_label = QtWidgets.QLabel(status_icon)
-        status_label.setFont(self.formatter.info_font(size=20))
-        grid.addWidget(status_label, 1, 1, QtCore.Qt.AlignmentFlag.AlignRight)
+        status_label = Label(
+            status_icon, self.formatter.info_font_pil(size=20), align="right"
+        )
+        right_col.add_widget(status_label)
 
-        # Row 2, Col 1: Days
+        # Days
         days_str = "New Alarm"
         if alarm.id is not None:
             try:
@@ -520,13 +660,17 @@ class Display(DisplayContentProvider):
             except:
                 days_str = "Invalid"
 
-        days_label = QtWidgets.QLabel(days_str)
-        days_label.setFont(self.formatter.info_font(size=12))
-        grid.addWidget(days_label, 2, 1, QtCore.Qt.AlignmentFlag.AlignRight)
+        days_label = Label(
+            days_str, self.formatter.info_font_pil(size=12), align="right"
+        )
+        right_col.add_widget(days_label)
 
-        layout.addWidget(container)
+        content_row.add_widget(right_col, stretch=1)
+        container.add_widget(content_row, stretch=1)
 
-    def _draw_alarm_edit_view(self, layout: QtWidgets.QHBoxLayout):
+        layout.add_widget(container, stretch=1)
+
+    def _draw_alarm_edit_view(self, layout: HBox):
         coordinator = self.alarm_clock_context.mode_coordinator
         service = coordinator.editing_service
         if not service or not service.editing_session:
@@ -534,9 +678,7 @@ class Display(DisplayContentProvider):
 
         current_prop = service.property_to_edit
 
-        container = QtWidgets.QWidget()
-        v_layout = QtWidgets.QVBoxLayout(container)
-        v_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        container = VBox()
 
         # Property Name
         prop_name = ""
@@ -545,10 +687,10 @@ class Display(DisplayContentProvider):
         elif isinstance(current_prop, EditorAction):
             prop_name = current_prop.value.upper()
 
-        prop_label = QtWidgets.QLabel(prop_name)
-        prop_label.setFont(self.formatter.info_font(size=18))
-        prop_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        v_layout.addWidget(prop_label)
+        prop_label = Label(
+            prop_name, self.formatter.info_font_pil(size=18), align="center"
+        )
+        container.add_widget(prop_label)
 
         # Current Value Preview (if not an action)
         if isinstance(current_prop, AlarmProperty):
@@ -561,14 +703,14 @@ class Display(DisplayContentProvider):
             elif current_prop == AlarmProperty.AUDIO_EFFECT:
                 val_str = val.title() if val else "None"
 
-            val_label = QtWidgets.QLabel(val_str)
-            val_label.setFont(self.formatter.info_font(size=12))
-            val_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-            v_layout.addWidget(val_label)
+            val_label = Label(
+                val_str, self.formatter.info_font_pil(size=12), align="center"
+            )
+            container.add_widget(val_label)
 
-        layout.addWidget(container)
+        layout.add_widget(container, stretch=1)
 
-    def _draw_property_edit_view(self, layout: QtWidgets.QHBoxLayout):
+    def _draw_property_edit_view(self, layout: HBox):
         coordinator = self.alarm_clock_context.mode_coordinator
         service = coordinator.editing_service
         if not service or not service.editing_session:
@@ -577,9 +719,7 @@ class Display(DisplayContentProvider):
         current_prop = service.property_to_edit
         current_val = service.editing_session.get_current_value()
 
-        container = QtWidgets.QWidget()
-        v_layout = QtWidgets.QVBoxLayout(container)
-        v_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        container = VBox()
 
         # Property Name
         prop_name = (
@@ -587,63 +727,61 @@ class Display(DisplayContentProvider):
             if isinstance(current_prop, AlarmProperty)
             else ""
         )
-        header = QtWidgets.QLabel(f"SET {prop_name}")
-        header.setFont(self.formatter.info_font(size=10))
-        header.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        v_layout.addWidget(header)
+        header = Label(
+            f"SET {prop_name}", self.formatter.info_font_pil(size=10), align="center"
+        )
+        container.add_widget(header)
 
         # Value with arrows
-        h_layout = QtWidgets.QHBoxLayout()
-        h_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        h_layout = HBox()
+        h_layout.add_widget(Spacer(), stretch=1)
 
-        left_arrow = QtWidgets.QLabel("\uf053")  # Chevron Left
-        left_arrow.setFont(self.formatter.info_font(size=16))
-        h_layout.addWidget(left_arrow)
+        left_arrow = Label(
+            "\uf053", self.formatter.info_font_pil(size=16), align="center"
+        )  # Chevron Left
+        h_layout.add_widget(left_arrow)
 
         val_str = str(current_val)
         # Formatting
         if current_prop == AlarmProperty.RECURRING:
             # val is list of strings
-            # We might want to show a summary or the raw list
             val_str = ", ".join([d[:3] for d in current_val])
         elif current_prop == AlarmProperty.AUDIO_EFFECT:
             val_str = current_val.title() if current_val else "None"
         elif current_prop == AlarmProperty.HOUR or current_prop == AlarmProperty.MIN:
             val_str = f"{current_val:02d}"
 
-        val_label = QtWidgets.QLabel(f" {val_str} ")
-        val_label.setFont(self.formatter.info_font(size=18))
-        h_layout.addWidget(val_label)
+        val_label = Label(
+            f" {val_str} ", self.formatter.info_font_pil(size=18), align="center"
+        )
+        h_layout.add_widget(val_label)
 
-        right_arrow = QtWidgets.QLabel("\uf054")  # Chevron Right
-        right_arrow.setFont(self.formatter.info_font(size=16))
-        h_layout.addWidget(right_arrow)
+        right_arrow = Label(
+            "\uf054", self.formatter.info_font_pil(size=16), align="center"
+        )  # Chevron Right
+        h_layout.add_widget(right_arrow)
 
-        v_layout.addLayout(h_layout)
-        layout.addWidget(container)
+        h_layout.add_widget(Spacer(), stretch=1)
+        container.add_widget(h_layout)
 
-    def initialize_qt_app(self):
-        self.app = QtWidgets.QApplication([])
+        layout.add_widget(container, stretch=1)
 
     def draw_widget(self):
         self.formatter.update_formatter()
         # Reset scrolling state; widgets will set it to True if they need high refresh rate
         self.display_content.is_scrolling = False
 
-        self.widget = QtWidgets.QFrame()
-        self.widget.setFixedSize(self.device.width, self.device.height)
-
         fg_color = self.formatter.foreground_color(color_type=ColorType.INHEX)
         bg_color = self.formatter.background_color(color_type=ColorType.INHEX)
 
-        self.widget.setStyleSheet(
-            f"background-color: {bg_color}; color: {fg_color}; border: none;"
-        )
+        # Create PIL Image
+        image = Image.new("RGB", (self.device.width, self.device.height), bg_color)
+        draw = ImageDraw.Draw(image)
 
         # Main Layout
-        layout = QtWidgets.QHBoxLayout(self.widget)
-        layout.setContentsMargins(10, 0, 5, 0)
-        layout.setSpacing(0)
+        layout = HBox()
+        layout.set_margins(10, 0, 5, 0)
+        layout.spacing = 0
 
         mode = (
             self.alarm_clock_context.mode_coordinator.current_mode_name
@@ -660,24 +798,15 @@ class Display(DisplayContentProvider):
         elif mode == ModeName.PROPERTY_EDIT:
             self._draw_property_edit_view(layout)
 
-        self.widget.adjustSize()
+        # Layout and Render
+        layout.set_geometry(0, 0, self.device.width, self.device.height)
+        layout.render(image, draw)
 
-    def grab_widget_image(self) -> Image.Image:
-
-        pixmap = self.widget.grab()
-
-        buffer = QtCore.QBuffer()
-        buffer.open(QtCore.QBuffer.OpenModeFlag.WriteOnly)
-        pixmap.save(buffer, "PNG")
-
-        pil_image = Image.open(io.BytesIO(buffer.data()))
-        return pil_image
+        self.current_display_image = self.formatter.postprocess_image(image)
 
     def refresh(self):
         logger.debug("draw_widget: %sms", timeit(self.draw_widget, number=1) * 1000)
-        self.current_display_image = self.formatter.postprocess_image(
-            self.grab_widget_image()
-        )
+        # self.current_display_image is set in draw_widget
         try:
             self.device.display(self.current_display_image)
             if isinstance(self.device, luma_dummy):
@@ -712,12 +841,9 @@ if __name__ == "__main__":
     pc.audio_stream = SpotifyStream()
     dc = DisplayContent(alarm_clock_context=s, playback_content=pc)
     dc.show_blink_segment = True
-    d = Display(dev, dc, pc, s)
+    d = Display(dev, dc, pc, DisplayFormatter(dc, s), s)
     d.refresh()
     image = d.current_display_image
-
-    # with canvas(dev) as draw:
-    # 	draw.text((20, 20), "Hello World!", fill="white")
 
     if is_on_hardware:
         time.sleep(10)

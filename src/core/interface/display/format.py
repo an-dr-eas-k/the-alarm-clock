@@ -2,7 +2,6 @@ import datetime
 from enum import Enum
 import logging
 from PIL import Image
-from PyQt5 import QtGui
 from core.domain.model import (
     AlarmClockContext,
     Mode,
@@ -36,31 +35,13 @@ class DisplayFormatter:
     def clock_font_pil(self, size: int = 50):
         if self.be_gloomy():
             return PresentationFont.get_font(PresentationFont.light_clock_font, 20)
-        return PresentationFont.get_font(PresentationFont.bold_clock_font, size)
-
-    def clock_font(self, size: int = 20, weight: int = QtGui.QFont.Weight.Bold):
-        font_path = (
-            PresentationFont.roboto_font
-            if not self.be_gloomy()
-            else PresentationFont.light_clock_font
-        )
-        return PresentationFont.get_font_family(font_path, size, weight)
+        return PresentationFont.get_font(PresentationFont.roboto_font, size)
 
     def info_font_pil(self, size: int = 18):
-        return PresentationFont.get_font(PresentationFont.info_font, size)
-
-    def info_font(self, size: int = 18, weight: int = QtGui.QFont.Weight.Normal):
-        return PresentationFont.get_font_family(
-            PresentationFont.roboto_font, size, weight
-        )
+        return PresentationFont.get_font(PresentationFont.roboto_font, size)
 
     def weather_font_pil(self, size: int = 18):
         return PresentationFont.get_font(PresentationFont.weather_font, size)
-
-    def weather_font(self, size: int = 18, weight: int = QtGui.QFont.Weight.Normal):
-        return PresentationFont.get_font_family(
-            PresentationFont.weather_font, size, weight
-        )
 
     def be_gloomy(self):
         return (
