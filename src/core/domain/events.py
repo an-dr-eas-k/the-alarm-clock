@@ -29,6 +29,11 @@ class AlarmTriggeredEvent(BaseEvent):
 
 
 @dataclass(frozen=True)
+class PreAlarmTriggeredEvent(BaseEvent):
+    alarm_definition: AlarmDefinition
+
+
+@dataclass(frozen=True)
 class AlarmStoppedEvent(BaseEvent):
     alarm_definition: AlarmDefinition = None
 
