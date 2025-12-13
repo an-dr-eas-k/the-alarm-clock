@@ -10,6 +10,7 @@ from core.domain.events import (
     SpotifyApiEvent,
     ToggleAudioRequest,
     AlarmTriggeredEvent,
+    PreAlarmTriggeredEvent,
     AlarmStoppedEvent,
     VolumeChangedEvent,
     WifiStatusChangedEvent,
@@ -18,6 +19,7 @@ from core.domain.model import (
     AlarmClockContext,
     AlarmDefinition,
     AudioStream,
+    NextAlarmInfo,
     OfflineStream,
     PlaybackContent,
     Mode,
@@ -216,9 +218,24 @@ class AlarmAudioControls(BasicAudioControls):
                 **alDef.get_cron_args(),
             )
         self.scheduler_service.cleanup_alarms(config)
-        self.display_content.update_next_alarm(
-            self.scheduler_service.get_next_alarm_info()
-        )
+        self.update_next_alarm()
+
+    def update_next_alarm(self):
+        next_alarm_info: NextAlarmInfo = self.scheduler_service.get_next_alarm_info()
+        if next_alarm_info.next_run_time is not None:
+            self.scheduler_service.add_job(
+                self._trigger_pre_alarm,
+                trigger="date",
+                run_date=next_alarm_info.next_run_time
+                - datetime.timedelta(
+                    minutes=self.alarm_clock_context.config.pre_alarm_trigger_in_mins
+                ),
+                id=SchedulerJobIds.pre_alarm.value,
+                jobstore=SchedulerStores.default.value,
+                args=[next_alarm_info.alarm_definition],
+            )
+        self.display_content.update_next_alarm(next_alarm_info)
+        logger.info("next alarm info updated: %s", next_alarm_info)
 
     def _alarm_triggered(self, event: AlarmTriggeredEvent = None):
         self._preprocess_ring_alarm(event.alarm_definition)
@@ -230,9 +247,7 @@ class AlarmAudioControls(BasicAudioControls):
                 absolute_volume=audio_effect.volume,
             )
         )
-        self.display_content.update_next_alarm(
-            self.scheduler_service.get_next_alarm_info()
-        )
+        self.update_next_alarm()
 
         if event.alarm_definition.is_onetime() and event.alarm_definition.id >= 0:
             self.alarm_clock_context.config.remove_alarm_definition(
@@ -262,6 +277,14 @@ class AlarmAudioControls(BasicAudioControls):
             audio_effect.audio_stream = active_alarm_effect.audio_stream
 
         return audio_effect
+
+    def _trigger_pre_alarm(self, alarm_definition: AlarmDefinition):
+        def do():
+            self.event_bus.emit(PreAlarmTriggeredEvent(alarm_definition))
+
+        safe_action(
+            do, "trigger pre-alarm '%s'" % alarm_definition.alarm_name, logger=logger
+        )
 
     def _ring_alarm(self, alarm_definition: AlarmDefinition):
         def do():

@@ -159,7 +159,8 @@ class SchedulerService:
         if next_job is None or alarm_def is None:
             return NextAlarmInfo()
         return NextAlarmInfo(
-            next_job.next_run_time, alarm_def.alarm_name, alarm_def.visual_effect
+            next_job.next_run_time,
+            alarm_def,
         )
 
     def log_active_jobs(self, jobstore):

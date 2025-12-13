@@ -11,10 +11,8 @@ if TYPE_CHECKING:
     from core.domain.model import (
         Mode,
         AudioStream,
-        RoomBrightness,
         AlarmDefinition,
         Config,
-        RoomBrightness,
     )
     from utils.geolocation import SunEvent
 
@@ -28,6 +26,11 @@ class WifiStatusChangedEvent(BaseEvent):
 class AlarmTriggeredEvent(BaseEvent):
     alarm_definition: AlarmDefinition
     use_offline_media: bool = False
+
+
+@dataclass(frozen=True)
+class PreAlarmTriggeredEvent(BaseEvent):
+    alarm_definition: AlarmDefinition
 
 
 @dataclass(frozen=True)

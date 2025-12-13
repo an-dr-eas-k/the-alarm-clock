@@ -46,6 +46,7 @@ class SchedulerJobIds(Enum):
     regular_display_refresh = "regular_display_refresh_trigger"
     memory_usage_logger = "memory_usage_logger_trigger"
     thread_usage_logger = "thread_usage_logger_trigger"
+    pre_alarm = "pre_alarm_trigger"
 
 
 class DisplayContentProvider:
@@ -350,6 +351,7 @@ class Config:
     use_analog_clock: bool
     alarm_preview_hours: int
     debug_level: int
+    pre_alarm_trigger_in_mins: int = 10
 
     # Public attributes for template access (Tornado templates don't call properties)
     alarm_definitions: List[AlarmDefinition]
@@ -461,6 +463,7 @@ class Config:
             dict(key="default_volume", value=default_volume),
             dict(key="use_analog_clock", value=False),
             dict(key="alarm_preview_hours", value=12),
+            dict(key="pre_alarm_trigger_in_mins", value=10),
             dict(key="debug_level", value=0),
         ]:
             if not hasattr(self, conf_prop["key"]):
@@ -599,14 +602,12 @@ class NextAlarmInfo:
     def __init__(
         self,
         next_run_time: datetime = None,
-        alarm_name: str = None,
-        visual_effect: "VisualEffect" = None,
+        alarm_definition: "AlarmDefinition" = None,
     ):
         self._next_run_time = next_run_time
-        self._alarm_name = alarm_name
-        self._visual_effect = visual_effect
-        if self._visual_effect is not None:
-            self._visual_effect.next_alarm_info = self
+        self._alarm_definition = alarm_definition
+        if self.visual_effect is not None:
+            self.visual_effect.next_alarm_info = self
 
     @property
     def next_run_time(self) -> datetime:
@@ -614,11 +615,15 @@ class NextAlarmInfo:
 
     @property
     def alarm_name(self) -> str:
-        return self._alarm_name
+        return self._alarm_definition.alarm_name
 
     @property
     def visual_effect(self) -> "VisualEffect":
-        return self._visual_effect
+        return self._alarm_definition.visual_effect if self._alarm_definition else None
+
+    @property
+    def alarm_definition(self) -> "AlarmDefinition":
+        return self._alarm_definition
 
     def _get_timedelta_to_alarm(self) -> timedelta:
         if self._next_run_time is None:
