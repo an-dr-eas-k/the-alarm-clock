@@ -1,18 +1,17 @@
-import io
 import logging
 from timeit import timeit
 import traceback
 import time
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 
 from luma.core.device import device as luma_device
 from luma.core.device import dummy as luma_dummy
 from luma.core.render import canvas
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 from core.domain.events import (
-    AlarmStoppedEvent,
+    AlarmTriggeredEvent,
     ForcedDisplayUpdateEvent,
 )
 from core.domain.edit_mode import AlarmProperty, EditorAction
@@ -411,9 +410,9 @@ class Display(DisplayContentProvider):
         self.event_bus.on(ForcedDisplayUpdateEvent)(
             self._handle_forced_display_update_event
         )
-        self.event_bus.on(AlarmStoppedEvent)(self._alarm_stopped)
+        self.event_bus.on(AlarmTriggeredEvent)(self._alarm_triggered)
 
-    def _alarm_stopped(self, _: AlarmStoppedEvent):
+    def _alarm_triggered(self, _: AlarmTriggeredEvent):
         self.device.hide()
         self.device.show()
         self.safe_refresh_display()
