@@ -1,5 +1,8 @@
 import psutil
 import threading
+import logging
+
+logger = logging.getLogger("tac.utils.thread_profiler")
 
 
 def get_thread_usage(interval=0.1):
@@ -41,17 +44,18 @@ def get_thread_usage(interval=0.1):
 
 
 def print_thread_usage():
-    print(
+    logger.info(
         f"{'Name':<40} | {'Ident':>15} | {'Native ID':>10} | {'Daemon':>6} | {'Alive':>6} | {'CPU %':>6}"
     )
-    print("-" * 100)
+    logger.info("-" * 100)
     for name, ident, native_id, daemon, alive, cpu in get_thread_usage():
-        print(
+        logger.info(
             f"{name:<40} | {ident:>15} | {str(native_id):>10} | {str(daemon):>6} | {str(alive):>6} | {cpu:>6.1f}"
         )
-    print("-" * 100)
-    print(f"{'Total Threads':<40} | {len(threading.enumerate()):>15}")
+    logger.info("-" * 100)
+    logger.info(f"{'Total Threads':<40} | {len(threading.enumerate()):>15}")
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     print_thread_usage()
