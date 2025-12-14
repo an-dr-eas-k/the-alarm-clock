@@ -141,6 +141,11 @@ class SpeakerErrorEvent(BaseEvent):
 
 
 @dataclass(frozen=True)
+class StartupFinishedEvent(BaseEvent):
+    pass
+
+
+@dataclass(frozen=True)
 class TerminateAppRequest(BaseEvent):
     pass
 

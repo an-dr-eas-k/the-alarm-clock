@@ -8,6 +8,7 @@ from core.domain.events import (
     ConfigChangedEvent,
     SpeakerErrorEvent,
     SpotifyApiEvent,
+    StartupFinishedEvent,
     ToggleAudioRequest,
     AlarmTriggeredEvent,
     PreAlarmTriggeredEvent,
@@ -196,6 +197,7 @@ class AlarmAudioControls(BasicAudioControls):
         )
         self.event_bus.on(AlarmTriggeredEvent)(self._alarm_triggered)
         self.event_bus.on(AlarmStoppedEvent)(self._alarm_stopped_event)
+        self.event_bus.on(StartupFinishedEvent)(self._handle_startup_finished)
 
     def consider_failed_alarm(self):
         if os.path.exists(active_alarm_definition_file):
@@ -205,6 +207,9 @@ class AlarmAudioControls(BasicAudioControls):
             ad.id = -1
             logger.info("failed audioeffect found %s", ad.alarm_name)
             self._ring_alarm(ad)
+
+    def _handle_startup_finished(self, _: StartupFinishedEvent):
+        self.consider_failed_alarm()
 
     def _config_changed(self, event: ConfigChangedEvent):
         config: Config = event.config

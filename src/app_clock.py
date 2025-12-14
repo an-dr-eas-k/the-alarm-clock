@@ -12,6 +12,7 @@ from dependency_injector import providers
 from core.domain.events import (
     ConfigChangedEvent,
     PlaybackChangedEvent,
+    StartupFinishedEvent,
 )
 from core.domain.model import (
     Mode,
@@ -76,6 +77,7 @@ class ClockApp:
 
         self.container.event_bus().emit(ConfigChangedEvent(config=config))
         self.container.event_bus().emit(PlaybackChangedEvent(Mode.Idle))
+        self.container.event_bus().emit(StartupFinishedEvent())
         controls.consider_failed_alarm()
         tornado.ioloop.IOLoop.current().start()
 

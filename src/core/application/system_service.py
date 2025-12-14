@@ -8,6 +8,7 @@ from core.domain.events import (
     PreAlarmTriggeredEvent,
     ShutdownSystemRequest,
     SpotifyStoppedEvent,
+    StartupFinishedEvent,
     SunEventOccurredEvent,
     TerminateAppRequest,
     VolumeChangedEvent,
@@ -63,6 +64,7 @@ class SystemService:
         self.event_bus.on(TerminateAppRequest)(self.handle_terminate_request)
         self.event_bus.on(ShutdownSystemRequest)(self.handle_shutdown_system_request)
         self.event_bus.on(PreAlarmTriggeredEvent)(self.handle_pre_alarm_triggered)
+        self.event_bus.on(StartupFinishedEvent)(self.handle_startup_finished)
 
         self._update_weather_status()
         self._add_scheduler_jobs()
@@ -161,6 +163,11 @@ class SystemService:
     def handle_forced_display_update(self, _: ForcedDisplayUpdateEvent):
         self._previous_tac_time = GeoLocation().now()
         pass
+
+    def handle_startup_finished(self, _: StartupFinishedEvent):
+        self._update_wifi_status()
+        print_memory_usage()
+        print_thread_usage()
 
     def handle_pre_alarm_triggered(self, _: PreAlarmTriggeredEvent):
         if not self.alarm_clock_context.environment.is_online:
