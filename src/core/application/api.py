@@ -14,6 +14,7 @@ from core.application.controls import AlarmAudioControls
 from core.domain.events import (
     PlaybackChangedEvent,
     ConfigChangedEvent,
+    ShutdownSystemRequest,
     SpotifyApiEvent,
     TerminateAppRequest,
     VolumeChangeRequest,
@@ -34,7 +35,6 @@ from core.domain.model import (
     VisualEffect,
     Weekday,
 )
-from utils.os import reboot_system, shutdown_system
 
 logger = logging.getLogger("tac.core.application.api")
 
@@ -157,9 +157,9 @@ class ActionApiHandler(tornado.web.RequestHandler):
                 tornado.ioloop.IOLoop.current().stop()
 
             elif type == "reboot":
-                reboot_system()
+                self.event_bus.emit(ShutdownSystemRequest(reboot=True))
             elif type == "shutdown":
-                shutdown_system()
+                self.event_bus.emit(ShutdownSystemRequest())
             else:
                 logger.warning("Unknown action: %s", type)
 

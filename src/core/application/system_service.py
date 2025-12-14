@@ -5,6 +5,8 @@ from core.application.controls import safe_action
 from core.domain.events import (
     ForcedDisplayUpdateEvent,
     PlaybackChangedEvent,
+    PreAlarmTriggeredEvent,
+    ShutdownSystemRequest,
     SpotifyStoppedEvent,
     SunEventOccurredEvent,
     TerminateAppRequest,
@@ -25,8 +27,8 @@ from core.infrastructure.event_bus import EventBus
 from core.infrastructure.scheduler import SchedulerService, SchedulerStores
 from core.interface.display.display_content import DisplayContent
 from utils.geolocation import GeoLocation, SunEvent
-from utils.network import is_internet_available
-from utils.os import restart_spotify_daemon
+from utils.os_interactions import OSInteraction
+
 from utils.memory_profiler import print_memory_usage
 from utils.thread_profiler import print_thread_usage
 
@@ -43,12 +45,14 @@ class SystemService:
         event_bus: EventBus,
         display_content: DisplayContent,
         brightness_sensor: IBrightnessSensor,
+        os_interaction: OSInteraction,
     ):
         self.alarm_clock_context = alarm_clock_context
         self.scheduler_service = scheduler_service
         self.event_bus = event_bus
         self.display_content = display_content
         self.brightness_sensor = brightness_sensor
+        self.os_interaction = os_interaction
 
         self.event_bus.on(WifiStatusChangedEvent)(self.handle_wifi_status_changed)
         self.event_bus.on(AlarmTriggeredEvent)(self.handle_alarm_triggered)
@@ -57,6 +61,8 @@ class SystemService:
         self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
         self.event_bus.on(ForcedDisplayUpdateEvent)(self.handle_forced_display_update)
         self.event_bus.on(TerminateAppRequest)(self.handle_terminate_request)
+        self.event_bus.on(ShutdownSystemRequest)(self.handle_shutdown_system_request)
+        self.event_bus.on(PreAlarmTriggeredEvent)(self.handle_pre_alarm_triggered)
 
         self._update_weather_status()
         self._add_scheduler_jobs()
@@ -129,7 +135,7 @@ class SystemService:
         )
 
     def handle_spotify_stopped(self, _: SpotifyStoppedEvent):
-        restart_spotify_daemon()
+        self.os_interaction.restart_spotify_daemon()
 
     def _volume_changed(self, _: VolumeChangedEvent):
         self.start_hide_volume_meter_trigger()
@@ -154,6 +160,19 @@ class SystemService:
 
     def handle_forced_display_update(self, _: ForcedDisplayUpdateEvent):
         self._previous_tac_time = GeoLocation().now()
+
+    def handle_pre_alarm_triggered(self, _: PreAlarmTriggeredEvent):
+        if not self.alarm_clock_context.environment.is_online:
+            self.os_interaction.restart_networking_service()
+
+    def handle_shutdown_system_request(self, event: ShutdownSystemRequest):
+        def do():
+            if event.reboot:
+                self.os_interaction.reboot_system()
+            else:
+                self.os_interaction.shutdown_system()
+
+        safe_action(do, "shutting down system", logger=logger)
 
     def handle_terminate_request(self, _: TerminateAppRequest):
         def do():
@@ -182,7 +201,7 @@ class SystemService:
 
     def _update_wifi_status(self):
         def do():
-            is_online = is_internet_available()
+            is_online = self.os_interaction.is_internet_available()
 
             if is_online == self.alarm_clock_context.environment.is_online:
                 return

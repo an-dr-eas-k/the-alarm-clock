@@ -23,6 +23,7 @@ from core.domain.model import (
     PlaybackContent,
 )
 from core.interface.display.display_content import DisplayContent
+from utils.os_interactions import OSInteraction
 from utils.sound_device import TACSoundDevice
 from luma.oled.device import ssd1322
 from luma.core.interface.serial import spi
@@ -53,7 +54,16 @@ class DIContainer(containers.DeclarativeContainer):
         event_bus=event_bus,
     )
 
-    alarm_clock_context = providers.Singleton(AlarmClockContext, config=config)
+    os_interaction = providers.Singleton(
+        OSInteraction,
+        software_mode=argument_args().software,
+    )
+
+    alarm_clock_context = providers.Singleton(
+        AlarmClockContext,
+        config=config,
+        is_online=os_interaction().is_internet_available(),
+    )
 
     # Domain layer: Pure business logic, no hardware dependencies
     mode_coordinator = providers.Singleton(
@@ -114,6 +124,7 @@ class DIContainer(containers.DeclarativeContainer):
         event_bus=event_bus,
         display_content=display_content,
         brightness_sensor=brightness_sensor,
+        os_interaction=os_interaction,
     )
 
     controls = providers.Singleton(
@@ -124,6 +135,7 @@ class DIContainer(containers.DeclarativeContainer):
         brightness_sensor=brightness_sensor,
         event_bus=event_bus,
         scheduler_service=scheduler_service,
+        os_interaction=os_interaction,
     )
 
     serial_interface = providers.Singleton(spi, device=0, port=0)

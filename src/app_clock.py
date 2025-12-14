@@ -18,7 +18,6 @@ from core.domain.model import (
 )
 from core.application.controls import BasicAudioControls
 from resources.resources import init_logging
-from utils import os as app_os
 
 logger = logging.getLogger("tac.app_clock")
 
@@ -33,7 +32,7 @@ class ClockApp:
 
     def shutdown_function(self, *args):
         logger.info("graceful shutdown")
-        app_os.restart_spotify_daemon()
+        self.container.os_interaction().restart_spotify_daemon()
         tornado.ioloop.IOLoop.current().stop()
 
     def go(self):

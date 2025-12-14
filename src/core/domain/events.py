@@ -143,3 +143,8 @@ class SpeakerErrorEvent(BaseEvent):
 @dataclass(frozen=True)
 class TerminateAppRequest(BaseEvent):
     pass
+
+
+@dataclass(frozen=True)
+class ShutdownSystemRequest(BaseEvent):
+    reboot: bool = False
