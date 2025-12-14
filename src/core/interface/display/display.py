@@ -320,8 +320,7 @@ class Display(DisplayContentProvider):
 
     def safe_refresh_display(self):
         try:
-            logger.debug("refresh: %sms", timeit(self.refresh, number=1) * 1000)
-            # self.refresh()
+            self.refresh()
         except Exception as e:
             logger.error("%s", traceback.format_exc())
             with canvas(self.device) as draw:
@@ -826,23 +825,18 @@ class Display(DisplayContentProvider):
         return Image.frombytes("RGB", (width, height), ptr, "raw", "RGB", stride, 1)
 
     def refresh(self):
-        logger.debug("update_ui: %sms", timeit(self.update_ui, number=1) * 1000)
-        start_time = time.time()
+        # logger.debug("update_ui: %sms", timeit(self.update_ui, number=1) * 1000)
+        self.update_ui()
         self.current_display_image = self.formatter.postprocess_image(
             self.grab_widget_image()
         )
-        logger.debug(
-            "grab_widget_image + postprocess: %sms", (time.time() - start_time) * 1000
-        )
         try:
-            start_time = time.time()
             self.device.display(self.current_display_image)
             if isinstance(self.device, luma_dummy):
                 self.current_display_image.save(
                     display_shot_file,
                     format="png",
                 )
-            logger.debug("device.display: %sms", (time.time() - start_time) * 1000)
         except AssertionError as e:
             pass
 
