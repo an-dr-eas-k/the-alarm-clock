@@ -16,7 +16,7 @@ from core.domain.events import (
 from core.domain.model import (
     Mode,
 )
-from core.application.controls import BasicAudioControls
+from core.application.controls import AlarmAudioControls
 from resources.resources import init_logging
 
 logger = logging.getLogger("tac.app_clock")
@@ -60,7 +60,7 @@ class ClockApp:
                 providers.Singleton(dummy, height=64, width=256, mode="RGB")
             )
 
-        controls: BasicAudioControls = self.container.controls()
+        controls: AlarmAudioControls = self.container.controls()
         self.container.system_service()
         if ci is not None:
             ci.configure(controls)

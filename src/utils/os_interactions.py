@@ -2,7 +2,7 @@ import logging
 import os
 import subprocess
 
-logger = logging.getLogger("tac.os")
+logger = logging.getLogger("tac.os_interactions")
 
 
 class OSInteraction:

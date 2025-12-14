@@ -21,7 +21,7 @@ class ComputerInfrastructure(IBrightnessSensor):
         self.listener = keyboard.Listener(on_press=self.on_press)
         self.listener.start()
 
-    def configure(self, controls: BasicAudioControls):
+    def configure(self, controls: AlarmAudioControls):
         self.controls = controls
         self.config = controls.alarm_clock_context.config
         self.event_bus = controls.event_bus
