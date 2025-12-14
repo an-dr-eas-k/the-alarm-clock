@@ -2,7 +2,7 @@ import unittest
 import re
 import subprocess
 from unittest.mock import patch
-import utils.os as my_os  # To avoid conflicts with the imported os module
+import utils.os_interactions as my_os  # To avoid conflicts with the imported os module
 import logging
 from resources.resources import default_volume
 

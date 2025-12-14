@@ -15,7 +15,6 @@ from utils.extensions import T, Value, respect_ranges
 
 from utils.geolocation import GeoLocation, SunEvent, Weather
 from resources.resources import alarms_dir, default_volume
-from utils.network import is_internet_available
 from utils.sound_device import SoundDevice
 
 from datetime import datetime, timedelta
@@ -113,9 +112,9 @@ class EnvironmentContext:
     the alarm clock is operating in.
     """
 
-    def __init__(self):
+    def __init__(self, is_online: bool = False):
         self._geo_location = GeoLocation()
-        self._is_online = is_internet_available()
+        self._is_online = is_online
         self._current_weather: Weather = None
         self.is_daytime = self.geo_location.last_sun_event() == SunEvent.sunrise
 
@@ -499,9 +498,9 @@ class AlarmClockContext:
     mode_coordinator: "AlarmClockModeCoordinator"
     active_alarm_definition: AlarmDefinition = None
 
-    def __init__(self, config: Config) -> None:
+    def __init__(self, config: Config, is_online: bool = False) -> None:
         self.config = config
-        self.environment = EnvironmentContext()
+        self.environment = EnvironmentContext(is_online)
         self.mode_coordinator: "AlarmClockModeCoordinator" = None
 
 

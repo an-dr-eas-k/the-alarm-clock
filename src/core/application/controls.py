@@ -30,8 +30,8 @@ from core.interface.display.display_content import DisplayContent
 from core.infrastructure.brightness_sensor import IBrightnessSensor
 from core.infrastructure.event_bus import EventBus
 from core.infrastructure.scheduler import SchedulerService, SchedulerStores
-from utils.network import is_internet_available
 from resources.resources import active_alarm_definition_file
+from utils.os_interactions import OSInteraction
 
 logger = logging.getLogger("tac.core.application.controls")
 
@@ -64,6 +64,7 @@ class BasicAudioControls:
         brightness_sensor: IBrightnessSensor,
         event_bus: EventBus,
         scheduler_service: SchedulerService,
+        os_interaction: OSInteraction,
     ) -> None:
         self.alarm_clock_context = alarm_clock_context
         self.display_content = display_content
@@ -71,6 +72,7 @@ class BasicAudioControls:
         self.brightness_sensor = brightness_sensor
         self.event_bus = event_bus
         self.scheduler_service = scheduler_service
+        self.os_interaction = os_interaction
         self.event_bus.on(ToggleAudioRequest)(self._toggle_stream)
         self.event_bus.on(WifiStatusChangedEvent)(self._wifi_status_changed)
         self.event_bus.on(ConfigChangedEvent)(self._config_changed)
@@ -179,6 +181,7 @@ class AlarmAudioControls(BasicAudioControls):
         brightness_sensor: IBrightnessSensor,
         event_bus: EventBus,
         scheduler_service: SchedulerService,
+        os_interaction: OSInteraction,
     ) -> None:
         super().__init__(
             alarm_clock_context,
@@ -187,6 +190,7 @@ class AlarmAudioControls(BasicAudioControls):
             brightness_sensor,
             event_bus,
             scheduler_service,
+            os_interaction,
         )
         self.event_bus.on(AlarmTriggeredEvent)(self._alarm_triggered)
         self.event_bus.on(AlarmStoppedEvent)(self._alarm_stopped_event)
@@ -247,7 +251,7 @@ class AlarmAudioControls(BasicAudioControls):
         audio_effect = StreamAudioEffect(volume=active_alarm_effect.volume)
         if (
             False
-            or not is_internet_available()
+            or not self.os_interaction.is_internet_available()
             or self.playback_content.playback_mode
             in [
                 Mode.Music,

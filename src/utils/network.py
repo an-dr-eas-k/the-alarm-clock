@@ -5,13 +5,8 @@ import ssl
 import traceback
 from urllib.request import Request, urlopen
 
-from utils.os import is_ping_successful
 
 logger = logging.getLogger("tac.network")
-
-
-def is_internet_available():
-    return is_ping_successful("8.8.8.8")
 
 
 def json_api(url, headers={"Content-Type": "application/json"}, data_bytes=None):
