@@ -16,4 +16,4 @@ dependency-injector
 pillow
 psutil
 pympler
-# PyQt5 # only needed for local development
+systemd
