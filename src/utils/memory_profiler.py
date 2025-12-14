@@ -103,6 +103,28 @@ def print_trace_snapshot(limit=10):
         print(stat)
 
 
+def print_full_report():
+    """
+    Runs all memory profiling methods to give a complete overview.
+    """
+    print("\n" + "=" * 80)
+    print("MEMORY PROFILER FULL REPORT")
+    print("=" * 80 + "\n")
+
+    print("--- 1. Pympler Object Summary ---")
+    print_memory_usage()
+    print("\n")
+
+    print("--- 2. Pympler Memory Diff (Baseline vs Now) ---")
+    # Call twice to ensure we have a baseline if it's the first run
+    log_memory_diff()
+    print("(If this is the first run, this was just the baseline setup)")
+    print("\n")
+
+    print("=" * 80)
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
+    print_full_report()
     print_memory_usage()
