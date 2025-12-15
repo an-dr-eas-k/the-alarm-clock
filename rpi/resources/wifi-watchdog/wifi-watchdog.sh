@@ -4,7 +4,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RESET_SCRIPT="$SCRIPT_DIR/reset-wifi-usb.sh"
 COOLDOWN=300  # 5 minutes cooldown between resets
-API_URL="http://localhost/api/system/wifi"
+API_URL="https://localhost/api/system/wifi"
 
 LAST_RESET=0
 
