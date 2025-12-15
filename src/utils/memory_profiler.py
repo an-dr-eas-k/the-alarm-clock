@@ -92,36 +92,36 @@ def start_tracing():
 def print_trace_snapshot(limit=10):
     """Print a snapshot of memory allocations"""
     if not tracemalloc.is_tracing():
-        print("Tracemalloc is not running. Call start_tracing() first.")
+        logger.info("Tracemalloc is not running. Call start_tracing() first.")
         return
 
     snapshot = tracemalloc.take_snapshot()
     top_stats = snapshot.statistics("lineno")
 
-    print(f"\n[ Top {limit} Memory Allocations ]")
+    logger.info(f"\n[ Top {limit} Memory Allocations ]")
     for stat in top_stats[:limit]:
-        print(stat)
+        logger.info(stat)
 
 
 def print_full_report():
     """
     Runs all memory profiling methods to give a complete overview.
     """
-    print("\n" + "=" * 80)
-    print("MEMORY PROFILER FULL REPORT")
-    print("=" * 80 + "\n")
+    logger.info("\n" + "=" * 80)
+    logger.info("MEMORY PROFILER FULL REPORT")
+    logger.info("=" * 80 + "\n")
 
-    print("--- 1. Pympler Object Summary ---")
+    logger.info("--- 1. Pympler Object Summary ---")
     print_memory_usage()
-    print("\n")
+    logger.info("\n")
 
-    print("--- 2. Pympler Memory Diff (Baseline vs Now) ---")
+    logger.info("--- 2. Pympler Memory Diff (Baseline vs Now) ---")
     # Call twice to ensure we have a baseline if it's the first run
     log_memory_diff()
-    print("(If this is the first run, this was just the baseline setup)")
-    print("\n")
+    logger.info("(If this is the first run, this was just the baseline setup)")
+    logger.info("\n")
 
-    print("=" * 80)
+    logger.info("=" * 80)
 
 
 if __name__ == "__main__":
