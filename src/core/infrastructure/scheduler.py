@@ -162,7 +162,7 @@ class SchedulerService:
             self.remove_job(job_id=job_id, jobstore=jobstore)
 
         self.add_date_job(
-            job_id=job_id, run_date=run_date, func=func, jobstore=jobstore, args, kwargs
+            job_id=job_id, run_date=run_date, func=func, jobstore=jobstore, args=args, kwargs=kwargs
         )
 
     def get_next_alarm_info(self) -> NextAlarmInfo:
