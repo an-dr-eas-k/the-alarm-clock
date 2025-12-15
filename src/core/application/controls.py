@@ -255,13 +255,14 @@ class AlarmAudioControls(BasicAudioControls):
                 absolute_volume=audio_effect.volume,
             )
         )
-        self.update_next_alarm()
 
         if event.alarm_definition.is_onetime() and event.alarm_definition.id >= 0:
             self.alarm_clock_context.config.remove_alarm_definition(
                 event.alarm_definition.id
             )
             self.event_bus.emit(ConfigChangedEvent(self.alarm_clock_context.config))
+        else:
+            self.update_next_alarm()
 
     def _get_appropriate_alarm_effect(self) -> StreamAudioEffect:
         active_alarm_effect = (
