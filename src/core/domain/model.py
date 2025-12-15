@@ -637,3 +637,6 @@ class NextAlarmInfo:
 
     def minutes_until_alarm(self) -> int:
         return int(self._get_timedelta_to_alarm().total_seconds() / 60)
+
+    def __str__(self):
+        return f"{self.alarm_name} at {self.next_run_time}"

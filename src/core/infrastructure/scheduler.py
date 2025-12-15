@@ -37,7 +37,7 @@ class SchedulerService:
     def add_job(
         self,
         func: Callable,
-        id: str,
+        job_id: str,
         jobstore: str = "default",
         trigger: str = None,
         args: List[Any] = None,
@@ -45,12 +45,12 @@ class SchedulerService:
         **trigger_args,
     ) -> Job:
         logger.debug(
-            f"Adding job {id} to {jobstore} with trigger {trigger} and args {trigger_args}"
+            f"Adding job {job_id} to {jobstore} with trigger {trigger} and args {trigger_args}"
         )
         return self.scheduler.add_job(
             func=func,
             trigger=trigger,
-            id=id,
+            job_id=job_id,
             jobstore=jobstore,
             args=args,
             kwargs=kwargs,
@@ -60,7 +60,7 @@ class SchedulerService:
     def add_cron_job(
         self,
         func: Callable,
-        id: str,
+        job_id: str,
         jobstore: str = "default",
         args: List[Any] = None,
         kwargs: Dict[str, Any] = None,
@@ -70,7 +70,7 @@ class SchedulerService:
         return self.scheduler.add_job(
             func=func,
             trigger=trigger,
-            id=id,
+            job_id=job_id,
             jobstore=jobstore,
             args=args,
             kwargs=kwargs,
@@ -79,7 +79,7 @@ class SchedulerService:
     def add_date_job(
         self,
         func: Callable,
-        id: str,
+        job_id: str,
         run_date: datetime,
         jobstore: str = "default",
         args: List[Any] = None,
@@ -89,34 +89,34 @@ class SchedulerService:
         return self.scheduler.add_job(
             func=func,
             trigger=trigger,
-            id=id,
+            job_id=job_id,
             jobstore=jobstore,
             args=args,
             kwargs=kwargs,
         )
 
     def reschedule_job(
-        self, id: str, jobstore: str = "default", trigger: str = None, **trigger_args
+        self, job_id: str, jobstore: str = "default", trigger: str = None, **trigger_args
     ):
         self.scheduler.reschedule_job(
-            job_id=id, jobstore=jobstore, trigger=trigger, **trigger_args
+            job_id=job_id, jobstore=jobstore, trigger=trigger, **trigger_args
         )
 
     def reschedule_date_job(
-        self, id: str, run_date: datetime, jobstore: str = "default"
+        self, job_id: str, run_date: datetime, jobstore: str = "default"
     ):
         trigger = DateTrigger(run_date=run_date)
-        self.scheduler.reschedule_job(job_id=id, jobstore=jobstore, trigger=trigger)
+        self.scheduler.reschedule_job(job_id=job_id, jobstore=jobstore, trigger=trigger)
 
-    def remove_job(self, id: str, jobstore: str = "default"):
-        if self.get_job(id, jobstore):
-            self.scheduler.remove_job(job_id=id, jobstore=jobstore)
+    def remove_job(self, job_id: str, jobstore: str = "default"):
+        if self.get_job(job_id, jobstore):
+            self.scheduler.remove_job(job_id=job_id, jobstore=jobstore)
 
     def remove_all_jobs(self, jobstore: str = "default"):
         self.scheduler.remove_all_jobs(jobstore=jobstore)
 
-    def get_job(self, id: str, jobstore: str = "default") -> Optional[Job]:
-        return self.scheduler.get_job(job_id=id, jobstore=jobstore)
+    def get_job(self, job_id: str, jobstore: str = "default") -> Optional[Job]:
+        return self.scheduler.get_job(job_id=job_id, jobstore=jobstore)
 
     def get_jobs(self, jobstore: str = "default"):
         return self.scheduler.get_jobs(jobstore=jobstore)
@@ -125,28 +125,45 @@ class SchedulerService:
         self.scheduler.shutdown()
 
     def stop_generic_trigger(
-        self, job_id: str, job_store=SchedulerStores.default.value
+        self, job_id: str, jobstore=SchedulerStores.default.value
     ):
-        if self.get_job(id=job_id, jobstore=job_store) is not None:
-            self.remove_job(id=job_id, jobstore=job_store)
+        if self.get_job(job_id=job_id, jobstore=jobstore) is not None:
+            self.remove_job(job_id=job_id, jobstore=jobstore)
 
     def start_generic_trigger(
         self,
         job_id: str,
         duration: timedelta,
         func,
-        job_store=SchedulerStores.default.value,
+        jobstore=SchedulerStores.default.value,
     ):
         run_date = GeoLocation().now() + duration
 
         logger.debug("starting generic trigger %s for %s", job_id, duration)
-        existing_job = self.get_job(id=job_id, jobstore=job_store)
+        existing_job = self.get_job(job_id=job_id, jobstore=jobstore)
         if existing_job:
-            self.reschedule_date_job(id=job_id, run_date=run_date, jobstore=job_store)
+            self.reschedule_date_job(job_id=job_id, run_date=run_date, jobstore=jobstore)
         else:
             self.add_date_job(
-                id=job_id, run_date=run_date, func=func, jobstore=job_store
+                job_id=job_id, run_date=run_date, func=func, jobstore=jobstore
             )
+
+    def add_or_replace_date_job(
+        self,
+        func: Callable,
+        job_id: str,
+        run_date: datetime,
+        jobstore: str = SchedulerStores.default.value,
+        args: List[Any] = None,
+        kwargs: Dict[str, Any] = None,
+    )
+        existing_job = self.get_job(job_id=job_id, jobstore=jobstore)
+        if existing_job:
+            self.remove_job(job_id=job_id, jobstore=jobstore)
+
+        self.add_date_job(
+            job_id=job_id, run_date=run_date, func=func, jobstore=jobstore, args, kwargs
+        )
 
     def get_next_alarm_info(self) -> NextAlarmInfo:
         jobs = sorted(

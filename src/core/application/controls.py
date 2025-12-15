@@ -222,7 +222,7 @@ class AlarmAudioControls(BasicAudioControls):
             self.scheduler_service.add_cron_job(
                 func=self._ring_alarm,
                 args=(alDef,),
-                id=f"{alDef.id}",
+                job_id=f"{alDef.id}",
                 jobstore=SchedulerStores.alarm.value,
                 **alDef.get_cron_args(),
             )
@@ -232,14 +232,14 @@ class AlarmAudioControls(BasicAudioControls):
     def update_next_alarm(self):
         next_alarm_info: NextAlarmInfo = self.scheduler_service.get_next_alarm_info()
         if next_alarm_info.next_run_time is not None:
-            self.scheduler_service.add_job(
+            self.scheduler_service.add_or_replace_date_job(
                 self._trigger_pre_alarm,
                 trigger="date",
                 run_date=next_alarm_info.next_run_time
                 - datetime.timedelta(
                     minutes=self.alarm_clock_context.config.pre_alarm_trigger_in_mins
                 ),
-                id=SchedulerJobIds.pre_alarm.value,
+                job_id=SchedulerJobIds.pre_alarm.value,
                 jobstore=SchedulerStores.default.value,
                 args=[next_alarm_info.alarm_definition],
             )

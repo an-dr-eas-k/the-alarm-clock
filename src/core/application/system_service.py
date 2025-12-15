@@ -76,7 +76,7 @@ class SystemService:
             trigger="interval",
             start_date=datetime.datetime.today(),
             seconds=self.alarm_clock_context.config.refresh_timeout_in_secs,
-            id=SchedulerJobIds.regular_display_refresh.value,
+            job_id=SchedulerJobIds.regular_display_refresh.value,
             jobstore=SchedulerStores.default.value,
         )
 
@@ -84,7 +84,7 @@ class SystemService:
             self._update_wifi_status,
             trigger="interval",
             seconds=60,
-            id=SchedulerJobIds.wifi_check.value,
+            job_id=SchedulerJobIds.wifi_check.value,
             jobstore=SchedulerStores.default.value,
         )
 
@@ -92,7 +92,7 @@ class SystemService:
             self._update_weather_status,
             trigger="interval",
             minutes=5,
-            id=SchedulerJobIds.weather_update_interval.value,
+            job_id=SchedulerJobIds.weather_update_interval.value,
             jobstore=SchedulerStores.default.value,
         )
 
@@ -100,7 +100,7 @@ class SystemService:
             print_memory_usage,
             trigger="cron",
             hour="*",
-            id=SchedulerJobIds.memory_usage_logger.value,
+            job_id=SchedulerJobIds.memory_usage_logger.value,
             jobstore=SchedulerStores.default.value,
         )
 
@@ -109,7 +109,7 @@ class SystemService:
             trigger="cron",
             hour="*",
             minute="5-59/10",
-            id=SchedulerJobIds.thread_usage_logger.value,
+            job_id=SchedulerJobIds.thread_usage_logger.value,
             jobstore=SchedulerStores.default.value,
         )
 
@@ -119,7 +119,7 @@ class SystemService:
     def init_sun_event_scheduler(self, event: SunEvent):
         self.scheduler_service.add_cron_job(
             lambda: self._sun_event_occured(event),
-            id=event.value,
+            job_id=event.value,
             jobstore=SchedulerStores.default.value,
             **self.alarm_clock_context.environment.geo_location.get_sun_event_cron_args(
                 event
@@ -132,7 +132,7 @@ class SystemService:
             self._update_wifi_status,
             trigger="interval",
             seconds=5,
-            id=SchedulerJobIds.ensure_stable_wifi.value,
+            job_id=SchedulerJobIds.ensure_stable_wifi.value,
             jobstore=SchedulerStores.default.value,
         )
 
