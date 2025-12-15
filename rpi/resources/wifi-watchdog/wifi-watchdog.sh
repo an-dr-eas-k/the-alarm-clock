@@ -7,17 +7,17 @@ COOLDOWN=300  # 5 minutes cooldown between resets
 
 LAST_RESET=0
 
-echo "WiFi watchdog started - monitoring for DISASSOC_LOW_ACK errors"
+echo "WiFi watchdog started - monitoring for DISASSOC_LOW_ACK and reason=4 errors"
 echo "Reset script: $RESET_SCRIPT"
 
 # Follow kernel messages in real-time with optimized filtering
-journalctl -k -f --since "now" -o cat | grep --line-buffered "wlan.*\(DISASSOC_LOW_ACK\|Reason: 34\)" | while read -r line; do
+journalctl -k -f --since "now" -o cat | grep --line-buffered "wlan.*\(DISASSOC_LOW_ACK\|Reason: 34\|reason=4\)" | while read -r line; do
     CURRENT_TIME=$(date +%s)
     TIME_SINCE_RESET=$((CURRENT_TIME - LAST_RESET))
     
     if [ $TIME_SINCE_RESET -gt $COOLDOWN ]; then
         echo ""
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] DISASSOC_LOW_ACK detected!"
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Connection drop detected (DISASSOC_LOW_ACK or reason=4)!"
         echo "Triggering USB reset..."
         
         if [ -x "$RESET_SCRIPT" ]; then
