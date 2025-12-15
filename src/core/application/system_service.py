@@ -30,7 +30,7 @@ from core.interface.display.display_content import DisplayContent
 from utils.geolocation import GeoLocation, SunEvent
 from utils.os_interactions import OSInteraction
 
-from utils.memory_profiler import print_memory_usage
+from utils.memory_profiler import print_full_report
 from utils.thread_profiler import print_thread_usage
 
 logger = logging.getLogger("tac.core.application.system_service")
@@ -97,7 +97,7 @@ class SystemService:
         )
 
         self.scheduler_service.add_job(
-            print_memory_usage,
+            print_full_report,
             trigger="cron",
             hour="*",
             job_id=SchedulerJobIds.memory_usage_logger.value,
@@ -166,7 +166,7 @@ class SystemService:
 
     def handle_startup_finished(self, _: StartupFinishedEvent):
         self._update_wifi_status()
-        print_memory_usage()
+        print_full_report()
         print_thread_usage()
 
     def handle_pre_alarm_triggered(self, _: PreAlarmTriggeredEvent):
