@@ -156,7 +156,7 @@ class SchedulerService:
         jobstore: str = SchedulerStores.default.value,
         args: List[Any] = None,
         kwargs: Dict[str, Any] = None,
-    )
+    ):
         existing_job = self.get_job(job_id=job_id, jobstore=jobstore)
         if existing_job:
             self.remove_job(job_id=job_id, jobstore=jobstore)
