@@ -95,6 +95,23 @@ class SchedulerService:
             kwargs=kwargs,
         )
 
+    def add_or_replace_date_job(
+        self,
+        func: Callable,
+        job_id: str,
+        run_date: datetime,
+        jobstore: str = SchedulerStores.default.value,
+        args: List[Any] = None,
+        kwargs: Dict[str, Any] = None,
+    ):
+        existing_job = self.get_job(job_id=job_id, jobstore=jobstore)
+        if existing_job:
+            self.remove_job(job_id=job_id, jobstore=jobstore)
+
+        self.add_date_job(
+            job_id=job_id, run_date=run_date, func=func, jobstore=jobstore, args=args, kwargs=kwargs
+        )
+        
     def reschedule_job(
         self, job_id: str, jobstore: str = "default", trigger: str = None, **trigger_args
     ):
@@ -148,22 +165,6 @@ class SchedulerService:
                 job_id=job_id, run_date=run_date, func=func, jobstore=jobstore
             )
 
-    def add_or_replace_date_job(
-        self,
-        func: Callable,
-        job_id: str,
-        run_date: datetime,
-        jobstore: str = SchedulerStores.default.value,
-        args: List[Any] = None,
-        kwargs: Dict[str, Any] = None,
-    ):
-        existing_job = self.get_job(job_id=job_id, jobstore=jobstore)
-        if existing_job:
-            self.remove_job(job_id=job_id, jobstore=jobstore)
-
-        self.add_date_job(
-            job_id=job_id, run_date=run_date, func=func, jobstore=jobstore, args=args, kwargs=kwargs
-        )
 
     def get_next_alarm_info(self) -> NextAlarmInfo:
         jobs = sorted(

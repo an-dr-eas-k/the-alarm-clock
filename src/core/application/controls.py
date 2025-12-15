@@ -233,15 +233,14 @@ class AlarmAudioControls(BasicAudioControls):
         next_alarm_info: NextAlarmInfo = self.scheduler_service.get_next_alarm_info()
         if next_alarm_info.next_run_time is not None:
             self.scheduler_service.add_or_replace_date_job(
-                self._trigger_pre_alarm,
-                trigger="date",
+                func=self._trigger_pre_alarm,
+                args=[next_alarm_info.alarm_definition],
                 run_date=next_alarm_info.next_run_time
                 - datetime.timedelta(
                     minutes=self.alarm_clock_context.config.pre_alarm_trigger_in_mins
                 ),
                 job_id=SchedulerJobIds.pre_alarm.value,
                 jobstore=SchedulerStores.default.value,
-                args=[next_alarm_info.alarm_definition],
             )
         self.display_content.update_next_alarm(next_alarm_info)
         logger.info("next alarm info updated: %s", next_alarm_info)
