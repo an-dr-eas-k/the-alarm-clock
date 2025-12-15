@@ -50,7 +50,7 @@ class SchedulerService:
         return self.scheduler.add_job(
             func=func,
             trigger=trigger,
-            job_id=job_id,
+            id=job_id,
             jobstore=jobstore,
             args=args,
             kwargs=kwargs,
@@ -70,7 +70,7 @@ class SchedulerService:
         return self.scheduler.add_job(
             func=func,
             trigger=trigger,
-            job_id=job_id,
+            id=job_id,
             jobstore=jobstore,
             args=args,
             kwargs=kwargs,
@@ -89,7 +89,7 @@ class SchedulerService:
         return self.scheduler.add_job(
             func=func,
             trigger=trigger,
-            job_id=job_id,
+            id=job_id,
             jobstore=jobstore,
             args=args,
             kwargs=kwargs,
