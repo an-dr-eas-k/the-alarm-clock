@@ -20,15 +20,38 @@ def log_memory_diff():
         return
 
     logger.info("Memory usage difference since last check:")
-    # SummaryTracker.print_diff() prints to stdout. We want to capture it or just let it print if stdout is redirected.
-    # Unfortunately print_diff doesn't return the string easily without redirecting stdout.
-    # However, we can use diff() to get the raw data and format it ourselves if we want to log it properly.
 
     try:
-        # This prints to stdout, which might be captured by systemd/docker logs
-        _tracker.print_diff()
+        diffs = _tracker.diff()
+        if not diffs:
+            logger.info("No differences reported by SummaryTracker.")
+            return
+
+        # diffs is a list of tuples like (diff, name)
+        # where diff is a tuple (size_diff, count_diff) and name is a str
+        # We'll format this into aligned columns for logging.
+        # Determine column widths
+        name_width = max((len(name) for (_diff, name) in diffs), default=20)
+        header = f"{'Name'.ljust(name_width)} | {'Size Δ (KiB)'.rjust(12)} | {'Count Δ'.rjust(8)}"
+        logger.info(header)
+        logger.info("-" * len(header))
+
+        for size_count_diff, name in diffs:
+            try:
+                size_diff, count_diff = size_count_diff
+            except Exception:
+                # Fallback if structure differs
+                logger.info(f"{name}")
+                continue
+
+            # size is in bytes; present as kibibytes with sign
+            size_kib = size_diff / 1024.0
+            size_str = f"{size_kib:+10.2f}"
+            count_str = f"{count_diff:+8d}"
+            logger.info(f"{name.ljust(name_width)} | {size_str} | {count_str}")
+
     except Exception as e:
-        logger.error(f"Failed to track memory diff: {e}")
+        logger.exception("Failed to track memory diff")
 
 
 _snapshot = None
