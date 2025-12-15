@@ -7,6 +7,8 @@ from core.infrastructure.event_bus import BaseEvent
 
 from typing import TYPE_CHECKING
 
+from utils.geolocation import Weather
+
 if TYPE_CHECKING:
     from core.domain.model import (
         Mode,
@@ -45,7 +47,7 @@ class ConfigChangedEvent(BaseEvent):
 
 @dataclass(frozen=True)
 class WeatherUpdatedEvent(BaseEvent):
-    pass
+    weather: Weather = None
 
 
 @dataclass(frozen=True)

@@ -18,6 +18,7 @@ from core.domain.events import (
     SpotifyApiEvent,
     TerminateAppRequest,
     VolumeChangeRequest,
+    WifiStatusChangedEvent,
 )
 from core.infrastructure.event_bus import EventBus
 from core.interface.display.display import Display
@@ -167,6 +168,31 @@ class ActionApiHandler(tornado.web.RequestHandler):
             logger.warning("%s", traceback.format_exc())
 
 
+class SystemApiHandler(tornado.web.RequestHandler):
+
+    def initialize(self, event_bus: EventBus) -> None:
+        self.event_bus = event_bus
+
+    def post(self, *args):
+        try:
+            (type, _, _) = parse_path_arguments(args)
+            logger.info("System API action requested: %s", type)
+
+            if type == "wifi":
+                status = self.get_argument("status", None)
+                if status == "connected":
+                    self.event_bus.emit(WifiStatusChangedEvent(is_online=True))
+                elif status == "disconnected":
+                    self.event_bus.emit(WifiStatusChangedEvent(is_online=False))
+                else:
+                    logger.warning("Unknown wifi status: %s", status)
+            else:
+                logger.warning("Unknown system action: %s", type)
+
+        except:
+            logger.warning("%s", traceback.format_exc())
+
+
 class ConfigApiHandler(tornado.web.RequestHandler):
 
     def initialize(self, config: Config, event_bus: EventBus) -> None:
@@ -309,6 +335,11 @@ class Api:
                     "config": self.controls.alarm_clock_context.config,
                     "event_bus": self.event_bus,
                 },
+            ),
+            (
+                r"/api/system/?(.*)",
+                SystemApiHandler,
+                {"event_bus": self.event_bus},
             ),
             (
                 r"/api/librespotify",

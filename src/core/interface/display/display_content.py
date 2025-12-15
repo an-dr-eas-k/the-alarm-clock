@@ -42,6 +42,7 @@ class DisplayContent:
     room_brightness: RoomBrightness = None
     is_scrolling: bool = False
     refresh_duration_in_ms: int = None
+    current_weather: Weather = None
 
     def __init__(
         self,
@@ -72,7 +73,8 @@ class DisplayContent:
         self.event_bus.emit(DisplayVolumeUpdatedEvent())
         self.event_bus.emit(ForcedDisplayUpdateEvent())
 
-    def _weather_updated(self, _: WeatherUpdatedEvent):
+    def _weather_updated(self, event: WeatherUpdatedEvent):
+        self.current_weather = event.weather
         self.event_bus.emit(DisplayWeatherUpdatedEvent())
 
     # ========== Presentation State Updates ==========
@@ -122,10 +124,6 @@ class DisplayContent:
 
     def get_is_online(self) -> bool:
         return self.alarm_clock_context.environment.is_online
-
-    @property
-    def current_weather(self) -> Weather:
-        return self.alarm_clock_context.environment.current_weather
 
     # ========== Volume Meter ==========
 

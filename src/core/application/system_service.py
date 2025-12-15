@@ -155,10 +155,12 @@ class SystemService:
         )
 
     def handle_wifi_status_changed(self, event: WifiStatusChangedEvent):
+        self.alarm_clock_context.environment.is_online = event.is_online
         if event.is_online:
             self._update_weather_status()
         else:
             self.alarm_clock_context.environment.current_weather = None
+            self.event_bus.emit(WeatherUpdatedEvent())
 
     def handle_forced_display_update(self, _: ForcedDisplayUpdateEvent):
         self._previous_tac_time = GeoLocation().now()
@@ -203,7 +205,7 @@ class SystemService:
             new_weather = GeoLocation().get_current_weather()
             logger.info("weather updating: %s", new_weather)
             self.alarm_clock_context.environment.current_weather = new_weather
-            self.event_bus.emit(WeatherUpdatedEvent())
+            self.event_bus.emit(WeatherUpdatedEvent(weather=new_weather))
 
         safe_action(do, "updating weather status", logger=logger)
 
@@ -216,7 +218,6 @@ class SystemService:
 
             logger.info("change wifi state, is online: %s", is_online)
             self.event_bus.emit(WifiStatusChangedEvent(is_online))
-            self.alarm_clock_context.environment.is_online = is_online
 
         safe_action(do, "updating wifi status", logger=logger)
 
