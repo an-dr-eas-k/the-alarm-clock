@@ -9,7 +9,7 @@ fi
 echo "restore asound state"
 alsactl --no-ucm --file rpi/resources/asound.state restore
 
-python src/app_sound_device.py -D equal -a set -f rpi/resources/equalizer.conf
+python src/app_sound_device.py -D equal -a set -f rpi/resources/equalizer.conf > /dev/null
 
 echo "invoking app_clock.py"
-QT_QPA_PLATFORM=offscreen python src/app_clock.py
+QT_QPA_PLATFORM=offscreen python src/app_clock.py > /dev/null
