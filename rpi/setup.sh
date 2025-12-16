@@ -1,11 +1,32 @@
 uid=1010
 uhome=/srv/the-alarm-clock
 app=${uhome}/app
+BRANCH="develop"
+FAST_MODE=false
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    fast|--fast)
+      FAST_MODE=true
+      shift # past argument
+      ;;
+    -b|--branch)
+      BRANCH="$2"
+      shift # past argument
+      shift # past value
+      ;;
+    *)
+      BRANCH="$1"
+      shift # past argument
+      ;;
+  esac
+done
 
 echo "killing processes"
 killall -u the-alarm-clock
 
-if [ "${1:-}" = "fast" ]; then
+if [ "$FAST_MODE" = true ]; then
   echo "fast mode: skipping system update and dependency installation"
 else
   echo "update system and install dependencies"
@@ -40,7 +61,7 @@ cp -af $app/rpi/tls/cert.* $uhome
 
 echo "clone the-alarm-clock"
 rm -rf $app
-git clone -b develop https://github.com/an-dr-eas-k/the-alarm-clock.git $app
+git clone -b $BRANCH https://github.com/an-dr-eas-k/the-alarm-clock.git $app
 chown $uid:$uid -R $uhome
 chmod +x $app/rpi/*.sh
 
