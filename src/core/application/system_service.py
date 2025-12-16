@@ -104,15 +104,6 @@ class SystemService:
             jobstore=SchedulerStores.default.value,
         )
 
-        self.scheduler_service.add_job(
-            print_thread_usage,
-            trigger="cron",
-            hour="*",
-            minute="5-59/10",
-            job_id=SchedulerJobIds.thread_usage_logger.value,
-            jobstore=SchedulerStores.default.value,
-        )
-
         for event in SunEvent.__members__.values():
             self.init_sun_event_scheduler(event)
 
