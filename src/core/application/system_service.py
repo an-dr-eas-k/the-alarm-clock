@@ -127,14 +127,7 @@ class SystemService:
         )
 
     def handle_alarm_triggered(self, _: AlarmTriggeredEvent):
-        # Increase wifi check frequency during alarm
-        self.scheduler_service.add_job(
-            self._update_wifi_status,
-            trigger="interval",
-            seconds=5,
-            job_id=SchedulerJobIds.ensure_stable_wifi.value,
-            jobstore=SchedulerStores.default.value,
-        )
+        pass
 
     def handle_spotify_stopped(self, _: SpotifyStoppedEvent):
         self.os_interaction.restart_spotify_daemon()
@@ -150,9 +143,7 @@ class SystemService:
         )
 
     def handle_alarm_stopped(self, _: AlarmStoppedEvent):
-        self.scheduler_service.stop_generic_trigger(
-            SchedulerJobIds.ensure_stable_wifi.value
-        )
+        pass
 
     def handle_wifi_status_changed(self, event: WifiStatusChangedEvent):
         self.alarm_clock_context.environment.is_online = event.is_online

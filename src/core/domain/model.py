@@ -39,7 +39,6 @@ logger = logging.getLogger("tac.core.domain.model")
 class SchedulerJobIds(Enum):
     hide_volume_meter = "hide_volume_meter_trigger"
     stop_alarm = "stop_alarm_trigger"
-    ensure_stable_wifi = "ensure_stable_wifi_trigger"
     weather_update_interval = "weather_update_trigger"
     wifi_check = "wifi_check_trigger"
     regular_display_refresh = "regular_display_refresh_trigger"

@@ -1,2 +1,4 @@
-%the-alarm-clock ALL=(ALL) NOPASSWD: /usr/sbin/shutdown, /usr/sbin/reboot
+%the-alarm-clock ALL= NOPASSWD: /usr/sbin/shutdown, /usr/sbin/reboot
 %the-alarm-clock ALL= NOPASSWD: /bin/systemctl restart raspotify.service
+%the-alarm-clock ALL= NOPASSWD: /bin/systemctl restart NetworkManager
+%the-alarm-clock ALL= NOPASSWD: /opt/wifi-watchdog/reset-wifi-usb.sh
