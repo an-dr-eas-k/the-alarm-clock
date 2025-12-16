@@ -78,9 +78,9 @@ cat $app/rpi/resources/sudoers > /etc/sudoers.d/the-alarm-clock
 # rm /etc/cron.d/the-alarm-clock
 # cat $app/rpi/resources/cron.conf > /etc/cron.d/the-alarm-clock
 
-echo "wifi-watchdog"
+echo "setup wifi-watchdog"
 ln -fs $app/rpi/resources/wifi-watchdog/wifi-watchdog.service /lib/systemd/system/
-cp -fr $app/rpi/resources/wifi-watchdog/*.sh /opt/
+cp -fr $app/rpi/resources/wifi-watchdog /opt/
 chmod u+x /opt/wifi-watchdog/*.sh
 systemctl daemon-reload
 systemctl enable wifi-watchdog.service
