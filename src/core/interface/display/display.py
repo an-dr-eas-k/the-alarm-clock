@@ -40,6 +40,14 @@ from resources.resources import display_shot_file
 logger = logging.getLogger("tac.core.interface.display.display")
 
 
+class RunnableEvent(QtCore.QEvent):
+    EVENT_TYPE = QtCore.QEvent.Type.User + 1
+
+    def __init__(self, func):
+        super().__init__(self.EVENT_TYPE)
+        self.func = func
+
+
 class ClockWidget(QtWidgets.QWidget):
     def __init__(self, hour_str, min_str, blink_char, show_blink, fg_color, font_obj):
         super().__init__()
@@ -247,7 +255,7 @@ class ScrollingLabel(QtWidgets.QWidget):
                 painter.drawText(int(x2), int(y), self.text)
 
 
-class Display(DisplayContentProvider):
+class Display(DisplayContentProvider, QtCore.QObject):
 
     device: luma_device
     display_content: DisplayContent
@@ -272,6 +280,7 @@ class Display(DisplayContentProvider):
         self.event_bus = event_bus
         self.formatter = display_formatter
         self.initialize_qt_app()
+        QtCore.QObject.__init__(self)
 
         self.widget = None
         self.current_layout_type = None
@@ -311,12 +320,19 @@ class Display(DisplayContentProvider):
         self.event_bus.on(DisplayWeatherUpdatedEvent)(self.on_display_weather_changed)
 
     def _alarm_stopped(self, _: AlarmStoppedEvent):
+        QtCore.QCoreApplication.postEvent(
+            self, RunnableEvent(self._handle_alarm_stopped_ui)
+        )
+
+    def _handle_alarm_stopped_ui(self):
         self.device.hide()
         self.device.show()
         self.safe_refresh_display()
 
     def _handle_forced_display_update_event(self, _: ForcedDisplayUpdateEvent = None):
-        self.safe_refresh_display()
+        QtCore.QCoreApplication.postEvent(
+            self, RunnableEvent(self.safe_refresh_display)
+        )
 
     def safe_refresh_display(self):
         try:
@@ -496,10 +512,10 @@ class Display(DisplayContentProvider):
 
     def _update_default_normal_view(self):
         self._update_clock_only()
-        self.on_display_alarm_changed()
-        self.on_display_playback_changed()
-        self.on_display_volume_changed()
-        self.on_display_weather_changed()
+        self._update_alarm_widget()
+        self._update_playback_widget()
+        self._update_volume_widget()
+        self._update_weather_widget()
 
     def _update_clock_only(self):
         # Clock
@@ -525,6 +541,11 @@ class Display(DisplayContentProvider):
         self.line.setStyleSheet(f"background-color: {fg_color};")
 
     def on_display_weather_changed(self, _=None):
+        QtCore.QCoreApplication.postEvent(
+            self, RunnableEvent(self._update_weather_widget)
+        )
+
+    def _update_weather_widget(self):
         if self.current_layout_type != "DEFAULT_NORMAL":
             return
 
@@ -544,6 +565,11 @@ class Display(DisplayContentProvider):
             self.weather_container.hide()
 
     def on_display_playback_changed(self, _=None):
+        QtCore.QCoreApplication.postEvent(
+            self, RunnableEvent(self._update_playback_widget)
+        )
+
+    def _update_playback_widget(self):
         if self.current_layout_type != "DEFAULT_NORMAL":
             return
 
@@ -562,6 +588,11 @@ class Display(DisplayContentProvider):
             self.playback_container.hide()
 
     def on_display_alarm_changed(self, _=None):
+        QtCore.QCoreApplication.postEvent(
+            self, RunnableEvent(self._update_alarm_widget)
+        )
+
+    def _update_alarm_widget(self):
         if self.current_layout_type != "DEFAULT_NORMAL":
             return
 
@@ -579,6 +610,11 @@ class Display(DisplayContentProvider):
             self.alarm_container.hide()
 
     def on_display_volume_changed(self, _=None):
+        QtCore.QCoreApplication.postEvent(
+            self, RunnableEvent(self._update_volume_widget)
+        )
+
+    def _update_volume_widget(self):
         if self.current_layout_type != "DEFAULT_NORMAL":
             return
 
@@ -768,6 +804,16 @@ class Display(DisplayContentProvider):
     def initialize_qt_app(self):
         self.app = QtWidgets.QApplication([])
 
+    def process_events(self):
+        self.app.processEvents()
+
+    def customEvent(self, event):
+        if event.type() == RunnableEvent.EVENT_TYPE:
+            try:
+                event.func()
+            except Exception as e:
+                logger.error(f"Error executing UI task: {e}")
+
     def update_ui(self):
         self.formatter.update_formatter()
         # Reset scrolling state; widgets will set it to True if they need high refresh rate
@@ -875,7 +921,7 @@ class Display(DisplayContentProvider):
             self.playback_label.update_color(fg_color)
             # We still need to update scrolling text if active
             if self.display_content.is_scrolling:
-                self.on_display_playback_changed()
+                self._update_playback_widget()
         elif layout_type == "DEFAULT_DIMMED":
             self._update_default_dimmed_view()
         elif layout_type == ModeName.ALARM_VIEW:
