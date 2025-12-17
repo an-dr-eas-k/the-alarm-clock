@@ -212,5 +212,8 @@ class DisplayFormatter:
             if 0 <= bg_color < 256:
                 lut[bg_color] = bg_color
 
+            if im.mode == "RGB":
+                lut = lut * 3
+
             im = im.point(lut)
         return im
