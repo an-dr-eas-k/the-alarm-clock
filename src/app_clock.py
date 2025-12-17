@@ -79,9 +79,6 @@ class ClockApp:
         self.container.event_bus().emit(PlaybackChangedEvent(Mode.Idle))
         self.container.event_bus().emit(StartupFinishedEvent())
 
-        display = self.container.display()
-        tornado.ioloop.PeriodicCallback(display.process_events, 50).start()
-
         tornado.ioloop.IOLoop.current().start()
 
         alarm_audio_service.scheduler_service.shutdown()

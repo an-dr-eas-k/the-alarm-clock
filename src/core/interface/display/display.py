@@ -40,14 +40,6 @@ from resources.resources import display_shot_file
 logger = logging.getLogger("tac.core.interface.display.display")
 
 
-class RunnableEvent(QtCore.QEvent):
-    EVENT_TYPE = QtCore.QEvent.Type.User + 1
-
-    def __init__(self, func):
-        super().__init__(self.EVENT_TYPE)
-        self.func = func
-
-
 class ClockWidget(QtWidgets.QWidget):
     def __init__(self, hour_str, min_str, blink_char, show_blink, fg_color, font_obj):
         super().__init__()
@@ -255,7 +247,7 @@ class ScrollingLabel(QtWidgets.QWidget):
                 painter.drawText(int(x2), int(y), self.text)
 
 
-class Display(DisplayContentProvider, QtCore.QObject):
+class Display(DisplayContentProvider):
 
     device: luma_device
     display_content: DisplayContent
@@ -280,7 +272,6 @@ class Display(DisplayContentProvider, QtCore.QObject):
         self.event_bus = event_bus
         self.formatter = display_formatter
         self.initialize_qt_app()
-        QtCore.QObject.__init__(self)
 
         self.widget = None
         self.current_layout_type = None
@@ -310,9 +301,7 @@ class Display(DisplayContentProvider, QtCore.QObject):
         self.pev_header_label = None
         self.pev_val_label = None
 
-        self.event_bus.on(ForcedDisplayUpdateEvent)(
-            self._handle_forced_display_update_event
-        )
+        self.event_bus.on(ForcedDisplayUpdateEvent)(self.safe_refresh_display)
         self.event_bus.on(AlarmStoppedEvent)(self._alarm_stopped)
         self.event_bus.on(DisplayPlaybackUpdatedEvent)(self.on_display_playback_changed)
         self.event_bus.on(DisplayVolumeUpdatedEvent)(self.on_display_volume_changed)
@@ -320,21 +309,11 @@ class Display(DisplayContentProvider, QtCore.QObject):
         self.event_bus.on(DisplayWeatherUpdatedEvent)(self.on_display_weather_changed)
 
     def _alarm_stopped(self, _: AlarmStoppedEvent):
-        QtCore.QCoreApplication.postEvent(
-            self, RunnableEvent(self._handle_alarm_stopped_ui)
-        )
-
-    def _handle_alarm_stopped_ui(self):
         self.device.hide()
         self.device.show()
         self.safe_refresh_display()
 
-    def _handle_forced_display_update_event(self, _: ForcedDisplayUpdateEvent = None):
-        QtCore.QCoreApplication.postEvent(
-            self, RunnableEvent(self.safe_refresh_display)
-        )
-
-    def safe_refresh_display(self):
+    def safe_refresh_display(self, _=None):
         try:
             self.refresh()
         except Exception as e:
@@ -541,9 +520,7 @@ class Display(DisplayContentProvider, QtCore.QObject):
         self.line.setStyleSheet(f"background-color: {fg_color};")
 
     def on_display_weather_changed(self, _=None):
-        QtCore.QCoreApplication.postEvent(
-            self, RunnableEvent(self._update_weather_widget)
-        )
+        self._update_weather_widget()
 
     def _update_weather_widget(self):
         if self.current_layout_type != "DEFAULT_NORMAL":
@@ -565,9 +542,7 @@ class Display(DisplayContentProvider, QtCore.QObject):
             self.weather_container.hide()
 
     def on_display_playback_changed(self, _=None):
-        QtCore.QCoreApplication.postEvent(
-            self, RunnableEvent(self._update_playback_widget)
-        )
+        self._update_playback_widget()
 
     def _update_playback_widget(self):
         if self.current_layout_type != "DEFAULT_NORMAL":
@@ -588,9 +563,7 @@ class Display(DisplayContentProvider, QtCore.QObject):
             self.playback_container.hide()
 
     def on_display_alarm_changed(self, _=None):
-        QtCore.QCoreApplication.postEvent(
-            self, RunnableEvent(self._update_alarm_widget)
-        )
+        self._update_alarm_widget()
 
     def _update_alarm_widget(self):
         if self.current_layout_type != "DEFAULT_NORMAL":
@@ -610,9 +583,7 @@ class Display(DisplayContentProvider, QtCore.QObject):
             self.alarm_container.hide()
 
     def on_display_volume_changed(self, _=None):
-        QtCore.QCoreApplication.postEvent(
-            self, RunnableEvent(self._update_volume_widget)
-        )
+        self._update_volume_widget()
 
     def _update_volume_widget(self):
         if self.current_layout_type != "DEFAULT_NORMAL":
@@ -803,16 +774,6 @@ class Display(DisplayContentProvider, QtCore.QObject):
 
     def initialize_qt_app(self):
         self.app = QtWidgets.QApplication([])
-
-    def process_events(self):
-        self.app.processEvents()
-
-    def customEvent(self, event):
-        if event.type() == RunnableEvent.EVENT_TYPE:
-            try:
-                event.func()
-            except Exception as e:
-                logger.error(f"Error executing UI task: {e}")
 
     def update_ui(self):
         self.formatter.update_formatter()
