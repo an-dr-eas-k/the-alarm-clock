@@ -72,17 +72,22 @@ src/
 
 ## Development Workflows
 
+**To run the application locally for development and testing:**
+Dont forget to run python from the created virtual environment. It is not sufficient to just run "python3" if your system python points to a different version or installation.
+
 **Run on Development Machine:**
 ```bash
-python3 src/app_clock.py --software
+./.venv-*/python3 src/app_clock.py --software
 # Uses dummy display, keyboard controls (1=CCW, 2=CW, 3=mode, 4=invoke, 5=brightness)
 ```
+the * denotes the latest created virtual environment
 
 **Run on Raspberry Pi:**
 ```bash
-python3 src/app_clock.py
+./.venv-*/python3 src/app_clock.py
 # Uses real hardware: SSD1322 OLED (SPI), MCP23017, BH1750
 ```
+the * denotes the latest created virtual environment
 
 ## Critical Conventions
 

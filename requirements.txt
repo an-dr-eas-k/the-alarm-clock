@@ -4,7 +4,7 @@ luma.oled
 python-vlc
 spidev
 tornado
-pynput
+evdev
 apscheduler
 jsonpickle
 astral

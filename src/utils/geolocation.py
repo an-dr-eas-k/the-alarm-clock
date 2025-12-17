@@ -50,7 +50,7 @@ class Weather:
     def __str__(self):
         return f"code: {self.code}, temperature: {self.temperature}"
 
-    def __eq__(self, other: Weather):
+    def __eq__(self, other: "Weather"):
         return self.__str__() == other.__str__()
 
 

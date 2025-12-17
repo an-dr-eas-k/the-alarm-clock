@@ -243,7 +243,10 @@ class AlarmAudioControls(BasicAudioControls):
                 jobstore=SchedulerStores.default.value,
             )
         self.display_content.update_next_alarm(next_alarm_info)
-        logger.info("next alarm info updated: %s", next_alarm_info)
+        logger.info(
+            "next alarm info updated: %s",
+            next_alarm_info if next_alarm_info.next_run_time else "none",
+        )
 
     def _alarm_triggered(self, event: AlarmTriggeredEvent = None):
         self._preprocess_ring_alarm(event.alarm_definition)
