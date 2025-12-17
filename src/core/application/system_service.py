@@ -140,9 +140,6 @@ class SystemService:
         self.alarm_clock_context.environment.is_online = event.is_online
         if event.is_online:
             self._update_weather_status()
-        else:
-            self.alarm_clock_context.environment.current_weather = None
-            self.event_bus.emit(WeatherUpdatedEvent())
 
     def handle_forced_display_update(self, _: ForcedDisplayUpdateEvent):
         self._previous_tac_time = GeoLocation().now()
@@ -180,11 +177,16 @@ class SystemService:
 
     def _update_weather_status(self):
         def do():
-            if not self.alarm_clock_context.environment.is_online:
-                self.alarm_clock_context.environment.current_weather = None
+
+            new_weather = None
+
+            if self.alarm_clock_context.environment.is_online:
+                new_weather = GeoLocation().get_current_weather()
+
+
+            if new_weather == self.alarm_clock_context.environment.current_weather:
                 return
 
-            new_weather = GeoLocation().get_current_weather()
             logger.info("weather updating: %s", new_weather)
             self.alarm_clock_context.environment.current_weather = new_weather
             self.event_bus.emit(WeatherUpdatedEvent(weather=new_weather))
