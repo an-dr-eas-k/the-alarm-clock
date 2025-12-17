@@ -54,11 +54,19 @@ class ClockWidget(QtWidgets.QWidget):
         )
 
     def update_content(self, hour_str, min_str, show_blink, fg_color):
-        self.hour_str = hour_str
-        self.min_str = min_str
-        self.show_blink = show_blink
-        self.fg_color = QtGui.QColor(fg_color)
-        self.update()
+        # Optimized: Only trigger update if content actually changed
+        new_color = QtGui.QColor(fg_color)
+        if (
+            self.hour_str != hour_str
+            or self.min_str != min_str
+            or self.show_blink != show_blink
+            or self.fg_color != new_color
+        ):
+            self.hour_str = hour_str
+            self.min_str = min_str
+            self.show_blink = show_blink
+            self.fg_color = new_color
+            self.update()
 
     def _calculate_layout(self, fm, overlap):
         x = 0
@@ -807,7 +815,9 @@ class Display(DisplayContentProvider):
 
         self._update_content(layout_type)
 
-        self.widget.adjustSize()
+        # Optimized: Only adjust size if layout changed or widget was just created
+        if self.current_layout_type != layout_type:
+            self.widget.adjustSize()
 
     def grab_widget_image_bak(self) -> Image.Image:
         pixmap = self.widget.grab()
@@ -874,9 +884,18 @@ class Display(DisplayContentProvider):
         fg_color = self.formatter.foreground_color(color_type=ColorType.INHEX)
         bg_color = self.formatter.background_color(color_type=ColorType.INHEX)
 
-        self.widget.setStyleSheet(
-            f"background-color: {bg_color}; color: {fg_color}; border: none;"
-        )
+        # Optimized: Only update stylesheet if colors changed
+        if (
+            not hasattr(self, "_last_fg_color")
+            or self._last_fg_color != fg_color
+            or not hasattr(self, "_last_bg_color")
+            or self._last_bg_color != bg_color
+        ):
+            self.widget.setStyleSheet(
+                f"background-color: {bg_color}; color: {fg_color}; border: none;"
+            )
+            self._last_fg_color = fg_color
+            self._last_bg_color = bg_color
 
         if layout_type == "DEFAULT_NORMAL":
             # Optimized: Only update clock in the loop, other elements are event-driven
