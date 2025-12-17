@@ -3,7 +3,7 @@ import traceback
 import threading
 import evdev
 from evdev import ecodes
-from core.application.controls import AlarmAudioControls
+from core.application.alarm_audio_service import AlarmAudioService
 from core.infrastructure.brightness_sensor import IBrightnessSensor
 from core.infrastructure.events_infrastructure import (
     DeviceName,
@@ -58,10 +58,10 @@ class ComputerInfrastructure(IBrightnessSensor):
         except Exception:
             logger.warning("%s", traceback.format_exc())
 
-    def configure(self, controls: AlarmAudioControls):
-        self.controls = controls
-        self.config = controls.alarm_clock_context.config
-        self.event_bus = controls.event_bus
+    def configure(self, alarm_audio_service: AlarmAudioService):
+        self.alarm_audio_service = alarm_audio_service
+        self.config = alarm_audio_service.alarm_clock_context.config
+        self.event_bus = alarm_audio_service.event_bus
 
     def on_press(self, event):
         key_code = event.code
@@ -90,11 +90,13 @@ class ComputerInfrastructure(IBrightnessSensor):
                 ]
                 logger.info("simulated brightness: %s", self.simulated_brightness)
             elif key_code == ecodes.KEY_6:
-                self.controls._ring_alarm(self.config.get_default_alarm_definition())
+                self.alarm_audio_service._ring_alarm(
+                    self.config.get_default_alarm_definition()
+                )
             elif key_code == ecodes.KEY_7:
                 ad = self.config.get_default_alarm_definition()
                 ad.audio_effect.audio_stream.stream_url = "invalid_stream_url"
-                self.controls._ring_alarm(ad)
+                self.alarm_audio_service._ring_alarm(ad)
 
         except Exception:
             logger.warning("%s", traceback.format_exc())

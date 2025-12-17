@@ -17,7 +17,7 @@ from core.domain.events import (
 from core.domain.model import (
     Mode,
 )
-from core.application.controls import AlarmAudioControls
+from core.application.alarm_audio_service import AlarmAudioService
 from resources.resources import init_logging
 
 logger = logging.getLogger("tac.app_clock")
@@ -61,10 +61,10 @@ class ClockApp:
                 providers.Singleton(dummy, height=64, width=256, mode="RGB")
             )
 
-        controls: AlarmAudioControls = self.container.controls()
+        alarm_audio_service: AlarmAudioService = self.container.alarm_audio_service()
         self.container.system_service()
         if ci is not None:
-            ci.configure(controls)
+            ci.configure(alarm_audio_service)
 
         api = self.container.api()
         api.start()
@@ -84,7 +84,7 @@ class ClockApp:
 
         tornado.ioloop.IOLoop.current().start()
 
-        controls.scheduler_service.shutdown()
+        alarm_audio_service.scheduler_service.shutdown()
         if self.is_on_hardware():
             self.container.mcp_manager().close()
         elif ci is not None:

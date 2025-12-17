@@ -10,7 +10,7 @@ import threading
 import tornado.ioloop
 import tornado.web
 from PIL.Image import Image
-from core.application.controls import AlarmAudioControls
+from core.application.alarm_audio_service import AlarmAudioService
 from core.domain.events import (
     PlaybackChangedEvent,
     ConfigChangedEvent,
@@ -309,12 +309,12 @@ class Api:
 
     def __init__(
         self,
-        controls: AlarmAudioControls,
+        alarm_audio_service: AlarmAudioService,
         display: Display,
         event_bus: EventBus,
         encrypted: bool,
     ):
-        self.controls = controls
+        self.alarm_audio_service = alarm_audio_service
         self.display = display
         self.event_bus = event_bus
         self.encrypted = encrypted
@@ -324,7 +324,7 @@ class Api:
                 r"/api/config/?(.*)",
                 ConfigApiHandler,
                 {
-                    "config": self.controls.alarm_clock_context.config,
+                    "config": self.alarm_audio_service.alarm_clock_context.config,
                     "event_bus": self.event_bus,
                 },
             ),
@@ -332,7 +332,7 @@ class Api:
                 r"/api/action/?(.*)",
                 ActionApiHandler,
                 {
-                    "config": self.controls.alarm_clock_context.config,
+                    "config": self.alarm_audio_service.alarm_clock_context.config,
                     "event_bus": self.event_bus,
                 },
             ),
@@ -354,7 +354,10 @@ class Api:
             (
                 r"/(.*)",
                 ConfigHandler,
-                {"config": self.controls.alarm_clock_context.config, "api": self},
+                {
+                    "config": self.alarm_audio_service.alarm_clock_context.config,
+                    "api": self,
+                },
             ),
         ]
 
@@ -372,7 +375,7 @@ class Api:
     def get_state_as_json(self) -> str:
         return json.dumps(
             obj=dict(
-                room_brightness=self.controls.get_room_brightness(),
+                room_brightness=self.alarm_audio_service.get_room_brightness(),
                 display=dict(
                     foreground_color=self.display.formatter.foreground_color(
                         color_type=ColorType.IN16
@@ -380,15 +383,15 @@ class Api:
                     background_color=self.display.formatter.background_color(
                         color_type=ColorType.IN16
                     ),
-                    refresh_duration_in_ms=self.controls.display_content.refresh_duration_in_ms,
+                    refresh_duration_in_ms=self.alarm_audio_service.display_content.refresh_duration_in_ms,
                 ),
-                is_online=self.controls.alarm_clock_context.environment.is_online,
-                is_daytime=self.controls.alarm_clock_context.environment.is_daytime,
-                geo_location=self.controls.alarm_clock_context.environment.geo_location.location_info.__dict__,
+                is_online=self.alarm_audio_service.alarm_clock_context.environment.is_online,
+                is_daytime=self.alarm_audio_service.alarm_clock_context.environment.is_daytime,
+                geo_location=self.alarm_audio_service.alarm_clock_context.environment.geo_location.location_info.__dict__,
                 playback_content=dict(
-                    audio_stream=self.controls.playback_content.audio_stream.__str__(),
-                    volume=self.controls.playback_content.volume,
-                    mode=self.controls.playback_content.playback_mode.name,
+                    audio_stream=self.alarm_audio_service.playback_content.audio_stream.__str__(),
+                    volume=self.alarm_audio_service.playback_content.volume,
+                    mode=self.alarm_audio_service.playback_content.playback_mode.name,
                 ),
                 uptime=subprocess.check_output(["uptime"]).strip().decode("utf-8"),
             ),

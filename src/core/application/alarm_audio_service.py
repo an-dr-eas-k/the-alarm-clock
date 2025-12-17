@@ -1,31 +1,22 @@
 import datetime
 import logging
 import os
-import traceback
-from apscheduler.job import Job
+from core.application.basic_audio_service import BasicAudioService
 from core.domain.events import (
     PlaybackChangedEvent,
     ConfigChangedEvent,
-    SpeakerErrorEvent,
-    SpotifyApiEvent,
     StartupFinishedEvent,
-    ToggleAudioRequest,
     AlarmTriggeredEvent,
     PreAlarmTriggeredEvent,
     AlarmStoppedEvent,
-    VolumeChangedEvent,
-    WifiStatusChangedEvent,
 )
 from core.domain.model import (
     AlarmClockContext,
     AlarmDefinition,
-    AudioStream,
     NextAlarmInfo,
-    OfflineStream,
     PlaybackContent,
     Mode,
     SchedulerJobIds,
-    SpotifyStream,
     StreamAudioEffect,
     Config,
 )
@@ -36,146 +27,10 @@ from core.infrastructure.scheduler import SchedulerService, SchedulerStores
 from resources.resources import active_alarm_definition_file
 from utils.os_interactions import OSInteraction
 
-logger = logging.getLogger("tac.core.application.controls")
+logger = logging.getLogger("tac.core.application.alarm_audio_service")
 
 
-def safe_action(
-    action, info_msg: str = None, debug_msg: str = None, logger: logging.Logger = None
-):
-    try:
-        if logger:
-            if debug_msg:
-                logger.debug(debug_msg)
-            if info_msg:
-                logger.info(info_msg)
-        else:
-            raise ValueError("logger must be provided to save_action")
-        action()
-    except:
-        logger.error("%s", traceback.format_exc())
-
-
-class BasicAudioControls:
-    scheduler_service: SchedulerService
-    alarm_clock_context: AlarmClockContext
-
-    def __init__(
-        self,
-        alarm_clock_context: AlarmClockContext,
-        display_content: DisplayContent,
-        playback_content: PlaybackContent,
-        brightness_sensor: IBrightnessSensor,
-        event_bus: EventBus,
-        scheduler_service: SchedulerService,
-        os_interaction: OSInteraction,
-    ) -> None:
-        self.alarm_clock_context = alarm_clock_context
-        self.display_content = display_content
-        self.playback_content = playback_content
-        self.brightness_sensor = brightness_sensor
-        self.event_bus = event_bus
-        self.scheduler_service = scheduler_service
-        self.os_interaction = os_interaction
-        self.event_bus.on(ToggleAudioRequest)(self._toggle_stream)
-        self.event_bus.on(WifiStatusChangedEvent)(self._wifi_status_changed)
-        self.event_bus.on(ConfigChangedEvent)(self._config_changed)
-        self.event_bus.on(SpeakerErrorEvent)(self._handle_speaker_error)
-        self.event_bus.on(SpotifyApiEvent)(self._spotify_stream_change_request)
-
-    def _toggle_stream(self, _: ToggleAudioRequest):
-
-        if self.playback_content.playback_mode != Mode.Idle:
-            self.event_bus.emit(PlaybackChangedEvent(Mode.Idle))
-            return
-
-        audio_stream = self.alarm_clock_context.config.get_default_audio_stream()
-        if (
-            True
-            and self.playback_content.audio_stream
-            and isinstance(self.playback_content.audio_stream, AudioStream)
-            and not isinstance(self.playback_content.audio_stream, OfflineStream)
-        ):
-            audio_stream = self.playback_content.audio_stream
-
-        self.event_bus.emit(PlaybackChangedEvent(Mode.Music, audio_stream))
-
-    def _spotify_stream_change_request(self, spotify_event: SpotifyApiEvent):
-
-        spotify_stream = SpotifyStream()
-        if hasattr(spotify_event, "track_id"):
-            spotify_stream.track_id = spotify_event.track_id
-
-        if (
-            spotify_event.is_playback_started()
-            and self.playback_content.playback_mode != Mode.Spotify
-        ):
-            self.event_bus.emit(PlaybackChangedEvent(Mode.Spotify, spotify_stream))
-
-        if (
-            spotify_event.is_playback_stopped()
-            and self.playback_content.playback_mode != Mode.Idle
-        ):
-            self._set_to_idle_mode()
-
-        if (
-            spotify_event.is_volume_changed()
-            and self.playback_content.playback_mode == Mode.Spotify
-        ):
-            self.event_bus.emit(VolumeChangedEvent())
-
-    def _set_to_idle_mode(self):
-        if self.playback_content.playback_mode == Mode.Idle:
-            return
-
-        self.event_bus.emit(PlaybackChangedEvent(Mode.Idle))
-
-    def get_room_brightness(self):
-        return self.brightness_sensor.get_room_brightness()
-
-    def _ignore_offline_stream_events(self, event: SpeakerErrorEvent):
-        if event is not None and isinstance(event.audio_stream, OfflineStream):
-            return True
-        return False
-
-    def _handle_speaker_error(self, event: SpeakerErrorEvent = None):
-        if self._ignore_offline_stream_events(event):
-            return
-        if self.playback_content.playback_mode == Mode.Alarm:
-            logger.warning("alarm error occurred: continuing with offline stream")
-            self.event_bus.emit(
-                PlaybackChangedEvent(
-                    Mode.Alarm, self.alarm_clock_context.config.get_offline_stream()
-                )
-            )
-        else:
-            logger.warning("music playback error occurred: switching to idle mode")
-            self._set_to_idle_mode()
-
-    def _wifi_status_changed(self, event: WifiStatusChangedEvent):
-        if event.is_online:
-            if self.playback_content.playback_mode == Mode.Alarm:
-                self.event_bus.emit(
-                    PlaybackChangedEvent(
-                        Mode.Alarm,
-                        self.alarm_clock_context.active_alarm_definition.audio_effect.audio_stream,
-                    )
-                )
-        else:
-            if self.playback_content.playback_mode == Mode.Alarm:
-                self.event_bus.emit(
-                    PlaybackChangedEvent(
-                        Mode.Alarm, self.alarm_clock_context.config.get_offline_stream()
-                    )
-                )
-
-            if not event.is_online and self.playback_content.playback_mode in [
-                Mode.Music,
-                Mode.Spotify,
-            ]:
-                self._set_to_idle_mode()
-
-
-class AlarmAudioControls(BasicAudioControls):
+class AlarmAudioService(BasicAudioService):
     def __init__(
         self,
         alarm_clock_context: AlarmClockContext,

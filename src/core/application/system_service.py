@@ -1,7 +1,7 @@
 import datetime
 import logging
 import threading
-from core.application.controls import safe_action
+from core.application.basic_audio_service import safe_action
 from core.domain.events import (
     ForcedDisplayUpdateEvent,
     PlaybackChangedEvent,
@@ -182,7 +182,6 @@ class SystemService:
 
             if self.alarm_clock_context.environment.is_online:
                 new_weather = GeoLocation().get_current_weather()
-
 
             if new_weather == self.alarm_clock_context.environment.current_weather:
                 return
