@@ -273,6 +273,10 @@ class Display(DisplayContentProvider):
         self.formatter = display_formatter
         self.initialize_qt_app()
 
+        self.buffer_image = QtGui.QImage(
+            self.device.width, self.device.height, QtGui.QImage.Format.Format_RGB888
+        )
+
         self.widget = None
         self.current_layout_type = None
 
@@ -816,19 +820,17 @@ class Display(DisplayContentProvider):
         return pil_image
 
     def grab_widget_image(self) -> Image.Image:
-        # Optimized: Convert QImage directly to PIL Image avoiding PNG encoding/decoding
-        qimage = self.widget.grab().toImage()
-        qimage = qimage.convertToFormat(QtGui.QImage.Format.Format_RGB888)
-        width = qimage.width()
-        height = qimage.height()
-        stride = qimage.bytesPerLine()
+        # Optimized: Render directly to QImage buffer avoiding QPixmap and format conversion
+        self.widget.render(self.buffer_image)
 
-        ptr = qimage.bits()
-        ptr.setsize(qimage.byteCount())
+        width = self.buffer_image.width()
+        height = self.buffer_image.height()
+        stride = self.buffer_image.bytesPerLine()
 
-        # Create PIL Image from raw bytes (copying to avoid segfaults when qimage is collected)
-        # We convert to 'L' (grayscale) immediately as the rest of the pipeline expects it
-        # and it reduces memory usage.
+        ptr = self.buffer_image.bits()
+        ptr.setsize(self.buffer_image.byteCount())
+
+        # Create PIL Image from raw bytes
         return Image.frombytes("RGB", (width, height), ptr, "raw", "RGB", stride, 1)
 
     def refresh(self):

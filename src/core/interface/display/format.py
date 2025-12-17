@@ -207,10 +207,10 @@ class DisplayFormatter:
             fg_color = self.foreground_color(color_type=ColorType.IN256)
             bg_color = self.background_color(color_type=ColorType.IN256)
 
-            def replace_colors(pixel):
-                if pixel == bg_color:
-                    return bg_color
-                return fg_color
+            # Use a lookup table for faster processing
+            lut = [fg_color] * 256
+            if 0 <= bg_color < 256:
+                lut[bg_color] = bg_color
 
-            im = im.point(replace_colors)
+            im = im.point(lut)
         return im
