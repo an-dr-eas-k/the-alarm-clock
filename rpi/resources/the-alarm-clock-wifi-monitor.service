@@ -1,0 +1,14 @@
+[Unit]
+Description=The Alarm Clock iwd Monitor
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/srv/the-alarm-clock/app
+ExecStart=/bin/bash rpi/iwd-monitor.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

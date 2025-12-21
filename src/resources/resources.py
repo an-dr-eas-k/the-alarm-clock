@@ -1,6 +1,9 @@
 import logging.config
 import os
 
+the_alarm_clock_protocol = "https"
+the_alarm_clock_hostname = "localhost"
+the_alarm_clock_port = 443
 
 resources_dir = os.path.dirname(os.path.realpath(__file__))
 app_dir = os.path.normpath(os.path.join(resources_dir, ".."))

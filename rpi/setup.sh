@@ -32,7 +32,7 @@ else
   echo "update system and install dependencies"
   apt-get -y update
   apt-get -y dist-upgrade
-  apt-get -y install git python3 vlc python3-pip curl libasound2-plugin-equal python3-dbus python3-alsaaudio libasound2-dev libsystemd-dev
+  apt-get -y install git python3 vlc python3-pip curl libasound2-plugin-equal python3-alsaaudio libasound2-dev libsystemd-dev
   pip install pillow --break-system-packages
   
   apt-get -y remove python3-rpi.gpio
@@ -126,8 +126,10 @@ echo "setup the-alarm-clock app"
 ln -fs /usr/bin/python3 /usr/bin/python
 setcap CAP_NET_BIND_SERVICE=+eip $(readlink /usr/bin/python -f)
 ln -fs $app/rpi/resources/the-alarm-clock.service /lib/systemd/system/the-alarm-clock.service
+ln -fs $app/rpi/resources/the-alarm-clock-wifi-monitor.service /lib/systemd/system/the-alarm-clock-wifi-monitor.service
 systemctl daemon-reload
 systemctl enable the-alarm-clock.service
+systemctl enable the-alarm-clock-wifi-monitor.service
 
 
 
