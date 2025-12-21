@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 from core.domain.events import (
     ForcedDisplayUpdateEvent,
     PlaybackChangedEvent,
+    StartupFinishedEvent,
     VolumeChangedEvent,
     WeatherUpdatedEvent,
 )
@@ -43,6 +44,7 @@ class DisplayContent:
     is_scrolling: bool = False
     refresh_duration_in_ms: int = None
     current_weather: Weather = None
+    startup_finished: bool = False
 
     def __init__(
         self,
@@ -56,25 +58,35 @@ class DisplayContent:
         self.next_alarm_info = NextAlarmInfo()
         self.room_brightness = RoomBrightness(1.0)
 
+        self.event_bus.on(StartupFinishedEvent)(self._on_startup_finished)
         self.event_bus.on(PlaybackChangedEvent)(self._playback_changed)
         self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
         self.event_bus.on(WeatherUpdatedEvent)(self._weather_updated)
+
+    def _on_startup_finished(self, _: StartupFinishedEvent):
+        self.startup_finished = True
 
     # ========== Event Handlers ==========
 
     def _playback_changed(self, event: PlaybackChangedEvent):
         if event.playback_mode == Mode.Idle:
             self.hide_volume_meter()
+        if not self.startup_finished:
+            return
         self.event_bus.emit(DisplayPlaybackUpdatedEvent())
         self.event_bus.emit(ForcedDisplayUpdateEvent())
 
     def _volume_changed(self, _: VolumeChangedEvent):
         self.show_volume_meter = True
+        if not self.startup_finished:
+            return
         self.event_bus.emit(DisplayVolumeUpdatedEvent())
         self.event_bus.emit(ForcedDisplayUpdateEvent())
 
     def _weather_updated(self, event: WeatherUpdatedEvent):
         self.current_weather = event.weather
+        if not self.startup_finished:
+            return
         self.event_bus.emit(DisplayWeatherUpdatedEvent())
 
     # ========== Presentation State Updates ==========
