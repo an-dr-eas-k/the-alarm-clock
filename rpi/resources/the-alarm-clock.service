@@ -1,0 +1,22 @@
+[Unit]
+Description=The Alarm Clock Service
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=the-alarm-clock
+WorkingDirectory=/srv/the-alarm-clock/app
+Environment="QT_QPA_PLATFORM=offscreen"
+
+# prepare application (runs as User=the-alarm-clock)
+ExecStartPre=/bin/bash rpi/service-pre-start.sh
+
+# Run application 
+ExecStart=/usr/bin/python3 src/app_clock.py
+
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

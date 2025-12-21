@@ -125,18 +125,10 @@ chown $uid:$uid -R /var/log/the-alarm-clock.*
 echo "setup the-alarm-clock app"
 ln -fs /usr/bin/python3 /usr/bin/python
 setcap CAP_NET_BIND_SERVICE=+eip $(readlink /usr/bin/python -f)
+ln -fs $app/rpi/resources/the-alarm-clock.service /lib/systemd/system/the-alarm-clock.service
+systemctl daemon-reload
+systemctl enable the-alarm-clock.service
 
-if [ -z "$( grep the-alarm-clock /etc/rc.local )" ]; then
-	echo "update /etc/rc.local"
-	sed -i '/exit/d' /etc/rc.local
 
-  cat >> /etc/rc.local << EOF
-#!/bin/bash
-sudo -u the-alarm-clock -- bash -c "sh $app/rpi/onboot.sh 2>&1 | systemd-cat -t the-alarm-clock.service" &
-exit 0
-EOF
-
-  chmod u+x /etc/rc.local
-fi
 
 echo "done, please reboot"
