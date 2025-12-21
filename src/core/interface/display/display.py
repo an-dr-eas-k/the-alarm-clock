@@ -45,7 +45,9 @@ def qt_message_handler(mode, context, message: str):
         mode == QtCore.QtWarningMsg
         and "QObject::setParent: Cannot set parent" in message
     ):
-        logger.warning(f"setParent Warning (stacktrace): {traceback.format_exc()}")
+        logger.warning(
+            f"setParent Warning (stacktrace): {''.join(traceback.format_stack())}"
+        )
 
     if mode == QtCore.QtInfoMsg:
         logger.info(f"Qt: {message}")
