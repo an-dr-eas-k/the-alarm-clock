@@ -8,6 +8,7 @@ Type=simple
 User=the-alarm-clock
 WorkingDirectory=/srv/the-alarm-clock/app
 Environment="QT_QPA_PLATFORM=offscreen"
+StandardOutput=null
 
 # prepare application (runs as User=the-alarm-clock)
 ExecStartPre=/bin/bash rpi/service-pre-start.sh
