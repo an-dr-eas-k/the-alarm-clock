@@ -27,6 +27,7 @@ from utils.os_interactions import OSInteraction
 from utils.sound_device import TACSoundDevice
 from luma.oled.device import ssd1322
 from luma.core.interface.serial import spi
+from luma.core.framebuffer import diff_to_previous
 
 
 class DIContainer(containers.DeclarativeContainer):
@@ -139,8 +140,9 @@ class DIContainer(containers.DeclarativeContainer):
     )
 
     serial_interface = providers.Singleton(spi, device=0, port=0, bus_speed_hz=16000000)
+    framebuffer = providers.Singleton(diff_to_previous, num_segments=9)
     device = providers.Singleton(
-        ssd1322, serial_interface=serial_interface, framebuffer="full_frame"
+        ssd1322, serial_interface=serial_interface, framebuffer=framebuffer
     )
 
     display_formatter = providers.Singleton(
