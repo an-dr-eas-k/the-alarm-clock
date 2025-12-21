@@ -140,7 +140,7 @@ class DIContainer(containers.DeclarativeContainer):
     )
 
     serial_interface = providers.Singleton(spi, device=0, port=0, bus_speed_hz=16000000)
-    framebuffer = providers.Singleton(diff_to_previous, num_segments=16)
+    framebuffer = providers.Singleton(diff_to_previous, num_segments=4)
     device = providers.Singleton(
         ssd1322, serial_interface=serial_interface, framebuffer=framebuffer
     )
