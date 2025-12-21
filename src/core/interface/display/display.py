@@ -13,6 +13,7 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 from core.domain.events import (
     AlarmStoppedEvent,
     ForcedDisplayUpdateEvent,
+    StartupFinishedEvent,
 )
 from core.interface.display.display_events import (
     DisplayPlaybackUpdatedEvent,
@@ -334,6 +335,9 @@ class Display(DisplayContentProvider):
         self.pev_header_label = None
         self.pev_val_label = None
 
+        self.event_bus.on(StartupFinishedEvent)(self.on_startup_finished)
+
+    def on_startup_finished(self, _: StartupFinishedEvent):
         self.event_bus.on(ForcedDisplayUpdateEvent)(self.safe_refresh_display)
         self.event_bus.on(AlarmStoppedEvent)(self._alarm_stopped)
         self.event_bus.on(DisplayPlaybackUpdatedEvent)(self.on_display_playback_changed)
