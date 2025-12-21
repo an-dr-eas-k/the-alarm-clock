@@ -5,6 +5,11 @@ echo "Updating repository..."
 git config pull.ff only || true
 git reset --hard @{upstream} || true
 git pull || true
+echo "!"
+echo "!"
+git log -1 
+echo "!"
+echo "!"
 
 # 2. Install requirements (integrates run.sh logic)
 # Check if requirements.txt was modified in the last 12 hours (720 min)
