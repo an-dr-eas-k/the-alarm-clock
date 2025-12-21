@@ -40,7 +40,13 @@ from resources.resources import display_shot_file
 logger = logging.getLogger("tac.core.interface.display.display")
 
 
-def qt_message_handler(mode, context, message):
+def qt_message_handler(mode, context, message: str):
+    if (
+        mode == QtCore.QtWarningMsg
+        and "QObject::setParent: Cannot set parent" in message
+    ):
+        logger.warning(f"setParent Warning (stacktrace): {traceback.format_exc()}")
+
     if mode == QtCore.QtInfoMsg:
         logger.info(f"Qt: {message}")
     elif mode == QtCore.QtWarningMsg:
