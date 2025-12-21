@@ -819,7 +819,7 @@ class Display(DisplayContentProvider):
         if self.current_layout_type != layout_type:
             self.widget.adjustSize()
 
-    def grab_widget_image(self) -> Image.Image:
+    def grab_widget_image_bak(self) -> Image.Image:
         pixmap = self.widget.grab()
 
         buffer = QtCore.QBuffer()
@@ -829,7 +829,7 @@ class Display(DisplayContentProvider):
         pil_image = Image.open(io.BytesIO(buffer.data()))
         return pil_image
 
-    def grab_widget_image_bak(self) -> Image.Image:
+    def grab_widget_image(self) -> Image.Image:
         # Optimized: Render directly to QImage buffer avoiding QPixmap and format conversion
         self.widget.render(self.buffer_image)
 
@@ -844,7 +844,6 @@ class Display(DisplayContentProvider):
         return Image.frombytes("RGB", (width, height), ptr, "raw", "RGB", stride, 1)
 
     def refresh(self):
-        # logger.debug("update_ui: %sms", timeit(self.update_ui, number=1) * 1000)
         self.update_ui()
         self.current_display_image = self.formatter.postprocess_image(
             self.grab_widget_image()
