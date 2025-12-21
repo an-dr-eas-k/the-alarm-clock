@@ -40,6 +40,19 @@ from resources.resources import display_shot_file
 logger = logging.getLogger("tac.core.interface.display.display")
 
 
+def qt_message_handler(mode, context, message):
+    if mode == QtCore.QtInfoMsg:
+        logger.info(f"Qt: {message}")
+    elif mode == QtCore.QtWarningMsg:
+        logger.warning(f"Qt: {message}")
+    elif mode == QtCore.QtCriticalMsg:
+        logger.error(f"Qt: {message}")
+    elif mode == QtCore.QtFatalMsg:
+        logger.critical(f"Qt: {message}")
+    else:
+        logger.debug(f"Qt: {message}")
+
+
 class ClockWidget(QtWidgets.QWidget):
     def __init__(self, hour_str, min_str, blink_char, show_blink, fg_color, font_obj):
         super().__init__()
@@ -785,6 +798,7 @@ class Display(DisplayContentProvider):
         self.pev_val_label.setText(f" {val_str} ")
 
     def initialize_qt_app(self):
+        QtCore.qInstallMessageHandler(qt_message_handler)
         self.app = QtWidgets.QApplication([])
 
     def update_ui(self):
