@@ -2,6 +2,7 @@ import datetime
 import logging
 import os
 from core.application.basic_audio_service import BasicAudioService
+from core.application.system_service import safe_action
 from core.domain.events import (
     PlaybackChangedEvent,
     ConfigChangedEvent,

@@ -26,22 +26,6 @@ from utils.os_interactions import OSInteraction
 logger = logging.getLogger("tac.core.application.basic_audio_service")
 
 
-def safe_action(
-    action, info_msg: str = None, debug_msg: str = None, logger: logging.Logger = None
-):
-    try:
-        if logger:
-            if debug_msg:
-                logger.debug(debug_msg)
-            if info_msg:
-                logger.info(info_msg)
-        else:
-            raise ValueError("logger must be provided to save_action")
-        action()
-    except:
-        logger.error("%s", traceback.format_exc())
-
-
 class BasicAudioService:
     scheduler_service: SchedulerService
     alarm_clock_context: AlarmClockContext
