@@ -99,3 +99,4 @@ the * denotes the latest created virtual environment
 2.  **Event Bus:** Use specific Domain Events (`AlarmSnoozed`) over generic property changes.
 3.  **Dependency Injection:** Always use `di_container.py`. Never instantiate infrastructure classes directly in the domain.
 4.  **No Circular Imports:** Be careful when extracting services. Use `TYPE_CHECKING` imports where necessary.
+5.  **luma.oled Device:** Always use `RGB` mode for compatibility, with the luma display. The pillow image rendered with device.display() must be in RGB mode.
