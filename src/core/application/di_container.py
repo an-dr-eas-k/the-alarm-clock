@@ -138,8 +138,10 @@ class DIContainer(containers.DeclarativeContainer):
         os_interaction=os_interaction,
     )
 
-    serial_interface = providers.Singleton(spi, device=0, port=0, bus_speed_hz=16000000)
-    device = providers.Singleton(ssd1322, serial_interface=serial_interface)
+    serial_interface = providers.Singleton(spi, device=0, port=0)
+    device = providers.Singleton(
+        ssd1322, serial_interface=serial_interface, framebuffer="full_frame"
+    )
 
     display_formatter = providers.Singleton(
         DisplayFormatter,
