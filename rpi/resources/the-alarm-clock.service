@@ -10,7 +10,7 @@ WorkingDirectory=/srv/the-alarm-clock/app
 Environment="QT_QPA_PLATFORM=offscreen"
 
 # prepare application (runs as User=the-alarm-clock)
-ExecStartPre=/bin/bash rpi/service-pre-start.sh
+ExecStartPre=-/bin/bash rpi/service-pre-start.sh
 
 # Run application 
 ExecStart=/bin/bash -c 'exec /usr/bin/python3 src/app_clock.py > /dev/null'
