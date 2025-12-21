@@ -33,6 +33,7 @@ from utils.memory_profiler import print_full_report
 
 logger = logging.getLogger("tac.core.application.system_service")
 
+
 def safe_action(
     action, info_msg: str = None, debug_msg: str = None, logger: logging.Logger = None
 ):
@@ -47,7 +48,6 @@ def safe_action(
         action()
     except:
         logger.error("%s", traceback.format_exc())
-
 
 
 class SystemService:
@@ -113,7 +113,8 @@ class SystemService:
         self.scheduler_service.add_job(
             print_full_report,
             trigger="cron",
-            hour="*",
+            hour="2",
+            minute="0",
             job_id=SchedulerJobIds.memory_usage_logger.value,
             jobstore=SchedulerStores.default.value,
         )
