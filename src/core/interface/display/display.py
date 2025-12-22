@@ -42,22 +42,19 @@ logger = logging.getLogger("tac.core.interface.display.display")
 
 
 def qt_message_handler(mode, context, message: str):
-    if (
-        mode == QtCore.QtWarningMsg
-        and "QObject::setParent: Cannot set parent" in message
-    ):
-        logger.warning(
-            f"setParent Warning (stacktrace): {''.join(traceback.format_stack())}"
-        )
 
     if mode == QtCore.QtInfoMsg:
         logger.info(f"Qt: {message}")
     elif mode == QtCore.QtWarningMsg:
-        logger.warning(f"Qt: {message}")
+        logger.warning(
+            f"Qt: {message}\nStacktrace: {''.join(traceback.format_stack())}"
+        )
     elif mode == QtCore.QtCriticalMsg:
-        logger.error(f"Qt: {message}")
+        logger.error(f"Qt: {message}\nStacktrace: {''.join(traceback.format_stack())}")
     elif mode == QtCore.QtFatalMsg:
-        logger.critical(f"Qt: {message}")
+        logger.critical(
+            f"Qt: {message}\nStacktrace: {''.join(traceback.format_stack())}"
+        )
     else:
         logger.debug(f"Qt: {message}")
 
