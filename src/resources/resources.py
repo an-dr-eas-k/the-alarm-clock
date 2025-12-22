@@ -18,6 +18,11 @@ alarms_dir = f"{sounds_dir}/alarms"
 librespotify_env_vars = [
     "PLAYER_EVENT",
     "TRACK_ID",
+    "NAME",
+    "ARTISTS",
+    "ALBUM",
+    "ALBUM_ARTISTS",
+    "COVERS",
     "OLD_TRACK_ID",
     "DURATION_MS",
     "POSITION_MS",
