@@ -266,7 +266,8 @@ class Display(DisplayContentProvider):
             painter.setFont(self.formatter.info_font(size=12))
             painter.drawText(
                 QtCore.QRect(x_offset + 95, y_offset, 100, 25),
-                QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                QtCore.Qt.AlignmentFlag.AlignLeft
+                | QtCore.Qt.AlignmentFlag.AlignVCenter,
                 f"\uf49a {alarm_text}",
             )
 
@@ -275,7 +276,8 @@ class Display(DisplayContentProvider):
             painter.setFont(self.formatter.info_font(size=14))
             painter.drawText(
                 QtCore.QRect(x_offset + 95, y_offset + 20, 50, 25),
-                QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                QtCore.Qt.AlignmentFlag.AlignLeft
+                | QtCore.Qt.AlignmentFlag.AlignVCenter,
                 "\U000f05aa",
             )
 
@@ -436,9 +438,9 @@ class Display(DisplayContentProvider):
 
         # Status
         status_icon = "\uf205" if alarm.is_active else "\uf204"
-        painter.setFont(self.formatter.info_font(size=20))
+        painter.setFont(self.formatter.info_font(size=15))
         painter.drawText(
-            QtCore.QRect(self.device.width - 50, 15, 40, 30),
+            QtCore.QRect(self.device.width - 60, 15, 40, 30),
             QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter,
             status_icon,
         )
@@ -454,7 +456,7 @@ class Display(DisplayContentProvider):
                 days_str = "Invalid"
         painter.setFont(self.formatter.info_font(size=12))
         painter.drawText(
-            QtCore.QRect(self.device.width - 110, 45, 100, 15),
+            QtCore.QRect(self.device.width - 110, 45, 100, 20),
             QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignBottom,
             days_str,
         )

@@ -8,7 +8,11 @@ following DDD principles by keeping infrastructure concerns out of the domain.
 import logging
 
 from core.domain.mode_coordinator import AlarmClockModeCoordinator, ModeName
-from core.domain.events import ToggleAudioRequest, VolumeChangeRequest
+from core.domain.events import (
+    ForcedDisplayUpdateEvent,
+    ToggleAudioRequest,
+    VolumeChangeRequest,
+)
 from core.infrastructure.events_infrastructure import (
     ButtonDirection,
     DeviceName,
@@ -47,8 +51,11 @@ class HardwareInputHandler:
         elif event.device_name == DeviceName.INVOKE_BUTTON:
             if current_mode == ModeName.DEFAULT:
                 self.event_bus.emit(ToggleAudioRequest())
+                return
             else:
                 self.mode_coordinator.handle_invoke_button()
+
+        self.event_bus.emit(ForcedDisplayUpdateEvent())
 
     def _handle_rotary_event(self, event: HwRotaryEvent):
         current_mode = self.mode_coordinator.current_mode_name
@@ -59,6 +66,7 @@ class HardwareInputHandler:
 
         if current_mode == ModeName.DEFAULT:
             self.event_bus.emit(VolumeChangeRequest(relative=direction))
+            return
 
         elif current_mode == ModeName.ALARM_VIEW:
             self.mode_coordinator.navigate_alarms(direction)
@@ -68,3 +76,5 @@ class HardwareInputHandler:
 
         elif current_mode == ModeName.PROPERTY_EDIT:
             self.mode_coordinator.navigate_property_values(direction)
+
+        self.event_bus.emit(ForcedDisplayUpdateEvent())
