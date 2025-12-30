@@ -59,221 +59,6 @@ def qt_message_handler(mode, context, message: str):
         logger.debug(f"Qt: {message}")
 
 
-class ClockWidget(QtWidgets.QWidget):
-    def __init__(self, hour_str, min_str, blink_char, show_blink, fg_color, font_obj):
-        super().__init__()
-        self.hour_str = hour_str
-        self.min_str = min_str
-        self.blink_char = blink_char
-        self.show_blink = show_blink
-        self.fg_color = QtGui.QColor(fg_color)
-        self.font_obj = font_obj
-        self.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
-        )
-
-    def update_content(self, hour_str, min_str, show_blink, fg_color):
-        # Optimized: Only trigger update if content actually changed
-        new_color = QtGui.QColor(fg_color)
-        if (
-            self.hour_str != hour_str
-            or self.min_str != min_str
-            or self.show_blink != show_blink
-            or self.fg_color != new_color
-        ):
-            self.hour_str = hour_str
-            self.min_str = min_str
-            self.show_blink = show_blink
-            self.fg_color = new_color
-            self.update()
-
-    def _calculate_layout(self, fm, overlap):
-        x = 0
-        # Hours
-        for i, char in enumerate(self.hour_str):
-            if i < len(self.hour_str) - 1:
-                x += fm.width(char) - overlap
-            else:
-                x += fm.width(char)
-
-        x += -15
-        # Separator
-        x += fm.width(self.blink_char)
-        x += -10
-
-        # Minutes
-        for i, char in enumerate(self.min_str):
-            if i < len(self.min_str) - 1:
-                x += fm.width(char) - overlap
-            else:
-                x += fm.width(char)
-
-        return x
-
-    def minimumSizeHint(self):
-        fm = QtGui.QFontMetrics(self.font_obj)
-        overlap = 12
-        width = self._calculate_layout(fm, overlap)
-        return QtCore.QSize(width, fm.height() + 10)
-
-    def paintEvent(self, event):
-        painter = QtGui.QPainter(self)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
-        painter.setRenderHint(QtGui.QPainter.TextAntialiasing)
-
-        painter.setFont(self.font_obj)
-        fm = QtGui.QFontMetrics(self.font_obj)
-
-        overlap = 12
-        vertical_shift = 2
-        x = 0
-        # Center vertically
-        base_y = int((self.height() + fm.ascent() - fm.descent()) / 2)
-
-        h, s, v, a = self.fg_color.getHsv()
-        white_color = self.fg_color
-        # 16-level grayscale has steps of ~17 (255/15). Use the next darker level.
-        gray_color = QtGui.QColor.fromHsv(h, s, max(17, v - 1 * 18), a)
-
-        # Draw Hours
-        for i, char in enumerate(self.hour_str):
-            if i == 0:
-                painter.setPen(white_color)
-                y = base_y - vertical_shift
-            else:
-                painter.setPen(gray_color)
-                y = base_y + vertical_shift
-
-            painter.drawText(x, y, char)
-
-            if i < len(self.hour_str) - 1:
-                x += fm.width(char) - overlap
-            else:
-                x += fm.width(char)
-
-        x += -15
-        # Draw Separator
-        sep_width = fm.width(self.blink_char)
-        if self.show_blink:
-            painter.setPen(white_color)
-            painter.drawText(x, base_y, self.blink_char)
-
-        x += sep_width
-        x += -10
-
-        # Draw Minutes
-        for i, char in enumerate(self.min_str):
-            if i == 0:
-                painter.setPen(white_color)
-                y = base_y - vertical_shift
-            else:
-                painter.setPen(gray_color)
-                y = base_y + vertical_shift
-
-            painter.drawText(x, y, char)
-
-            if i < len(self.min_str) - 1:
-                x += fm.width(char) - overlap
-            else:
-                x += fm.width(char)
-
-
-class ScrollingLabel(QtWidgets.QWidget):
-    def __init__(
-        self,
-        text,
-        font_obj,
-        color,
-        start_time,
-        display_content: DisplayContent,
-        speed=30,
-    ):
-        super().__init__()
-        self.text = text
-        self.font_obj = font_obj
-        self.color = QtGui.QColor(color)
-        self.start_time = start_time
-        self.display_content = display_content
-        self.speed = speed
-        self.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
-        )
-
-    def update_color(self, color):
-        self.color = QtGui.QColor(color)
-        self.update()
-
-    def update_content(self, text, start_time=None):
-        self.text = text
-        if start_time is not None:
-            self.start_time = start_time
-        self.update()
-
-    def minimumSizeHint(self):
-        fm = QtGui.QFontMetrics(self.font_obj)
-        return QtCore.QSize(10, fm.height())
-
-    def paintEvent(self, event):
-        painter = QtGui.QPainter(self)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
-        painter.setRenderHint(QtGui.QPainter.TextAntialiasing)
-
-        painter.setFont(self.font_obj)
-        painter.setPen(self.color)
-        fm = QtGui.QFontMetrics(self.font_obj)
-        text_width = fm.width(self.text)
-        widget_width = self.width()
-
-        # Center vertically
-        # drawText(x, y, string) draws with baseline at y.
-        # But drawText(rect, flags, string) handles alignment.
-
-        if text_width <= widget_width:
-            painter.drawText(
-                self.rect(),
-                QtCore.Qt.AlignmentFlag.AlignLeft
-                | QtCore.Qt.AlignmentFlag.AlignVCenter,
-                self.text,
-            )
-        else:
-            # DDD Note: Updating the ViewModel (DisplayContent) from the View (ScrollingLabel)
-            # is acceptable within the Interface Layer to signal presentation requirements (refresh rate).
-            self.display_content.is_scrolling = True
-
-            elapsed = time.time() - self.start_time
-
-            # Add a pause at the beginning
-            pause_duration = 2.0
-            if elapsed < pause_duration:
-                offset = 0
-            else:
-                offset = (elapsed - pause_duration) * self.speed
-
-            gap = 30
-            total_cycle_width = text_width + gap
-
-            current_offset = offset % total_cycle_width
-
-            # Calculate y for baseline
-            # rect().center().y() + fm.ascent()/2 - fm.descent()/2 roughly?
-            # Or just use rect with alignment? No, manual x is needed.
-
-            # Using drawText(x, y, text)
-            # y is baseline.
-            # widget height center:
-            y = (self.height() + fm.ascent() - fm.descent()) // 2
-
-            # Draw first instance
-            x1 = -current_offset
-            if x1 + text_width > 0:
-                painter.drawText(int(x1), int(y), self.text)
-
-            # Draw second instance if needed
-            x2 = x1 + total_cycle_width
-            if x2 < widget_width:
-                painter.drawText(int(x2), int(y), self.text)
-
-
 class Display(DisplayContentProvider):
 
     device: luma_device
@@ -304,48 +89,21 @@ class Display(DisplayContentProvider):
             self.device.width, self.device.height, QtGui.QImage.Format.Format_RGB888
         )
 
-        self.widget = None
         self.current_layout_type = None
-
-        # Widget references
-        self.clock_widget = None
-        self.weather_symbol_label = None
-        self.weather_temp_label = None
-        self.playback_symbol_label = None
-        self.playback_label = None
-        self.alarm_symbol_label = None
-        self.alarm_label = None
-        self.vol_label = None
-        self.wifi_label = None
-
-        # Alarm View Widgets
-        self.av_header_label = None
-        self.av_time_label = None
-        self.av_status_label = None
-        self.av_days_label = None
-
-        # Edit View Widgets
-        self.ev_prop_label = None
-        self.ev_val_label = None
-
-        # Property Edit View Widgets
-        self.pev_header_label = None
-        self.pev_val_label = None
 
         self.event_bus.on(StartupFinishedEvent)(self.on_startup_finished)
 
     def on_startup_finished(self, _: StartupFinishedEvent):
         self.event_bus.on(ForcedDisplayUpdateEvent)(self.safe_refresh_display)
         self.event_bus.on(AlarmStoppedEvent)(self._alarm_stopped)
-        self.event_bus.on(DisplayPlaybackUpdatedEvent)(self.on_display_playback_changed)
-        self.event_bus.on(DisplayVolumeUpdatedEvent)(self.on_display_volume_changed)
-        self.event_bus.on(DisplayNextAlarmUpdatedEvent)(self.on_display_alarm_changed)
-        self.event_bus.on(DisplayWeatherUpdatedEvent)(self.on_display_weather_changed)
+        self.event_bus.on(DisplayPlaybackUpdatedEvent)(self.safe_refresh_display)
+        self.event_bus.on(DisplayVolumeUpdatedEvent)(self.safe_refresh_display)
+        self.event_bus.on(DisplayNextAlarmUpdatedEvent)(self.safe_refresh_display)
+        self.event_bus.on(DisplayWeatherUpdatedEvent)(self.safe_refresh_display)
 
     def _alarm_stopped(self, _: AlarmStoppedEvent):
         self.device.hide()
         self.device.show()
-        self.safe_refresh_display()
 
     def safe_refresh_display(self, _=None):
         try:
@@ -355,67 +113,147 @@ class Display(DisplayContentProvider):
             with canvas(self.device) as draw:
                 draw.text((20, 20), f"exception!\n({e})", fill="white")
 
-    def _setup_default_dimmed_view(self, layout: QtWidgets.QHBoxLayout):
-        # Container
-        container = QtWidgets.QWidget()
-        container_layout = QtWidgets.QHBoxLayout(container)
-        container_layout.setContentsMargins(0, 0, 0, 0)
-        container_layout.setSpacing(10)
+    def _draw_clock(
+        self,
+        painter,
+        rect,
+        hour_str,
+        min_str,
+        blink_char,
+        show_blink,
+        fg_color,
+        font_obj,
+    ):
+        painter.save()
+        painter.setFont(font_obj)
+        fm = QtGui.QFontMetrics(font_obj)
 
-        # Clock
-        self.clock_label = QtWidgets.QLabel("")
-        self.clock_label.setFont(
-            self.formatter.clock_font(size=18, weight=QtGui.QFont.Weight.Light)
+        overlap = 12
+        vertical_shift = 2
+
+        # Calculate total width
+        total_width = 0
+        for i, char in enumerate(hour_str):
+            total_width += fm.width(char) - (overlap if i < len(hour_str) - 1 else 0)
+        total_width += -15 + fm.width(blink_char) - 10
+        for i, char in enumerate(min_str):
+            total_width += fm.width(char) - (overlap if i < len(min_str) - 1 else 0)
+
+        # Center in rect
+        x = rect.left() + (rect.width() - total_width) // 2
+        base_y = rect.top() + (rect.height() + fm.ascent() - fm.descent()) // 2
+
+        h, s, v, a = fg_color.getHsv()
+        white_color = fg_color
+        gray_color = QtGui.QColor.fromHsv(h, s, max(17, v - 18), a)
+
+        # Draw Hours
+        for i, char in enumerate(hour_str):
+            painter.setPen(white_color if i == 0 else gray_color)
+            y = base_y + (-vertical_shift if i == 0 else vertical_shift)
+            painter.drawText(int(x), int(y), char)
+            x += fm.width(char) - (overlap if i < len(hour_str) - 1 else 0)
+
+        x += -15
+        # Draw Separator
+        if show_blink:
+            painter.setPen(white_color)
+            painter.drawText(int(x), int(base_y), blink_char)
+        x += fm.width(blink_char) - 10
+
+        # Draw Minutes
+        for i, char in enumerate(min_str):
+            painter.setPen(white_color if i == 0 else gray_color)
+            y = base_y + (-vertical_shift if i == 0 else vertical_shift)
+            painter.drawText(int(x), int(y), char)
+            x += fm.width(char) - (overlap if i < len(min_str) - 1 else 0)
+
+        painter.restore()
+
+    def _draw_scrolling_text(
+        self, painter, rect, text, font_obj, color, start_time, speed=30
+    ):
+        painter.save()
+        painter.setFont(font_obj)
+        painter.setPen(color)
+        fm = QtGui.QFontMetrics(font_obj)
+        text_width = fm.width(text)
+        widget_width = rect.width()
+
+        if text_width <= widget_width:
+            painter.drawText(
+                rect,
+                QtCore.Qt.AlignmentFlag.AlignLeft
+                | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                text,
+            )
+        else:
+            self.display_content.is_scrolling = True
+            elapsed = time.time() - start_time
+            pause_duration = 2.0
+            offset = (
+                0 if elapsed < pause_duration else (elapsed - pause_duration) * speed
+            )
+            gap = 30
+            total_cycle_width = text_width + gap
+            current_offset = offset % total_cycle_width
+
+            y = rect.top() + (rect.height() + fm.ascent() - fm.descent()) // 2
+
+            painter.setClipRect(rect)
+
+            x1 = rect.left() - current_offset
+            if x1 + text_width > rect.left():
+                painter.drawText(int(x1), int(y), text)
+
+            x2 = x1 + total_cycle_width
+            if x2 < rect.right():
+                painter.drawText(int(x2), int(y), text)
+
+        painter.restore()
+
+    def paint(self, painter):
+        mode = (
+            self.alarm_clock_context.mode_coordinator.current_mode_name
+            if self.alarm_clock_context.mode_coordinator
+            else ModeName.DEFAULT
         )
-        self.clock_label.setAlignment(
-            QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft
-        )
-        container_layout.addWidget(self.clock_label)
 
-        # Info Stack
-        info_layout = QtWidgets.QVBoxLayout()
-        info_layout.setContentsMargins(0, 0, 0, 0)
-        info_layout.setSpacing(0)
-        info_layout.setAlignment(
-            QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft
-        )
+        if mode == ModeName.DEFAULT:
+            if self.formatter.be_gloomy():
+                self._paint_default_dimmed(painter)
+            else:
+                self._paint_default_normal(painter)
+        elif mode == ModeName.ALARM_VIEW:
+            self._paint_alarm_view(painter)
+        elif mode == ModeName.ALARM_EDIT:
+            self._paint_alarm_edit_view(painter)
+        elif mode == ModeName.PROPERTY_EDIT:
+            self._paint_property_edit_view(painter)
 
-        # Next Alarm
-        self.alarm_label = QtWidgets.QLabel("")
-        self.alarm_label.setFont(self.formatter.info_font(size=12))
-        self.alarm_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
-        info_layout.addWidget(self.alarm_label)
-
-        # WiFi
-        self.wifi_label = QtWidgets.QLabel("")
-        self.wifi_label.setFont(self.formatter.info_font(size=14))
-        self.wifi_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
-        info_layout.addWidget(self.wifi_label)
-
-        container_layout.addLayout(info_layout)
-
-        layout.addWidget(
-            container,
-            alignment=QtCore.Qt.AlignmentFlag.AlignTop
-            | QtCore.Qt.AlignmentFlag.AlignLeft,
-        )
-        layout.addStretch()
-
-    def _update_default_dimmed_view(self):
+    def _paint_default_dimmed(self, painter):
         now = GeoLocation().now()
         day = now.day
+        # Screensaver-like movement to prevent burn-in
+        x_offset = (day % 15) * 6 + 10
+        y_offset = (day % 5) * 2 + 8  # Start at least 8px down to avoid clipping
 
-        # Screensaver logic: shift content based on day of month
-        x_offset = day * 3
-        y_offset = (day % 5) * 4
-
-        self.widget.layout().setContentsMargins(x_offset, y_offset, 0, 0)
+        fg_color = QtGui.QColor(
+            self.formatter.foreground_color(color_type=ColorType.INHEX)
+        )
+        painter.setPen(fg_color)
 
         # Clock
         clock_string = self.formatter.format_dseg7_clock_string(
             now, self.display_content.show_blink_segment
         )
-        self.clock_label.setText(clock_string)
+        font = self.formatter.clock_font(size=18, weight=QtGui.QFont.Weight.Light)
+        painter.setFont(font)
+        painter.drawText(
+            QtCore.QRect(x_offset, y_offset, 120, 25),
+            QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter,
+            clock_string,
+        )
 
         # Next Alarm
         if (
@@ -425,265 +263,185 @@ class Display(DisplayContentProvider):
         ):
             alarm_time = self.display_content.get_next_alarm()
             alarm_text = self.formatter.format_clock_string(alarm_time)
-            self.alarm_label.setText(f"\uf49a {alarm_text}")
-            self.alarm_label.show()
-        else:
-            self.alarm_label.hide()
+            painter.setFont(self.formatter.info_font(size=12))
+            painter.drawText(
+                QtCore.QRect(x_offset + 95, y_offset, 100, 25),
+                QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                f"\uf49a {alarm_text}",
+            )
 
         # WiFi
-        is_online = self.display_content.get_is_online()
-        no_wifi_symbol = "\U000f05aa"
-        wifi_text = "" if is_online else no_wifi_symbol
-        self.wifi_label.setText(wifi_text)
+        if not self.display_content.get_is_online():
+            painter.setFont(self.formatter.info_font(size=14))
+            painter.drawText(
+                QtCore.QRect(x_offset + 95, y_offset + 20, 50, 25),
+                QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                "\U000f05aa",
+            )
 
-    def _setup_default_normal_view(self, layout: QtWidgets.QHBoxLayout):
-        layout.addSpacing(10)
-
-        # Clock Widget
-        self.clock_widget = ClockWidget(
-            "00", "00", ":", True, "#FFFFFF", self.formatter.clock_font(size=42)
-        )
-        layout.addWidget(self.clock_widget, stretch=3)
-
-        # Vertical Line
-        self.line = QtWidgets.QWidget()
-        self.line.setFixedWidth(1)
-        layout.addWidget(self.line)
-        layout.addSpacing(10)
-
-        # Info Stack
-        info_layout = QtWidgets.QVBoxLayout()
-        info_layout.setContentsMargins(0, 0, 0, 0)
-        info_layout.setSpacing(0)
-        info_layout.setAlignment(
-            QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft
+    def _paint_default_normal(self, painter):
+        fg_color = QtGui.QColor(
+            self.formatter.foreground_color(color_type=ColorType.INHEX)
         )
 
-        # 1. Weather
-        self.weather_container = QtWidgets.QWidget()
-        weather_layout = QtWidgets.QHBoxLayout(self.weather_container)
-        weather_layout.setContentsMargins(0, 0, 0, 0)
-        weather_layout.setSpacing(5)
-        weather_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
-
-        self.weather_symbol_label = QtWidgets.QLabel("")
-        self.weather_symbol_label.setFont(self.formatter.weather_font(size=16))
-        weather_layout.addWidget(self.weather_symbol_label)
-
-        self.weather_temp_label = QtWidgets.QLabel("")
-        self.weather_temp_label.setFont(self.formatter.info_font(size=12))
-        weather_layout.addWidget(self.weather_temp_label)
-
-        info_layout.addWidget(self.weather_container)
-
-        # 2. Playback
-        self.playback_container = QtWidgets.QWidget()
-        playback_layout = QtWidgets.QHBoxLayout(self.playback_container)
-        playback_layout.setContentsMargins(0, 0, 0, 0)
-        playback_layout.setSpacing(5)
-        playback_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
-
-        self.playback_symbol_label = QtWidgets.QLabel("\uf2eb")
-        self.playback_symbol_label.setFont(self.formatter.info_font(size=16))
-        playback_layout.addWidget(self.playback_symbol_label)
-
-        self.playback_label = ScrollingLabel(
-            "",
-            self.formatter.info_font(size=12),
-            "#FFFFFF",
-            0,
-            self.display_content,
-        )
-        playback_layout.addWidget(self.playback_label)
-
-        info_layout.addWidget(self.playback_container)
-
-        # 3. Next Alarm
-        self.alarm_container = QtWidgets.QWidget()
-        alarm_layout = QtWidgets.QHBoxLayout(self.alarm_container)
-        alarm_layout.setContentsMargins(0, 0, 0, 0)
-        alarm_layout.setSpacing(5)
-        alarm_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
-
-        self.alarm_symbol_label = QtWidgets.QLabel("\uf49a")
-        self.alarm_symbol_label.setFont(self.formatter.info_font(size=12))
-        alarm_layout.addWidget(self.alarm_symbol_label)
-
-        self.alarm_label = QtWidgets.QLabel("")
-        self.alarm_label.setFont(self.formatter.info_font(size=12))
-        alarm_layout.addWidget(self.alarm_label)
-
-        info_layout.addWidget(self.alarm_container)
-
-        # 4. Volume
-        self.vol_label = QtWidgets.QLabel("")
-        self.vol_label.setFont(self.formatter.info_font(size=12))
-        self.vol_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
-        info_layout.addWidget(self.vol_label)
-
-        layout.addLayout(info_layout, stretch=1)
-
-    def _update_default_normal_view(self):
-        self._update_clock_only()
-        self._update_alarm_widget()
-        self._update_playback_widget()
-        self._update_volume_widget()
-        self._update_weather_widget()
-
-    def _update_clock_only(self):
         # Clock
         fmt = self.alarm_clock_context.config.clock_format_string
         parts = fmt.split("<blinkSegment>")
-        if len(parts) == 2:
-            hour_fmt = parts[0]
-            min_fmt = parts[1]
-        else:
-            hour_fmt = "%H"
-            min_fmt = "%M"
-
+        hour_fmt, min_fmt = (parts[0], parts[1]) if len(parts) == 2 else ("%H", "%M")
         now = GeoLocation().now()
-        hour_str = now.strftime(hour_fmt)
-        minute_str = now.strftime(min_fmt)
-        fg_color = self.formatter.foreground_color(color_type=ColorType.INHEX)
 
-        self.clock_widget.update_content(
-            hour_str, minute_str, self.display_content.show_blink_segment, fg_color
+        self._draw_clock(
+            painter,
+            QtCore.QRect(0, 0, 160, self.device.height),
+            now.strftime(hour_fmt),
+            now.strftime(min_fmt),
+            ":",
+            self.display_content.show_blink_segment,
+            fg_color,
+            self.formatter.clock_font(size=42),
         )
 
-        # Line color
-        self.line.setStyleSheet(f"background-color: {fg_color};")
+        # Vertical Line
+        painter.setPen(QtGui.QPen(fg_color, 1))
+        painter.drawLine(165, 0, 165, self.device.height - 0)
 
-    def on_display_weather_changed(self, _=None):
-        self._update_weather_widget()
+        # Info Stack
+        x_info = 175
+        item_height = 15
 
-    def _update_weather_widget(self):
-        if self.current_layout_type != "DEFAULT_NORMAL":
-            return
-
-        # Weather
+        # Gather items to display
+        items = []
         weather = self.display_content.current_weather
         if weather and weather.temperature is not None:
-            symbol = weather.code.to_character() if weather.code else None
-            if symbol:
-                self.weather_symbol_label.setText(symbol)
-                self.weather_symbol_label.show()
-            else:
-                self.weather_symbol_label.hide()
+            items.append(("weather", weather))
 
-            self.weather_temp_label.setText(f"{weather.temperature:.1f}°C")
-            self.weather_container.show()
-        else:
-            self.weather_container.hide()
-
-    def on_display_playback_changed(self, _=None):
-        self._update_playback_widget()
-
-    def _update_playback_widget(self):
-        if self.current_layout_type != "DEFAULT_NORMAL":
-            return
-
-        # Playback
         playback_title = self.display_content.current_playback_title()
         if playback_title:
-            if playback_title != self._last_playback_title:
-                self._last_playback_title = playback_title
-                self._playback_title_scroll_start_time = time.time()
+            items.append(("playback", playback_title))
 
-            self.playback_label.update_content(
-                playback_title, self._playback_title_scroll_start_time
-            )
-            self.playback_container.show()
-        else:
-            self.playback_container.hide()
-
-    def on_display_alarm_changed(self, _=None):
-        self._update_alarm_widget()
-
-    def _update_alarm_widget(self):
-        if self.current_layout_type != "DEFAULT_NORMAL":
-            return
-
-        # Next Alarm
         if (
             self.display_content.has_next_alarm()
             and self.display_content.next_alarm_info.minutes_until_alarm()
             <= self.display_content.alarm_clock_context.config.alarm_preview_hours * 60
         ):
-            alarm_time = self.display_content.get_next_alarm()
-            alarm_text = alarm_time.strftime("%H:%M")
-            self.alarm_label.setText(alarm_text)
-            self.alarm_container.show()
-        else:
-            self.alarm_container.hide()
+            items.append(("alarm", self.display_content.get_next_alarm()))
 
-    def on_display_volume_changed(self, _=None):
-        self._update_volume_widget()
-
-    def _update_volume_widget(self):
-        if self.current_layout_type != "DEFAULT_NORMAL":
-            return
-
-        # Volume
         if self.display_content.show_volume_meter:
-            vol = self.display_content.current_volume()
-            self.vol_label.setText(f"Vol: {int(vol * 100)}%")
-            self.vol_label.show()
-        else:
-            self.vol_label.hide()
+            items.append(("volume", self.display_content.current_volume()))
 
-    def _setup_alarm_view(self, layout: QtWidgets.QHBoxLayout):
-        # Main Container
-        container = QtWidgets.QWidget()
-        # Use a grid layout for better control
-        grid = QtWidgets.QGridLayout(container)
-        grid.setContentsMargins(10, 5, 10, 5)
+        if items:
+            total_stack_height = len(items) * item_height
+            start_y = (self.device.height - total_stack_height) // 2
 
-        # Row 0: Header (Alarm Index)
-        self.av_header_label = QtWidgets.QLabel("")
-        self.av_header_label.setFont(self.formatter.info_font(size=10))
-        grid.addWidget(
-            self.av_header_label, 0, 0, 1, 2, QtCore.Qt.AlignmentFlag.AlignLeft
-        )
+            for i, (item_type, data) in enumerate(items):
+                rect = QtCore.QRect(
+                    x_info,
+                    start_y + i * item_height,
+                    self.device.width - x_info,
+                    item_height,
+                )
 
-        # Row 1: Time (Big)
-        self.av_time_label = QtWidgets.QLabel("")
-        self.av_time_label.setFont(self.formatter.info_font(size=32))
-        grid.addWidget(
-            self.av_time_label, 1, 0, 2, 1, QtCore.Qt.AlignmentFlag.AlignLeft
-        )
+                if item_type == "weather":
+                    symbol = data.code.to_character() if data.code else None
+                    if symbol:
+                        painter.setFont(self.formatter.weather_font(size=16))
+                        painter.drawText(
+                            rect,
+                            QtCore.Qt.AlignmentFlag.AlignLeft
+                            | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                            symbol,
+                        )
+                        temp_rect = rect.adjusted(22, 0, 0, 0)
+                    else:
+                        temp_rect = rect
 
-        # Row 1, Col 1: Active Status
-        self.av_status_label = QtWidgets.QLabel("")
-        self.av_status_label.setFont(self.formatter.info_font(size=20))
-        grid.addWidget(self.av_status_label, 1, 1, QtCore.Qt.AlignmentFlag.AlignRight)
+                    painter.setFont(self.formatter.info_font(size=12))
+                    painter.drawText(
+                        temp_rect,
+                        QtCore.Qt.AlignmentFlag.AlignLeft
+                        | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                        f"{data.temperature:.1f}°C",
+                    )
 
-        # Row 2, Col 1: Days
-        self.av_days_label = QtWidgets.QLabel("")
-        self.av_days_label.setFont(self.formatter.info_font(size=12))
-        grid.addWidget(self.av_days_label, 2, 1, QtCore.Qt.AlignmentFlag.AlignRight)
+                elif item_type == "playback":
+                    if data != self._last_playback_title:
+                        self._last_playback_title = data
+                        self._playback_title_scroll_start_time = time.time()
 
-        layout.addWidget(container)
+                    painter.setFont(self.formatter.info_font(size=16))
+                    painter.drawText(
+                        rect,
+                        QtCore.Qt.AlignmentFlag.AlignLeft
+                        | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                        "\uf2eb",
+                    )
 
-    def _update_alarm_view(self):
+                    self._draw_scrolling_text(
+                        painter,
+                        rect.adjusted(20, 0, -5, 0),
+                        data,
+                        self.formatter.info_font(size=12),
+                        fg_color,
+                        self._playback_title_scroll_start_time,
+                    )
+
+                elif item_type == "alarm":
+                    painter.setFont(self.formatter.info_font(size=12))
+                    painter.drawText(
+                        rect,
+                        QtCore.Qt.AlignmentFlag.AlignLeft
+                        | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                        f"\uf49a {data.strftime('%H:%M')}",
+                    )
+
+                elif item_type == "volume":
+                    painter.setFont(self.formatter.info_font(size=12))
+                    painter.drawText(
+                        rect,
+                        QtCore.Qt.AlignmentFlag.AlignLeft
+                        | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                        f"Vol: {int(data * 100)}%",
+                    )
+
+    def _paint_alarm_view(self, painter):
         coordinator = self.alarm_clock_context.mode_coordinator
         service = coordinator.editing_service
         if not service:
             return
 
         alarm = service.current_alarm
+        fg_color = QtGui.QColor(
+            self.formatter.foreground_color(color_type=ColorType.INHEX)
+        )
+        painter.setPen(fg_color)
 
         # Header
         index = service.current_alarm_index + 1
         total = len(self.alarm_clock_context.config.alarm_definitions) + 1
-        self.av_header_label.setText(f"ALARM {index}/{total}")
+        painter.setFont(self.formatter.info_font(size=10))
+        painter.drawText(
+            QtCore.QRect(10, 5, self.device.width - 20, 15),
+            QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter,
+            f"ALARM {index}/{total}",
+        )
 
         # Time
         time_str = f"{alarm.hour:02d}:{alarm.min:02d}"
-        self.av_time_label.setText(time_str)
+        painter.setFont(self.formatter.info_font(size=32))
+        painter.drawText(
+            QtCore.QRect(10, 20, 150, 40),
+            QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter,
+            time_str,
+        )
 
         # Status
-        status_icon = "\uf205" if alarm.is_active else "\uf204"  # Toggle On/Off
-        self.av_status_label.setText(status_icon)
+        status_icon = "\uf205" if alarm.is_active else "\uf204"
+        painter.setFont(self.formatter.info_font(size=20))
+        painter.drawText(
+            QtCore.QRect(self.device.width - 50, 15, 40, 30),
+            QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter,
+            status_icon,
+        )
 
         # Days
         days_str = "New Alarm"
@@ -694,34 +452,24 @@ class Display(DisplayContentProvider):
                     days_str = days_str[:12] + "..."
             except:
                 days_str = "Invalid"
-        self.av_days_label.setText(days_str)
+        painter.setFont(self.formatter.info_font(size=12))
+        painter.drawText(
+            QtCore.QRect(self.device.width - 110, 45, 100, 15),
+            QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignBottom,
+            days_str,
+        )
 
-    def _setup_alarm_edit_view(self, layout: QtWidgets.QHBoxLayout):
-        container = QtWidgets.QWidget()
-        v_layout = QtWidgets.QVBoxLayout(container)
-        v_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-
-        # Property Name
-        self.ev_prop_label = QtWidgets.QLabel("")
-        self.ev_prop_label.setFont(self.formatter.info_font(size=18))
-        self.ev_prop_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        v_layout.addWidget(self.ev_prop_label)
-
-        # Current Value Preview
-        self.ev_val_label = QtWidgets.QLabel("")
-        self.ev_val_label.setFont(self.formatter.info_font(size=12))
-        self.ev_val_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        v_layout.addWidget(self.ev_val_label)
-
-        layout.addWidget(container)
-
-    def _update_alarm_edit_view(self):
+    def _paint_alarm_edit_view(self, painter):
         coordinator = self.alarm_clock_context.mode_coordinator
         service = coordinator.editing_service
         if not service or not service.editing_session:
             return
 
         current_prop = service.property_to_edit
+        fg_color = QtGui.QColor(
+            self.formatter.foreground_color(color_type=ColorType.INHEX)
+        )
+        painter.setPen(fg_color)
 
         # Property Name
         prop_name = ""
@@ -729,55 +477,31 @@ class Display(DisplayContentProvider):
             prop_name = current_prop.name.replace("_", " ")
         elif isinstance(current_prop, EditorAction):
             prop_name = current_prop.value.upper()
-        self.ev_prop_label.setText(prop_name)
+
+        painter.setFont(self.formatter.info_font(size=18))
+        painter.drawText(
+            QtCore.QRect(0, 10, self.device.width, 25),
+            QtCore.Qt.AlignmentFlag.AlignCenter,
+            prop_name,
+        )
 
         # Current Value Preview
         if isinstance(current_prop, AlarmProperty):
             val = service.editing_session.get_current_value()
             val_str = str(val)
-            # Format specific values
             if current_prop == AlarmProperty.RECURRING:
-                # val is list of strings
                 val_str = f"{len(val)} days"
             elif current_prop == AlarmProperty.AUDIO_EFFECT:
                 val_str = val.title() if val else "None"
 
-            self.ev_val_label.setText(val_str)
-            self.ev_val_label.show()
-        else:
-            self.ev_val_label.hide()
+            painter.setFont(self.formatter.info_font(size=12))
+            painter.drawText(
+                QtCore.QRect(0, 35, self.device.width, 20),
+                QtCore.Qt.AlignmentFlag.AlignCenter,
+                val_str,
+            )
 
-    def _setup_property_edit_view(self, layout: QtWidgets.QHBoxLayout):
-        container = QtWidgets.QWidget()
-        v_layout = QtWidgets.QVBoxLayout(container)
-        v_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-
-        # Property Name
-        self.pev_header_label = QtWidgets.QLabel("")
-        self.pev_header_label.setFont(self.formatter.info_font(size=10))
-        self.pev_header_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        v_layout.addWidget(self.pev_header_label)
-
-        # Value with arrows
-        h_layout = QtWidgets.QHBoxLayout()
-        h_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-
-        left_arrow = QtWidgets.QLabel("\uf053")  # Chevron Left
-        left_arrow.setFont(self.formatter.info_font(size=16))
-        h_layout.addWidget(left_arrow)
-
-        self.pev_val_label = QtWidgets.QLabel("")
-        self.pev_val_label.setFont(self.formatter.info_font(size=18))
-        h_layout.addWidget(self.pev_val_label)
-
-        right_arrow = QtWidgets.QLabel("\uf054")  # Chevron Right
-        right_arrow.setFont(self.formatter.info_font(size=16))
-        h_layout.addWidget(right_arrow)
-
-        v_layout.addLayout(h_layout)
-        layout.addWidget(container)
-
-    def _update_property_edit_view(self):
+    def _paint_property_edit_view(self, painter):
         coordinator = self.alarm_clock_context.mode_coordinator
         service = coordinator.editing_service
         if not service or not service.editing_session:
@@ -785,6 +509,10 @@ class Display(DisplayContentProvider):
 
         current_prop = service.property_to_edit
         current_val = service.editing_session.get_current_value()
+        fg_color = QtGui.QColor(
+            self.formatter.foreground_color(color_type=ColorType.INHEX)
+        )
+        painter.setPen(fg_color)
 
         # Property Name
         prop_name = (
@@ -792,11 +520,15 @@ class Display(DisplayContentProvider):
             if isinstance(current_prop, AlarmProperty)
             else ""
         )
-        self.pev_header_label.setText(f"SET {prop_name}")
+        painter.setFont(self.formatter.info_font(size=10))
+        painter.drawText(
+            QtCore.QRect(0, 5, self.device.width, 15),
+            QtCore.Qt.AlignmentFlag.AlignCenter,
+            f"SET {prop_name}",
+        )
 
-        # Value
+        # Value with arrows
         val_str = str(current_val)
-        # Formatting
         if current_prop == AlarmProperty.RECURRING:
             val_str = ", ".join([d[:3] for d in current_val])
         elif current_prop == AlarmProperty.AUDIO_EFFECT:
@@ -804,70 +536,54 @@ class Display(DisplayContentProvider):
         elif current_prop == AlarmProperty.HOUR or current_prop == AlarmProperty.MIN:
             val_str = f"{current_val:02d}"
 
-        self.pev_val_label.setText(f" {val_str} ")
+        painter.setFont(self.formatter.info_font(size=16))
+        painter.drawText(
+            QtCore.QRect(10, 25, 30, 35),
+            QtCore.Qt.AlignmentFlag.AlignCenter,
+            "\uf053",
+        )  # Left
+        painter.drawText(
+            QtCore.QRect(self.device.width - 40, 25, 30, 35),
+            QtCore.Qt.AlignmentFlag.AlignCenter,
+            "\uf054",
+        )  # Right
+
+        painter.setFont(self.formatter.info_font(size=18))
+        painter.drawText(
+            QtCore.QRect(40, 25, self.device.width - 80, 35),
+            QtCore.Qt.AlignmentFlag.AlignCenter,
+            val_str,
+        )
 
     def initialize_qt_app(self):
         QtCore.qInstallMessageHandler(qt_message_handler)
         self.app = QtWidgets.QApplication([])
-
-    def update_ui(self):
-        self.formatter.update_formatter()
-        # Reset scrolling state; widgets will set it to True if they need high refresh rate
-        self.display_content.is_scrolling = False
-
-        mode = (
-            self.alarm_clock_context.mode_coordinator.current_mode_name
-            if self.alarm_clock_context.mode_coordinator
-            else ModeName.DEFAULT
-        )
-
-        layout_type = mode
-        if mode == ModeName.DEFAULT:
-            if self.formatter.be_gloomy():
-                layout_type = "DEFAULT_DIMMED"
-            else:
-                layout_type = "DEFAULT_NORMAL"
-
-        if self.current_layout_type != layout_type:
-            self._setup_layout(layout_type)
-            self.current_layout_type = layout_type
-
-            # On layout change, perform a full update of the new view
-            if layout_type == "DEFAULT_NORMAL":
-                self._update_default_normal_view()
-
-        self._update_content(layout_type)
-
-        # Optimized: Only adjust size if layout changed or widget was just created
-        if self.current_layout_type != layout_type:
-            self.widget.adjustSize()
-
-    def grab_widget_image_bak(self) -> Image.Image:
-        pixmap = self.widget.grab()
-
-        buffer = QtCore.QBuffer()
-        buffer.open(QtCore.QBuffer.OpenModeFlag.WriteOnly)
-        pixmap.save(buffer, "BMP")
-
-        pil_image = Image.open(io.BytesIO(buffer.data()))
-        return pil_image
+        logger.info("Qt Application initialized")
 
     def grab_widget_image(self) -> Image.Image:
-        # Optimized: Render directly to QImage buffer avoiding QPixmap and format conversion
-        self.widget.render(self.buffer_image)
-
         width = self.buffer_image.width()
         height = self.buffer_image.height()
         stride = self.buffer_image.bytesPerLine()
-
         ptr = self.buffer_image.bits()
         ptr.setsize(self.buffer_image.byteCount())
-
-        # Create PIL Image from raw bytes
         return Image.frombytes("RGB", (width, height), ptr, "raw", "RGB", stride, 1)
 
     def refresh(self):
-        self.update_ui()
+        self.formatter.update_formatter()
+        self.display_content.is_scrolling = False
+
+        bg_color = QtGui.QColor(
+            self.formatter.background_color(color_type=ColorType.INHEX)
+        )
+        self.buffer_image.fill(bg_color)
+
+        painter = QtGui.QPainter(self.buffer_image)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setRenderHint(QtGui.QPainter.TextAntialiasing)
+
+        self.paint(painter)
+        painter.end()
+
         self.current_display_image = self.formatter.postprocess_image(
             self.grab_widget_image()
         )
@@ -878,62 +594,12 @@ class Display(DisplayContentProvider):
                     display_shot_file,
                     format="png",
                 )
-        except AssertionError as e:
+        except AssertionError:
             pass
 
-    def _setup_layout(self, layout_type):
-        self.widget = QtWidgets.QFrame()
-        self.widget.setFixedSize(self.device.width, self.device.height)
-
-        layout = QtWidgets.QHBoxLayout(self.widget)
-        layout.setContentsMargins(10, 0, 5, 0)
-        layout.setSpacing(0)
-
-        if layout_type == "DEFAULT_NORMAL":
-            self._setup_default_normal_view(layout)
-        elif layout_type == "DEFAULT_DIMMED":
-            self._setup_default_dimmed_view(layout)
-        elif layout_type == ModeName.ALARM_VIEW:
-            self._setup_alarm_view(layout)
-        elif layout_type == ModeName.ALARM_EDIT:
-            self._setup_alarm_edit_view(layout)
-        elif layout_type == ModeName.PROPERTY_EDIT:
-            self._setup_property_edit_view(layout)
-
-    def _update_content(self, layout_type):
-        if not self.widget:
-            return
-        fg_color = self.formatter.foreground_color(color_type=ColorType.INHEX)
-        bg_color = self.formatter.background_color(color_type=ColorType.INHEX)
-
-        # Optimized: Only update stylesheet if colors changed
-        if (
-            not hasattr(self, "_last_fg_color")
-            or self._last_fg_color != fg_color
-            or not hasattr(self, "_last_bg_color")
-            or self._last_bg_color != bg_color
-        ):
-            self.widget.setStyleSheet(
-                f"background-color: {bg_color}; color: {fg_color}; border: none;"
-            )
-            self._last_fg_color = fg_color
-            self._last_bg_color = bg_color
-
-        if layout_type == "DEFAULT_NORMAL":
-            # Optimized: Only update clock in the loop, other elements are event-driven
-            self._update_clock_only()
-            self.playback_label.update_color(fg_color)
-            # We still need to update scrolling text if active
-            if self.display_content.is_scrolling:
-                self._update_playback_widget()
-        elif layout_type == "DEFAULT_DIMMED":
-            self._update_default_dimmed_view()
-        elif layout_type == ModeName.ALARM_VIEW:
-            self._update_alarm_view()
-        elif layout_type == ModeName.ALARM_EDIT:
-            self._update_alarm_edit_view()
-        elif layout_type == ModeName.PROPERTY_EDIT:
-            self._update_property_edit_view()
+    def _alarm_stopped(self, _: AlarmStoppedEvent):
+        self.device.hide()
+        self.device.show()
 
 
 if __name__ == "__main__":
@@ -951,15 +617,20 @@ if __name__ == "__main__":
     if is_on_hardware:
         dev = ssd1322(serial_interface=spi(device=0, port=0))
     else:
-        dev = dummy(height=64, width=256, mode="1")
+        dev = dummy(height=64, width=256, mode="RGB")
+
+    from utils.sound_device import TACSoundDevice
 
     c = Config()
-    s = AlarmClockContext(c=c)
-    pc = PlaybackContent(alarm_clock_context=s)
+    eb = EventBus()
+    sd = TACSoundDevice()
+    s = AlarmClockContext(config=c)
+    pc = PlaybackContent(alarm_clock_context=s, sound_device=sd, event_bus=eb)
     pc.audio_stream = SpotifyStream()
-    dc = DisplayContent(alarm_clock_context=s, playback_content=pc)
+    dc = DisplayContent(alarm_clock_context=s, playback_content=pc, event_bus=eb)
     dc.show_blink_segment = True
-    d = Display(dev, dc, pc, s)
+    df = DisplayFormatter(dc, s)
+    d = Display(dev, dc, pc, df, s, eb)
     d.refresh()
     image = d.current_display_image
 

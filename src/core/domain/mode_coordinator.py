@@ -13,6 +13,7 @@ from core.domain.model import (
     StreamAudioEffect,
     VisualEffect,
 )
+from core.infrastructure.event_bus import EventBus
 from core.interface.display.editor.alarm_definition_editor import (
     AlarmDefinitionProperties,
 )
@@ -252,10 +253,10 @@ class AlarmClockModeCoordinator:
 
     def __init__(
         self,
-        event_bus,
+        event_bus: EventBus,
         alarm_clock_context: AlarmClockContext,
     ):
-        self.event_bus = event_bus
+        self.event_bus: EventBus = event_bus
         self.alarm_clock_context = alarm_clock_context
         self._current_mode_name: ModeName = ModeName.DEFAULT
         self._editing_service: Optional[AlarmEditingService] = None
