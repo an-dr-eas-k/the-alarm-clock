@@ -18,16 +18,8 @@ if TYPE_CHECKING:
 from core.domain.events import (
     ForcedDisplayUpdateEvent,
     PlaybackChangedEvent,
-    StartupFinishedEvent,
     VolumeChangedEvent,
     WeatherUpdatedEvent,
-)
-
-from core.interface.display.display_events import (
-    DisplayNextAlarmUpdatedEvent,
-    DisplayPlaybackUpdatedEvent,
-    DisplayVolumeUpdatedEvent,
-    DisplayWeatherUpdatedEvent,
 )
 
 import logging
@@ -66,17 +58,14 @@ class DisplayContent:
     def _playback_changed(self, event: PlaybackChangedEvent):
         if event.playback_mode == Mode.Idle:
             self.hide_volume_meter()
-        self.event_bus.emit(DisplayPlaybackUpdatedEvent())
         self.event_bus.emit(ForcedDisplayUpdateEvent())
 
     def _volume_changed(self, _: VolumeChangedEvent):
         self.show_volume_meter = True
-        self.event_bus.emit(DisplayVolumeUpdatedEvent())
         self.event_bus.emit(ForcedDisplayUpdateEvent())
 
     def _weather_updated(self, event: WeatherUpdatedEvent):
         self.current_weather = event.weather
-        self.event_bus.emit(DisplayWeatherUpdatedEvent())
 
     # ========== Presentation State Updates ==========
 
@@ -123,7 +112,6 @@ class DisplayContent:
 
     def update_next_alarm(self, next_alarm_info: NextAlarmInfo):
         self.next_alarm_info = next_alarm_info
-        self.event_bus.emit(DisplayNextAlarmUpdatedEvent())
 
     def show_alarm_preview(self) -> bool:
         if not self.has_next_alarm():
@@ -143,7 +131,6 @@ class DisplayContent:
 
     def hide_volume_meter(self):
         self.show_volume_meter = False
-        self.event_bus.emit(DisplayVolumeUpdatedEvent())
         self.event_bus.emit(ForcedDisplayUpdateEvent())
 
     # ========== Playback Information (Delegation) ==========

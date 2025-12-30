@@ -1,6 +1,4 @@
-import io
 import logging
-from timeit import timeit
 import traceback
 import time
 from luma.core.device import device as luma_device
@@ -14,12 +12,6 @@ from core.domain.events import (
     AlarmStoppedEvent,
     ForcedDisplayUpdateEvent,
     StartupFinishedEvent,
-)
-from core.interface.display.display_events import (
-    DisplayPlaybackUpdatedEvent,
-    DisplayVolumeUpdatedEvent,
-    DisplayNextAlarmUpdatedEvent,
-    DisplayWeatherUpdatedEvent,
 )
 from core.domain.edit_mode import AlarmProperty, EditorAction
 from core.domain.model import (
@@ -96,10 +88,6 @@ class Display(DisplayContentProvider):
     def on_startup_finished(self, _: StartupFinishedEvent):
         self.event_bus.on(ForcedDisplayUpdateEvent)(self.safe_refresh_display)
         self.event_bus.on(AlarmStoppedEvent)(self._alarm_stopped)
-        self.event_bus.on(DisplayPlaybackUpdatedEvent)(self.safe_refresh_display)
-        self.event_bus.on(DisplayVolumeUpdatedEvent)(self.safe_refresh_display)
-        self.event_bus.on(DisplayNextAlarmUpdatedEvent)(self.safe_refresh_display)
-        self.event_bus.on(DisplayWeatherUpdatedEvent)(self.safe_refresh_display)
 
     def _alarm_stopped(self, _: AlarmStoppedEvent):
         self.device.hide()
@@ -309,7 +297,7 @@ class Display(DisplayContentProvider):
 
         # Info Stack
         x_info = 175
-        item_height = 15
+        item_height = 20
 
         # Gather items to display
         items = []
@@ -331,6 +319,9 @@ class Display(DisplayContentProvider):
         if self.display_content.show_volume_meter:
             items.append(("volume", self.display_content.current_volume()))
 
+        if len(items) > 3:
+            items = items[1:]
+
         if items:
             total_stack_height = len(items) * item_height
             start_y = (self.device.height - total_stack_height) // 2
@@ -346,7 +337,7 @@ class Display(DisplayContentProvider):
                 if item_type == "weather":
                     symbol = data.code.to_character() if data.code else None
                     if symbol:
-                        painter.setFont(self.formatter.weather_font(size=16))
+                        painter.setFont(self.formatter.weather_font(size=13))
                         painter.drawText(
                             rect,
                             QtCore.Qt.AlignmentFlag.AlignLeft
@@ -370,7 +361,7 @@ class Display(DisplayContentProvider):
                         self._last_playback_title = data
                         self._playback_title_scroll_start_time = time.time()
 
-                    painter.setFont(self.formatter.info_font(size=16))
+                    painter.setFont(self.formatter.info_font(size=12))
                     painter.drawText(
                         rect,
                         QtCore.Qt.AlignmentFlag.AlignLeft
