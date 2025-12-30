@@ -282,7 +282,7 @@ class Display(DisplayContentProvider):
 
         self._draw_clock(
             painter,
-            QtCore.QRect(0, 0, 160, self.device.height),
+            QtCore.QRect(0, 0, 155, self.device.height),
             now.strftime(hour_fmt),
             now.strftime(min_fmt),
             ":",
@@ -293,11 +293,11 @@ class Display(DisplayContentProvider):
 
         # Vertical Line
         painter.setPen(QtGui.QPen(fg_color, 1))
-        painter.drawLine(165, 0, 165, self.device.height - 0)
+        painter.drawLine(160, 0, 160, self.device.height - 0)
 
         # Info Stack
-        x_info = 175
-        item_height = 20
+        x_info = 170
+        item_height = 22
 
         # Gather items to display
         items = []
@@ -550,7 +550,7 @@ class Display(DisplayContentProvider):
 
     def initialize_qt_app(self):
         QtCore.qInstallMessageHandler(qt_message_handler)
-        self.app = QtWidgets.QApplication([])
+        self.app = QtGui.QGuiApplication([])
         logger.info("Qt Application initialized")
 
     def grab_widget_image(self) -> Image.Image:

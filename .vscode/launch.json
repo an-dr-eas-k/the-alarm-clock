@@ -12,6 +12,9 @@
       "args": [
         "--software"
       ],
+      "env": {
+        "QT_QPA_PLATFORM": "offscreen"
+      },
       "console": "internalConsole",
       "cwd": "${workspaceFolder}/src",
       "justMyCode": false,
