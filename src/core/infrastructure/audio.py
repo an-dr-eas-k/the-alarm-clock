@@ -25,7 +25,7 @@ logger = logging.getLogger("tac.core.infrastructure.audio")
 
 class MediaPlayer:
 
-    error_callback: callable = {}
+    error_callback: callable = None
 
     def play(self):
         pass
@@ -38,12 +38,14 @@ class MediaPlayer:
 
 
 class MediaListPlayer(MediaPlayer):
-    list_player: vlc.MediaListPlayer = None
-    audio_stream: AudioStream
-
-    def __init__(self, audio_stream: AudioStream):
+    def __init__(self, audio_stream: AudioStream, instance: vlc.Instance):
         self.audio_stream = audio_stream
+        self.instance = instance
         self.list_player = None
+        self.media = None
+        self.media_list = None
+        self._stop_monitoring = threading.Event()
+        self._monitoring_thread = None
 
     def _monitor_playback(self):
         while not self._stop_monitoring.is_set():
@@ -77,49 +79,50 @@ class MediaListPlayer(MediaPlayer):
 
         stream_url = self.audio_stream.stream_url
 
-        self.instance: vlc.Instance = vlc.Instance(
-            ["--no-video", "--network-caching=3000", "--live-caching=3000"]
-        )
+        try:
+            self.list_player = self.instance.media_list_player_new()
+            self.list_player.set_playback_mode(vlc.PlaybackMode.loop)
 
-        self.list_player: vlc.MediaListPlayer = self.instance.media_list_player_new()
-        self.list_player.set_playback_mode(vlc.PlaybackMode.loop)
-        self.media_player: vlc.MediaPlayer = self.list_player.get_media_player()
+            self.media = self.instance.media_new(stream_url)
+            self.media_list = self.instance.media_list_new([])
+            self.list_player.set_media_list(self.media_list)
+            self.media_list.add_media(self.media)
 
-        self.media: vlc.Media = self.instance.media_new(stream_url)
+            self._stop_monitoring.clear()
+            self._monitoring_thread = threading.Thread(
+                target=self._monitor_playback, daemon=True, name="VLC Monitor"
+            )
+            self._monitoring_thread.start()
 
-        self.media_list: vlc.MediaList = self.instance.media_list_new([])
-        self.list_player.set_media_list(self.media_list)
-        self.media_list.add_media(self.media)
-
-        self._stop_monitoring = threading.Event()
-        self._monitoring_thread = threading.Thread(
-            target=self._monitor_playback, daemon=True, name="VLC Monitor"
-        )
-        self._monitoring_thread.start()
-
-        logger.info("starting audio %s", stream_url)
-        self.list_player.play()
+            logger.info("starting audio %s", stream_url)
+            self.list_player.play()
+        except Exception:
+            logger.error("Error starting playback: %s", traceback.format_exc())
+            self.stop()
 
     def stop(self):
-        if self.list_player is None:
-            return
-
-        if hasattr(self, "_stop_monitoring"):
+        if self._monitoring_thread:
             self._stop_monitoring.set()
-            if (
-                hasattr(self, "_monitoring_thread")
-                and self._monitoring_thread.is_alive()
-            ):
+            if self._monitoring_thread.is_alive():
                 self._monitoring_thread.join(timeout=2.0)
+            self._monitoring_thread = None
 
-        self.list_player.stop()
+        if self.list_player:
+            try:
+                self.list_player.stop()
+            except Exception:
+                pass
 
-        self.media_list.release()
-        self.media.release()
-        self.media_player.release()
-        self.list_player.release()
-        self.instance.release()
-        self.list_player = None
+            if self.media_list:
+                self.media_list.release()
+                self.media_list = None
+            if self.media:
+                self.media.release()
+                self.media = None
+
+            self.list_player.release()
+            self.list_player = None
+
         logger.info(f"stopped audio")
 
 
@@ -134,6 +137,9 @@ class Speaker:
         self.threadLock = threading.Lock()
         self.event_bus = event_bus
         self.event_bus.on(PlaybackChangedEvent)(self._playback_changed)
+        self.vlc_instance = vlc.Instance(
+            ["--no-video", "--network-caching=3000", "--live-caching=3000"]
+        )
 
     def _playback_changed(self, event: PlaybackChangedEvent):
         if isinstance(event.audio_stream, SpotifyStream):
@@ -153,7 +159,7 @@ class Speaker:
         self.threadLock.release()
 
     def get_player(self, audio_stream: AudioStream) -> MediaPlayer:
-        player: MediaPlayer = MediaListPlayer(audio_stream)
+        player: MediaPlayer = MediaListPlayer(audio_stream, self.vlc_instance)
         player.set_error_callback(self.handle_player_error)
         return player
 
@@ -178,34 +184,25 @@ class Speaker:
 
 
 def main():
-    c = Config()
-    c.offline_alarm = AudioStream(
-        stream_name="Offline Alarm", stream_url="Enchantment.ogg"
+    eb = EventBus()
+    s = Speaker(eb)
+    stream = AudioStream(
+        stream_name="test", stream_url="https://streams.br.de/bayern2sued_2.m3u"
     )
-    pc = PlaybackContent(AlarmClockContext(c))
-    pc.audio_stream = StreamAudioEffect(
-        volume=default_volume,
-        audio_stream=AudioStream(
-            stream_name="test", stream_url="https://streams.br.de/bayern2sued_2.m3u"
-        ),
-    )
-    s = Speaker(pc, c)
-    s.adjust_streaming(pc.audio_stream)
+    s.adjust_streaming(stream)
     time.sleep(20)
     s.adjust_streaming(None)
 
 
 def main_mlp():
-    def ecb(event: vlc.Event, *args):
-        try:
-            print(f"callback called: {event.type}, {args}")
-            foo: vlc.MediaListPlayer = args[1]
-            print(foo.get_state())
-        except Exception as e:
-            print(f"callback error: {e}")
-
-    mlp = MediaListPlayer("foo", ecb)
+    instance = vlc.Instance()
+    stream = AudioStream(
+        stream_name="test", stream_url="https://streams.br.de/bayern2sued_2.m3u"
+    )
+    mlp = MediaListPlayer(stream, instance)
     mlp.play()
+    time.sleep(10)
+    mlp.stop()
 
 
 if __name__ == "__main__":
