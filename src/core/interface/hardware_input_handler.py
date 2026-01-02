@@ -13,6 +13,7 @@ from core.domain.events import (
     ToggleAudioRequest,
     VolumeChangeRequest,
 )
+from core.infrastructure.event_bus import EventBus
 from core.infrastructure.events_infrastructure import (
     ButtonDirection,
     DeviceName,
@@ -28,11 +29,11 @@ class HardwareInputHandler:
 
     def __init__(
         self,
-        event_bus,
+        event_bus: EventBus,
         mode_coordinator: AlarmClockModeCoordinator,
     ):
-        self.event_bus = event_bus
-        self.mode_coordinator = mode_coordinator
+        self.event_bus: EventBus = event_bus
+        self.mode_coordinator: AlarmClockModeCoordinator = mode_coordinator
 
         self.event_bus.on(HwButtonEvent)(self._handle_button_event)
         self.event_bus.on(HwRotaryEvent)(self._handle_rotary_event)
@@ -40,7 +41,7 @@ class HardwareInputHandler:
     def _handle_button_event(self, event: HwButtonEvent):
         current_mode = self.mode_coordinator.current_mode_name
         logger.debug(
-            f"translating button event: {event.device_name} in mode {current_mode}"
+            f"translating button event: {event.device_name}, {event.direction} in mode {current_mode}"
         )
         if event.direction != ButtonDirection.DOWN:
             return

@@ -30,15 +30,15 @@ class ButtonsManager:
     def _mode_button_callback(self, pin_value: bool):
         self.event_bus.emit(
             HwButtonEvent(
-                DeviceName.MODE_BUTTON,
-                ButtonDirection.DOWN if not pin_value else ButtonDirection.UP,
+                device_name=DeviceName.MODE_BUTTON,
+                direction=ButtonDirection.DOWN if not pin_value else ButtonDirection.UP,
             )
         )
 
     def _invoke_button_callback(self, pin_value: bool):
         self.event_bus.emit(
             HwButtonEvent(
-                DeviceName.INVOKE_BUTTON,
-                ButtonDirection.DOWN if not pin_value else ButtonDirection.UP,
+                device_name=DeviceName.INVOKE_BUTTON,
+                direction=ButtonDirection.DOWN if not pin_value else ButtonDirection.UP,
             )
         )
