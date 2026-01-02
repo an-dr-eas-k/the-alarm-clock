@@ -59,8 +59,7 @@ class MCPManager:
 
         if logger.level == logging.DEBUG:
             self.log_thread = threading.Thread(
-                name="mcp debug",
-                daemon=True, target=self._log_thread_callback
+                name="mcp debug", daemon=True, target=self._log_thread_callback
             )
             self.log_thread.start()
 
@@ -78,11 +77,11 @@ class MCPManager:
             time.sleep(1)
 
     def gpio_event_detected(self, gpio_pin):
-        logger.debug(f"GPIO interrupt on pin {gpio_pin} detected.")
+        logger.info(f"GPIO interrupt on pin {gpio_pin} detected.")
 
         for mcp_pin in self.mcp.int_flag:
             mcp_pin_value = self.mcp.get_pin(mcp_pin).value
-            logger.debug(f"mcp pin {mcp_pin} changed to: {mcp_pin_value}")
+            logger.info(f"mcp pin {mcp_pin} changed to: {mcp_pin_value}")
 
             if mcp_pin in self.mcp_callbacks:
                 self.mcp_callbacks[mcp_pin](mcp_pin_value)
