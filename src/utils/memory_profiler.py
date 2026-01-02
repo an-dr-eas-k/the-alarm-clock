@@ -1,5 +1,6 @@
 import logging
 import tracemalloc
+import gc
 from pympler import muppy, summary
 from pympler.tracker import SummaryTracker
 
@@ -85,6 +86,8 @@ def log_tracemalloc_diff(limit=10):
         tracemalloc.start()
         logger.info("Started tracemalloc tracing")
 
+    # Force garbage collection to get a cleaner snapshot
+    gc.collect()
     current_snapshot = tracemalloc.take_snapshot()
 
     if _snapshot is None:
@@ -112,7 +115,7 @@ def log_tracemalloc_diff(limit=10):
         logger.info(f"{location:<50} | {size_kib:+15.2f} | {stat.count_diff:+10d}")
 
     # Update snapshot to current for incremental diffs
-    # _snapshot = current_snapshot
+    _snapshot = current_snapshot
 
 
 def print_memory_usage(limit=50):
@@ -198,7 +201,7 @@ def print_full_report():
     logger.info("\n")
 
     logger.info("--- 3. Tracemalloc Diff (Source of Leaks) ---")
-    log_tracemalloc_diff()
+    log_tracemalloc_diff(limit=50)
     logger.info("(If this is the first run, this was just the baseline setup)")
     logger.info("\n")
 

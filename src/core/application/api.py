@@ -122,7 +122,9 @@ class ConfigHandler(tornado.web.RequestHandler):
 
     def get(self, *args, **kwargs):
         try:
-            self.render(webroot_file, config=self.config, api=self.api)
+            self.render(
+                os.path.basename(webroot_file), config=self.config, api=self.api
+            )
         except:
             logger.warning("%s", traceback.format_exc())
 
@@ -318,6 +320,7 @@ class Api:
         self.display = display
         self.event_bus = event_bus
         self.encrypted = encrypted
+        template_path = os.path.dirname(webroot_file)
         handlers = [
             (r"/display", DisplayHandler, {"display": self.display}),
             (
@@ -361,7 +364,7 @@ class Api:
             ),
         ]
 
-        self.app = tornado.web.Application(handlers)
+        self.app = tornado.web.Application(handlers, template_path=template_path)
 
     def get_git_log(self) -> str:
 
