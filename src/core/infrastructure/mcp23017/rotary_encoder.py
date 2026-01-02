@@ -48,12 +48,12 @@ class RotaryEncoderManager:
             if last_state == (1, 0) and state == (1, 1):
                 logger.debug("Rotary clockwise detected")
 
-                self.event_bus.emit(
+                self.event_bus.emit_async(
                     HwRotaryEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE)
                 )
             elif last_state == (0, 1) and state == (1, 1):
                 logger.debug("Rotary counter-clockwise detected")
-                self.event_bus.emit(
+                self.event_bus.emit_async(
                     HwRotaryEvent(
                         DeviceName.ROTARY_ENCODER, RotaryDirection.COUNTERCLOCKWISE
                     )

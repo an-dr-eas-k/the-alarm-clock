@@ -1,5 +1,6 @@
 from datetime import datetime
 import logging
+import threading
 from timeit import timeit
 from typing import Callable, Dict, List, Type
 from dataclasses import dataclass
@@ -75,6 +76,21 @@ class EventBus:
         for event in events:
             self.emit(event)
 
+    def emit_async(self, event: BaseEvent):
+        """Emit an event asynchronously in a separate thread."""
+        thread = threading.Thread(
+            target=self.emit,
+            args=(event,),
+            name=f"EventBus-{type(event).__name__}",
+            daemon=True,
+        )
+        thread.start()
+
+    def emit_all_async(self, events: List[BaseEvent]):
+        """Emit multiple events asynchronously."""
+        for event in events:
+            self.emit_async(event)
+
     def unregister(
         self, event_type: Type[BaseEvent], handler: Callable[[BaseEvent], None]
     ):
@@ -148,3 +164,9 @@ if __name__ == "__main__":
             AlarmSnoozed(alarm_id="alarm-456", snooze_duration_minutes=5),
         ]
     )
+
+    print("\n=== Emitting asynchronously ===")
+    bus.emit_async(AlarmTriggered(alarm_id="async-789", scheduled_time=datetime.now()))
+    import time
+
+    time.sleep(0.1)  # Wait for the async thread to finish
