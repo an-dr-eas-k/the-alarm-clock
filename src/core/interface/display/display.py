@@ -1,6 +1,7 @@
 import logging
 import traceback
 import time
+import threading
 from luma.core.device import device as luma_device
 from luma.core.device import dummy as luma_dummy
 from luma.core.render import canvas
@@ -82,6 +83,7 @@ class Display(DisplayContentProvider):
         )
 
         self.current_layout_type = None
+        self._refresh_lock = threading.Lock()
 
         self.event_bus.on(StartupFinishedEvent)(self.on_startup_finished)
 
@@ -94,12 +96,16 @@ class Display(DisplayContentProvider):
         self.device.show()
 
     def safe_refresh_display(self, _=None):
+        if not self._refresh_lock.acquire(blocking=False):
+            return
         try:
             self.refresh()
         except Exception as e:
             logger.error("%s", traceback.format_exc())
             with canvas(self.device) as draw:
                 draw.text((20, 20), f"exception!\n({e})", fill="white")
+        finally:
+            self._refresh_lock.release()
 
     def _draw_clock(
         self,
