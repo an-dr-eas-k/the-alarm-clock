@@ -81,11 +81,14 @@ class MCPManager:
     def gpio_event_detected(self, gpio_pin):
         logger.info(f"GPIO interrupt on pin {gpio_pin} detected.")
 
-        int_flags = self.mcp.int_flag
+        pin_values = {}
+        for mcp_pin in self.mcp.int_flag:
+            pin_values[mcp_pin] = self.mcp.get_pin(mcp_pin).value
+
         self.mcp.clear_ints()
 
-        for mcp_pin in int_flags:
-            mcp_pin_value = self.mcp.get_pin(mcp_pin).value
+        for mcp_pin in pin_values.keys():
+            mcp_pin_value = pin_values[mcp_pin]
             logger.info(f"mcp pin {mcp_pin} changed to: {mcp_pin_value}")
 
             if mcp_pin in self.mcp_callbacks:
