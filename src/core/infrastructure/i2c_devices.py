@@ -4,7 +4,7 @@ import time
 import board
 import busio
 from digitalio import Direction, Pull
-from adafruit_mcp230xx.mcp23017 import MCP23017, DigitalInOut
+from adafruit_mcp230xx.mcp23017 import MCP23017
 
 rotary_encoder_channel_press: int = 8
 rotary_encoder_channel_a: int = 10
@@ -35,12 +35,10 @@ class MCPManager:
     def __init__(self, i2c_manager: I2CManager):
 
         self.mcp = MCP23017(i2c_manager.i2c)
-        self.pins: list[DigitalInOut] = []
         for i in range(0, 16):
             pin = self.mcp.get_pin(i)
             pin.direction = Direction.INPUT
             pin.pull = Pull.UP
-            self.pins.append(pin)
 
         self.mcp.interrupt_enable = 0xFFFF  # get interrupts for all pins
         self.mcp.interrupt_configuration = 0x0000  # notify me, when any value changes
@@ -74,21 +72,24 @@ class MCPManager:
         while True:
             logger.debug(
                 f"interrupt state: {int(GPIO_Module().input(interrupt_pin))}, mcp pin states: "
-                + ", ".join([f"{p:02}: {int(self.pins[p].value)}" for p in range(16)])
+                + ", ".join(
+                    [f"{p:02}: {int(self.mcp.get_pin(p).value)}" for p in range(16)]
+                )
             )
             time.sleep(1)
 
     def gpio_event_detected(self, gpio_pin):
         logger.info(f"GPIO interrupt on pin {gpio_pin} detected.")
 
-        for mcp_pin in self.mcp.int_flag:
-            mcp_pin_value = self.pins[mcp_pin].value
+        int_flags = self.mcp.int_flag
+        self.mcp.clear_ints()
+
+        for mcp_pin in int_flags:
+            mcp_pin_value = self.mcp.get_pin(mcp_pin).value
             logger.info(f"mcp pin {mcp_pin} changed to: {mcp_pin_value}")
 
             if mcp_pin in self.mcp_callbacks:
                 self.mcp_callbacks[mcp_pin](mcp_pin_value)
-
-        self.mcp.clear_ints()
 
     def close(self):
         GPIO_Module().cleanup()
