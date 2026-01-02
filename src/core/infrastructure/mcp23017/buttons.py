@@ -31,7 +31,7 @@ class ButtonsManager:
         self.event_bus.emit(
             HwButtonEvent(
                 device_name=DeviceName.MODE_BUTTON,
-                direction=ButtonDirection.DOWN if not pin_value else ButtonDirection.UP,
+                direction=ButtonDirection.DOWN if pin_value else ButtonDirection.UP,
             )
         )
 
@@ -39,6 +39,6 @@ class ButtonsManager:
         self.event_bus.emit(
             HwButtonEvent(
                 device_name=DeviceName.INVOKE_BUTTON,
-                direction=ButtonDirection.DOWN if not pin_value else ButtonDirection.UP,
+                direction=ButtonDirection.DOWN if pin_value else ButtonDirection.UP,
             )
         )
