@@ -133,13 +133,12 @@ class Speaker:
     def __init__(
         self,
         event_bus: EventBus,
+        vlc_instance: vlc.Instance,
     ) -> None:
         self.threadLock = threading.Lock()
         self.event_bus = event_bus
         self.event_bus.on(PlaybackChangedEvent)(self._playback_changed)
-        self.vlc_instance = vlc.Instance(
-            ["--no-video", "--network-caching=3000", "--live-caching=3000"]
-        )
+        self.vlc_instance = vlc_instance
 
     def _playback_changed(self, event: PlaybackChangedEvent):
         if isinstance(event.audio_stream, SpotifyStream):
@@ -185,7 +184,10 @@ class Speaker:
 
 def main():
     eb = EventBus()
-    s = Speaker(eb)
+    instance = vlc.Instance(
+        ["--no-video", "--network-caching=3000", "--live-caching=3000"]
+    )
+    s = Speaker(eb, instance)
     stream = AudioStream(
         stream_name="test", stream_url="https://streams.br.de/bayern2sued_2.m3u"
     )

@@ -1,5 +1,6 @@
 import os
 import argparse
+import vlc
 from dependency_injector import containers, providers
 from core.domain.mode_coordinator import AlarmClockModeCoordinator
 from core.interface.display.format import DisplayFormatter
@@ -98,9 +99,14 @@ class DIContainer(containers.DeclarativeContainer):
         Persistence, config_file=config_file, event_bus=event_bus
     )
 
+    vlc_instance = providers.Singleton(
+        vlc.Instance, ["--no-video", "--network-caching=3000", "--live-caching=3000"]
+    )
+
     speaker = providers.Singleton(
         Speaker,
         event_bus=event_bus,
+        vlc_instance=vlc_instance,
     )
 
     i2c_manager = providers.Singleton(I2CManager)
