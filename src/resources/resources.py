@@ -1,5 +1,6 @@
 import json
 import logging.config
+from logging.handlers import QueueListener
 import os
 
 the_alarm_clock_protocol = "https"
@@ -40,6 +41,14 @@ ssl_dir = os.path.join(app_dir, "../rpi/tls")
 valid_mixer_device_simple_control_names = ["Digital", "Master"]
 
 default_volume = 0.2
+
+
+class AutoStartQueueListener(QueueListener):
+
+    def __init__(self, queue, *handlers, respect_handler_level=False):
+        super().__init__(queue, *handlers, respect_handler_level=respect_handler_level)
+        # Start the listener immediately.
+        self.start()
 
 
 def init_logging():
