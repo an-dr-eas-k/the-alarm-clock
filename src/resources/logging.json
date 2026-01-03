@@ -23,7 +23,10 @@
       "class": "logging.handlers.QueueHandler",
       "handlers": [
         "journalHandler"
-      ]
+      ],
+      "queue": {
+        "()": "queue.Queue"
+      }
     },
     "lastResort": {
       "class": "logging.NullHandler"
