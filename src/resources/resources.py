@@ -1,3 +1,4 @@
+import json
 import logging.config
 import os
 
@@ -42,4 +43,6 @@ default_volume = 0.2
 
 
 def init_logging():
-    logging.config.fileConfig(os.path.join(resources_dir, "logging.conf"))
+    logging.config.dictConfig(
+        json.load(open(os.path.join(resources_dir, "logging.json")))
+    )
