@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import time, timedelta
-import datetime
+from datetime import time, timedelta, date
 import os
 from PIL import Image
 from typing import List
@@ -16,8 +15,6 @@ from utils.extensions import T, Value, respect_ranges
 from utils.geolocation import GeoLocation, SunEvent, Weather
 from resources.resources import alarms_dir, default_volume
 from utils.sound_device import SoundDevice
-
-from datetime import datetime, timedelta
 
 from typing import TYPE_CHECKING
 
@@ -259,13 +256,13 @@ class AlarmDefinition:
             self.onetime = None
         elif value == AlarmRecurrence.ONETIME:
             self.recurring = None
-            self.onetime = datetime.today().date()
+            self.onetime = date.today()
         else:
             self.recurring = None
             self.onetime = None
 
     recurring: List[str]
-    onetime: datetime
+    onetime: date
     alarm_name: str
     is_active: bool
     visual_effect: VisualEffect

@@ -88,7 +88,7 @@ class SystemService:
         self.scheduler_service.add_job(
             self._emit_regular_display_update,
             trigger="interval",
-            start_date=datetime.datetime.today(),
+            start_date=datetime.date.today(),
             seconds=self.alarm_clock_context.config.refresh_timeout_in_secs,
             job_id=SchedulerJobIds.regular_display_refresh.value,
             jobstore=SchedulerStores.default.value,

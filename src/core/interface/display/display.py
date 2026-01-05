@@ -490,6 +490,8 @@ class Display(DisplayContentProvider):
             val_str = str(val)
             if current_prop == AlarmProperty.RECURRING:
                 val_str = f"{len(val)} days"
+            elif current_prop == AlarmProperty.ONETIME:
+                val_str = val.strftime("%Y-%m-%d") if val else "None"
             elif current_prop == AlarmProperty.AUDIO_EFFECT:
                 val_str = val.title() if val else "None"
 
@@ -527,9 +529,16 @@ class Display(DisplayContentProvider):
         )
 
         # Value with arrows
+        val_font_size = 18
         val_str = str(current_val)
         if current_prop == AlarmProperty.RECURRING:
-            val_str = ", ".join([d[:3] for d in current_val])
+            val_str = ",".join([d[:2] for d in current_val])
+            val_font_size = 12
+            if len(val_str) > 15:
+                val_font_size = 8
+
+        elif current_prop == AlarmProperty.ONETIME:
+            val_str = current_val.strftime("%Y-%m-%d") if current_val else "None"
         elif current_prop == AlarmProperty.AUDIO_EFFECT:
             val_str = current_val.title() if current_val else "None"
         elif current_prop == AlarmProperty.HOUR or current_prop == AlarmProperty.MIN:
@@ -547,7 +556,7 @@ class Display(DisplayContentProvider):
             "\uf054",
         )  # Right
 
-        painter.setFont(self.formatter.info_font(size=18))
+        painter.setFont(self.formatter.info_font(size=val_font_size))
         painter.drawText(
             QtCore.QRect(40, 25, self.device.width - 80, 35),
             QtCore.Qt.AlignmentFlag.AlignCenter,

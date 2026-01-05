@@ -1,12 +1,10 @@
-from datetime import timedelta
-import datetime
+from datetime import date, timedelta
 from typing import Dict, List
 import logging
 
 from core.domain.edit_mode import AlarmProperty, AlarmRecurrence
 from core.domain.model import AlarmDefinition, Config, StreamAudioEffect, Weekday
 
-from datetime import datetime, timedelta
 
 logger = logging.getLogger("tac.core.interface.display.editor.alarm_definition_editor")
 
@@ -34,11 +32,7 @@ class AlarmDefinitionProperties:
             ),
             AlarmProperty.ONETIME: EditableProperty(
                 AlarmProperty.ONETIME,
-                [None]
-                + [
-                    (datetime.now() + timedelta(days=i)).strftime("%Y-%m-%d")
-                    for i in range(30)
-                ],
+                [None] + [(date.today() + timedelta(days=i)) for i in range(30)],
             ),
             AlarmProperty.RECURRING: EditableProperty(
                 AlarmProperty.RECURRING,
