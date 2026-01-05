@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 
+from core.domain.mode_coordinator import ModeName
 from core.domain.model import (
     AlarmClockContext,
     Mode,
@@ -76,29 +77,33 @@ class DisplayContent:
     ) -> bool:
         changed = False
 
-        if self.show_blink_segment != show_blink_segment:
-            self.show_blink_segment = show_blink_segment
-            changed = True
-
-        if self.room_brightness != room_brightness:
-            # Hysteresis: Only update if the value changed significantly
-            old_val = self.room_brightness.value
-            new_val = room_brightness.value
-            diff = abs(new_val - old_val)
-
-            # Thresholds in RoomBrightness are 0.01, 2, 6, 15
-            threshold = 0.5
-            if old_val < 5.0 or new_val < 5.0:
-                threshold = 0.2
-            if old_val < 0.1 or new_val < 0.1:
-                threshold = 0.005
-
-            if diff > threshold:
-                self.room_brightness = room_brightness
+        if (
+            self.alarm_clock_context.mode_coordinator.current_mode_name
+            == ModeName.DEFAULT
+        ):
+            if self.show_blink_segment != show_blink_segment:
+                self.show_blink_segment = show_blink_segment
                 changed = True
 
-        if self.is_scrolling:
-            changed = True
+            if self.room_brightness != room_brightness:
+                # Hysteresis: Only update if the value changed significantly
+                old_val = self.room_brightness.value
+                new_val = room_brightness.value
+                diff = abs(new_val - old_val)
+
+                # Thresholds in RoomBrightness are 0.01, 2, 6, 15
+                threshold = 0.5
+                if old_val < 5.0 or new_val < 5.0:
+                    threshold = 0.2
+                if old_val < 0.1 or new_val < 0.1:
+                    threshold = 0.005
+
+                if diff > threshold:
+                    self.room_brightness = room_brightness
+                    changed = True
+
+            if self.is_scrolling:
+                changed = True
 
         return changed
 

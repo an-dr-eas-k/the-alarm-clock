@@ -5,7 +5,6 @@ import logging
 from core.domain.alarm_definition_editor import AlarmEditingService, EditorAction
 from core.domain.events import (
     ConfigChangedEvent,
-    ForcedDisplayUpdateEvent,
 )
 from core.domain.model import (
     AlarmClockContext,
@@ -74,7 +73,6 @@ class AlarmClockModeCoordinator:
             return
 
         self._editing_service.navigate_alarms(direction)
-        self.event_bus.emit(ForcedDisplayUpdateEvent())
 
     def navigate_properties(self, direction: int):
         if self._current_mode_name != ModeName.ALARM_EDIT or not self._editing_service:
