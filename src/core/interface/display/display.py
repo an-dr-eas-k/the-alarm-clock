@@ -87,7 +87,7 @@ class Display(DisplayContentProvider):
         self._refresh_lock = threading.Lock()
 
         self.event_bus.on(StartupFinishedEvent)(self.on_startup_finished)
-        self.event_bus.on(TerminateAppRequest)(self.device.hide)
+        self.event_bus.on(TerminateAppRequest)(lambda _: self.device.hide())
 
     def on_startup_finished(self, _: StartupFinishedEvent):
         self.event_bus.on(ForcedDisplayUpdateEvent)(self.safe_refresh_display)
