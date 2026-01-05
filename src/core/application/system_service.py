@@ -1,6 +1,7 @@
 import datetime
 import logging
 import threading
+import traceback
 from core.domain.events import (
     ForcedDisplayUpdateEvent,
     PlaybackChangedEvent,

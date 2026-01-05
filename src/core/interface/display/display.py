@@ -7,14 +7,14 @@ from luma.core.device import dummy as luma_dummy
 from luma.core.render import canvas
 from PIL import Image
 
-from PyQt5 import QtWidgets, QtCore, QtGui
+from PyQt5 import QtCore, QtGui
 
+from core.domain.alarm_definition_editor import AlarmProperty, EditorAction
 from core.domain.events import (
     AlarmStoppedEvent,
     ForcedDisplayUpdateEvent,
     StartupFinishedEvent,
 )
-from core.domain.edit_mode import AlarmProperty, EditorAction
 from core.domain.model import (
     AlarmClockContext,
     Config,

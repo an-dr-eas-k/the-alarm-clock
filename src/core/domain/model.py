@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import time, timedelta, date
+import datetime
 import os
 from PIL import Image
 from typing import List
@@ -9,7 +10,6 @@ from enum import Enum
 import logging
 
 import jsonpickle
-from core.domain.edit_mode import AlarmRecurrence
 from utils.extensions import T, Value, respect_ranges
 
 from utils.geolocation import GeoLocation, SunEvent, Weather
@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from core.infrastructure.event_bus import EventBus
     from core.domain.mode_coordinator import AlarmClockModeCoordinator
+
 from core.domain.events import (
     AlarmStoppedEvent,
     PlaybackChangedEvent,
@@ -233,6 +234,13 @@ class StreamAudioEffect(AudioEffect):
 
     def title(self):
         return self.audio_stream.stream_name
+
+
+class AlarmRecurrence(Enum):
+    """Represents whether an alarm is one-time or recurring."""
+
+    ONETIME = "onetime"
+    RECURRING = "recurring"
 
 
 class AlarmDefinition:
