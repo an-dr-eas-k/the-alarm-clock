@@ -31,6 +31,7 @@ class AlarmProperty(Enum):
     ONETIME = "onetime"
     RECURRING = "recurring"
     AUDIO_EFFECT = "audio_effect"
+    AUDIO_EFFECT_VOLUME = "audio_effect_volume"
 
 
 class EditableProperty:
@@ -90,6 +91,9 @@ class AlarmDefinitionProperties:
             AlarmProperty.AUDIO_EFFECT: EditableProperty(
                 AlarmProperty.AUDIO_EFFECT, None
             ),
+            AlarmProperty.AUDIO_EFFECT_VOLUME: EditableProperty(
+                AlarmProperty.AUDIO_EFFECT_VOLUME, [i * 0.05 for i in range(21)]
+            ),
             AlarmProperty.IS_ACTIVE: EditableProperty(
                 AlarmProperty.IS_ACTIVE, [True, False]
             ),
@@ -113,6 +117,7 @@ class AlarmDefinitionProperties:
             pes.append(AlarmProperty.RECURRING)
 
         pes.append(AlarmProperty.AUDIO_EFFECT)
+        pes.append(AlarmProperty.AUDIO_EFFECT_VOLUME)
         return pes
 
     def update_value_lists(self, config: Config, volume: float):

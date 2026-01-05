@@ -276,6 +276,16 @@ class AlarmDefinition:
     visual_effect: VisualEffect
     audio_effect: StreamAudioEffect
 
+    @property
+    def audio_effect_volume(self) -> float:
+        return self.audio_effect.volume if self.audio_effect else None
+
+    @audio_effect_volume.setter
+    def audio_effect_volume(self, value: float):
+        if self.audio_effect is None:
+            self.audio_effect = StreamAudioEffect()
+        self.audio_effect.volume = value
+
     def get_cron_args(self) -> dict:
         if self.is_recurring():
             return {

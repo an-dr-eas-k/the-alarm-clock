@@ -471,13 +471,17 @@ class Display(DisplayContentProvider):
         painter.setPen(fg_color)
 
         # Property Name
+        prop_font_size = 18
         prop_name = ""
         if isinstance(current_prop, AlarmProperty):
             prop_name = current_prop.name.replace("_", " ")
         elif isinstance(current_prop, EditorAction):
             prop_name = current_prop.value.upper()
 
-        painter.setFont(self.formatter.info_font(size=18))
+        if len(prop_name) > 15:
+            prop_font_size = 15
+
+        painter.setFont(self.formatter.info_font(size=prop_font_size))
         painter.drawText(
             QtCore.QRect(0, 10, self.device.width, 25),
             QtCore.Qt.AlignmentFlag.AlignCenter,
@@ -494,6 +498,8 @@ class Display(DisplayContentProvider):
                 val_str = val.strftime("%Y-%m-%d") if val else "None"
             elif current_prop == AlarmProperty.AUDIO_EFFECT:
                 val_str = val.title() if val else "None"
+            elif current_prop == AlarmProperty.AUDIO_EFFECT_VOLUME:
+                val_str = f"{int(round(val*100, 0))}%"
 
             painter.setFont(self.formatter.info_font(size=12))
             painter.drawText(
@@ -541,6 +547,8 @@ class Display(DisplayContentProvider):
             val_str = current_val.strftime("%Y-%m-%d") if current_val else "None"
         elif current_prop == AlarmProperty.AUDIO_EFFECT:
             val_str = current_val.title() if current_val else "None"
+        elif current_prop == AlarmProperty.AUDIO_EFFECT_VOLUME:
+            val_str = f"{int(round(current_val*100, 0))}%"
         elif current_prop == AlarmProperty.HOUR or current_prop == AlarmProperty.MIN:
             val_str = f"{current_val:02d}"
 
