@@ -111,15 +111,6 @@ class SystemService:
             jobstore=SchedulerStores.default.value,
         )
 
-        self.scheduler_service.add_job(
-            print_full_report,
-            trigger="cron",
-            hour="2",
-            minute="0",
-            job_id=SchedulerJobIds.memory_usage_logger.value,
-            jobstore=SchedulerStores.default.value,
-        )
-
         for event in SunEvent.__members__.values():
             self.init_sun_event_scheduler(event)
 
@@ -163,7 +154,6 @@ class SystemService:
 
     def handle_startup_finished(self, _: StartupFinishedEvent):
         self._update_wifi_status()
-        print_full_report()
 
     def handle_pre_alarm_triggered(self, _: PreAlarmTriggeredEvent):
         if not self.alarm_clock_context.environment.is_online:
