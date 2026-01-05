@@ -1,7 +1,6 @@
-from ctypes import Union
 from datetime import date, timedelta
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 import logging
 
 from core.domain.model import (
