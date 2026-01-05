@@ -151,7 +151,7 @@
       ]
     },
     "tac.core.infrastructure.mcp": {
-      "level": "WARNING",
+      "level": "INFO",
       "handlers": [
         "lastResort"
       ]
@@ -163,7 +163,7 @@
       ]
     },
     "tac.core.infrastructure.mcp.rotary_encoder": {
-      "level": "WARNING",
+      "level": "DEBUG",
       "handlers": [
         "lastResort"
       ]
