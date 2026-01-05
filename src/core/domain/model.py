@@ -157,11 +157,15 @@ class VisualEffect:
     next_alarm_info: NextAlarmInfo = None
 
     def is_active(self) -> bool:
+        if not self.next_alarm_info:
+            return False
         alarm_in_minutes = self.next_alarm_info.minutes_until_alarm()
         return alarm_in_minutes <= 8
 
     def get_style(self) -> Style:
-        alarm_in_minutes = self.next_alarm_info.minutes_until_alarm()
+        alarm_in_minutes = (
+            self.next_alarm_info.minutes_until_alarm() if self.next_alarm_info else 9999
+        )
         logger.debug("visual effect active for: %smin", alarm_in_minutes)
         if alarm_in_minutes <= 2:
             return Style(

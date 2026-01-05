@@ -500,6 +500,8 @@ class Display(DisplayContentProvider):
                 val_str = val.title() if val else "None"
             elif current_prop == AlarmProperty.AUDIO_EFFECT_VOLUME:
                 val_str = f"{int(round(val*100, 0))}%"
+            elif current_prop == AlarmProperty.VISUAL_EFFECT:
+                val_str = "yes" if val else "no"
 
             painter.setFont(self.formatter.info_font(size=12))
             painter.drawText(
@@ -551,6 +553,8 @@ class Display(DisplayContentProvider):
             val_str = f"{int(round(current_val*100, 0))}%"
         elif current_prop == AlarmProperty.HOUR or current_prop == AlarmProperty.MIN:
             val_str = f"{current_val:02d}"
+        elif current_prop == AlarmProperty.VISUAL_EFFECT:
+            val_str = "yes" if current_val else "no"
 
         painter.setFont(self.formatter.info_font(size=16))
         painter.drawText(
