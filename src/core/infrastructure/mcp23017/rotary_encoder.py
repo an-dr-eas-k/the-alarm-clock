@@ -41,17 +41,27 @@ class RotaryEncoderManager:
 
         last_state = self.last_states[0]
         if state != last_state:
-            if state == (0, 0) and self.last_states[0] == (self.last_states[1])[::-1]:
-                state = (1, 1)
-                last_state = self.last_states[1]
-                logger.debug(f"bouncing detected, new states are {state}, {last_state}")
-            if last_state == (1, 0) and state == (1, 1):
+            # if state == (0, 0) and self.last_states[0] == (self.last_states[1])[::-1]:
+            #     state = (1, 1)
+            #     last_state = self.last_states[1]
+            #     logger.debug(f"bouncing detected, new states are {state}, {last_state}")
+            if (
+                last_state == (0, 0)
+                and state == (1, 1)
+                or last_state == (1, 1)
+                and state == (0, 0)
+            ):
                 logger.debug("Rotary clockwise detected")
 
                 self.event_bus.emit(
                     HwRotaryEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE)
                 )
-            elif last_state == (0, 1) and state == (1, 1):
+            elif (
+                last_state == (0, 1)
+                and state == (1, 0)
+                or last_state == (1, 0)
+                and state == (0, 1)
+            ):
                 logger.debug("Rotary counter-clockwise detected")
                 self.event_bus.emit(
                     HwRotaryEvent(
