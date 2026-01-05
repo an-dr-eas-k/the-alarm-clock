@@ -1,6 +1,7 @@
 import os
 import argparse
 import vlc
+from concurrent.futures import ThreadPoolExecutor
 from dependency_injector import containers, providers
 from core.domain.mode_coordinator import AlarmClockModeCoordinator
 from core.interface.display.format import DisplayFormatter
@@ -45,7 +46,11 @@ class DIContainer(containers.DeclarativeContainer):
         lambda parser: parser.parse_args(), parser=argument_parser
     )
 
-    event_bus = providers.Singleton(EventBus)
+    executor = providers.Singleton(
+        ThreadPoolExecutor, max_workers=10, thread_name_prefix="GlobalExecutor"
+    )
+
+    event_bus = providers.Singleton(EventBus, executor=executor)
 
     config = providers.Singleton(
         lambda event_bus: (
@@ -96,7 +101,10 @@ class DIContainer(containers.DeclarativeContainer):
     )
 
     persistence = providers.Singleton(
-        Persistence, config_file=config_file, event_bus=event_bus
+        Persistence,
+        config_file=config_file,
+        event_bus=event_bus,
+        executor=executor,
     )
 
     vlc_instance = providers.Singleton(
@@ -107,11 +115,14 @@ class DIContainer(containers.DeclarativeContainer):
         Speaker,
         event_bus=event_bus,
         vlc_instance=vlc_instance,
+        executor=executor,
     )
 
     i2c_manager = providers.Singleton(I2CManager)
     brightness_sensor = providers.Singleton(BrightnessSensor, i2c_manager=i2c_manager)
-    mcp_manager = providers.Singleton(MCPManager, i2c_manager=i2c_manager)
+    mcp_manager = providers.Singleton(
+        MCPManager, i2c_manager=i2c_manager, executor=executor
+    )
     button_manager = providers.Singleton(
         ButtonsManager, mcp_manager=mcp_manager, event_bus=event_bus
     )
@@ -172,5 +183,6 @@ class DIContainer(containers.DeclarativeContainer):
         alarm_audio_service=alarm_audio_service,
         display=display,
         event_bus=event_bus,
+        executor=executor,
         encrypted=not argument_args().software,
     )

@@ -1,6 +1,6 @@
 import logging
 import traceback
-import threading
+from concurrent.futures import ThreadPoolExecutor
 import evdev
 from evdev import ecodes
 from core.application.alarm_audio_service import AlarmAudioService
@@ -18,12 +18,11 @@ logger = logging.getLogger("tac.core.infrastructure.keyboard_buttons")
 class ComputerInfrastructure(IBrightnessSensor):
     simulated_brightness: int = 10000
 
-    def __init__(self):
+    def __init__(self, executor: ThreadPoolExecutor):
         self.log = logging.getLogger(self.__class__.__name__)
+        self.executor = executor
         self.running = True
-        self.thread = threading.Thread(target=self._run_loop)
-        self.thread.daemon = True
-        self.thread.start()
+        self.executor.submit(self._run_loop)
 
     def _find_keyboards(self):
         try:
@@ -44,9 +43,7 @@ class ComputerInfrastructure(IBrightnessSensor):
 
         for device in devices:
             logger.info(f"Listening on {device.name} ({device.path})")
-            thread = threading.Thread(target=self._listen_to_device, args=(device,))
-            thread.daemon = True
-            thread.start()
+            self.executor.submit(self._listen_to_device, device)
 
     def _listen_to_device(self, device):
         try:

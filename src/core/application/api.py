@@ -6,7 +6,7 @@ import json
 import subprocess
 import traceback
 import tornado
-import threading
+from concurrent.futures import ThreadPoolExecutor
 import tornado.ioloop
 import tornado.web
 from PIL.Image import Image
@@ -65,15 +65,12 @@ def parse_path_arguments(path) -> tuple[str, int, str]:
 
 class LibreSpotifyEventHandler(tornado.web.RequestHandler):
 
-    def initialize(self, event_bus: EventBus) -> None:
+    def initialize(self, event_bus: EventBus, executor: ThreadPoolExecutor) -> None:
         self.event_bus = event_bus
+        self.executor = executor
 
     def post(self):
-        threading.Thread(
-            name=f"spotify api",
-            daemon=True,
-            target=self.handle_spotify_event,
-        ).start()
+        self.executor.submit(self.handle_spotify_event)
         self.finish()
 
     def handle_spotify_event(self):
@@ -314,11 +311,13 @@ class Api:
         alarm_audio_service: AlarmAudioService,
         display: Display,
         event_bus: EventBus,
+        executor: ThreadPoolExecutor,
         encrypted: bool,
     ):
         self.alarm_audio_service = alarm_audio_service
         self.display = display
         self.event_bus = event_bus
+        self.executor = executor
         self.encrypted = encrypted
         template_path = os.path.dirname(webroot_file)
         handlers = [
@@ -347,7 +346,7 @@ class Api:
             (
                 r"/api/librespotify",
                 LibreSpotifyEventHandler,
-                {"event_bus": self.event_bus},
+                {"event_bus": self.event_bus, "executor": self.executor},
             ),
             (
                 r"/media/(.*)",

@@ -1,6 +1,6 @@
 import logging
-import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 import board
 import busio
 from digitalio import Direction, Pull
@@ -32,9 +32,10 @@ logger = logging.getLogger("tac.core.infrastructure.mcp")
 class MCPManager:
     last_log_time = 0
 
-    def __init__(self, i2c_manager: I2CManager):
+    def __init__(self, i2c_manager: I2CManager, executor: ThreadPoolExecutor):
 
         self.mcp = MCP23017(i2c_manager.i2c)
+        self.executor = executor
         self.pins = []
         for i in range(0, 16):
             pin = self.mcp.get_pin(i)
@@ -62,10 +63,7 @@ class MCPManager:
         self.mcp.clear_ints()
 
         if logger.level == logging.DEBUG:
-            self.log_thread = threading.Thread(
-                name="mcp debug", daemon=True, target=self._log_thread_callback
-            )
-            self.log_thread.start()
+            self.executor.submit(self._log_thread_callback)
 
     def add_callback(self, pin_num, callback):
         self.mcp_callbacks[pin_num] = callback

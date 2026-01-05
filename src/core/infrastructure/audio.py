@@ -4,6 +4,7 @@ import vlc
 import time
 import subprocess
 import threading
+from concurrent.futures import ThreadPoolExecutor
 
 from core.domain.events import (
     PlaybackChangedEvent,
@@ -38,14 +39,20 @@ class MediaPlayer:
 
 
 class MediaListPlayer(MediaPlayer):
-    def __init__(self, audio_stream: AudioStream, instance: vlc.Instance):
+    def __init__(
+        self,
+        audio_stream: AudioStream,
+        instance: vlc.Instance,
+        executor: ThreadPoolExecutor,
+    ):
         self.audio_stream = audio_stream
         self.instance = instance
+        self.executor = executor
         self.list_player = None
         self.media = None
         self.media_list = None
         self._stop_monitoring = threading.Event()
-        self._monitoring_thread = None
+        self._monitoring_future = None
 
     def _monitor_playback(self):
         while not self._stop_monitoring.is_set():
@@ -89,10 +96,7 @@ class MediaListPlayer(MediaPlayer):
             self.media_list.add_media(self.media)
 
             self._stop_monitoring.clear()
-            self._monitoring_thread = threading.Thread(
-                target=self._monitor_playback, daemon=True, name="VLC Monitor"
-            )
-            self._monitoring_thread.start()
+            self._monitoring_future = self.executor.submit(self._monitor_playback)
 
             logger.info("starting audio %s", stream_url)
             self.list_player.play()
@@ -101,11 +105,9 @@ class MediaListPlayer(MediaPlayer):
             self.stop()
 
     def stop(self):
-        if self._monitoring_thread:
+        if self._monitoring_future:
             self._stop_monitoring.set()
-            if self._monitoring_thread.is_alive():
-                self._monitoring_thread.join(timeout=2.0)
-            self._monitoring_thread = None
+            self._monitoring_future = None
 
         if self.list_player:
             try:
@@ -134,11 +136,13 @@ class Speaker:
         self,
         event_bus: EventBus,
         vlc_instance: vlc.Instance,
+        executor: ThreadPoolExecutor,
     ) -> None:
         self.threadLock = threading.Lock()
         self.event_bus = event_bus
         self.event_bus.on(PlaybackChangedEvent)(self._playback_changed)
         self.vlc_instance = vlc_instance
+        self.executor = executor
 
     def _playback_changed(self, event: PlaybackChangedEvent):
         if isinstance(event.audio_stream, SpotifyStream):
@@ -158,7 +162,9 @@ class Speaker:
         self.threadLock.release()
 
     def get_player(self, audio_stream: AudioStream) -> MediaPlayer:
-        player: MediaPlayer = MediaListPlayer(audio_stream, self.vlc_instance)
+        player: MediaPlayer = MediaListPlayer(
+            audio_stream, self.vlc_instance, self.executor
+        )
         player.set_error_callback(self.handle_player_error)
         return player
 

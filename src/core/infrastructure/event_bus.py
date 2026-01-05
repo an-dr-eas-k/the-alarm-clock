@@ -1,6 +1,6 @@
 from datetime import datetime
 import logging
-import threading
+from concurrent.futures import ThreadPoolExecutor
 from timeit import timeit
 from typing import Callable, Dict, List, Type
 from dataclasses import dataclass
@@ -17,8 +17,11 @@ class BaseEvent:
 
 class EventBus:
 
-    def __init__(self):
+    def __init__(self, executor: ThreadPoolExecutor = None):
         self._handlers: Dict[Type[BaseEvent], List[Callable[[BaseEvent], None]]] = {}
+        self._executor = executor or ThreadPoolExecutor(
+            max_workers=5, thread_name_prefix="EventBus"
+        )
 
     def on(self, event_type: Type[BaseEvent]) -> Callable:
 
@@ -77,19 +80,17 @@ class EventBus:
             self.emit(event)
 
     def emit_async(self, event: BaseEvent):
-        """Emit an event asynchronously in a separate thread."""
-        thread = threading.Thread(
-            target=self.emit,
-            args=(event,),
-            name=f"EventBus-{type(event).__name__}",
-            daemon=True,
-        )
-        thread.start()
+        """Emit an event asynchronously using a thread pool."""
+        self._executor.submit(self.emit, event)
 
     def emit_all_async(self, events: List[BaseEvent]):
         """Emit multiple events asynchronously."""
         for event in events:
             self.emit_async(event)
+
+    def shutdown(self, wait: bool = True):
+        """Shutdown the event bus thread pool."""
+        self._executor.shutdown(wait=wait)
 
     def unregister(
         self, event_type: Type[BaseEvent], handler: Callable[[BaseEvent], None]
@@ -167,6 +168,6 @@ if __name__ == "__main__":
 
     print("\n=== Emitting asynchronously ===")
     bus.emit_async(AlarmTriggered(alarm_id="async-789", scheduled_time=datetime.now()))
-    import time
 
-    time.sleep(0.1)  # Wait for the async thread to finish
+    bus.shutdown(wait=True)
+    print("\n=== Event Bus Shutdown ===")

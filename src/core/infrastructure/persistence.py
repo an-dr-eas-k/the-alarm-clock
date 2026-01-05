@@ -1,5 +1,6 @@
 import os
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from core.domain.events import (
     AlarmStoppedEvent,
     AlarmTriggeredEvent,
@@ -16,24 +17,19 @@ from resources.resources import active_alarm_definition_file
 class Persistence:
     config_file: str
 
-    def __init__(self, config_file: str, event_bus: EventBus):
+    def __init__(
+        self, config_file: str, event_bus: EventBus, executor: ThreadPoolExecutor
+    ):
         self.config_file = config_file
         self.event_bus = event_bus
+        self.executor = executor
         self.event_bus.on(AlarmTriggeredEvent)(self._alarm_triggered_event)
         self.event_bus.on(AlarmStoppedEvent)(self._alarm_stopped_event)
         self.event_bus.on(ConfigChangedEvent)(self._config_changed)
         self.threadLock = threading.Lock()
 
-
     def _config_changed(self, configChangedEvent: ConfigChangedEvent):
-        threading.Thread(
-            name=f"config saver",
-            daemon=True,
-            target=self.store_config,
-            args=(
-                configChangedEvent.config,
-            ),
-        ).start()
+        self.executor.submit(self.store_config, configChangedEvent.config)
 
     def _alarm_triggered_event(self, event: AlarmTriggeredEvent):
         self.store_alarm(event.alarm_definition)
