@@ -75,12 +75,16 @@ class DisplayContent:
         show_blink_segment: bool,
         room_brightness: RoomBrightness,
     ) -> bool:
+
         changed = False
 
-        if (
+        current_mode_name = (
             self.alarm_clock_context.mode_coordinator.current_mode_name
-            == ModeName.DEFAULT
-        ):
+            if self.alarm_clock_context.mode_coordinator
+            else ModeName.DEFAULT
+        )
+
+        if current_mode_name == ModeName.DEFAULT:
             if self.show_blink_segment != show_blink_segment:
                 self.show_blink_segment = show_blink_segment
                 changed = True
