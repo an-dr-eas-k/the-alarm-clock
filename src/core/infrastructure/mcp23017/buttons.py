@@ -28,7 +28,7 @@ class ButtonsManager:
         logger.info("MCP23017 initialized for button input with event interrupts.")
 
     def _mode_button_callback(self, pin_value: bool):
-        self.event_bus.emit_async(
+        self.event_bus.emit(
             HwButtonEvent(
                 device_name=DeviceName.MODE_BUTTON,
                 direction=ButtonDirection.DOWN if not pin_value else ButtonDirection.UP,
@@ -36,7 +36,7 @@ class ButtonsManager:
         )
 
     def _invoke_button_callback(self, pin_value: bool):
-        self.event_bus.emit_async(
+        self.event_bus.emit(
             HwButtonEvent(
                 device_name=DeviceName.INVOKE_BUTTON,
                 direction=ButtonDirection.DOWN if not pin_value else ButtonDirection.UP,
