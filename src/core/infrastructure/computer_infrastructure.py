@@ -25,47 +25,53 @@ class ComputerInfrastructure(IBrightnessSensor):
         self.thread.daemon = True
         self.thread.start()
 
-    def _find_keyboard(self):
+    def _find_keyboards(self):
         try:
             devices = [evdev.InputDevice(path) for path in evdev.list_devices()]
-            for device in devices:
-                # Simple heuristic: check if name contains 'keyboard'
-                if "keyboard" in device.name.lower():
-                    return device
-            # Fallback: return the first device if no keyboard found (might be risky)
-            if devices:
-                return devices[0]
+            return devices
+            # return [d for d in devices if "keyboard" in d.name.lower()]
         except Exception as e:
             logger.error(f"Failed to list input devices: {e}")
-        return None
+        return []
 
     def _run_loop(self):
-        device = self._find_keyboard()
-        if not device:
+        devices = self._find_keyboards()
+        if not devices:
             logger.error(
                 "No keyboard device found for evdev. Ensure you have permissions to read /dev/input/event*"
             )
             return
 
-        logger.info(f"Listening on {device.name} ({device.path})")
+        for device in devices:
+            logger.info(f"Listening on {device.name} ({device.path})")
+            thread = threading.Thread(target=self._listen_to_device, args=(device,))
+            thread.daemon = True
+            thread.start()
 
+    def _listen_to_device(self, device):
         try:
             for event in device.read_loop():
                 if not self.running:
                     break
                 if event.type == ecodes.EV_KEY and event.value == 1:  # 1 is key down
-                    self.on_press(event)
+                    self.on_press(event, device)
         except Exception:
-            logger.warning("%s", traceback.format_exc())
+            logger.warning(
+                "Error reading from device %s: %s", device.name, traceback.format_exc()
+            )
 
     def configure(self, alarm_audio_service: AlarmAudioService):
         self.alarm_audio_service = alarm_audio_service
         self.config = alarm_audio_service.alarm_clock_context.config
         self.event_bus = alarm_audio_service.event_bus
 
-    def on_press(self, event):
+    def on_press(self, event, device=None):
         key_code = event.code
-        logger.debug("pressed key code %s", key_code)
+        logger.debug(
+            "on device %s pressed key code %s",
+            device.name if device else "unknown",
+            key_code,
+        )
 
         try:
             if key_code == ecodes.KEY_1:

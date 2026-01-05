@@ -169,7 +169,7 @@
       ]
     },
     "tac.core.infrastructure.keyboard_buttons": {
-      "level": "DEBUG",
+      "level": "WARNING",
       "handlers": [
         "lastResort"
       ]
