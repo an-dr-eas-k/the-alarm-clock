@@ -24,6 +24,7 @@ class RotaryEncoderManager:
         self.mcp_manager = mcp_manager
         self.event_bus = event_bus
         self.mcp_manager.add_callback(rotary_encoder_channel_a, self._pin_callback)
+        self.mcp_manager.add_callback(rotary_encoder_channel_b, lambda v, p: {})
         self.mcp_manager.setup()
 
         channel_a_value = int(
@@ -39,16 +40,14 @@ class RotaryEncoderManager:
             f"MCP23017 initialized for rotary encoder input with event interrupts. Initial state: {self.last_states[0]}"
         )
 
-    def _pin_callback(self, _: bool):
-        mcp = self.mcp_manager.mcp
+    def _pin_callback(self, _: bool, pin_values=None):
         last_state = self.last_states[0]
 
-        channel_a_value = int(not mcp.get_pin(rotary_encoder_channel_a).value)
+        channel_a_value = pin_values[rotary_encoder_channel_a][0]
         if channel_a_value == last_state[0]:
             return
 
-        channel_b_value = int(not mcp.get_pin(rotary_encoder_channel_b).value)
-
+        channel_b_value = pin_values[rotary_encoder_channel_b][0]
         state = (channel_a_value, channel_b_value)
         logger.debug(
             f"Rotary encoder current state: {state}, last state: {self.last_states[0]}"

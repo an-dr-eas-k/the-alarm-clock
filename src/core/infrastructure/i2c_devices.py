@@ -108,7 +108,7 @@ class MCPManager:
             logger.info(f"mcp pin {mcp_pin} changed to: {mcp_pin_value}")
 
             if mcp_pin in self.mcp_callbacks:
-                self.mcp_callbacks[mcp_pin](mcp_pin_value)
+                self.mcp_callbacks[mcp_pin](mcp_pin_value[0], pin_values)
 
     def close(self):
         GPIO_Module().cleanup()
