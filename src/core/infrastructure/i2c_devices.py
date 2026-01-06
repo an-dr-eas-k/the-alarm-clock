@@ -6,6 +6,7 @@ import busio
 from digitalio import Direction, Pull
 from adafruit_mcp230xx.mcp23017 import MCP23017
 
+
 rotary_encoder_channel_press: int = 8
 rotary_encoder_channel_a: int = 10
 rotary_encoder_channel_b: int = 9
@@ -109,7 +110,9 @@ class MCPManager:
 
 
 if __name__ == "__main__":
+    from resources.resources import init_logging
 
+    init_logging()
     mcp_manager = MCPManager(i2c_manager=I2CManager(), executor=ThreadPoolExecutor())
     connected_pins = range(16)
 
