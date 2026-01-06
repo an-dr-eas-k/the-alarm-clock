@@ -54,6 +54,7 @@ class MCPManager:
         self.mcp.interrupt_enable = mask
 
         self.mcp.interrupt_configuration = 0x0000  # notify me, when any value changes
+        self.mcp.gppu = mask  # enable pull-ups on all used pins
         self.mcp.io_control = (
             0x44  # 0100 0100 # mirroring INT pins, open drain, active low
         )
@@ -70,8 +71,8 @@ class MCPManager:
 
         self.mcp.clear_ints()
 
-        if logger.level == logging.DEBUG:
-            self.executor.submit(self._log_thread_callback)
+        # if logger.level == logging.DEBUG:
+        #     self.executor.submit(self._log_thread_callback)
 
     def add_callback(self, pin_num, callback):
         self.mcp_callbacks[pin_num] = callback
@@ -89,16 +90,16 @@ class MCPManager:
     def gpio_event_detected(self, gpio_pin):
 
         pin_values = {}
-        for mcp_pin in self.mcp.int_flag:
-            pin_values[mcp_pin] = bool(self.mcp.int_cap[mcp_pin])
+        int_flag = self.mcp.int_flag
+        int_cap = self.mcp.int_cap
+        for mcp_pin in self.mcp_callbacks.keys():
+            pin_values[mcp_pin] = bool(int_cap[mcp_pin])
 
-        # self.mcp.clear_ints()
-
-        logger.info(
+        logger.debug(
             f"GPIO interrupt on pin {gpio_pin} detected, flags and values are { pin_values }."
         )
 
-        for mcp_pin in pin_values.keys():
+        for mcp_pin in int_flag:
             mcp_pin_value = pin_values[mcp_pin]
             logger.info(f"mcp pin {mcp_pin} changed to: {mcp_pin_value}")
 
