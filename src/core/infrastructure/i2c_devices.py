@@ -67,6 +67,7 @@ class MCPManager:
             interrupt_pin,
             GPIO_Module().FALLING,
             callback=self.gpio_event_detected,
+            bouncetime=10,
         )
 
         self.mcp.clear_ints()
