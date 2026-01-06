@@ -118,9 +118,7 @@ if __name__ == "__main__":
     connected_pins = range(16)
 
     for pin in connected_pins:
-        mcp_manager.add_callback(
-            pin, lambda val, p=pin: print(f"Pin {p} changed to {val}")
-        )
+        mcp_manager.add_callback(pin, lambda _: {})
     mcp_manager.setup()
 
     while True:
