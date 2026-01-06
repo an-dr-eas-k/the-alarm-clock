@@ -24,6 +24,7 @@ class RotaryEncoderManager:
         self.mcp_manager = mcp_manager
         self.event_bus = event_bus
         self.mcp_manager.add_callback(rotary_encoder_channel_a, self._pin_callback)
+        self.mcp_manager.setup()
 
         channel_a_value = int(
             not self.mcp_manager.mcp.get_pin(rotary_encoder_channel_a).value

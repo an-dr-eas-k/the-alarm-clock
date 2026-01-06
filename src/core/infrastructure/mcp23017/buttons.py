@@ -17,13 +17,14 @@ logger = logging.getLogger("tac.core.infrastructure.mcp.buttons")
 class ButtonsManager:
     def __init__(self, mcp_manager: MCPManager, event_bus: EventBus = None):
         super().__init__()
-        self.mcpManager = mcp_manager
+        self.mcp_manager = mcp_manager
         self.event_bus = event_bus
 
-        self.mcpManager.add_callback(mode_button_channel, self._mode_button_callback)
-        self.mcpManager.add_callback(
+        self.mcp_manager.add_callback(mode_button_channel, self._mode_button_callback)
+        self.mcp_manager.add_callback(
             invoke_button_channel, self._invoke_button_callback
         )
+        self.mcp_manager.setup()
 
         logger.info("MCP23017 initialized for button input with event interrupts.")
 
