@@ -43,7 +43,9 @@ class MCPManager:
 
         # 1100 0000 1110 0000
         # C    0    E    0
-        self.mcp.interrupt_enable = 0xC0E0  # get interrupts for all pins
+        # 0000 0011 0000 0111
+        #    0    3    0    7
+        self.mcp.interrupt_enable = 0x0307  # get interrupts for all pins
 
         self.mcp.interrupt_configuration = 0x0000  # notify me, when any value changes
         self.mcp.io_control = (
