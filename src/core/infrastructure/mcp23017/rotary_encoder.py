@@ -24,14 +24,28 @@ class RotaryEncoderManager:
         self.mcp_manager = mcp_manager
         self.event_bus = event_bus
         self.mcp_manager.add_callback(rotary_encoder_channel_a, self._pin_callback)
-        self.mcp_manager.add_callback(rotary_encoder_channel_b, self._pin_callback)
+
+        channel_a_value = int(
+            not self.mcp_manager.mcp.get_pin(rotary_encoder_channel_a).value
+        )
+        channel_b_value = int(
+            not self.mcp_manager.mcp.get_pin(rotary_encoder_channel_b).value
+        )
+
+        self.last_states = [(channel_a_value, channel_b_value), (None, None)]
+
         logger.info(
-            "MCP23017 initialized for rotary encoder input with event interrupts."
+            f"MCP23017 initialized for rotary encoder input with event interrupts. Initial state: {self.last_states[0]}"
         )
 
     def _pin_callback(self, _: bool):
         mcp = self.mcp_manager.mcp
+        last_state = self.last_states[0]
+
         channel_a_value = int(not mcp.get_pin(rotary_encoder_channel_a).value)
+        if channel_a_value == last_state[0]:
+            return
+
         channel_b_value = int(not mcp.get_pin(rotary_encoder_channel_b).value)
 
         state = (channel_a_value, channel_b_value)
@@ -39,34 +53,19 @@ class RotaryEncoderManager:
             f"Rotary encoder current state: {state}, last state: {self.last_states[0]}"
         )
 
-        last_state = self.last_states[0]
-        if state != last_state:
-            # if state == (0, 0) and self.last_states[0] == (self.last_states[1])[::-1]:
-            #     state = (1, 1)
-            #     last_state = self.last_states[1]
-            #     logger.debug(f"bouncing detected, new states are {state}, {last_state}")
-            if (
-                last_state == (0, 0)
-                and state == (1, 1)
-                or last_state == (1, 1)
-                and state == (0, 0)
-            ):
-                logger.debug("Rotary clockwise detected")
+        if channel_b_value != channel_a_value:
+            logger.debug("Rotary clockwise detected")
 
-                self.event_bus.emit(
-                    HwRotaryEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE)
+            self.event_bus.emit(
+                HwRotaryEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE)
+            )
+        else:
+            logger.debug("Rotary counter-clockwise detected")
+            self.event_bus.emit(
+                HwRotaryEvent(
+                    DeviceName.ROTARY_ENCODER, RotaryDirection.COUNTERCLOCKWISE
                 )
-            elif (
-                last_state == (0, 1)
-                and state == (1, 0)
-                or last_state == (1, 0)
-                and state == (0, 1)
-            ):
-                logger.debug("Rotary counter-clockwise detected")
-                self.event_bus.emit(
-                    HwRotaryEvent(
-                        DeviceName.ROTARY_ENCODER, RotaryDirection.COUNTERCLOCKWISE
-                    )
-                )
-            self.last_states[1] = self.last_states[0]
-            self.last_states[0] = state
+            )
+
+        self.last_states[1] = self.last_states[0]
+        self.last_states[0] = state

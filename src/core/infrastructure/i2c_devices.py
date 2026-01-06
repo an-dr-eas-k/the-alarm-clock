@@ -77,13 +77,16 @@ class MCPManager:
             time.sleep(1)
 
     def gpio_event_detected(self, gpio_pin):
-        logger.info(f"GPIO interrupt on pin {gpio_pin} detected.")
 
         pin_values = {}
         for mcp_pin in self.mcp.int_flag:
-            pin_values[mcp_pin] = self.mcp.get_pin(mcp_pin).value
+            pin_values[mcp_pin] = bool(self.mcp.int_cap[mcp_pin])
 
         self.mcp.clear_ints()
+
+        logger.info(
+            f"GPIO interrupt on pin {gpio_pin} detected, flags and values are { pin_values }."
+        )
 
         for mcp_pin in pin_values.keys():
             mcp_pin_value = pin_values[mcp_pin]
