@@ -6,7 +6,7 @@
       "format": "%(threadName)s [%(levelname)s]: %(message)s"
     },
     "consoleFormatter": {
-      "format": "%(name)s %(threadName)s [%(levelname)s]: %(message)s"
+      "format": "%(asctime)s %(name)s %(threadName)s [%(levelname)s]: %(message)s"
     }
   },
   "handlers": {
