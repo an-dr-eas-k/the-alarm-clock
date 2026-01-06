@@ -36,16 +36,21 @@ class MCPManager:
 
         self.mcp = MCP23017(i2c_manager.i2c)
         self.executor = executor
-        for i in range(0, 16):
+        self.mcp_callbacks = {}
+
+    def setup(self):
+        configured_pins = self.mcp_callbacks.keys()
+        logger.info(f"Configuring MCP23017 pins: {configured_pins}")
+
+        for i in configured_pins:
             pin = self.mcp.get_pin(i)
             pin.direction = Direction.INPUT
             pin.pull = Pull.UP
 
-        # 1100 0000 1110 0000
-        # C    0    E    0
-        # 0000 0011 0000 0111
-        #    0    3    0    7
-        self.mcp.interrupt_enable = 0x0307  # get interrupts for all pins
+        mask = sum(1 << pin for pin in configured_pins)
+
+        logger.info(f"Hexadecimal bitmask: {hex(mask)}")
+        self.mcp.interrupt_enable = mask
 
         self.mcp.interrupt_configuration = 0x0000  # notify me, when any value changes
         self.mcp.io_control = (
@@ -61,7 +66,6 @@ class MCPManager:
             GPIO_Module().FALLING,
             callback=self.gpio_event_detected,
         )
-        self.mcp_callbacks = {}
 
         self.mcp.clear_ints()
 
@@ -106,19 +110,14 @@ class MCPManager:
 
 if __name__ == "__main__":
 
-    i2c = I2CManager().i2c
+    mcp_manager = MCPManager(i2c_manager=I2CManager(), executor=ThreadPoolExecutor())
+    connected_pins = range(16)
 
-    mcp = MCP23017(i2c)
-    connected_pins = [0, 1, 8, 9, 10]
-    for i in connected_pins:
-        pin = mcp.get_pin(i)
-        pin.direction = Direction.INPUT
-        pin.pull = Pull.UP
+    for pin in connected_pins:
+        mcp_manager.add_callback(
+            pin, lambda val, p=pin: print(f"Pin {p} changed to {val}")
+        )
+    mcp_manager.setup()
 
     while True:
-        for i in connected_pins:
-            pin = mcp.get_pin(i)
-            print(f"Pin {i} is at level: {pin.value}")
-
-        print("-----")
         time.sleep(1)
