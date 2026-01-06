@@ -93,7 +93,10 @@ class MCPManager:
         int_flag = self.mcp.int_flag
         int_cap = self.mcp.int_cap
         for mcp_pin in self.mcp_callbacks.keys():
-            pin_values[mcp_pin] = bool(int_cap[mcp_pin])
+            pin_values[mcp_pin] = [
+                bool(int_cap[mcp_pin]),
+                bool(self.mcp.get_pin(mcp_pin).value),
+            ]
 
         logger.debug(
             f"GPIO interrupt on pin {gpio_pin} detected, flags and values are { pin_values }."
