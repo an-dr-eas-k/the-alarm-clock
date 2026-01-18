@@ -62,6 +62,11 @@ class SpotifyStoppedEvent(BaseEvent):
 class SpotifyApiEvent(BaseEvent):
 
     name: str
+    artists: str
+    album: str
+    album_artists: str
+    covers: str
+
     player_event: str = None
     track_id: str
     old_track_id: str

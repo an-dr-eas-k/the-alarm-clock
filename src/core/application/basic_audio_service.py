@@ -72,9 +72,7 @@ class BasicAudioService:
 
     def _spotify_stream_change_request(self, spotify_event: SpotifyApiEvent):
 
-        spotify_stream = SpotifyStream()
-        if hasattr(spotify_event, "track_id"):
-            spotify_stream.track_id = spotify_event.track_id
+        spotify_stream = SpotifyStream(spotify_event.__dict__)
 
         if (
             spotify_event.is_playback_started()

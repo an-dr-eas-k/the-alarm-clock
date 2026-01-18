@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 from core.domain.events import (
     AlarmStoppedEvent,
     PlaybackChangedEvent,
+    SpotifyApiEvent,
     SpotifyStoppedEvent,
     VolumeChangeRequest,
     VolumeChangedEvent,
@@ -202,11 +203,37 @@ class OfflineStream(AudioStream):
 
 
 class SpotifyStream(AudioStream):
-    track_name: str = "Spotify"
-    track_id: str = None
 
-    def __init__(self):
-        super().__init__(stream_name="Spotify Stream", stream_url="")
+    def __init__(self, spotify_event: dict):
+        self.track_name = spotify_event.name if hasattr(spotify_event, "name") else ""
+        self.track_id = (
+            spotify_event.track_id if hasattr(spotify_event, "track_id") else ""
+        )
+        self.track_artists = (
+            spotify_event.artists if hasattr(spotify_event, "artists") else ""
+        )
+        self.track_album = (
+            spotify_event.album if hasattr(spotify_event, "album") else ""
+        )
+        self.track_album_artists = (
+            spotify_event.album_artists
+            if hasattr(spotify_event, "album_artists")
+            else ""
+        )
+        self.track_covers = (
+            spotify_event.covers if hasattr(spotify_event, "covers") else ""
+        )
+
+        stream_name = "Unknown Spotify Track"
+        if self.track_name:
+            stream_name = f"Spotify: {self.track_name}"
+        if self.track_artists:
+            stream_name += f" by {', '.join(self.track_artists)}"
+
+        super().__init__(
+            stream_name=stream_name,
+            stream_url="",
+        )
 
     def __str__(self):
         return f"track_name: {self.track_name}, track_id: {self.track_id}"
