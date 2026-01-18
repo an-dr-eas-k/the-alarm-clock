@@ -1,17 +1,38 @@
 uid=1010
 uhome=/srv/the-alarm-clock
 app=${uhome}/app
+BRANCH="develop"
+FAST_MODE=false
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    fast|--fast)
+      FAST_MODE=true
+      shift # past argument
+      ;;
+    -b|--branch)
+      BRANCH="$2"
+      shift # past argument
+      shift # past value
+      ;;
+    *)
+      BRANCH="$1"
+      shift # past argument
+      ;;
+  esac
+done
 
 echo "killing processes"
 killall -u the-alarm-clock
 
-if [ "${1:-}" = "fast" ]; then
+if [ "$FAST_MODE" = true ]; then
   echo "fast mode: skipping system update and dependency installation"
 else
   echo "update system and install dependencies"
   apt-get -y update
   apt-get -y dist-upgrade
-  apt-get -y install git python3 vlc python3-pip curl libasound2-plugin-equal python3-dbus python3-alsaaudio libasound2-dev
+  apt-get -y install git python3 vlc python3-pip curl libasound2-plugin-equal python3-alsaaudio libasound2-dev libsystemd-dev log2ram
   pip install pillow --break-system-packages
   
   apt-get -y remove python3-rpi.gpio
@@ -40,7 +61,7 @@ cp -af $app/rpi/tls/cert.* $uhome
 
 echo "clone the-alarm-clock"
 rm -rf $app
-git clone -b develop https://github.com/an-dr-eas-k/the-alarm-clock.git $app
+git clone -b $BRANCH https://github.com/an-dr-eas-k/the-alarm-clock.git $app
 chown $uid:$uid -R $uhome
 chmod +x $app/rpi/*.sh
 
@@ -74,9 +95,16 @@ echo "config sudoers"
 rm /etc/sudoers.d/the-alarm-clock
 cat $app/rpi/resources/sudoers > /etc/sudoers.d/the-alarm-clock
 
-echo "configure log rotation"
-rm /etc/logrotate.d/the-alarm-clock
-cat $app/rpi/resources/logrotate > /etc/logrotate.d/the-alarm-clock
+# echo "configure cron"
+# rm /etc/cron.d/the-alarm-clock
+# cat $app/rpi/resources/cron.conf > /etc/cron.d/the-alarm-clock
+
+echo "setup wifi-watchdog"
+ln -fs $app/rpi/resources/wifi-watchdog/wifi-watchdog.service /lib/systemd/system/
+cp -fr $app/rpi/resources/wifi-watchdog /opt/
+chmod u+x /opt/wifi-watchdog/*.sh
+systemctl daemon-reload
+systemctl enable wifi-watchdog.service
 
 echo "setup equalizer"
 ln -fs $app/rpi/resources/asoundrc $uhome/.asoundrc
@@ -97,18 +125,12 @@ chown $uid:$uid -R /var/log/the-alarm-clock.*
 echo "setup the-alarm-clock app"
 ln -fs /usr/bin/python3 /usr/bin/python
 setcap CAP_NET_BIND_SERVICE=+eip $(readlink /usr/bin/python -f)
+ln -fs $app/rpi/resources/the-alarm-clock.service /lib/systemd/system/the-alarm-clock.service
+ln -fs $app/rpi/resources/the-alarm-clock-wifi-monitor.service /lib/systemd/system/the-alarm-clock-wifi-monitor.service
+systemctl daemon-reload
+systemctl enable the-alarm-clock.service
+systemctl enable the-alarm-clock-wifi-monitor.service
 
-if [ -z "$( grep the-alarm-clock /etc/rc.local )" ]; then
-	echo "update /etc/rc.local"
-	sed -i '/exit/d' /etc/rc.local
 
-  cat >> /etc/rc.local << EOF
-#!/bin/bash
-sudo -u the-alarm-clock -- bash -c "sh $app/rpi/onboot.sh 2>&1 | systemd-cat -t the-alarm-clock.service" &
-exit 0
-EOF
-
-  chmod u+x /etc/rc.local
-fi
 
 echo "done, please reboot"

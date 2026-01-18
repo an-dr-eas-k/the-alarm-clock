@@ -4,7 +4,7 @@ import adafruit_bh1750
 
 from core.infrastructure.i2c_devices import I2CManager
 
-logger = logging.getLogger("tac.gpi")
+logger = logging.getLogger("tac.core.infrastructure.gpi")
 
 
 class IBrightnessSensor:
@@ -14,14 +14,13 @@ class IBrightnessSensor:
 
 class BrightnessSensor(IBrightnessSensor):
     def __init__(self, i2c_manager: I2CManager):
-        self.i2c_manager = i2c_manager
+        self.sensor = adafruit_bh1750.BH1750(i2c_manager.i2c)
 
     def get_room_brightness(self) -> float:
         try:
-            i2c = self.i2c_manager.i2c
-            sensor = adafruit_bh1750.BH1750(i2c)
-            logger.debug("raw sensor value in lux: %s", sensor.lux)
-            return sensor.lux
+            sensor_lux = self.sensor.lux
+            logger.debug("raw sensor value in lux: %s", sensor_lux)
+            return sensor_lux
         except Exception:
             return 10000
 

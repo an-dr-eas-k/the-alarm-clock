@@ -1,5 +1,7 @@
 import logging
+from logging import config
 import signal
+import sys
 from luma.core.device import dummy
 
 import tornado.ioloop
@@ -7,12 +9,16 @@ import tornado.ioloop
 from core.application.di_container import DIContainer
 from dependency_injector import providers
 
+from core.domain.events import (
+    ConfigChangedEvent,
+    PlaybackChangedEvent,
+    StartupFinishedEvent,
+)
 from core.domain.model import (
     Mode,
 )
-from core.application.controls import Controls
+from core.application.alarm_audio_service import AlarmAudioService
 from resources.resources import init_logging
-from utils import os as app_os
 
 logger = logging.getLogger("tac.app_clock")
 
@@ -25,62 +31,64 @@ class ClockApp:
     def is_on_hardware(self):
         return not self.container.argument_args().software
 
-    def shutdown_function(self):
+    def shutdown_function(self, *args):
         logger.info("graceful shutdown")
-        app_os.restart_spotify_daemon()
+        self.container.os_interaction().restart_spotify_daemon()
         tornado.ioloop.IOLoop.current().stop()
 
     def go(self):
 
         signal.signal(signal.SIGTERM, self.shutdown_function)
 
-        self.container.config()
+        config = self.container.config()
         context = self.container.alarm_clock_context()
-        context.state_machine = self.container.state_machine()
+        self.container.persistence()
 
         logger.info("config available")
-
-        playback_content = self.container.playback_content()
-        context.subscribe(playback_content)
-        display_content = self.container.display_content()
-        context.subscribe(display_content)
+        ci: any = None
 
         if self.is_on_hardware():
-            self.container.button_manager().subscribe(context.state_machine)
-            self.container.rotary_encoder_manager().subscribe(context.state_machine)
+            self.container.button_manager()
+            self.container.rotary_encoder_manager()
         else:
             from core.infrastructure.computer_infrastructure import (
                 ComputerInfrastructure,
             )
 
-            ci = ComputerInfrastructure()
+            ci = ComputerInfrastructure(executor=self.container.executor())
             self.container.brightness_sensor.override(providers.Object(ci))
             self.container.device.override(
                 providers.Singleton(dummy, height=64, width=256, mode="RGB")
             )
-            ci.subscribe(context.state_machine)
 
-        controls: Controls = self.container.controls()
-        display = self.container.display()
-        display_content.subscribe(display)
-
-        persistence = self.container.persistence()
-        context.subscribe(persistence)
-        context.config.subscribe(persistence)
-
-        speaker = self.container.speaker()
-        playback_content.subscribe(speaker)
-        context.config.subscribe(controls)
-        playback_content.subscribe(controls)
-        context.state_machine.subscribe(controls)
-        controls.configure()
+        alarm_audio_service: AlarmAudioService = self.container.alarm_audio_service()
+        self.container.system_service()
+        if ci is not None:
+            ci.configure(alarm_audio_service)
 
         api = self.container.api()
         api.start()
 
-        context.mode = Mode.Idle
-        controls.consider_failed_alarm()
+        self.container.speaker()
+
+        # Initialize domain coordinator and interface layer
+        context.mode_coordinator = self.container.mode_coordinator()
+        self.container.hardware_input_handler()
+
+        self.container.event_bus().emit(ConfigChangedEvent(config=config))
+        self.container.event_bus().emit(PlaybackChangedEvent(Mode.Idle))
+        self.container.event_bus().emit(StartupFinishedEvent())
+
         tornado.ioloop.IOLoop.current().start()
+
+        alarm_audio_service.scheduler_service.shutdown()
+        if self.is_on_hardware():
+            self.container.mcp_manager().close()
+        elif ci is not None:
+            ci.stop()
+
+        logger.info("shutdown complete")
+        sys.exit(0)
 
 
 if __name__ == "__main__":

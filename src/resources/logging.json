@@ -1,0 +1,203 @@
+{
+  "version": 1,
+  "disable_existing_loggers": false,
+  "formatters": {
+    "journalFormatter": {
+      "format": "%(threadName)s [%(levelname)s]: %(message)s"
+    },
+    "consoleFormatter": {
+      "format": "%(asctime)s %(name)s %(threadName)s [%(levelname)s]: %(message)s"
+    }
+  },
+  "handlers": {
+    "journalHandler": {
+      "class": "systemd.journal.JournaldLogHandler",
+      "formatter": "journalFormatter"
+    },
+    "consoleHandler": {
+      "class": "logging.StreamHandler",
+      "formatter": "consoleFormatter",
+      "stream": "ext://sys.stdout"
+    },
+    "queueHandler": {
+      "class": "logging.handlers.QueueHandler",
+      "listener": "resources.resources.AutoStartQueueListener",
+      "queue": {
+        "()": "queue.Queue",
+        "maxsize": 1000
+      },
+      "level": "DEBUG",
+      "handlers": [
+        "journalHandler"
+      ]
+    },
+    "lastResort": {
+      "class": "logging.NullHandler"
+    }
+  },
+  "loggers": {
+    "tac": {
+      "level": "NOTSET",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "tac.core.application": {
+      "level": "DEBUG",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "tac.core.domain": {
+      "level": "INFO",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "tac.core.infrastructure": {
+      "level": "NOTSET",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "tac.core.interface": {
+      "level": "NOTSET",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "tac.core.infrastructure.event_bus": {
+      "level": "DEBUG",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "tac.core.application.api": {
+      "level": "INFO",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "tac.core.application.controls": {
+      "level": "DEBUG",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "tac.core.domain.mode_coordinator": {
+      "level": "INFO",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "tac.core.interface.hardware_input_handler": {
+      "level": "DEBUG",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "tac.core.interface.display": {
+      "level": "INFO",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "tac.core.interface.display.display": {
+      "level": "NOTSET",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "utils.drawing": {
+      "level": "INFO",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "tac.core.audio": {
+      "level": "INFO",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "tac.os_interactions": {
+      "level": "DEBUG",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "tac.utils": {
+      "level": "INFO",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "tac.sound_device": {
+      "level": "INFO",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "librespot_ev": {
+      "level": "DEBUG",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "apscheduler.executors.default": {
+      "level": "WARNING",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "tac.core.infrastructure.mcp": {
+      "level": "DEBUG",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "tac.core.infrastructure.mcp.buttons": {
+      "level": "WARNING",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "tac.core.infrastructure.mcp.rotary_encoder": {
+      "level": "DEBUG",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "tac.core.infrastructure.keyboard_buttons": {
+      "level": "WARNING",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "tac.core.scheduler": {
+      "level": "NOTSET",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "tac.core.application.system_service": {
+      "level": "INFO",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "pynput.keyboard.Listener": {
+      "level": "INFO",
+      "handlers": [
+        "lastResort"
+      ]
+    }
+  },
+  "root": {
+    "level": "INFO",
+    "handlers": [
+      "queueHandler",
+      "consoleHandler"
+    ]
+  }
+}

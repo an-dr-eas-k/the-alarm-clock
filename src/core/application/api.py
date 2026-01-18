@@ -6,9 +6,21 @@ import json
 import subprocess
 import traceback
 import tornado
+from concurrent.futures import ThreadPoolExecutor
+import tornado.ioloop
 import tornado.web
 from PIL.Image import Image
-from core.application.controls import Controls
+from core.application.alarm_audio_service import AlarmAudioService
+from core.domain.events import (
+    PlaybackChangedEvent,
+    ConfigChangedEvent,
+    ShutdownSystemRequest,
+    SpotifyApiEvent,
+    TerminateAppRequest,
+    VolumeChangeRequest,
+    WifiStatusChangedEvent,
+)
+from core.infrastructure.event_bus import EventBus
 from core.interface.display.display import Display
 from core.interface.display.format import ColorType
 from resources.resources import webroot_file, ssl_dir, icons_dir
@@ -19,16 +31,27 @@ from core.domain.model import (
     AudioStream,
     Config,
     DisplayContentProvider,
-    LibreSpotifyEvent,
-    PlaybackContent,
+    Mode,
     StreamAudioEffect,
     VisualEffect,
     Weekday,
-    try_update,
 )
-from utils.os import reboot_system, shutdown_system
 
-logger = logging.getLogger("tac.api")
+logger = logging.getLogger("tac.core.application.api")
+
+
+def try_update(object, property_name: str, value: str) -> bool:
+    if hasattr(object, property_name):
+        attr_value = getattr(object, property_name)
+        attr_type = type(attr_value)
+        if attr_type == bool:
+            value = value.lower() in ["on", "yes", "true", "t", "1"]
+        else:
+            value = attr_type(value) if len(value) > 0 else None
+        if value != attr_value:
+            setattr(object, property_name, value)
+        return True
+    return False
 
 
 def parse_path_arguments(path) -> tuple[str, int, str]:
@@ -42,11 +65,12 @@ def parse_path_arguments(path) -> tuple[str, int, str]:
 
 class LibreSpotifyEventHandler(tornado.web.RequestHandler):
 
-    def initialize(self, playback_content: PlaybackContent) -> None:
-        self.playback_content = playback_content
+    def initialize(self, event_bus: EventBus, executor: ThreadPoolExecutor) -> None:
+        self.event_bus = event_bus
+        self.executor = executor
 
     def post(self):
-        self.handle_spotify_event()
+        self.executor.submit(self.handle_spotify_event)
         self.finish()
 
     def handle_spotify_event(self):
@@ -62,9 +86,9 @@ class LibreSpotifyEventHandler(tornado.web.RequestHandler):
                 key: value for key, value in spotify_event_payload.items()
             }
 
-            spotify_event = LibreSpotifyEvent(spotify_event_dict)
+            spotify_event = SpotifyApiEvent(spotify_event_dict)
             logger.info("received librespotify event %s", spotify_event)
-            self.playback_content.set_spotify_event(spotify_event)
+            self.event_bus.emit(spotify_event)
         except Exception:
             logger.warning("%s", traceback.format_exc())
 
@@ -89,41 +113,53 @@ class DisplayHandler(tornado.web.RequestHandler):
 
 class ConfigHandler(tornado.web.RequestHandler):
 
-    def initialize(self, config: Config, api) -> None:
+    def initialize(self, config: Config, api: "Api") -> None:
         self.config = config
         self.api = api
 
     def get(self, *args, **kwargs):
         try:
-            self.render(webroot_file, config=self.config, api=self.api)
+            self.render(
+                os.path.basename(webroot_file), config=self.config, api=self.api
+            )
         except:
             logger.warning("%s", traceback.format_exc())
 
 
 class ActionApiHandler(tornado.web.RequestHandler):
 
-    def initialize(self, controls: Controls) -> None:
-        self.controls = controls
+    def initialize(self, config: Config, event_bus: EventBus) -> None:
+        self.config = config
+        self.event_bus = event_bus
 
     def post(self, *args):
         try:
             (type, id, _1) = parse_path_arguments(args)
+            logger.info("API action requested: %s %s", type, id)
 
             if type == "play":
-                self.controls.play_stream_by_id(id)
+                self.event_bus.emit(
+                    PlaybackChangedEvent(
+                        playback_mode=Mode.Music,
+                        audio_stream=self.config.get_audio_stream_by_id(id),
+                    )
+                )
             elif type == "stop":
-                self.controls.set_to_idle_mode()
+                self.event_bus.emit(PlaybackChangedEvent(Mode.Idle))
             elif type == "volume":
                 if id == 1:
-                    self.controls.increase_volume()
+                    self.event_bus.emit(VolumeChangeRequest(relative=+1))
                 else:
-                    self.controls.decrease_volume()
+                    self.event_bus.emit(VolumeChangeRequest(relative=-1))
             elif type == "update":
-                tornado.ioloop.IOLoop.instance().stop()
+                self.event_bus.emit(TerminateAppRequest())
+
+                tornado.ioloop.IOLoop.current().stop()
+
             elif type == "reboot":
-                reboot_system()
+                self.event_bus.emit(ShutdownSystemRequest(reboot=True))
             elif type == "shutdown":
-                shutdown_system()
+                self.event_bus.emit(ShutdownSystemRequest())
             else:
                 logger.warning("Unknown action: %s", type)
 
@@ -131,10 +167,36 @@ class ActionApiHandler(tornado.web.RequestHandler):
             logger.warning("%s", traceback.format_exc())
 
 
+class SystemApiHandler(tornado.web.RequestHandler):
+
+    def initialize(self, event_bus: EventBus) -> None:
+        self.event_bus = event_bus
+
+    def post(self, *args):
+        try:
+            (type, _, _) = parse_path_arguments(args)
+            logger.info("System API action requested: %s", type)
+
+            if type == "wifi":
+                status = self.get_argument("status", None)
+                if status == "connected":
+                    self.event_bus.emit(WifiStatusChangedEvent(is_online=True))
+                elif status == "disconnected":
+                    self.event_bus.emit(WifiStatusChangedEvent(is_online=False))
+                else:
+                    logger.warning("Unknown wifi status: %s", status)
+            else:
+                logger.warning("Unknown system action: %s", type)
+
+        except:
+            logger.warning("%s", traceback.format_exc())
+
+
 class ConfigApiHandler(tornado.web.RequestHandler):
 
-    def initialize(self, config: Config) -> None:
+    def initialize(self, config: Config, event_bus: EventBus) -> None:
         self.config = config
+        self.event_bus = event_bus
 
     def get(self):
         try:
@@ -145,50 +207,56 @@ class ConfigApiHandler(tornado.web.RequestHandler):
 
     def delete(self, *args):
         try:
-            (type, id, _) = parse_path_arguments(args)
-            if type == "alarm":
-                self.config.remove_alarm_definition(id)
-            elif type == "stream":
-                self.config.remove_audio_stream(id)
+            self.parse_delete_payload(args)
+            self.event_bus.emit(ConfigChangedEvent(self.config))
         except:
             logger.warning("%s", traceback.format_exc())
+
+    def parse_delete_payload(self, args):
+        (type, id, _) = parse_path_arguments(args)
+        if type == "alarm":
+            self.config.remove_alarm_definition(id)
+        elif type == "stream":
+            self.config.remove_audio_stream(id)
 
     def post(self, *args):
         try:
-            (type, id, property) = parse_path_arguments(args)
-            simpleValue = tornado.escape.to_unicode(self.request.body)
-            if try_update(self.config, type, simpleValue):
-                return
-            alarmDef = self.config.get_alarm_definition(id)
-            if (
-                True
-                and alarmDef is not None
-                and try_update(alarmDef, property, simpleValue)
-            ):
-                self.config.remove_alarm_definition(id)
-                self.config.add_alarm_definition(alarmDef)
-                return
-
-            body = (
-                "{}"
-                if self.request.body is None or len(self.request.body) == 0
-                else self.request.body
-            )
-            form_arguments = tornado.escape.json_decode(body)
-            if type == "alarm":
-                self.config.add_alarm_definition(
-                    self.parse_alarm_definition(form_arguments)
-                )
-            elif type == "stream":
-                self.config.add_audio_stream(
-                    self.parse_stream_definition(form_arguments)
-                )
-            elif type == "start_powernap":
-                self.config.add_alarm_definition_for_powernap()
+            self.parse_post_payload(args)
+            self.event_bus.emit(ConfigChangedEvent(self.config))
         except:
             logger.warning("%s", traceback.format_exc())
 
-    def parse_stream_definition(self, form_arguments) -> AudioStream:
+    def parse_post_payload(self, args):
+        (type, id, property) = parse_path_arguments(args)
+        simpleValue = tornado.escape.to_unicode(self.request.body)
+        if try_update(self.config, type, simpleValue):
+            return
+        alarmDef = self.config.get_alarm_definition_by_id(id)
+        if (
+            True
+            and alarmDef is not None
+            and try_update(alarmDef, property, simpleValue)
+        ):
+            self.config.remove_alarm_definition(id)
+            self.config.add_alarm_definition(alarmDef)
+            return
+
+        body = (
+            "{}"
+            if self.request.body is None or len(self.request.body) == 0
+            else self.request.body
+        )
+        form_arguments = tornado.escape.json_decode(body)
+        if type == "alarm":
+            self.config.add_alarm_definition(
+                self.parse_alarm_definition(form_arguments)
+            )
+        elif type == "stream":
+            self.config.add_audio_stream(self.parse_audio_stream(form_arguments))
+        elif type == "start_powernap":
+            self.config.add_alarm_definition_for_powernap()
+
+    def parse_audio_stream(self, form_arguments) -> AudioStream:
         stream_name = form_arguments["streamName"]
         stream_url = form_arguments["streamUrl"]
         return AudioStream(stream_name=stream_name, stream_url=stream_url)
@@ -205,7 +273,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
     def parse_audio_effect(self, form_arguments) -> AudioEffect:
         stream_id = int(form_arguments["streamId"])
         return StreamAudioEffect(
-            stream_definition=self.config.get_audio_stream(stream_id),
+            audio_stream=self.config.get_audio_stream_by_id(stream_id),
             volume=float(form_arguments["volume"]),
         )
 
@@ -238,22 +306,47 @@ class Api:
 
     app: tornado.web.Application
 
-    def __init__(self, controls: Controls, display: Display, encrypted: bool):
-        self.controls = controls
+    def __init__(
+        self,
+        alarm_audio_service: AlarmAudioService,
+        display: Display,
+        event_bus: EventBus,
+        executor: ThreadPoolExecutor,
+        encrypted: bool,
+    ):
+        self.alarm_audio_service = alarm_audio_service
         self.display = display
+        self.event_bus = event_bus
+        self.executor = executor
         self.encrypted = encrypted
+        template_path = os.path.dirname(webroot_file)
         handlers = [
             (r"/display", DisplayHandler, {"display": self.display}),
             (
                 r"/api/config/?(.*)",
                 ConfigApiHandler,
-                {"config": self.controls.alarm_clock_context.config},
+                {
+                    "config": self.alarm_audio_service.alarm_clock_context.config,
+                    "event_bus": self.event_bus,
+                },
             ),
-            (r"/api/action/?(.*)", ActionApiHandler, {"controls": self.controls}),
+            (
+                r"/api/action/?(.*)",
+                ActionApiHandler,
+                {
+                    "config": self.alarm_audio_service.alarm_clock_context.config,
+                    "event_bus": self.event_bus,
+                },
+            ),
+            (
+                r"/api/system/?(.*)",
+                SystemApiHandler,
+                {"event_bus": self.event_bus},
+            ),
             (
                 r"/api/librespotify",
                 LibreSpotifyEventHandler,
-                {"playback_content": self.controls.playback_content},
+                {"event_bus": self.event_bus, "executor": self.executor},
             ),
             (
                 r"/media/(.*)",
@@ -263,11 +356,14 @@ class Api:
             (
                 r"/(.*)",
                 ConfigHandler,
-                {"config": self.controls.alarm_clock_context.config, "api": self},
+                {
+                    "config": self.alarm_audio_service.alarm_clock_context.config,
+                    "api": self,
+                },
             ),
         ]
 
-        self.app = tornado.web.Application(handlers)
+        self.app = tornado.web.Application(handlers, template_path=template_path)
 
     def get_git_log(self) -> str:
 
@@ -281,7 +377,7 @@ class Api:
     def get_state_as_json(self) -> str:
         return json.dumps(
             obj=dict(
-                room_brightness=self.controls.get_room_brightness(),
+                room_brightness=self.alarm_audio_service.get_room_brightness(),
                 display=dict(
                     foreground_color=self.display.formatter.foreground_color(
                         color_type=ColorType.IN16
@@ -289,14 +385,15 @@ class Api:
                     background_color=self.display.formatter.background_color(
                         color_type=ColorType.IN16
                     ),
+                    refresh_duration_in_ms=self.alarm_audio_service.display_content.refresh_duration_in_ms,
                 ),
-                is_online=self.controls.alarm_clock_context.is_online,
-                is_daytime=self.controls.alarm_clock_context.is_daytime,
-                geo_location=self.controls.alarm_clock_context.geo_location.location_info.__dict__,
+                is_online=self.alarm_audio_service.alarm_clock_context.environment.is_online,
+                is_daytime=self.alarm_audio_service.alarm_clock_context.environment.is_daytime,
+                geo_location=self.alarm_audio_service.alarm_clock_context.environment.geo_location.location_info.__dict__,
                 playback_content=dict(
-                    audio_effect=self.controls.playback_content.audio_effect.__str__(),
-                    volume=self.controls.playback_content.volume,
-                    mode=self.controls.alarm_clock_context.mode.name,
+                    audio_stream=self.alarm_audio_service.playback_content.audio_stream.__str__(),
+                    volume=self.alarm_audio_service.playback_content.volume,
+                    mode=self.alarm_audio_service.playback_content.playback_mode.name,
                 ),
                 uptime=subprocess.check_output(["uptime"]).strip().decode("utf-8"),
             ),

@@ -12,7 +12,10 @@
       "args": [
         "--software"
       ],
-      "console": "integratedTerminal",
+      "env": {
+        "QT_QPA_PLATFORM": "offscreen"
+      },
+      "console": "internalConsole",
       "cwd": "${workspaceFolder}/src",
       "justMyCode": false,
     },

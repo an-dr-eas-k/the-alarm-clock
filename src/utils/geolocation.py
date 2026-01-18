@@ -7,7 +7,6 @@ from urllib.request import urlopen
 import datetime
 from astral import LocationInfo
 from astral.sun import sun
-from apscheduler.triggers.cron import CronTrigger
 from utils.network import json_api
 
 from utils.singleton import singleton
@@ -50,6 +49,9 @@ class Weather:
 
     def __str__(self):
         return f"code: {self.code}, temperature: {self.temperature}"
+
+    def __eq__(self, other: "Weather"):
+        return self.__str__() == other.__str__()
 
 
 class SunEvent(Enum):
@@ -110,19 +112,21 @@ class GeoLocation:
 
         return sun(self.location_info.observer, date=day)[event.value]
 
-    def get_sun_event_cron_trigger(
+    def get_sun_event_cron_args(
         self, event: SunEvent, day: datetime.date = None
-    ) -> CronTrigger:
+    ) -> dict:
 
         day = self.now().date() if day is None else day
 
-        event_time = self.get_sun_event(event, day + datetime.timedelta(days=1))
-        return CronTrigger(
-            start_date=event_time.date(),
-            end_date=event_time.date() + datetime.timedelta(days=1),
-            hour=event_time.hour,
-            minute=event_time.minute,
-        )
+        event_time = self.get_sun_event(event, day)
+        if event_time < self.now():
+            event_time = self.get_sun_event(event, day + datetime.timedelta(days=1))
+        return {
+            "start_date": event_time.date(),
+            "end_date": event_time.date() + datetime.timedelta(days=1),
+            "hour": event_time.hour,
+            "minute": event_time.minute,
+        }
 
     def last_sun_event(self, dt: datetime.datetime = None) -> SunEvent:
         if dt is None:

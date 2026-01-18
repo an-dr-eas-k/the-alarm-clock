@@ -1,44 +1,49 @@
 import os
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from core.domain.events import (
+    AlarmStoppedEvent,
+    AlarmTriggeredEvent,
+    ConfigChangedEvent,
+)
 from core.domain.model import (
-    AlarmClockContext,
     AlarmDefinition,
     Config,
-    TACEvent,
-    TACEventSubscriber,
 )
+from core.infrastructure.event_bus import EventBus
 from resources.resources import active_alarm_definition_file
 
 
-class Persistence(TACEventSubscriber):
+class Persistence:
     config_file: str
 
-    def __init__(self, config_file: str):
+    def __init__(
+        self, config_file: str, event_bus: EventBus, executor: ThreadPoolExecutor
+    ):
         self.config_file = config_file
-        super().__init__()
+        self.event_bus = event_bus
+        self.executor = executor
+        self.event_bus.on(AlarmTriggeredEvent)(self._alarm_triggered_event)
+        self.event_bus.on(AlarmStoppedEvent)(self._alarm_stopped_event)
+        self.event_bus.on(ConfigChangedEvent)(self._config_changed)
+        self.threadLock = threading.Lock()
 
-    def handle(self, observation: TACEvent):
-        super().handle(observation)
-        if observation.during_registration:
-            return
+    def _config_changed(self, configChangedEvent: ConfigChangedEvent):
+        self.executor.submit(self.store_config, configChangedEvent.config)
 
-        if isinstance(observation.subscriber, Config):
-            self.update_from_config(observation, observation.subscriber)
+    def _alarm_triggered_event(self, event: AlarmTriggeredEvent):
+        self.store_alarm(event.alarm_definition)
 
-        if isinstance(observation.subscriber, AlarmClockContext):
-            self.update_from_context(observation, observation.subscriber)
-
-    def update_from_config(self, _: TACEvent, config: Config):
-        self.store_config(config)
+    def _alarm_stopped_event(self, _: AlarmStoppedEvent):
+        self.store_alarm(None)
 
     def store_config(self, config: Config):
+        self.threadLock.acquire(True)
+
         with open(self.config_file, "w") as f:
             f.write(config.serialize())
 
-    def update_from_context(
-        self, observation: TACEvent, alarm_clock_context: AlarmClockContext
-    ):
-        if observation.property_name == "active_alarm":
-            self.store_alarm(alarm_clock_context.active_alarm)
+        self.threadLock.release()
 
     def store_alarm(self, alarm_definition: AlarmDefinition):
         if alarm_definition is None:

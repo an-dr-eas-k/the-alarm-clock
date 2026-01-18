@@ -3,7 +3,13 @@ import sys
 import logging
 import os
 import json
-from resources.resources import init_logging, librespotify_env_vars
+from resources.resources import (
+    init_logging,
+    librespotify_env_vars,
+    the_alarm_clock_hostname,
+    the_alarm_clock_port,
+    the_alarm_clock_protocol,
+)
 from utils.network import json_api
 
 logger = logging.getLogger("tac.librespot_ev")
@@ -11,9 +17,9 @@ logger = logging.getLogger("tac.librespot_ev")
 
 class LibreSpotifyEventListenerApp:
 
-    alarm_clock_protocol = "https"
-    alarm_clock_hostname = "localhost"
-    alarm_clock_port = 443
+    alarm_clock_protocol = the_alarm_clock_protocol
+    alarm_clock_hostname = the_alarm_clock_hostname
+    alarm_clock_port = the_alarm_clock_port
     alarm_clock_route = "/api/librespotify"
 
     def __init__(self) -> None:

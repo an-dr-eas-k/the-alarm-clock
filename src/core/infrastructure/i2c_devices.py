@@ -1,10 +1,11 @@
 import logging
-import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 import board
 import busio
 from digitalio import Direction, Pull
 from adafruit_mcp230xx.mcp23017 import MCP23017
+
 
 rotary_encoder_channel_press: int = 8
 rotary_encoder_channel_a: int = 10
@@ -26,22 +27,34 @@ class I2CManager:
         self.i2c = busio.I2C(board.SCL, board.SDA)
 
 
-logger = logging.getLogger("tac.mcp")
+logger = logging.getLogger("tac.core.infrastructure.mcp")
 
 
 class MCPManager:
     last_log_time = 0
 
-    def __init__(self, i2c_manager: I2CManager):
+    def __init__(self, i2c_manager: I2CManager, executor: ThreadPoolExecutor):
 
         self.mcp = MCP23017(i2c_manager.i2c)
-        for i in range(0, 16):
+        self.executor = executor
+        self.mcp_callbacks = {}
+
+    def setup(self):
+        configured_pins = self.mcp_callbacks.keys()
+        logger.info(f"Configuring MCP23017 pins: {configured_pins}")
+
+        for i in configured_pins:
             pin = self.mcp.get_pin(i)
             pin.direction = Direction.INPUT
             pin.pull = Pull.UP
 
-        self.mcp.interrupt_enable = 0xFFFF  # get interrupts for all pins
+        mask = sum(1 << pin for pin in configured_pins)
+
+        logger.info(f"Hexadecimal bitmask: {hex(mask)}")
+        self.mcp.interrupt_enable = mask
+
         self.mcp.interrupt_configuration = 0x0000  # notify me, when any value changes
+        self.mcp.gppu = mask  # enable pull-ups on all used pins
         self.mcp.io_control = (
             0x44  # 0100 0100 # mirroring INT pins, open drain, active low
         )
@@ -53,61 +66,64 @@ class MCPManager:
         GPIO_Module().add_event_detect(
             interrupt_pin,
             GPIO_Module().FALLING,
-            callback=self.invoke_gpio_callback,
+            callback=self.gpio_event_detected,
+            bouncetime=10,
         )
-        self.mcp_callbacks = {}
 
-        if logger.level == logging.DEBUG:
-            self.log_thread = threading.Thread(target=self._log_thread_callback)
-            self.log_thread.daemon = True
-            self.log_thread.start()
+        self.mcp.clear_ints()
+
+        # if logger.level == logging.DEBUG:
+        #     self.executor.submit(self._log_thread_callback)
 
     def add_callback(self, pin_num, callback):
         self.mcp_callbacks[pin_num] = callback
 
     def _log_thread_callback(self):
         while True:
-            current_time = time.time()
-            if self.last_log_time < current_time - 1:
-                self.last_log_time = current_time
-                logger.debug(
-                    f"interrupt state: {int(GPIO_Module.input(interrupt_pin))}, mcp pin states: "
-                    + ", ".join(
-                        [f"{p:02}: {int(self.mcp.get_pin(p).value)}" for p in range(16)]
-                    )
+            logger.debug(
+                f"interrupt state: {int(GPIO_Module().input(interrupt_pin))}, mcp pin states: "
+                + ", ".join(
+                    [f"{p:02}: {int(self.mcp.get_pin(p).value)}" for p in range(16)]
                 )
+            )
+            time.sleep(1)
 
-    def invoke_gpio_callback(self, gpio_pin):
-        logger.debug(f"GPIO interrupt on pin {gpio_pin} detected.")
+    def gpio_event_detected(self, gpio_pin):
 
-        for mcp_pin in self.mcp.int_flag:
-            mcp_pin_value = self.mcp.get_pin(mcp_pin).value
-            logger.debug(f"mcp pin {mcp_pin} changed to: {mcp_pin_value}")
+        pin_values = {}
+        int_flag = self.mcp.int_flag
+        int_cap = self.mcp.int_cap
+        for mcp_pin in self.mcp_callbacks.keys():
+            pin_values[mcp_pin] = [
+                bool(int_cap[mcp_pin]),
+                bool(self.mcp.get_pin(mcp_pin).value),
+            ]
+
+        logger.debug(
+            f"GPIO interrupt on pin {gpio_pin} detected, flags and values are { pin_values }."
+        )
+
+        for mcp_pin in int_flag:
+            mcp_pin_value = pin_values[mcp_pin]
+            logger.info(f"mcp pin {mcp_pin} changed to: {mcp_pin_value}")
 
             if mcp_pin in self.mcp_callbacks:
-                self.mcp_callbacks[mcp_pin](self.mcp, mcp_pin)
-
-        self.mcp.clear_ints()
+                self.mcp_callbacks[mcp_pin](mcp_pin_value[0], pin_values)
 
     def close(self):
         GPIO_Module().cleanup()
 
 
 if __name__ == "__main__":
+    from resources.resources import init_logging
 
-    i2c = I2CManager().i2c
+    init_logging()
+    mcp_manager = MCPManager(i2c_manager=I2CManager(), executor=ThreadPoolExecutor())
+    connected_pins = range(16)
 
-    mcp = MCP23017(i2c)
-    connected_pins = [0, 1, 8, 9, 10]
-    for i in connected_pins:
-        pin = mcp.get_pin(i)
-        pin.direction = Direction.INPUT
-        pin.pull = Pull.UP
+    for pin in connected_pins:
+        mcp_manager.add_callback(pin, lambda _: {})
+    mcp_manager.setup()
 
     while True:
-        for i in connected_pins:
-            pin = mcp.get_pin(i)
-            print(f"Pin {i} is at level: {pin.value}")
-
-        print("-----")
         time.sleep(1)

@@ -2,22 +2,24 @@ import datetime
 from enum import Enum
 import logging
 from PIL import Image
+from PyQt5 import QtGui
 from core.domain.model import (
     AlarmClockContext,
-    AlarmDefinition,
-    DisplayContent,
+    Mode,
     VisualEffect,
 )
+from core.interface.display.display_content import DisplayContent
 from utils.drawing import PresentationFont, grayscale_to_color
-from utils.extensions import get_job_arg, get_timedelta_to_alarm, respect_ranges
+from utils.extensions import respect_ranges
 
-logger = logging.getLogger("tac.display")
+logger = logging.getLogger("tac.core.interface.display.format")
 
 
 class ColorType(Enum):
     IN16 = 0
     IN256 = 1
     INCOLOR = 2
+    INHEX = 3
 
 
 class DisplayFormatter:
@@ -26,36 +28,59 @@ class DisplayFormatter:
     _background_grayscale_16: int
 
     _visual_effect_active: bool = False
-    _clear_display: bool = False
 
     def __init__(self, content: DisplayContent, alarm_clock_context: AlarmClockContext):
         self.display_content = content
         self.alarm_clock_context = alarm_clock_context
 
-    def clock_font(self, size: int = 50):
-        if self.highly_dimmed():
+    def clock_font_pil(self, size: int = 50):
+        if self.be_gloomy():
             return PresentationFont.get_font(PresentationFont.light_clock_font, 20)
         return PresentationFont.get_font(PresentationFont.bold_clock_font, size)
 
-    def default_font(self, size: int = 18):
-        return PresentationFont.get_font(PresentationFont.default_font, size)
+    def clock_font(self, size: int = 20, weight: int = QtGui.QFont.Weight.Bold):
+        font_path = (
+            PresentationFont.roboto_font
+            if not self.be_gloomy()
+            else PresentationFont.light_clock_font
+        )
+        return PresentationFont.get_font_family(font_path, size, weight)
 
-    def clear_display(self):
-        clear_display = self._clear_display
-        self._clear_display = False
-        return clear_display
+    def info_font_pil(self, size: int = 18):
+        return PresentationFont.get_font(PresentationFont.info_font, size)
 
-    def highly_dimmed(self):
-        return self.alarm_clock_context.room_brightness.is_highly_dimmed()
+    def info_font(self, size: int = 18, weight: int = QtGui.QFont.Weight.Normal):
+        return PresentationFont.get_font_family(
+            PresentationFont.roboto_font, size, weight
+        )
+
+    def weather_font_pil(self, size: int = 18):
+        return PresentationFont.get_font(PresentationFont.weather_font, size)
+
+    def weather_font(self, size: int = 18, weight: int = QtGui.QFont.Weight.Normal):
+        return PresentationFont.get_font_family(
+            PresentationFont.weather_font, size, weight
+        )
+
+    def be_gloomy(self):
+        return (
+            True
+            and self.display_content.room_brightness.is_highly_dimmed()
+            and self.display_content.playback_content.playback_mode == Mode.Idle
+            and (
+                False
+                or self.display_content.next_alarm_info is None
+                or self.display_content.next_alarm_info.visual_effect is None
+                or not self.display_content.next_alarm_info.visual_effect.is_active()
+            )
+        )
 
     def update_formatter(self):
         self.adjust_display()
         logger.debug(
-            "room_brightness: %s, time_delta_to_alarm: %sh, display_formatter: %s",
-            self.alarm_clock_context.room_brightness(),
-            "{:.2f}".format(
-                self.display_content.get_timedelta_to_alarm().total_seconds() / 3600
-            ),
+            "room_brightness: %s, time_delta_to_alarm: %smin, display_formatter: %s",
+            self.display_content.room_brightness,
+            "{:.2f}".format(self.display_content.next_alarm_info.minutes_until_alarm()),
             self.__dict__,
         )
 
@@ -74,6 +99,11 @@ class DisplayFormatter:
             return grayscale_16 * 16
         if color_type == ColorType.INCOLOR:
             return grayscale_to_color(grayscale_16 * 16)
+        if color_type == ColorType.INHEX:
+            level = int(grayscale_16)
+            level = max(0, min(15, level))
+            gray = int(round(level / 15 * 255))
+            return f"#{gray:02x}{gray:02x}{gray:02x}"
 
     def foreground_color(
         self, min_value: int = 1, color_type: ColorType = ColorType.INCOLOR
@@ -87,46 +117,54 @@ class DisplayFormatter:
 
     def adjust_display(self):
         self.adjust_display_by_room_brightness()
+        self.adjust_display_by_mode()
         self.adjust_display_by_alarm()
+        if not self.be_gloomy():
+            self._foreground_grayscale_16 = max(3, self._foreground_grayscale_16)
 
     def adjust_display_by_room_brightness(self):
         self._background_grayscale_16 = 0
         self._foreground_grayscale_16 = (
-            self.alarm_clock_context.room_brightness.get_grayscale_value(min_value=1)
+            self.display_content.room_brightness.get_grayscale_value(min_value=1)
         )
+
+    def adjust_display_by_mode(self):
+        from core.domain.mode_coordinator import ModeName
+
+        current_mode = (
+            self.alarm_clock_context.mode_coordinator.current_mode_name
+            if self.alarm_clock_context.mode_coordinator
+            else None
+        )
+
+        if current_mode is None:
+            return
+
+        if current_mode != ModeName.DEFAULT:
+            self._background_grayscale_16 = 0
+            self._foreground_grayscale_16 = 15
 
     def adjust_display_by_alarm(self):
-        next_alarm_job = (
-            self.display_content.next_alarm_job
-            if self.display_content or self.display_content.next_alarm_job
-            else None
-        )
-        visual_effect: VisualEffect = (
-            get_job_arg(next_alarm_job, AlarmDefinition).visual_effect
-            if next_alarm_job is not None
+        next_alarm_info = self.display_content.next_alarm_info
+
+        visual_effect = (
+            next_alarm_info.visual_effect
+            if self.display_content.has_next_alarm()
             else None
         )
 
-        self.adjust_display_by_alarm_visual_effect(
-            get_timedelta_to_alarm(next_alarm_job), visual_effect
-        )
+        self.adjust_display_by_alarm_visual_effect(visual_effect)
 
-    def adjust_display_by_alarm_visual_effect(
-        self, time_delta_to_alarm: datetime.timedelta, visual_effect: VisualEffect
-    ):
+    def adjust_display_by_alarm_visual_effect(self, visual_effect: VisualEffect):
 
-        alarm_in_minutes = time_delta_to_alarm.total_seconds() / 60
-
-        if not visual_effect or not visual_effect.is_active(alarm_in_minutes):
+        if not visual_effect or not visual_effect.is_active():
             if self._visual_effect_active:
-                self._clear_display = True
                 self._visual_effect_active = False
             return
 
-        logger.debug("visual effect active: %s", alarm_in_minutes)
         self._visual_effect_active = True
 
-        style = visual_effect.get_style(alarm_in_minutes)
+        style = visual_effect.get_style()
         self._background_grayscale_16 = style.background_grayscale_16
         self._foreground_grayscale_16 = style.foreground_grayscale_16
 
@@ -141,9 +179,22 @@ class DisplayFormatter:
                 "<blinkSegment>", blink_segment
             )
         )
-        return self.format_dseg7_string(clock_string, desired_length=5)
+        return clock_string
 
-    def format_dseg7_string(self, dseg7: str, desired_length: int = None) -> str:
+    def format_dseg7_clock_string(
+        self,
+        clock: datetime,
+        show_blink_segment: bool = True,
+        desired_length: int = 5,
+    ) -> str:
+        dseg7 = self.format_clock_string(clock, show_blink_segment)
+        return self.format_dseg7_string(dseg7, desired_length=desired_length)
+
+    def format_dseg7_string(
+        self,
+        dseg7: str,
+        desired_length: int = None,
+    ) -> str:
         if desired_length is None:
             desired_length = len(dseg7)
 
@@ -152,15 +203,17 @@ class DisplayFormatter:
         return dseg7
 
     def postprocess_image(self, im: Image.Image) -> Image.Image:
-        if self.highly_dimmed():
+        if self.be_gloomy():
             fg_color = self.foreground_color(color_type=ColorType.IN256)
             bg_color = self.background_color(color_type=ColorType.IN256)
 
-            def replace_colors(pixel):
-                if pixel == bg_color:
-                    return bg_color
-                return fg_color
+            # Use a lookup table for faster processing
+            lut = [fg_color] * 256
+            if 0 <= bg_color < 256:
+                lut[bg_color] = bg_color
 
-            im = im.point(replace_colors)
+            if im.mode == "RGB":
+                lut = lut * 3
 
+            im = im.point(lut)
         return im

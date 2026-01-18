@@ -3,7 +3,7 @@ import time
 from core.infrastructure.i2c_devices import I2CManager
 import adafruit_bh1750
 
-logger = logging.getLogger("tac.gpi")
+logger = logging.getLogger("tac.core.infrastructure.gpi")
 
 
 class BrightnessSensor:

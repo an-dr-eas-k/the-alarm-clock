@@ -3,6 +3,7 @@ from PIL import ImageDraw, Image
 from PIL.ImageFont import FreeTypeFont
 from PIL import ImageFont, Image
 from luma.core.image_composition import ComposableImage
+from PyQt5 import QtGui
 
 import logging
 
@@ -259,6 +260,7 @@ class Scroller:
 @singleton
 class PresentationFontSingleton:
     _font_cache: Dict[str, BinaryIO] = {}
+    _font_family_cache: Dict[str, QtGui.QFont] = {}
 
     def _get_cached_font_file(self, font_path: str) -> BinaryIO:
         if font_path not in self._font_cache:
@@ -268,11 +270,28 @@ class PresentationFontSingleton:
         self._font_cache[font_path].seek(0)
         return self._font_cache[font_path]
 
+    def _get_cached_font_family(self, font_path: str, size: int, weight: int) -> QtGui.QFont:
+        font_key = f"{font_path}/{size}/{weight}"
+        if font_key not in self._font_family_cache:
+            id = QtGui.QFontDatabase.addApplicationFont(font_path)
+            if id != -1:
+                families = QtGui.QFontDatabase.applicationFontFamilies(id)
+                if families:
+                    family = families[0]
+                    self._font_family_cache[font_key] = QtGui.QFont(family, size, weight)
+                     
+
+        if font_key in self._font_family_cache:
+            return self._font_family_cache[font_key]
+
+        raise ValueError(f"Could not load font family for font_key {font_key}")
+
 
 class PresentationFont:
     bold_clock_font = f"{fonts_dir}/DSEG7Classic-Regular.ttf"
     light_clock_font = f"{fonts_dir}/DSEG7ClassicMini-Light.ttf"
-    default_font = f"{fonts_dir}/IosevkaNerdFontMono-Regular.ttf"
+    info_font = f"{fonts_dir}/IosevkaNerdFontMono-Regular.ttf"
+    roboto_font = f"{fonts_dir}/RobotoMonoNerdFont-Regular.ttf"
     weather_font = f"{weather_icons_dir}/weathericons-regular-webfont.ttf"
 
     def get_font(font: str, size: int = 50) -> ImageFont:
@@ -283,3 +302,6 @@ class PresentationFont:
         except Exception as e:
             logger.error(f"Error loading font {font}: {e}")
             raise e
+
+    def get_font_family(font_path: str, size: int, weight: int) -> QtGui.QFont:
+        return PresentationFontSingleton()._get_cached_font_family(font_path, size, weight)
