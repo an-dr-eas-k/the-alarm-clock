@@ -95,20 +95,9 @@ echo "config sudoers"
 rm /etc/sudoers.d/the-alarm-clock
 cat $app/rpi/resources/sudoers > /etc/sudoers.d/the-alarm-clock
 
-# echo "configure cron"
-# rm /etc/cron.d/the-alarm-clock
-# cat $app/rpi/resources/cron.conf > /etc/cron.d/the-alarm-clock
-
-echo "setup wifi-watchdog"
-ln -fs $app/rpi/resources/wifi-watchdog/wifi-watchdog.service /lib/systemd/system/
-cp -fr $app/rpi/resources/wifi-watchdog /opt/
-chmod u+x /opt/wifi-watchdog/*.sh
-systemctl daemon-reload
-systemctl enable wifi-watchdog.service
 
 echo "setup equalizer"
 ln -fs $app/rpi/resources/asoundrc $uhome/.asoundrc
-
 
 
 echo "setup raspotify"
@@ -117,19 +106,18 @@ ln -fs $app/rpi/resources/raspotify.service /lib/systemd/system/raspotify.servic
 systemctl daemon-reload
 systemctl enable raspotify
 ln -fs $app/rpi/resources/raspotify.conf /etc/raspotify/conf
-touch /var/log/the-alarm-clock.spotify-event.stdout
-touch /var/log/the-alarm-clock.spotify-event.errout
-chown $uid:$uid -R /var/log/the-alarm-clock.*
 
 
 echo "setup the-alarm-clock app"
 ln -fs /usr/bin/python3 /usr/bin/python
 setcap CAP_NET_BIND_SERVICE=+eip $(readlink /usr/bin/python -f)
+ln -fs $app/rpi/resources/aic8800-driver.service /lib/systemd/system/aic8800-driver.service
 ln -fs $app/rpi/resources/the-alarm-clock.service /lib/systemd/system/the-alarm-clock.service
-ln -fs $app/rpi/resources/the-alarm-clock-wifi-monitor.service /lib/systemd/system/the-alarm-clock-wifi-monitor.service
+# ln -fs $app/rpi/resources/the-alarm-clock-wifi-monitor.service /lib/systemd/system/the-alarm-clock-wifi-monitor.service
 systemctl daemon-reload
+systemctl enable aic8800-driver.service
 systemctl enable the-alarm-clock.service
-systemctl enable the-alarm-clock-wifi-monitor.service
+# systemctl enable the-alarm-clock-wifi-monitor.service
 
 
 

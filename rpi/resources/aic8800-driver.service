@@ -1,0 +1,15 @@
+[Unit]
+Description=Install aic8800 Wifi Driver
+DefaultDependencies=no
+Before=network-pre.target
+Wants=network-pre.target
+After=local-fs.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/the-alarm-clock/app
+ExecStart=/bin/bash rpi/install-wifi-driver.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
