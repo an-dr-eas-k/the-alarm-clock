@@ -1,5 +1,6 @@
 #!/bin/bash
 # Install aic8800 Wifi driver if not present
+# follow https://askubuntu.com/a/1553387/871941
 
 APP_DIR="/srv/the-alarm-clock/app"
 DEB_FILE="${APP_DIR}/rpi/resources/aic8800d80fdrvpackage.deb"
