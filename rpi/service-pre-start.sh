@@ -12,10 +12,18 @@ echo "!"
 echo "!"
 
 # 2. Install requirements (integrates run.sh logic)
-# Check if requirements.txt was modified in the last 12 hours (720 min)
+# Check if requirements.txt was modified in the last 2 hours (120 min)
 # This handles the case where git pull updated it.
-if [ $(find requirements.txt -mmin -720) ]; then
+if [ $(find requirements.txt -mmin -120) ]; then
   echo "requirements.txt changed, installing requirements..."
+  sudo apt-get update || true
+  echo "Installing system packages via apt..."
+  # Clean requirements, remove comments, remove empty lines, remove inline comments
+  grep -v '^#' requirements.txt | sed 's/#.*//' | sed 's/[[:space:]]*$//' | grep -v '^$' | sed 's/pillow/pil/' | while read -r pkg; do
+    sudo apt-get install -y "python3-$pkg" || echo "python3-$pkg not found, skipping apt..."
+  done
+
+  echo "Ensuring remaining requirements via pip..."
   pip3 install --break-system-packages -r requirements.txt || true
   pip3 uninstall -y --break-system-packages RPi.GPIO || true
 fi

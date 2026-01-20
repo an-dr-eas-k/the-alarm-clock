@@ -2,3 +2,4 @@
 %the-alarm-clock ALL= NOPASSWD: /bin/systemctl restart raspotify.service
 %the-alarm-clock ALL= NOPASSWD: /bin/systemctl restart NetworkManager
 %the-alarm-clock ALL= NOPASSWD: /opt/wifi-watchdog/reset-wifi-usb.sh
+%the-alarm-clock ALL= NOPASSWD: /usr/bin/apt-get update, /usr/bin/apt-get install -y *
