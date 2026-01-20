@@ -1,6 +1,7 @@
 [Unit]
 Description=The Alarm Clock iwd Monitor
 After=network.target
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple

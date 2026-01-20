@@ -1,5 +1,7 @@
 [Unit]
 Description=Daemon required to control GPIO pins via pigpio
+StartLimitIntervalSec=0
+
 [Service]
 # -x activates all pins 
 # if a specific set of pins should be activated use bash with ``` printf "0x%x\n" $(( (1 << 0) | (1 << 5) | (1 << 6) | (1 << 13) )) ``` where 0, 5, 6 and 13 are examples for pins
@@ -7,5 +9,8 @@ Description=Daemon required to control GPIO pins via pigpio
 ExecStart=/usr/bin/pigpiod -l -x 0xFFFFFFF -t 0
 ExecStop=/bin/systemctl kill pigpiod
 Type=forking
+Restart=always
+RestartSec=5
+
 [Install]
 WantedBy=multi-user.target
