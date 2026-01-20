@@ -17,6 +17,7 @@ ExecStart=/bin/bash -c 'exec /usr/bin/python3 src/app_clock.py > /dev/null'
 
 Restart=always
 RestartSec=10
+TimeoutStartSec=1000
 TimeoutStopSec=5
 
 [Install]
