@@ -32,7 +32,7 @@ else
   echo "update system and install dependencies"
   apt-get -y update
   apt-get -y dist-upgrade
-  apt-get -y install git python3 vlc python3-pip curl libasound2-plugin-equal python3-alsaaudio libasound2-dev libsystemd-dev log2ram
+  apt-get -y install git python3 vlc python3-pip curl libasound2-plugin-equal python3-alsaaudio libasound2-dev libsystemd-dev log2ram dkms build-essential
   
   apt-get -y remove python3-rpi.gpio
   apt-get -y install python3-rpi-lgpio 
@@ -110,6 +110,15 @@ ln -fs $app/rpi/resources/raspotify.conf /etc/raspotify/conf
 echo "setup the-alarm-clock app"
 ln -fs /usr/bin/python3 /usr/bin/python
 setcap CAP_NET_BIND_SERVICE=+eip $(readlink /usr/bin/python -f)
+
+echo "setup aic8800 wifi driver DKMS"
+dpkg -i $app/rpi/resources/aic8800d80fdrvpackage.deb
+cp -f $app/rpi/resources/dkms.conf /usr/src/AIC8800/
+ln -fs /usr/src/AIC8800 /usr/src/aic8800-1.0
+dkms add -m aic8800 -v 1.0 || true
+dkms build -m aic8800 -v 1.0 || true
+dkms install -m aic8800 -v 1.0 || true
+
 ln -fs $app/rpi/resources/aic8800-driver.service /lib/systemd/system/aic8800-driver.service
 ln -fs $app/rpi/resources/the-alarm-clock.service /lib/systemd/system/the-alarm-clock.service
 # ln -fs $app/rpi/resources/the-alarm-clock-wifi-monitor.service /lib/systemd/system/the-alarm-clock-wifi-monitor.service

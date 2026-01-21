@@ -84,14 +84,16 @@ Dont forget to run python from the created virtual environment. It is not suffic
 ./.venv-*/python3 src/app_clock.py --software
 # Uses dummy display, keyboard controls (1=CCW, 2=CW, 3=mode, 4=invoke, 5=brightness)
 ```
-the * denotes the latest created virtual environment
+the * denotes the latest created virtual environment.
+The development machine is fedora linux with redhat package management.
 
 **Run on Raspberry Pi:**
 ```bash
 ./.venv-*/python3 src/app_clock.py
 # Uses real hardware: SSD1322 OLED (SPI), MCP23017, BH1750
 ```
-the * denotes the latest created virtual environment
+the * denotes the latest created virtual environment.
+The Raspberry Pi runs Raspberry Pi OS (formerly Raspbian) a Debian-based operating system.
 
 ## Critical Conventions
 

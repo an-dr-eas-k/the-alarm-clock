@@ -12,9 +12,22 @@ fi
 
 PACKAGE_NAME=$(dpkg-deb -f "$DEB_FILE" Package)
 
+# Check if package is installed or if the module is missing for the current kernel
+SHOULD_INSTALL=false
 if ! dpkg -s "$PACKAGE_NAME" >/dev/null 2>&1; then
-    echo "Installing $PACKAGE_NAME..."
+    echo "Package $PACKAGE_NAME is not installed."
+    SHOULD_INSTALL=true
+else
+    # Check if the kernel module exists for the current kernel version
+    if ! find "/lib/modules/$(uname -r)" -name "aic8800_fdrv.ko*" | grep -q .; then
+        echo "Package $PACKAGE_NAME is installed, but aic8800_fdrv module is missing for kernel $(uname -r)."
+        SHOULD_INSTALL=true
+    fi
+fi
+
+if [ "$SHOULD_INSTALL" = true ]; then
+    echo "Installing/Reinstalling $PACKAGE_NAME..."
     dpkg -i "$DEB_FILE"
 else
-    echo "$PACKAGE_NAME is already installed"
+    echo "$PACKAGE_NAME is already installed and module found for $(uname -r)"
 fi
