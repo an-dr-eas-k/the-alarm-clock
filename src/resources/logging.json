@@ -85,7 +85,7 @@
       ]
     },
     "tac.core.domain.model": {
-      "level": "DEBUG",
+      "level": "NOTSET",
       "handlers": [
         "lastResort"
       ]
