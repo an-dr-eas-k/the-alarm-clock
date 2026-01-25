@@ -203,36 +203,36 @@ class OfflineStream(AudioStream):
 
 class SpotifyStream(AudioStream):
 
-    def __init__(self, spotify_event: dict):
-        self.player_event = (
-            spotify_event.player_event
-            if hasattr(spotify_event, "player_event")
-            else None
-        )
-        self.track_name = spotify_event.name if hasattr(spotify_event, "name") else None
-        self.track_id = (
-            spotify_event.track_id if hasattr(spotify_event, "track_id") else None
-        )
-        self.track_artists = (
-            spotify_event.artists if hasattr(spotify_event, "artists") else None
-        )
-        self.track_album = (
-            spotify_event.album if hasattr(spotify_event, "album") else None
-        )
-        self.track_album_artists = (
-            spotify_event.album_artists
-            if hasattr(spotify_event, "album_artists")
-            else None
-        )
-        self.track_covers = (
-            spotify_event.covers if hasattr(spotify_event, "covers") else None
-        )
+    def __init__(self, spotify_event: dict | object = None):
+        if spotify_event is None:
+            spotify_event = {}
+
+        def safe_get(key):
+            val = (
+                spotify_event.get(key)
+                if isinstance(spotify_event, dict)
+                else getattr(spotify_event, key, None)
+            )
+            if isinstance(val, str) and "\n" in val:
+                val = val.split("\n")[0]
+            return val
+
+        self.player_event = safe_get("player_event")
+        self.track_name = safe_get("name")
+        self.track_id = safe_get("track_id")
+        self.track_artists = safe_get("artists")
+        self.track_album = safe_get("album")
+        self.track_album_artists = safe_get("album_artists")
+        self.track_covers = safe_get("covers")
 
         stream_name = "Unknown Spotify Track"
         if self.track_name:
             stream_name = f"Spotify: {self.track_name}"
         if self.track_artists:
-            stream_name += f" by {', '.join(self.track_artists)}"
+            if isinstance(self.track_artists, list):
+                stream_name += f" by {', '.join(self.track_artists)}"
+            else:
+                stream_name += f" by {self.track_artists}"
 
         super().__init__(
             stream_name=stream_name,
