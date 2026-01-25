@@ -25,7 +25,6 @@ if TYPE_CHECKING:
 from core.domain.events import (
     AlarmStoppedEvent,
     PlaybackChangedEvent,
-    SpotifyApiEvent,
     SpotifyStoppedEvent,
     VolumeChangeRequest,
     VolumeChangedEvent,
