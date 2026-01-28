@@ -4,8 +4,9 @@ Documentation=https://github.com/dtcooper/raspotify
 Documentation=https://github.com/librespot-org/librespot
 Documentation=https://github.com/dtcooper/raspotify/wiki
 Documentation=https://github.com/librespot-org/librespot/wiki/Options
-Wants=network.target sound.target
-After=network.target sound.target
+Wants=network.target sound.target avahi-daemon.service
+After=network.target sound.target avahi-daemon.service
+StartLimitIntervalSec=0
 
 OnFailure=raspotify-crash-report-generator.service
 
@@ -18,7 +19,7 @@ SupplementaryGroups=audio
 # raspotify-crash-report-generator.service handles
 # restart logic.
  
-Restart=on-failure
+Restart=always
 RestartSec=10
 
 # Some of these may be implied by DynamicUser=yes

@@ -84,6 +84,12 @@
         "lastResort"
       ]
     },
+    "tac.core.domain.model": {
+      "level": "NOTSET",
+      "handlers": [
+        "lastResort"
+      ]
+    },
     "tac.core.domain.mode_coordinator": {
       "level": "INFO",
       "handlers": [

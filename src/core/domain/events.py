@@ -62,6 +62,11 @@ class SpotifyStoppedEvent(BaseEvent):
 class SpotifyApiEvent(BaseEvent):
 
     name: str
+    artists: str
+    album: str
+    album_artists: str
+    covers: str
+
     player_event: str = None
     track_id: str
     old_track_id: str
@@ -78,8 +83,11 @@ class SpotifyApiEvent(BaseEvent):
         return self.player_event in [
             "session_connected",
             "playing",
-            "started",
-            "changed",
+        ]
+
+    def is_track_changed(self) -> bool:
+        return self.player_event in [
+            "track_changed",
         ]
 
     def is_playback_stopped(self) -> bool:

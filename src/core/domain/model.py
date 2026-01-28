@@ -202,11 +202,42 @@ class OfflineStream(AudioStream):
 
 
 class SpotifyStream(AudioStream):
-    track_name: str = "Spotify"
-    track_id: str = None
 
-    def __init__(self):
-        super().__init__(stream_name="Spotify Stream", stream_url="")
+    def __init__(self, spotify_event: dict | object = None):
+        if spotify_event is None:
+            spotify_event = {}
+
+        def safe_get(key):
+            val = (
+                spotify_event.get(key)
+                if isinstance(spotify_event, dict)
+                else getattr(spotify_event, key, None)
+            )
+            if isinstance(val, str) and "\n" in val:
+                val = val.split("\n")[0]
+            return val
+
+        self.player_event = safe_get("player_event")
+        self.track_name = safe_get("name")
+        self.track_id = safe_get("track_id")
+        self.track_artists = safe_get("artists")
+        self.track_album = safe_get("album")
+        self.track_album_artists = safe_get("album_artists")
+        self.track_covers = safe_get("covers")
+
+        stream_name = "Unknown Spotify Track"
+        if self.track_name:
+            stream_name = f"Spotify: {self.track_name}"
+        if self.track_artists:
+            if isinstance(self.track_artists, list):
+                stream_name += f" by {', '.join(self.track_artists)}"
+            else:
+                stream_name += f" by {self.track_artists}"
+
+        super().__init__(
+            stream_name=stream_name,
+            stream_url="",
+        )
 
     def __str__(self):
         return f"track_name: {self.track_name}, track_id: {self.track_id}"
@@ -577,7 +608,7 @@ class PlaybackContent(MediaContent):
         self.playback_mode = event.playback_mode
 
         if event.audio_stream is not None:
-            self.audio_stream = event.audio_stream
+            self.set_audio_stream(event.audio_stream)
 
         if event.playback_mode != Mode.Idle:
             self._volume_change_request(event)
@@ -589,6 +620,20 @@ class PlaybackContent(MediaContent):
 
         if wasSpotify and self.playback_mode != Mode.Spotify:
             self.event_bus.emit(SpotifyStoppedEvent())
+
+    def set_audio_stream(self, audio_stream: AudioStream):
+        logger.debug("setting audio stream to: %s", audio_stream)
+        if not self.audio_stream:
+            self.audio_stream = audio_stream
+            return
+
+        if (
+            isinstance(audio_stream, SpotifyStream)
+            and audio_stream.player_event != "track_changed"
+        ):
+            return
+
+        self.audio_stream = audio_stream
 
     def _volume_change_request(self, event: VolumeChangeRequest):
         volume_changed = False

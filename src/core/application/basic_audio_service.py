@@ -72,24 +72,28 @@ class BasicAudioService:
 
     def _spotify_stream_change_request(self, spotify_event: SpotifyApiEvent):
 
-        spotify_stream = SpotifyStream()
-        if hasattr(spotify_event, "track_id"):
-            spotify_stream.track_id = spotify_event.track_id
+        spotify_stream = SpotifyStream(spotify_event.__dict__)
 
         if (
-            spotify_event.is_playback_started()
-            and self.playback_content.playback_mode != Mode.Spotify
+            False
+            or (
+                spotify_event.is_playback_started()
+                and self.playback_content.playback_mode != Mode.Spotify
+            )
+            or spotify_event.is_track_changed()
         ):
             self.event_bus.emit(PlaybackChangedEvent(Mode.Spotify, spotify_stream))
 
         if (
-            spotify_event.is_playback_stopped()
+            True
+            and spotify_event.is_playback_stopped()
             and self.playback_content.playback_mode != Mode.Idle
         ):
             self._set_to_idle_mode()
 
         if (
-            spotify_event.is_volume_changed()
+            True
+            and spotify_event.is_volume_changed()
             and self.playback_content.playback_mode == Mode.Spotify
         ):
             self.event_bus.emit(VolumeChangedEvent())

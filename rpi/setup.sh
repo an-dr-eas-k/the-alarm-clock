@@ -32,8 +32,7 @@ else
   echo "update system and install dependencies"
   apt-get -y update
   apt-get -y dist-upgrade
-  apt-get -y install git python3 vlc python3-pip curl libasound2-plugin-equal python3-alsaaudio libasound2-dev libsystemd-dev log2ram
-  pip install pillow --break-system-packages
+  apt-get -y install git python3 vlc python3-pip curl libasound2-plugin-equal python3-alsaaudio libasound2-dev libsystemd-dev log2ram dkms build-essential
   
   apt-get -y remove python3-rpi.gpio
   apt-get -y install python3-rpi-lgpio 
@@ -95,20 +94,9 @@ echo "config sudoers"
 rm /etc/sudoers.d/the-alarm-clock
 cat $app/rpi/resources/sudoers > /etc/sudoers.d/the-alarm-clock
 
-# echo "configure cron"
-# rm /etc/cron.d/the-alarm-clock
-# cat $app/rpi/resources/cron.conf > /etc/cron.d/the-alarm-clock
-
-echo "setup wifi-watchdog"
-ln -fs $app/rpi/resources/wifi-watchdog/wifi-watchdog.service /lib/systemd/system/
-cp -fr $app/rpi/resources/wifi-watchdog /opt/
-chmod u+x /opt/wifi-watchdog/*.sh
-systemctl daemon-reload
-systemctl enable wifi-watchdog.service
 
 echo "setup equalizer"
 ln -fs $app/rpi/resources/asoundrc $uhome/.asoundrc
-
 
 
 echo "setup raspotify"
@@ -117,19 +105,27 @@ ln -fs $app/rpi/resources/raspotify.service /lib/systemd/system/raspotify.servic
 systemctl daemon-reload
 systemctl enable raspotify
 ln -fs $app/rpi/resources/raspotify.conf /etc/raspotify/conf
-touch /var/log/the-alarm-clock.spotify-event.stdout
-touch /var/log/the-alarm-clock.spotify-event.errout
-chown $uid:$uid -R /var/log/the-alarm-clock.*
 
 
 echo "setup the-alarm-clock app"
 ln -fs /usr/bin/python3 /usr/bin/python
 setcap CAP_NET_BIND_SERVICE=+eip $(readlink /usr/bin/python -f)
+
+echo "setup aic8800 wifi driver DKMS"
+dpkg -i $app/rpi/resources/aic8800d80fdrvpackage.deb
+cp -f $app/rpi/resources/dkms.conf /usr/src/AIC8800/
+ln -fs /usr/src/AIC8800 /usr/src/aic8800-1.0
+dkms add -m aic8800 -v 1.0 || true
+dkms build -m aic8800 -v 1.0 || true
+dkms install -m aic8800 -v 1.0 || true
+
+ln -fs $app/rpi/resources/aic8800-driver.service /lib/systemd/system/aic8800-driver.service
 ln -fs $app/rpi/resources/the-alarm-clock.service /lib/systemd/system/the-alarm-clock.service
-ln -fs $app/rpi/resources/the-alarm-clock-wifi-monitor.service /lib/systemd/system/the-alarm-clock-wifi-monitor.service
+# ln -fs $app/rpi/resources/the-alarm-clock-wifi-monitor.service /lib/systemd/system/the-alarm-clock-wifi-monitor.service
 systemctl daemon-reload
+systemctl enable aic8800-driver.service
 systemctl enable the-alarm-clock.service
-systemctl enable the-alarm-clock-wifi-monitor.service
+# systemctl enable the-alarm-clock-wifi-monitor.service
 
 
 
