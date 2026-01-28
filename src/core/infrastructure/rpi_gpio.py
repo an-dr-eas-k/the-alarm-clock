@@ -123,6 +123,7 @@ class GPIOInputManager:
         self.last_states[0] = state
 
     def _mode_button_callback(self, pin_value: bool, _=None):
+        logger.debug("Mode button state changed")
         self.event_bus.emit(
             HwButtonEvent(
                 device_name=DeviceName.MODE_BUTTON,
@@ -131,6 +132,7 @@ class GPIOInputManager:
         )
 
     def _invoke_button_callback(self, pin_value: bool, _=None):
+        logger.debug("Invoke button state changed")
         self.event_bus.emit(
             HwButtonEvent(
                 device_name=DeviceName.INVOKE_BUTTON,
