@@ -109,7 +109,13 @@ class DIContainer(containers.DeclarativeContainer):
     )
 
     vlc_instance = providers.Singleton(
-        vlc.Instance, ["--no-video", "--network-caching=3000", "--live-caching=3000"]
+        vlc.Instance,
+        [
+            "--no-video",
+            "--network-caching=3000",
+            "--live-caching=3000",
+            "--aout=alsa",
+        ],
     )
 
     speaker = providers.Singleton(

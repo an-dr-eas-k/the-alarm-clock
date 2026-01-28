@@ -191,7 +191,7 @@ class Speaker:
 def main():
     eb = EventBus()
     instance = vlc.Instance(
-        ["--no-video", "--network-caching=3000", "--live-caching=3000"]
+        ["--no-video", "--network-caching=3000", "--live-caching=3000", "--aout=alsa"]
     )
     s = Speaker(eb, instance)
     stream = AudioStream(
@@ -203,7 +203,7 @@ def main():
 
 
 def main_mlp():
-    instance = vlc.Instance()
+    instance = vlc.Instance(["--aout=alsa"])
     stream = AudioStream(
         stream_name="test", stream_url="https://streams.br.de/bayern2sued_2.m3u"
     )
