@@ -48,8 +48,9 @@ class ClockApp:
         ci: any = None
 
         if self.is_on_hardware():
-            self.container.button_manager()
-            self.container.rotary_encoder_manager()
+            # self.container.button_manager()
+            # self.container.rotary_encoder_manager()
+            self.container.gpio_input_manager()
         else:
             from core.infrastructure.computer_infrastructure import (
                 ComputerInfrastructure,

@@ -55,7 +55,7 @@ weather symbols are included from https://github.com/erikflowers/weather-icons
 
 |         |||||||||
 |---------|---------------|--------------|----|---|----|---------|-----------------|---------|
-| orange  |  i2c (vcc)    |    3V3       |  1 |   |  2 |     5V  |                 |         |
+| blue    |  i2c (vcc)    |    3V3       |  1 |   |  2 |     5V  |                 |         |
 | green   |  i2c (sda)    | GPIO02       |  3 |   |  4 |     5V  |                 |         |
 | yellow  |  i2c (scl)    | GPIO03       |  5 |   |  6 |    GND  |                 |         |
 | purple  |  i2c (int)    | GPIO04       |  7 |   |  8 | GPIO14  |                 |         |
@@ -69,11 +69,11 @@ weather symbols are included from https://github.com/erikflowers/weather-icons
 | brown   | spi (sclk, 4) | GPIO11       | 23 |   | 24 | GPIO08  | spi (   cs, 16) |   blue  |
 |         |               |    GND       | 25 |   | 26 | GPIO07  |                 |         |
 |         |               | GPIO00       | 27 |   | 28 | GPIO01  |                 |         |
-|         |               | GPIO05       | 29 |   | 30 |    GND  |                 |         |
-|         |               | GPIO06       | 31 |   | 32 | GPIO12  |                 |         |
-|         |               | GPIO13       | 33 |   | 34 |    GND  |                 |         |
-|         |               | GPIO19       | 35 |   | 36 | GPIO16  |                 |         |
-|         |               | GPIO26       | 37 |   | 38 | GPIO20  |                 |         |
+|         | rot_press     | GPIO05       | 29 |   | 30 |    GND  |                 |         |
+|         | rot_a         | GPIO06       | 31 |   | 32 | GPIO12  |                 |         |
+|         | rot_b         | GPIO13       | 33 |   | 34 |    GND  |                 |         |
+|         | mode_button   | GPIO19       | 35 |   | 36 | GPIO16  |                 |         |
+|         | invoke_button | GPIO26       | 37 |   | 38 | GPIO20  |                 |         |
 | black   | ground term   |    GND       | 39 |   | 40 | GPIO21  |  i2s    (din)   |  blue   |
 
 ## MCP 23017

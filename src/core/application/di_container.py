@@ -4,6 +4,7 @@ import vlc
 from concurrent.futures import ThreadPoolExecutor
 from dependency_injector import containers, providers
 from core.domain.mode_coordinator import AlarmClockModeCoordinator
+from core.infrastructure.rpi_gpio import GPIOInputManager, RPiGPIOManager
 from core.interface.display.format import DisplayFormatter
 from core.interface.hardware_input_handler import HardwareInputHandler
 from core.infrastructure.brightness_sensor import BrightnessSensor
@@ -128,6 +129,14 @@ class DIContainer(containers.DeclarativeContainer):
     )
     rotary_encoder_manager = providers.Singleton(
         RotaryEncoderManager, mcp_manager=mcp_manager, event_bus=event_bus
+    )
+
+    gpio_manager = providers.Singleton(
+        RPiGPIOManager,
+        executor=executor,
+    )
+    gpio_input_manager = providers.Singleton(
+        GPIOInputManager, gpio_manager=gpio_manager, event_bus=event_bus
     )
 
     scheduler_service = providers.Singleton(
