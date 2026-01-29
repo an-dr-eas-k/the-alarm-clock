@@ -51,6 +51,7 @@ class ClockApp:
             # self.container.button_manager()
             # self.container.rotary_encoder_manager()
             self.container.gpio_input_manager()
+            self.container.gpio_manager().setup()
         else:
             from core.infrastructure.computer_infrastructure import (
                 ComputerInfrastructure,

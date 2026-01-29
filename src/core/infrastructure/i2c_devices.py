@@ -6,6 +6,8 @@ import busio
 from digitalio import Direction, Pull
 from adafruit_mcp230xx.mcp23017 import MCP23017
 
+from core.infrastructure.rpi_gpio import RPiGPIOManager
+
 
 rotary_encoder_channel_press: int = 8
 rotary_encoder_channel_a: int = 10
@@ -14,12 +16,6 @@ mode_button_channel: int = 0
 invoke_button_channel: int = 1
 
 interrupt_pin: int = 4
-
-
-def GPIO_Module():
-    from RPi import GPIO  # type: ignore
-
-    return GPIO
 
 
 class I2CManager:
@@ -33,9 +29,15 @@ logger = logging.getLogger("tac.core.infrastructure.mcp")
 class MCPManager:
     last_log_time = 0
 
-    def __init__(self, i2c_manager: I2CManager, executor: ThreadPoolExecutor):
+    def __init__(
+        self,
+        i2c_manager: I2CManager,
+        rpigpio_manager: RPiGPIOManager,
+        executor: ThreadPoolExecutor,
+    ):
 
         self.mcp = MCP23017(i2c_manager.i2c)
+        self.rpigpio_manager = rpigpio_manager
         self.executor = executor
         self.mcp_callbacks = {}
 
@@ -61,16 +63,7 @@ class MCPManager:
 
         self.mcp.clear_ints()
 
-        GPIO_Module().setmode(GPIO_Module().BCM)
-        GPIO_Module().setup(interrupt_pin, GPIO_Module().IN, GPIO_Module().PUD_UP)
-        GPIO_Module().add_event_detect(
-            interrupt_pin,
-            GPIO_Module().FALLING,
-            callback=self.gpio_event_detected,
-            bouncetime=10,
-        )
-
-        self.mcp.clear_ints()
+        self.rpigpio_manager.add_callback(interrupt_pin, self.gpio_event_detected)
 
         # if logger.level == logging.DEBUG:
         #     self.executor.submit(self._log_thread_callback)

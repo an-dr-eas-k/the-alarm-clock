@@ -81,7 +81,6 @@ class GPIOInputManager:
             rotary_encoder_a_gpio, self._rotary_encoder_callback
         )
         self.gpio_manager.add_callback(rotary_encoder_b_gpio, lambda v, p: {})
-        self.gpio_manager.setup()
 
         channel_a_value = int(
             not self.gpio_manager.read_all_pins()[rotary_encoder_a_gpio][0]
