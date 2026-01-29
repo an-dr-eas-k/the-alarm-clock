@@ -64,7 +64,7 @@ class MCPManager:
         self.mcp.clear_ints()
 
         self.rpigpio_manager.add_callback(interrupt_pin, self.gpio_event_detected)
-
+        self.rpigpio_manager.setup()
         # if logger.level == logging.DEBUG:
         #     self.executor.submit(self._log_thread_callback)
 
