@@ -15,7 +15,7 @@ logger = logging.getLogger("tac.core.infrastructure.rpi_gpio")
 rotary_encoder_press_gpio: int = 5
 rotary_encoder_a_gpio: int = 6
 rotary_encoder_b_gpio: int = 13
-mode_button_gpio: int = 7
+mode_button_gpio: int = 12
 invoke_button_gpio: int = 1
 
 
