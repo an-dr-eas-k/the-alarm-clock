@@ -62,6 +62,10 @@ class RPiGPIOManager:
             pin_values[pin] = [int(not self._gpio_module.input(pin))]
         return pin_values
 
+    def cleanup(self):
+        logger.info("Cleaning up GPIO")
+        self._gpio_module.cleanup()
+
 
 class GPIOInputManager:
     last_states = [(0, 0), (0, 0)]

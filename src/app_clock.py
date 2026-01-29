@@ -85,6 +85,7 @@ class ClockApp:
         alarm_audio_service.scheduler_service.shutdown()
         if self.is_on_hardware():
             self.container.mcp_manager().close()
+            self.container.gpio_manager().cleanup()
         elif ci is not None:
             ci.stop()
 
