@@ -127,15 +127,15 @@ class DIContainer(containers.DeclarativeContainer):
 
     i2c_manager = providers.Singleton(I2CManager)
     brightness_sensor = providers.Singleton(BrightnessSensor, i2c_manager=i2c_manager)
-    mcp_manager = providers.Singleton(
-        MCPManager, i2c_manager=i2c_manager, executor=executor
-    )
-    button_manager = providers.Singleton(
-        ButtonsManager, mcp_manager=mcp_manager, event_bus=event_bus
-    )
-    rotary_encoder_manager = providers.Singleton(
-        RotaryEncoderManager, mcp_manager=mcp_manager, event_bus=event_bus
-    )
+    # mcp_manager = providers.Singleton(
+    #     MCPManager, i2c_manager=i2c_manager, executor=executor
+    # )
+    # button_manager = providers.Singleton(
+    #     ButtonsManager, mcp_manager=mcp_manager, event_bus=event_bus
+    # )
+    # rotary_encoder_manager = providers.Singleton(
+    #     RotaryEncoderManager, mcp_manager=mcp_manager, event_bus=event_bus
+    # )
 
     gpio_manager = providers.Singleton(
         RPiGPIOManager,

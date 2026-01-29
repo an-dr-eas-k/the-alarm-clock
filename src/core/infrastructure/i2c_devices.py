@@ -74,7 +74,7 @@ class MCPManager:
     def _log_thread_callback(self):
         while True:
             logger.debug(
-                f"interrupt state: {int(GPIO_Module().input(interrupt_pin))}, mcp pin states: "
+                f"interrupt state: {int(self.rpigpio_manager.input(interrupt_pin))}, mcp pin states: "
                 + ", ".join(
                     [f"{p:02}: {int(self.mcp.get_pin(p).value)}" for p in range(16)]
                 )
@@ -104,7 +104,7 @@ class MCPManager:
                 self.mcp_callbacks[mcp_pin](mcp_pin_value[0], pin_values)
 
     def close(self):
-        GPIO_Module().cleanup()
+        self.rpigpio_manager.cleanup()
 
 
 if __name__ == "__main__":
