@@ -75,8 +75,8 @@ class GPIOInputManager:
         self.gpio_manager = gpio_manager
         self.event_bus = event_bus
 
-        self.gpio_manager.add_callback(mode_button_gpio, self._mode_button_callback)
-        self.gpio_manager.add_callback(invoke_button_gpio, self._invoke_button_callback)
+        # self.gpio_manager.add_callback(mode_button_gpio, self._mode_button_callback)
+        # self.gpio_manager.add_callback(invoke_button_gpio, self._invoke_button_callback)
         self.gpio_manager.add_callback(
             rotary_encoder_a_gpio, self._rotary_encoder_callback
         )
