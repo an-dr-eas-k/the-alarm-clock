@@ -67,7 +67,7 @@ weather symbols are included from https://github.com/erikflowers/weather-icons
 | white   | spi ( sdi, 5)  | GPIO10       | 19 |   | 20 |    GND  | spi (  vss,  1) |  black  |
 |         |                | GPIO09       | 21 |   | 22 | GPIO25  | spi (reset, 15) |   pink  |
 | brown   | spi (sclk, 4)  | GPIO11       | 23 |   | 24 | GPIO08  | spi (   cs, 16) |   blue  |
-|         |                |    GND       | 25 |   | 26 | GPIO07  | i               |         |
+|         |                |    GND       | 25 |   | 26 | GPIO07  |                 |         |
 |         |                | GPIO00       | 27 |   | 28 | GPIO01  | invoke_button   |         |
 |         | rot_press      | GPIO05       | 29 |   | 30 |    GND  |                 |         |
 |         | rot_a          | GPIO06       | 31 |   | 32 | GPIO12  | mode_button     |         |
