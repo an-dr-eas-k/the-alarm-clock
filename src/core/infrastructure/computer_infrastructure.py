@@ -27,8 +27,7 @@ class ComputerInfrastructure(IBrightnessSensor):
     def _find_keyboards(self):
         try:
             devices = [evdev.InputDevice(path) for path in evdev.list_devices()]
-            return devices
-            # return [d for d in devices if "keyboard" in d.name.lower()]
+            return [d for d in devices if "keyboard" in d.name.lower()]
         except Exception as e:
             logger.error(f"Failed to list input devices: {e}")
         return []

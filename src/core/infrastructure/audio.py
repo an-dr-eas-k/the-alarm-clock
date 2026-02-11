@@ -11,15 +11,11 @@ from core.domain.events import (
     SpeakerErrorEvent,
 )
 from core.domain.model import (
-    AlarmClockContext,
-    PlaybackContent,
     AudioStream,
-    Config,
     SpotifyStream,
-    StreamAudioEffect,
 )
 from core.infrastructure.event_bus import EventBus
-from resources.resources import init_logging, default_volume
+from resources.resources import init_logging
 
 logger = logging.getLogger("tac.core.infrastructure.audio")
 
@@ -55,18 +51,21 @@ class MediaListPlayer(MediaPlayer):
         self._monitoring_future = None
 
     def _monitor_playback(self):
+        logger.info("_monitor_playback thread started")
         while not self._stop_monitoring.is_set():
             try:
                 if self.list_player is not None:
                     state = self.list_player.get_state()
-                    if state == vlc.State.Error:
+                    if state == vlc.State.Error or state == vlc.State.Ended:
                         stream_name = (
                             self.audio_stream.stream_name
                             if self.audio_stream is not None
                             else "None"
                         )
                         logger.warning(
-                            "Monitor detected error state for stream: %s", stream_name
+                            "Monitor detected %s state for stream: %s",
+                            state,
+                            stream_name,
                         )
                         if self.error_callback:
                             self.error_callback(self.audio_stream, state)
@@ -190,10 +189,11 @@ class Speaker:
 
 def main():
     eb = EventBus()
+    executor = ThreadPoolExecutor(max_workers=5)
     instance = vlc.Instance(
         ["--no-video", "--network-caching=3000", "--live-caching=3000", "--aout=alsa"]
     )
-    s = Speaker(eb, instance)
+    s = Speaker(eb, instance, executor)
     stream = AudioStream(
         stream_name="test", stream_url="https://streams.br.de/bayern2sued_2.m3u"
     )
@@ -203,11 +203,12 @@ def main():
 
 
 def main_mlp():
+    executor = ThreadPoolExecutor(max_workers=5)
     instance = vlc.Instance(["--aout=alsa"])
     stream = AudioStream(
         stream_name="test", stream_url="https://streams.br.de/bayern2sued_2.m3u"
     )
-    mlp = MediaListPlayer(stream, instance)
+    mlp = MediaListPlayer(stream, instance, executor)
     mlp.play()
     time.sleep(10)
     mlp.stop()

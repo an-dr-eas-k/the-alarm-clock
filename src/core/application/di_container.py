@@ -48,7 +48,7 @@ class DIContainer(containers.DeclarativeContainer):
     )
 
     executor = providers.Singleton(
-        ThreadPoolExecutor, max_workers=10, thread_name_prefix="GlobalExecutor"
+        ThreadPoolExecutor, max_workers=20, thread_name_prefix="GlobalExecutor"
     )
 
     event_bus = providers.Singleton(EventBus, executor=executor)
