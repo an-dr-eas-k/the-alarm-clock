@@ -53,7 +53,7 @@ class RPiGPIOManager:
                 callback=lambda channel: self.executor.submit(
                     self.gpio_callbacks[channel], False, self.read_all_pins()
                 ),
-                bouncetime=10,
+                bouncetime=100,
             )
 
     def read_all_pins(self):
