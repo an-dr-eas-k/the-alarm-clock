@@ -17,9 +17,10 @@ class OSInteraction:
 
     def is_ping_successful(self, hostname):
         result = subprocess.run(
-            ["ping", "-c", "1", hostname],
+            ["ping", "-c", "1", "-W", "5", hostname],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            timeout=10,
         )
         return result.returncode == 0
 

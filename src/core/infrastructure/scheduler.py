@@ -109,11 +109,20 @@ class SchedulerService:
             self.remove_job(job_id=job_id, jobstore=jobstore)
 
         self.add_date_job(
-            job_id=job_id, run_date=run_date, func=func, jobstore=jobstore, args=args, kwargs=kwargs
+            job_id=job_id,
+            run_date=run_date,
+            func=func,
+            jobstore=jobstore,
+            args=args,
+            kwargs=kwargs,
         )
-        
+
     def reschedule_job(
-        self, job_id: str, jobstore: str = "default", trigger: str = None, **trigger_args
+        self,
+        job_id: str,
+        jobstore: str = "default",
+        trigger: str = None,
+        **trigger_args,
     ):
         self.scheduler.reschedule_job(
             job_id=job_id, jobstore=jobstore, trigger=trigger, **trigger_args
@@ -141,9 +150,7 @@ class SchedulerService:
     def shutdown(self):
         self.scheduler.shutdown()
 
-    def stop_generic_trigger(
-        self, job_id: str, jobstore=SchedulerStores.default.value
-    ):
+    def stop_generic_trigger(self, job_id: str, jobstore=SchedulerStores.default.value):
         if self.get_job(job_id=job_id, jobstore=jobstore) is not None:
             self.remove_job(job_id=job_id, jobstore=jobstore)
 
@@ -159,12 +166,13 @@ class SchedulerService:
         logger.debug("starting generic trigger %s for %s", job_id, duration)
         existing_job = self.get_job(job_id=job_id, jobstore=jobstore)
         if existing_job:
-            self.reschedule_date_job(job_id=job_id, run_date=run_date, jobstore=jobstore)
+            self.reschedule_date_job(
+                job_id=job_id, run_date=run_date, jobstore=jobstore
+            )
         else:
             self.add_date_job(
                 job_id=job_id, run_date=run_date, func=func, jobstore=jobstore
             )
-
 
     def get_next_alarm_info(self) -> NextAlarmInfo:
         jobs = sorted(
