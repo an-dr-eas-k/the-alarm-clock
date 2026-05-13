@@ -48,7 +48,7 @@ class DisplayContent:
         self.playback_content = playback_content
         self.event_bus = event_bus
         self.next_alarm_info = NextAlarmInfo()
-        self.room_brightness = RoomBrightness(1.0)
+        self.room_brightness = RoomBrightness(0.0)
 
         self.event_bus.on(PlaybackChangedEvent)(self._playback_changed)
         self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
@@ -90,17 +90,13 @@ class DisplayContent:
                 changed = True
 
             if self.room_brightness != room_brightness:
-                # Hysteresis: Only update if the value changed significantly
+
                 old_val = self.room_brightness.value
                 new_val = room_brightness.value
-                diff = abs(new_val - old_val)
+                ratio_delta = new_val / old_val if old_val > 0 else float("inf")
+                diff = abs(ratio_delta - 1.0)
 
-                # Thresholds in RoomBrightness are 0.01, 2, 6, 15
-                threshold = 0.5
-                if old_val < 5.0 or new_val < 5.0:
-                    threshold = 0.2
-                if old_val < 0.1 or new_val < 0.1:
-                    threshold = 0.005
+                threshold = 0.1
 
                 if diff > threshold:
                     self.room_brightness = room_brightness

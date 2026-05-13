@@ -82,11 +82,11 @@ class RoomBrightness(Value[float]):
 
     def get_grayscale_value(self, min_value: int = 0, max_value: int = 15) -> int:
         x = max_value
-        if self.value < 15:
+        if self.value < 0.15:
             x = 10
-        if self.value < 6:
+        if self.value < 0.06:
             x = 7
-        if self.value < 2:
+        if self.value < 0.02:
             x = 3
 
         if self.is_highly_dimmed():
