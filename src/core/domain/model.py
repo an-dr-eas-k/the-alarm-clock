@@ -577,7 +577,7 @@ class PlaybackContent(MediaContent):
 
     @property
     def volume(self) -> float:
-        return self.sound_device.get_system_volume()
+        return round(self.sound_device.get_system_volume() / 0.05) * 0.05
 
     @volume.setter
     def volume(self, value: float):
@@ -652,10 +652,10 @@ class PlaybackContent(MediaContent):
             self.event_bus.emit(VolumeChangedEvent(new_volume=self.volume))
 
     def _increase_volume(self):
-        self.volume = min(round((self.volume + 0.05) / 0.05) * 0.05, 1.0)
+        self.volume = min(self.volume + 0.05, 1.0)
 
     def _decrease_volume(self):
-        self.volume = max(round((self.volume - 0.05) / 0.05) * 0.05, 0.0)
+        self.volume = max(self.volume - 0.05, 0.0)
 
 
 class NextAlarmInfo:

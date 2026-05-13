@@ -154,4 +154,4 @@ class DisplayContent:
 
     def current_volume(self) -> float:
         vol = self.playback_content.volume
-        return round(vol, 2) if vol is not None else None
+        return vol if vol is not None else None
