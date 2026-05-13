@@ -50,11 +50,16 @@ class RPiGPIOManager:
             self._gpio_module.add_event_detect(
                 pin,
                 self._gpio_module.FALLING,
-                callback=lambda channel: self.executor.submit(
-                    self.gpio_callbacks[channel], False, self.read_all_pins()
-                ),
+                callback=self.callback_wrapper,
                 bouncetime=100,
             )
+
+    def callback_wrapper(self, channel):
+        all_pin_values = self.read_all_pins()
+        logger.debug(
+            f"GPIO event detected on channel {channel}, pin values: {all_pin_values}"
+        )
+        self.executor.submit(self.gpio_callbacks[channel], False, all_pin_values)
 
     def read_all_pins(self):
         pin_values = {}
