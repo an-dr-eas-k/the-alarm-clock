@@ -67,7 +67,7 @@ class RPiGPIOManager:
     def read_all_pins(self):
         pin_values = {}
         for pin in self.gpio_callbacks.keys():
-            pin_values[pin] = [int(not self._gpio_module.input(pin))]
+            pin_values[pin] = [int(self._gpio_module.input(pin))]
         return pin_values
 
     def cleanup(self):
