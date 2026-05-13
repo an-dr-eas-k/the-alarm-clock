@@ -60,14 +60,14 @@ class RPiGPIOManager:
         )
         self.executor.submit(
             self.gpio_callbacks[channel],
-            bool(all_pin_values[channel][0]),
+            bool(all_pin_values[channel]),
             all_pin_values,
         )
 
     def read_all_pins(self):
         pin_values = {}
         for pin in self.gpio_callbacks.keys():
-            pin_values[pin] = [int(self._gpio_module.input(pin))]
+            pin_values[pin] = int(self._gpio_module.input(pin))
         return pin_values
 
     def cleanup(self):
@@ -93,10 +93,10 @@ class GPIOInputManager:
         self.gpio_manager.setup()
 
         channel_a_value = int(
-            not self.gpio_manager.read_all_pins()[rotary_encoder_a_gpio][0]
+            not self.gpio_manager.read_all_pins()[rotary_encoder_a_gpio]
         )
         channel_b_value = int(
-            not self.gpio_manager.read_all_pins()[rotary_encoder_b_gpio][0]
+            not self.gpio_manager.read_all_pins()[rotary_encoder_b_gpio]
         )
 
         self.last_states = [(channel_a_value, channel_b_value), (None, None)]
@@ -106,13 +106,12 @@ class GPIOInputManager:
         )
 
     def _rotary_encoder_callback(self, _: bool, pin_values=None):
-        last_state = self.last_states[0]
 
-        channel_a_value = pin_values[rotary_encoder_a_gpio][0]
-        if channel_a_value == last_state[0]:
+        channel_a_value = pin_values[rotary_encoder_a_gpio]
+        if channel_a_value == 0:
             return
 
-        channel_b_value = pin_values[rotary_encoder_b_gpio][0]
+        channel_b_value = pin_values[rotary_encoder_b_gpio]
         state = (channel_a_value, channel_b_value)
         logger.debug(
             f"Rotary encoder current state: {state}, last state: {self.last_states[0]}"
