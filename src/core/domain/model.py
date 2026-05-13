@@ -30,7 +30,6 @@ from core.domain.events import (
     VolumeChangedEvent,
 )
 
-
 logger = logging.getLogger("tac.core.domain.model")
 
 
@@ -653,10 +652,10 @@ class PlaybackContent(MediaContent):
             self.event_bus.emit(VolumeChangedEvent(new_volume=self.volume))
 
     def _increase_volume(self):
-        self.volume = min(self.volume + 0.05, 1.0)
+        self.volume = min(round((self.volume + 0.05) / 0.05) * 0.05, 1.0)
 
     def _decrease_volume(self):
-        self.volume = max(self.volume - 0.05, 0.0)
+        self.volume = max(round((self.volume - 0.05) / 0.05) * 0.05, 0.0)
 
 
 class NextAlarmInfo:
