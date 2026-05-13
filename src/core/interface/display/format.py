@@ -66,6 +66,7 @@ class DisplayFormatter:
         return (
             True
             and self.display_content.room_brightness.is_highly_dimmed()
+            and not self.display_content.show_volume_meter
             and self.display_content.playback_content.playback_mode == Mode.Idle
             and (
                 False
