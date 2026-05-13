@@ -48,7 +48,7 @@ class RPiGPIOManager:
 
             self._gpio_module.add_event_detect(
                 pin,
-                self._gpio_module.FALLING,
+                self._gpio_module.BOTH,
                 callback=self.callback_wrapper,
                 bouncetime=100,
             )
