@@ -50,7 +50,7 @@ class RPiGPIOManager:
                 pin,
                 self._gpio_module.BOTH,
                 callback=self.callback_wrapper,
-                bouncetime=100,
+                bouncetime=10,
             )
 
     def callback_wrapper(self, channel):
