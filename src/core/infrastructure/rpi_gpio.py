@@ -9,7 +9,6 @@ from core.infrastructure.events_infrastructure import (
     RotaryDirection,
 )
 
-
 logger = logging.getLogger("tac.core.infrastructure.rpi_gpio")
 
 rotary_encoder_press_gpio: int = 5
@@ -59,7 +58,11 @@ class RPiGPIOManager:
         logger.debug(
             f"GPIO event detected on channel {channel}, pin values: {all_pin_values}"
         )
-        self.executor.submit(self.gpio_callbacks[channel], False, all_pin_values)
+        self.executor.submit(
+            self.gpio_callbacks[channel],
+            bool(all_pin_values[channel][0]),
+            all_pin_values,
+        )
 
     def read_all_pins(self):
         pin_values = {}
