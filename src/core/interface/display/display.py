@@ -497,7 +497,7 @@ class Display(DisplayContentProvider):
             if current_prop == AlarmProperty.RECURRING:
                 val_str = f"{len(val)} days"
             elif current_prop == AlarmProperty.ONETIME:
-                val_str = val.strftime("%Y-%m-%d") if val else "None"
+                val_str = self._format_date(val)
             elif current_prop == AlarmProperty.AUDIO_EFFECT:
                 val_str = val.title() if val else "None"
             elif current_prop == AlarmProperty.AUDIO_EFFECT_VOLUME:
@@ -548,7 +548,7 @@ class Display(DisplayContentProvider):
                 val_font_size = 8
 
         elif current_prop == AlarmProperty.ONETIME:
-            val_str = current_val.strftime("%Y-%m-%d") if current_val else "None"
+            val_str = self._format_date(current_val)
         elif current_prop == AlarmProperty.AUDIO_EFFECT:
             val_str = current_val.title() if current_val else "None"
         elif current_prop == AlarmProperty.AUDIO_EFFECT_VOLUME:
@@ -576,6 +576,18 @@ class Display(DisplayContentProvider):
             QtCore.Qt.AlignmentFlag.AlignCenter,
             val_str,
         )
+
+    def _format_date(self, d) -> str:
+        from datetime import timedelta
+
+        if d is None:
+            return "None"
+        today = GeoLocation().now().date()
+        if d == today:
+            return "today"
+        if d == today + timedelta(days=1):
+            return "tomorrow"
+        return d.strftime("%Y-%m-%d")
 
     def initialize_qt_app(self):
         QtCore.qInstallMessageHandler(qt_message_handler)
