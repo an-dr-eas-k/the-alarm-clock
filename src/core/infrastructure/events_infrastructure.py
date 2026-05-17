@@ -45,6 +45,7 @@ class HwButtonEvent(HwEvent):
 @dataclass(frozen=True)
 class HwRotaryEvent(HwEvent):
     direction: RotaryDirection
+    _1st_tick: bool
 
     def __str__(self):
-        return f"{self.__class__.__name__}.{self.device_name}.{self.direction}"
+        return f"{self.__class__.__name__}.{self.device_name}.{self.direction}.{self._1st_tick}"

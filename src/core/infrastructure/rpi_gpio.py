@@ -118,16 +118,26 @@ class GPIOInputManager:
         )
 
         if channel_b_value != channel_a_value:
-            logger.debug("Rotary clockwise detected")
+            logger.debug(
+                f"Rotary clockwise detected, {'1st tick' if channel_a_value == 1 else 'later tick'}"
+            )
 
             self.event_bus.emit(
-                HwRotaryEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE)
+                HwRotaryEvent(
+                    DeviceName.ROTARY_ENCODER,
+                    RotaryDirection.CLOCKWISE,
+                    channel_a_value == 1,
+                )
             )
         else:
-            logger.debug("Rotary counter-clockwise detected")
+            logger.debug(
+                f"Rotary counter-clockwise detected, {'1st tick' if channel_a_value == 0 else 'later tick'}"
+            )
             self.event_bus.emit(
                 HwRotaryEvent(
-                    DeviceName.ROTARY_ENCODER, RotaryDirection.COUNTERCLOCKWISE
+                    DeviceName.ROTARY_ENCODER,
+                    RotaryDirection.COUNTERCLOCKWISE,
+                    channel_a_value == 0,
                 )
             )
 
