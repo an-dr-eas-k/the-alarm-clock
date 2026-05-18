@@ -108,8 +108,6 @@ class GPIOInputManager:
     def _rotary_encoder_callback(self, _: bool, pin_values=None):
 
         channel_a_value = pin_values[rotary_encoder_a_gpio]
-        if channel_a_value == 0:
-            return
 
         channel_b_value = pin_values[rotary_encoder_b_gpio]
         state = (channel_a_value, channel_b_value)
