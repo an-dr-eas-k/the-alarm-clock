@@ -91,11 +91,6 @@ class Display(DisplayContentProvider):
 
     def on_startup_finished(self, _: StartupFinishedEvent):
         self.event_bus.on(ForcedDisplayUpdateEvent)(self.safe_refresh_display)
-        self.event_bus.on(AlarmStoppedEvent)(self._alarm_stopped)
-
-    def _alarm_stopped(self, _: AlarmStoppedEvent):
-        self.device.hide()
-        self.device.show()
 
     def safe_refresh_display(self, _=None):
         if not self._refresh_lock.acquire(blocking=False):
@@ -630,10 +625,6 @@ class Display(DisplayContentProvider):
                 )
         except AssertionError:
             pass
-
-    def _alarm_stopped(self, _: AlarmStoppedEvent):
-        self.device.hide()
-        self.device.show()
 
 
 if __name__ == "__main__":
