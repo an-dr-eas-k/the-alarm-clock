@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import time, timedelta, date
 import datetime
+import math
 import os
 from PIL import Image
 from typing import List
@@ -698,7 +699,7 @@ class NextAlarmInfo:
         return self._next_run_time - now
 
     def minutes_until_alarm(self) -> int:
-        return int(self._get_timedelta_to_alarm().total_seconds() / 60)
+        return math.ceil(self._get_timedelta_to_alarm().total_seconds() / 60)
 
     def __str__(self):
         return f"{self.alarm_name} at {self.next_run_time}"
