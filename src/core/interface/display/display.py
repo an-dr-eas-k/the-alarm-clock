@@ -9,7 +9,11 @@ from PIL import Image
 
 from PyQt5 import QtCore, QtGui
 
-from core.domain.alarm_definition_editor import AlarmProperty, EditorAction
+from core.domain.alarm_definition_editor import (
+    AlarmProperty,
+    DayPickerSession,
+    EditorAction,
+)
 from core.domain.events import (
     AlarmStoppedEvent,
     ForcedDisplayUpdateEvent,
@@ -221,6 +225,8 @@ class Display(DisplayContentProvider):
             self._paint_alarm_edit_view(painter)
         elif mode == ModeName.PROPERTY_EDIT:
             self._paint_property_edit_view(painter)
+        elif mode == ModeName.DAY_PICKER:
+            self._paint_day_picker_view(painter)
 
     def _paint_default_dimmed(self, painter):
         now = GeoLocation().now()
@@ -571,6 +577,89 @@ class Display(DisplayContentProvider):
             QtCore.Qt.AlignmentFlag.AlignCenter,
             val_str,
         )
+
+    def _paint_day_picker_view(self, painter):
+        coordinator = self.alarm_clock_context.mode_coordinator
+        service = coordinator.editing_service
+        if not service or not service.editing_session:
+            return
+
+        day_picker = service.editing_session.day_picker_session
+        if not day_picker:
+            return
+
+        fg_color = QtGui.QColor(
+            self.formatter.foreground_color(color_type=ColorType.INHEX)
+        )
+        painter.setPen(fg_color)
+
+        # Header
+        painter.setFont(self.formatter.info_font(size=10))
+        painter.drawText(
+            QtCore.QRect(0, 2, self.device.width, 14),
+            QtCore.Qt.AlignmentFlag.AlignCenter,
+            "SELECT DAYS",
+        )
+
+        # Day cells + OK: 8 items across the display width
+        items = [d.name[:2] for d in DayPickerSession.DAYS] + ["OK"]
+        cell_width = self.device.width // len(items)
+        cell_top = 16
+        cell_height = self.device.height - cell_top
+
+        for i, label in enumerate(items):
+            x = i * cell_width
+            cell_rect = QtCore.QRect(x, cell_top, cell_width, cell_height)
+
+            is_cursor = day_picker.cursor == i
+            is_ok = i == DayPickerSession.OK_INDEX
+            is_active = (
+                not is_ok and DayPickerSession.DAYS[i].name in day_picker.active_days
+            )
+
+            # Highlight cursor position
+            if is_cursor:
+                painter.fillRect(
+                    cell_rect,
+                    QtGui.QColor(
+                        self.formatter.foreground_color(color_type=ColorType.INHEX)
+                    ),
+                )
+                text_color = QtGui.QColor(
+                    self.formatter.background_color(color_type=ColorType.INHEX)
+                )
+            else:
+                text_color = fg_color
+
+            painter.setPen(text_color)
+
+            # Active indicator: toggle icon (fa-toggle-on/off) rotated 90° → vertical
+            if not is_ok:
+                toggle_char = "\uf204" if is_active else "\uf205"
+                painter.save()
+                painter.setFont(self.formatter.info_font(size=14))
+                painter.setPen(text_color)
+                cx = x + cell_width // 2
+                cy = cell_top + 13
+                painter.translate(cx, cy)
+                painter.rotate(90)
+                painter.drawText(
+                    QtCore.QRect(-13, -14, 26, 26),
+                    QtCore.Qt.AlignmentFlag.AlignCenter,
+                    toggle_char,
+                )
+                painter.restore()
+
+            # Day abbreviation (below the symbol)
+            painter.setPen(text_color)
+            painter.setFont(self.formatter.info_font(size=10))
+            painter.drawText(
+                QtCore.QRect(x, cell_top + 32, cell_width, 14),
+                QtCore.Qt.AlignmentFlag.AlignCenter,
+                label,
+            )
+
+            painter.setPen(fg_color)
 
     def _format_date(self, d) -> str:
         from datetime import timedelta

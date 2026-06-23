@@ -73,12 +73,16 @@ class ComputerInfrastructure(IBrightnessSensor):
             if key_code == ecodes.KEY_1:
                 self.event_bus.emit(
                     HwRotaryEvent(
-                        DeviceName.ROTARY_ENCODER, RotaryDirection.COUNTERCLOCKWISE
+                        DeviceName.ROTARY_ENCODER,
+                        RotaryDirection.COUNTERCLOCKWISE,
+                        True,
                     )
                 )
             elif key_code == ecodes.KEY_2:
                 self.event_bus.emit(
-                    HwRotaryEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE)
+                    HwRotaryEvent(
+                        DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE, True
+                    )
                 )
             elif key_code == ecodes.KEY_3:
                 self.event_bus.emit(HwButtonEvent(DeviceName.MODE_BUTTON))

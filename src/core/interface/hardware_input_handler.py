@@ -81,4 +81,7 @@ class HardwareInputHandler:
         elif current_mode == ModeName.PROPERTY_EDIT:
             self.mode_coordinator.navigate_property_values(direction)
 
+        elif current_mode == ModeName.DAY_PICKER:
+            self.mode_coordinator.navigate_day_picker(direction)
+
         self.event_bus.emit(ForcedDisplayUpdateEvent())
