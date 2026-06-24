@@ -26,6 +26,7 @@ from core.infrastructure.brightness_sensor import IBrightnessSensor
 from core.infrastructure.event_bus import EventBus
 from core.infrastructure.scheduler import SchedulerService, SchedulerStores
 from resources.resources import active_alarm_definition_file
+from utils.extensions import get_job_arg
 from utils.os_interactions import OSInteraction
 
 logger = logging.getLogger("tac.core.application.alarm_audio_service")
@@ -99,9 +100,23 @@ class AlarmAudioService(BasicAudioService):
                 jobstore=SchedulerStores.default.value,
             )
         self.display_content.update_next_alarm(next_alarm_info)
+        self._update_alarm_sort_orders()
         logger.info(
             "next alarm info updated: %s",
             next_alarm_info if next_alarm_info.next_run_time else "none",
+        )
+
+    def _update_alarm_sort_orders(self):
+        next_run_times = {}
+        for job in self.scheduler_service.get_jobs(
+            jobstore=SchedulerStores.alarm.value
+        ):
+            job_alarm_def: AlarmDefinition = get_job_arg(job, AlarmDefinition)
+            if job_alarm_def is None or job.next_run_time is None:
+                continue
+            next_run_times[job_alarm_def.id] = job.next_run_time.timestamp()
+        self.alarm_clock_context.config.alarm_definitions.sort(
+            key=lambda a: (not a.is_active, next_run_times.get(a.id, float("inf")))
         )
 
     def _alarm_triggered(self, event: AlarmTriggeredEvent = None):
