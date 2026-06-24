@@ -1,3 +1,4 @@
+from copy import deepcopy
 from datetime import date, timedelta
 from enum import Enum
 from typing import Dict, List, Optional, Union
@@ -166,7 +167,7 @@ class AlarmEditingSession:
         self._day_picker_session: Optional[DayPickerSession] = None
 
     def _create_draft(self, alarm: AlarmDefinition) -> AlarmDefinition:
-        return alarm
+        return deepcopy(alarm)
 
     def _build_property_list(self) -> List[Union[AlarmProperty, EditorAction]]:
         return self._property_editor.get_properties_to_edit(self._draft_alarm) + [
