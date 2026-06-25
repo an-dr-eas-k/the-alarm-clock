@@ -260,12 +260,23 @@ class Display(DisplayContentProvider):
         ):
             alarm_time = self.display_content.get_next_alarm()
             alarm_text = self.formatter.format_clock_string(alarm_time)
-            painter.setFont(self.formatter.info_font(size=12))
+            alarm_font = self.formatter.info_font(
+                size=12, weight=QtGui.QFont.Weight.Thin
+            )
+            painter.setFont(alarm_font)
+            fm = QtGui.QFontMetrics(alarm_font)
+            icon_w = fm.width("\uf49a") + 10
             painter.drawText(
-                QtCore.QRect(x_offset + 95, y_offset, 100, 25),
+                QtCore.QRect(x_offset + 95, y_offset, icon_w, 25),
                 QtCore.Qt.AlignmentFlag.AlignLeft
                 | QtCore.Qt.AlignmentFlag.AlignVCenter,
-                f"\uf49a {alarm_text}",
+                "\uf49a",
+            )
+            painter.drawText(
+                QtCore.QRect(x_offset + 95 + icon_w, y_offset, 80, 25),
+                QtCore.Qt.AlignmentFlag.AlignLeft
+                | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                alarm_text,
             )
 
         # WiFi
