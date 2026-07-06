@@ -628,12 +628,12 @@
           </td>
         </tr>
         <tr>
-          <td>Upper Volume (alarm increase target, 0.0–1.0)</td>
-          <td><input type="text" id="upper_volume"
-              value="{{ config.upper_volume if config.upper_volume is not None else '' }}" />
+          <td>Start Volume (alarm increase initial volume, 0.0–1.0)</td>
+          <td><input type="text" id="start_volume"
+              value="{{ config.start_volume if config.start_volume is not None else '' }}" />
           </td>
           <td><button type="submit" class="btn btn-primary btn-row-action"
-              onclick="onClickSave(document.getElementById('upper_volume').value, 'upper_volume')">Save</button>
+              onclick="onClickSave(document.getElementById('start_volume').value, 'start_volume')">Save</button>
           </td>
         </tr>
         <tr>

@@ -126,11 +126,16 @@ class AlarmAudioService(BasicAudioService):
     def _alarm_triggered(self, event: AlarmTriggeredEvent = None):
         self._preprocess_ring_alarm(event.alarm_definition)
         audio_effect = self._get_appropriate_alarm_effect()
+        initial_volume = (
+            self.alarm_clock_context.config.start_volume
+            if getattr(event.alarm_definition, "increase", False)
+            else audio_effect.volume
+        )
         self.event_bus.emit(
             PlaybackChangedEvent(
                 Mode.Alarm,
                 audio_effect.audio_stream,
-                absolute_volume=audio_effect.volume,
+                absolute_volume=initial_volume,
             )
         )
 
@@ -191,7 +196,9 @@ class AlarmAudioService(BasicAudioService):
         )
         if getattr(alarm_definition, "increase", False):
             self._volume_increase_start_time = GeoLocation().now()
-            self._volume_increase_start_volume = alarm_definition.audio_effect.volume
+            self._volume_increase_start_volume = (
+                self.alarm_clock_context.config.start_volume
+            )
             self.scheduler_service.add_job(
                 self._volume_increase_tick,
                 trigger="interval",
@@ -222,7 +229,9 @@ class AlarmAudioService(BasicAudioService):
             duration_secs = (
                 self.alarm_clock_context.config.volume_increase_duration_in_secs
             )
-            upper_volume = self.alarm_clock_context.config.upper_volume
+            upper_volume = (
+                self.alarm_clock_context.active_alarm_definition.audio_effect.volume
+            )
             fraction = min(1.0, elapsed_secs / duration_secs)
 
             new_volume = self._volume_increase_start_volume + fraction * (
