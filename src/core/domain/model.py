@@ -97,6 +97,15 @@ class RoomBrightness(Value[float]):
 
 
 @dataclass
+class LocationConfig:
+    city: str = "Munich"
+    region: str = "Bavaria"
+    timezone: str = "Europe/Berlin"
+    latitude: float = 48.1372
+    longitude: float = 11.5755
+
+
+@dataclass
 class Style:
     background_grayscale_16: int
     foreground_grayscale_16: int
@@ -405,6 +414,8 @@ class Config:
     start_volume: float
     volume_increase_duration_in_secs: int
 
+    location: LocationConfig
+
     # Public attributes for template access (Tornado templates don't call properties)
     alarm_definitions: List[AlarmDefinition]
     audio_streams: List[AudioStream]
@@ -519,6 +530,7 @@ class Config:
             dict(key="debug_level", value=0),
             dict(key="start_volume", value=0.15),
             dict(key="volume_increase_duration_in_secs", value=60),
+            dict(key="location", value=LocationConfig()),
         ]:
             if not hasattr(self, conf_prop["key"]):
                 logger.debug(
@@ -546,7 +558,19 @@ class Config:
             persisted_config: Config = jsonpickle.decode(file_contents)
             persisted_config.event_bus = event_bus
             persisted_config.ensure_valid_config()
+            persisted_config._apply_location()
             return persisted_config
+
+    def _apply_location(self):
+        """Push the configured location into the GeoLocation singleton."""
+        from astral import LocationInfo
+
+        loc = self.location
+        GeoLocation().configure(
+            LocationInfo(
+                loc.city, loc.region, loc.timezone, loc.latitude, loc.longitude
+            )
+        )
 
 
 class AlarmClockContext:
