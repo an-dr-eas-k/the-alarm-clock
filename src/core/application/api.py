@@ -302,6 +302,10 @@ class ConfigApiHandler(tornado.web.RequestHandler):
             form_arguments.get("isActive") is not None
             and form_arguments["isActive"] == "on"
         )
+        ala.increase = (
+            form_arguments.get("increase") is not None
+            and form_arguments["increase"] == "on"
+        )
         return ala
 
 

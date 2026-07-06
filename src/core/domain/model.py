@@ -43,6 +43,7 @@ class SchedulerJobIds(Enum):
     memory_usage_logger = "memory_usage_logger_trigger"
     thread_usage_logger = "thread_usage_logger_trigger"
     pre_alarm = "pre_alarm_trigger"
+    volume_increase = "volume_increase_trigger"
 
 
 class DisplayContentProvider:
@@ -282,6 +283,7 @@ class AlarmDefinition:
     id: int
     hour: int
     min: int
+    increase: bool = False
 
     @property
     def recurrence(self) -> AlarmRecurrence:
@@ -400,6 +402,8 @@ class Config:
     alarm_preview_hours: int
     debug_level: int
     pre_alarm_trigger_in_mins: int = 10
+    upper_volume: float
+    volume_increase_duration_in_secs: int
 
     # Public attributes for template access (Tornado templates don't call properties)
     alarm_definitions: List[AlarmDefinition]
@@ -513,6 +517,8 @@ class Config:
             dict(key="alarm_preview_hours", value=12),
             dict(key="pre_alarm_trigger_in_mins", value=10),
             dict(key="debug_level", value=0),
+            dict(key="upper_volume", value=0.5),
+            dict(key="volume_increase_duration_in_secs", value=60),
         ]:
             if not hasattr(self, conf_prop["key"]):
                 logger.debug(

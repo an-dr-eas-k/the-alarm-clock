@@ -306,6 +306,7 @@
       var volume = btn.getAttribute('data-alarm-volume');
       var visualActive = btn.getAttribute('data-alarm-visual') === 'true';
       var isActive = btn.getAttribute('data-alarm-active') === 'true';
+      var increaseActive = btn.getAttribute('data-alarm-increase') === 'true';
 
       document.querySelector('#alarm-form input[name="alarmName"]').value = name;
       document.querySelector('#alarm-form input[name="time"]').value = alarmTime;
@@ -324,6 +325,7 @@
       document.getElementById('volumeValue').textContent = volume;
       document.getElementById('visualeffectpicker').checked = visualActive;
       document.getElementById('activepicker').checked = isActive;
+      document.getElementById('increasepicker').checked = increaseActive;
 
       var deleteBtn = document.getElementById('delete-alarm-btn');
       deleteBtn.style.display = 'inline-block';
@@ -410,6 +412,7 @@
                 }},</span>
             </span>
             vol: {{ alarm_definition.audio_effect.volume }},
+            {{ 'increase' if alarm_definition.increase else 'no increase' }},
             {{ 'visuals' if alarm_definition.visual_effect is not None else 'no visuals' }}</td>
           <td>
             <button type="submit" class="btn btn-primary btn-row-action"
@@ -425,7 +428,8 @@
               data-alarm-stream-id="{{ alarm_definition.audio_effect.audio_stream.id }}"
               data-alarm-volume="{{ alarm_definition.audio_effect.volume }}"
               data-alarm-visual="{{ 'true' if alarm_definition.visual_effect is not None else 'false' }}"
-              data-alarm-active="{{ 'true' if alarm_definition.is_active else 'false' }}" onclick="onClickEdit(this)"
+              data-alarm-active="{{ 'true' if alarm_definition.is_active else 'false' }}"
+              data-alarm-increase="{{ 'true' if alarm_definition.increase else 'false' }}" onclick="onClickEdit(this)"
               title="Edit">
               <i class="bi bi-pencil-fill"></i>
             </button>
@@ -485,6 +489,10 @@
                 <div class="form-group">
                   <label for="visualeffectpicker">Visual Effects:</label>
                   <input type="checkbox" checked name="visualEffectActive" id="visualeffectpicker" />
+                </div>
+                <div class="form-group">
+                  <label for="increasepicker">Increase Volume:</label>
+                  <input type="checkbox" name="increase" id="increasepicker" />
                 </div>
                 <div class="form-group">
                   <label for="activepicker">Active:</label>
@@ -611,6 +619,24 @@
           </td>
           <td><button type="submit" class="btn btn-primary btn-row-action"
               onclick="onClickSave(document.getElementById('debug_level').value, 'debug_level')">Save</button>
+          </td>
+        </tr>
+        <tr>
+          <td>Upper Volume (alarm increase target, 0.0–1.0)</td>
+          <td><input type="text" id="upper_volume"
+              value="{{ config.upper_volume if config.upper_volume is not None else '' }}" />
+          </td>
+          <td><button type="submit" class="btn btn-primary btn-row-action"
+              onclick="onClickSave(document.getElementById('upper_volume').value, 'upper_volume')">Save</button>
+          </td>
+        </tr>
+        <tr>
+          <td>Volume Increase Duration (secs)</td>
+          <td><input type="text" id="volume_increase_duration_in_secs"
+              value="{{ config.volume_increase_duration_in_secs if config.volume_increase_duration_in_secs is not None else '' }}" />
+          </td>
+          <td><button type="submit" class="btn btn-primary btn-row-action"
+              onclick="onClickSave(document.getElementById('volume_increase_duration_in_secs').value, 'volume_increase_duration_in_secs')">Save</button>
           </td>
         </tr>
       </table>
