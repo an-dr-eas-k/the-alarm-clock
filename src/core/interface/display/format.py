@@ -3,6 +3,7 @@ from enum import Enum
 import logging
 from PIL import Image
 from PyQt5 import QtGui
+from core.domain.mode_coordinator import ModeName
 from core.domain.model import (
     AlarmClockContext,
     Mode,
@@ -33,11 +34,6 @@ class DisplayFormatter:
         self.display_content = content
         self.alarm_clock_context = alarm_clock_context
 
-    def clock_font_pil(self, size: int = 50):
-        if self.be_gloomy():
-            return PresentationFont.get_font(PresentationFont.light_clock_font, 20)
-        return PresentationFont.get_font(PresentationFont.bold_clock_font, size)
-
     def clock_font(self, size: int = 20, weight: int = QtGui.QFont.Weight.Bold):
         font_path = (
             PresentationFont.roboto_font
@@ -46,16 +42,13 @@ class DisplayFormatter:
         )
         return PresentationFont.get_font_family(font_path, size, weight)
 
-    def info_font_pil(self, size: int = 18):
-        return PresentationFont.get_font(PresentationFont.info_font, size)
-
     def info_font(self, size: int = 18, weight: int = QtGui.QFont.Weight.Normal):
-        return PresentationFont.get_font_family(
-            PresentationFont.roboto_font, size, weight
+        font_path = (
+            PresentationFont.roboto_font
+            if not self.be_gloomy()
+            else PresentationFont.light_clock_font
         )
-
-    def weather_font_pil(self, size: int = 18):
-        return PresentationFont.get_font(PresentationFont.weather_font, size)
+        return PresentationFont.get_font_family(font_path, size, weight)
 
     def weather_font(self, size: int = 18, weight: int = QtGui.QFont.Weight.Normal):
         return PresentationFont.get_font_family(
@@ -63,16 +56,25 @@ class DisplayFormatter:
         )
 
     def be_gloomy(self):
+        is_visual_effect_active = (
+            True
+            and self.display_content.next_alarm_info is not None
+            and self.display_content.next_alarm_info.visual_effect is not None
+            and self.display_content.next_alarm_info.visual_effect.is_active()
+        )
+        is_in_setting_menu = (
+            True
+            and self.alarm_clock_context.mode_coordinator is not None
+            and self.alarm_clock_context.mode_coordinator.current_mode_name
+            != ModeName.DEFAULT
+        )
         return (
             True
             and self.display_content.room_brightness.is_highly_dimmed()
+            and not self.display_content.show_volume_meter
             and self.display_content.playback_content.playback_mode == Mode.Idle
-            and (
-                False
-                or self.display_content.next_alarm_info is None
-                or self.display_content.next_alarm_info.visual_effect is None
-                or not self.display_content.next_alarm_info.visual_effect.is_active()
-            )
+            and not is_visual_effect_active
+            and not is_in_setting_menu
         )
 
     def update_formatter(self):
@@ -117,7 +119,6 @@ class DisplayFormatter:
 
     def adjust_display(self):
         self.adjust_display_by_room_brightness()
-        self.adjust_display_by_mode()
         self.adjust_display_by_alarm()
         if not self.be_gloomy():
             self._foreground_grayscale_16 = max(3, self._foreground_grayscale_16)
@@ -127,22 +128,6 @@ class DisplayFormatter:
         self._foreground_grayscale_16 = (
             self.display_content.room_brightness.get_grayscale_value(min_value=1)
         )
-
-    def adjust_display_by_mode(self):
-        from core.domain.mode_coordinator import ModeName
-
-        current_mode = (
-            self.alarm_clock_context.mode_coordinator.current_mode_name
-            if self.alarm_clock_context.mode_coordinator
-            else None
-        )
-
-        if current_mode is None:
-            return
-
-        if current_mode != ModeName.DEFAULT:
-            self._background_grayscale_16 = 0
-            self._foreground_grayscale_16 = 15
 
     def adjust_display_by_alarm(self):
         next_alarm_info = self.display_content.next_alarm_info

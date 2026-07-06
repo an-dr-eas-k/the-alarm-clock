@@ -2,7 +2,11 @@ from enum import Enum
 from typing import Optional
 import logging
 
-from core.domain.alarm_definition_editor import AlarmEditingService, EditorAction
+from core.domain.alarm_definition_editor import (
+    AlarmEditingService,
+    AlarmProperty,
+    EditorAction,
+)
 from core.domain.events import (
     ConfigChangedEvent,
 )
@@ -10,7 +14,6 @@ from core.domain.model import (
     AlarmClockContext,
 )
 from core.infrastructure.event_bus import EventBus
-
 
 logger = logging.getLogger("tac.core.domain.mode_coordinator")
 
@@ -20,6 +23,7 @@ class ModeName(Enum):
     ALARM_VIEW = "alarm_view"
     ALARM_EDIT = "alarm_edit"
     PROPERTY_EDIT = "property_edit"
+    DAY_PICKER = "day_picker"
 
     def hash(self):
         return hash(self.value)
@@ -89,9 +93,21 @@ class AlarmClockModeCoordinator:
 
         self._editing_service.navigate_value_list(direction)
 
+    def navigate_day_picker(self, direction: int):
+        if self._current_mode_name != ModeName.DAY_PICKER or not self._editing_service:
+            return
+
+        session = self._editing_service.editing_session
+        if session and session.day_picker_session:
+            session.day_picker_session.navigate(direction)
+
     def handle_mode_button(self):
         if self._current_mode_name == ModeName.DEFAULT:
             self.enter_alarm_view_mode()
+        elif self._current_mode_name == ModeName.DAY_PICKER:
+            if self._editing_service and self._editing_service.editing_session:
+                self._editing_service.editing_session.cancel_day_picker()
+            self._current_mode_name = ModeName.ALARM_EDIT
         else:
             self.return_to_default_mode()
 
@@ -110,6 +126,9 @@ class AlarmClockModeCoordinator:
                 self._commit_alarm_changes()
             elif self._editing_service.property_to_edit == EditorAction.CANCEL:
                 self._cancel_alarm_changes()
+            elif self._editing_service.property_to_edit == AlarmProperty.RECURRING:
+                self._editing_service.editing_session.start_day_picker()
+                self._current_mode_name = ModeName.DAY_PICKER
             else:
                 if self._editing_service.start_property_value_editing():
                     self.enter_property_edit_mode()
@@ -118,6 +137,17 @@ class AlarmClockModeCoordinator:
             if self._editing_service:
                 self._editing_service.continue_editing()
             self._current_mode_name = ModeName.ALARM_EDIT
+
+        elif self._current_mode_name == ModeName.DAY_PICKER:
+            if not self._editing_service or not self._editing_service.editing_session:
+                return
+            day_picker = self._editing_service.editing_session.day_picker_session
+            if day_picker:
+                if day_picker.is_on_ok():
+                    self._editing_service.editing_session.confirm_day_picker()
+                    self._current_mode_name = ModeName.ALARM_EDIT
+                else:
+                    day_picker.toggle_current()
 
     def _commit_alarm_changes(self):
         if not self._editing_service:

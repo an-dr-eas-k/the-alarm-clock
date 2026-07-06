@@ -16,7 +16,7 @@ logger = logging.getLogger("tac.core.infrastructure.keyboard_buttons")
 
 
 class ComputerInfrastructure(IBrightnessSensor):
-    simulated_brightness: int = 10000
+    simulated_brightness: float = 1.0
 
     def __init__(self, executor: ThreadPoolExecutor):
         self.log = logging.getLogger(self.__class__.__name__)
@@ -27,8 +27,7 @@ class ComputerInfrastructure(IBrightnessSensor):
     def _find_keyboards(self):
         try:
             devices = [evdev.InputDevice(path) for path in evdev.list_devices()]
-            return devices
-            # return [d for d in devices if "keyboard" in d.name.lower()]
+            return [d for d in devices if "keyboard" in d.name.lower()]
         except Exception as e:
             logger.error(f"Failed to list input devices: {e}")
         return []
@@ -74,19 +73,23 @@ class ComputerInfrastructure(IBrightnessSensor):
             if key_code == ecodes.KEY_1:
                 self.event_bus.emit(
                     HwRotaryEvent(
-                        DeviceName.ROTARY_ENCODER, RotaryDirection.COUNTERCLOCKWISE
+                        DeviceName.ROTARY_ENCODER,
+                        RotaryDirection.COUNTERCLOCKWISE,
+                        True,
                     )
                 )
             elif key_code == ecodes.KEY_2:
                 self.event_bus.emit(
-                    HwRotaryEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE)
+                    HwRotaryEvent(
+                        DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE, True
+                    )
                 )
             elif key_code == ecodes.KEY_3:
                 self.event_bus.emit(HwButtonEvent(DeviceName.MODE_BUTTON))
             elif key_code == ecodes.KEY_4:
                 self.event_bus.emit(HwButtonEvent(DeviceName.INVOKE_BUTTON))
             elif key_code == ecodes.KEY_5:
-                brightness_examples = [0, 1, 3, 10, 10000]
+                brightness_examples = [0.0, 0.1, 0.3, 0.8, 1.0]
                 self.simulated_brightness = brightness_examples[
                     (brightness_examples.index(self.simulated_brightness) + 1)
                     % len(brightness_examples)

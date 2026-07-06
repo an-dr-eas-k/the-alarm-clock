@@ -61,6 +61,9 @@ class HardwareInputHandler:
     def _handle_rotary_event(self, event: HwRotaryEvent):
         current_mode = self.mode_coordinator.current_mode_name
         direction = 1 if event.direction == RotaryDirection.CLOCKWISE else -1
+        if not event._1st_tick:
+            return
+
         logger.debug(
             f"translating rotary event: {event.direction} in mode {current_mode}"
         )
@@ -77,5 +80,8 @@ class HardwareInputHandler:
 
         elif current_mode == ModeName.PROPERTY_EDIT:
             self.mode_coordinator.navigate_property_values(direction)
+
+        elif current_mode == ModeName.DAY_PICKER:
+            self.mode_coordinator.navigate_day_picker(direction)
 
         self.event_bus.emit(ForcedDisplayUpdateEvent())

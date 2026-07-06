@@ -146,7 +146,7 @@ class GeoLocation:
     def get_current_weather(self):
         try:
             url = f"https://api.open-meteo.com/v1/forecast?latitude={self.location_info.latitude}&longitude={self.location_info.longitude}&current=temperature_2m&current=weather_code"
-            data = json.load(urlopen(url))
+            data = json.load(urlopen(url, timeout=10))
             return Weather(
                 code=data["current"]["weather_code"],
                 temperature=data["current"]["temperature_2m"],

@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import time, timedelta, date
 import datetime
+import math
 import os
 from PIL import Image
 from typing import List
@@ -29,7 +30,6 @@ from core.domain.events import (
     VolumeChangeRequest,
     VolumeChangedEvent,
 )
-
 
 logger = logging.getLogger("tac.core.domain.model")
 
@@ -83,11 +83,11 @@ class RoomBrightness(Value[float]):
 
     def get_grayscale_value(self, min_value: int = 0, max_value: int = 15) -> int:
         x = max_value
-        if self.value < 15:
+        if self.value < 0.15:
             x = 10
-        if self.value < 6:
+        if self.value < 0.06:
             x = 7
-        if self.value < 2:
+        if self.value < 0.02:
             x = 3
 
         if self.is_highly_dimmed():
@@ -578,7 +578,7 @@ class PlaybackContent(MediaContent):
 
     @property
     def volume(self) -> float:
-        return self.sound_device.get_system_volume()
+        return round(self.sound_device.get_system_volume() / 0.05) * 0.05
 
     @volume.setter
     def volume(self, value: float):
@@ -699,7 +699,7 @@ class NextAlarmInfo:
         return self._next_run_time - now
 
     def minutes_until_alarm(self) -> int:
-        return int(self._get_timedelta_to_alarm().total_seconds() / 60)
+        return math.ceil(self._get_timedelta_to_alarm().total_seconds() / 60)
 
     def __str__(self):
         return f"{self.alarm_name} at {self.next_run_time}"

@@ -156,6 +156,12 @@
         "lastResort"
       ]
     },
+    "tac.core.infrastructure.rpi_gpio": {
+      "level": "DEBUG",
+      "handlers": [
+        "lastResort"
+      ]
+    },
     "tac.core.infrastructure.mcp": {
       "level": "DEBUG",
       "handlers": [

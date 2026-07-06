@@ -21,6 +21,9 @@ SupplementaryGroups=audio
  
 Restart=always
 RestartSec=10
+# Force a restart every 24h to recover from silent failures
+# (token expiry, network drift, ALSA state issues) without requiring a crash.
+RuntimeMaxSec=24h
 
 # Some of these may be implied by DynamicUser=yes
 # RestrictRealtime=true

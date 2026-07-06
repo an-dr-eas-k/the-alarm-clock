@@ -1,3 +1,4 @@
+from copy import deepcopy
 from datetime import date, timedelta
 from enum import Enum
 from typing import Dict, List, Optional, Union
@@ -13,7 +14,6 @@ from core.domain.model import (
     Weekday,
 )
 from utils.geolocation import GeoLocation
-
 
 logger = logging.getLogger("tac.core.interface.display.editor.alarm_definition_editor")
 
@@ -62,32 +62,7 @@ class AlarmDefinitionProperties:
             ),
             AlarmProperty.RECURRING: EditableProperty(
                 AlarmProperty.RECURRING,
-                [
-                    [Weekday.MONDAY.name],
-                    [Weekday.TUESDAY.name],
-                    [Weekday.WEDNESDAY.name],
-                    [Weekday.THURSDAY.name],
-                    [Weekday.FRIDAY.name],
-                    [Weekday.SATURDAY.name],
-                    [Weekday.SUNDAY.name],
-                    [Weekday.SATURDAY.name, Weekday.SUNDAY.name],
-                    [
-                        Weekday.MONDAY.name,
-                        Weekday.TUESDAY.name,
-                        Weekday.WEDNESDAY.name,
-                        Weekday.THURSDAY.name,
-                        Weekday.FRIDAY.name,
-                    ],
-                    [
-                        Weekday.MONDAY.name,
-                        Weekday.TUESDAY.name,
-                        Weekday.WEDNESDAY.name,
-                        Weekday.THURSDAY.name,
-                        Weekday.FRIDAY.name,
-                        Weekday.SATURDAY.name,
-                        Weekday.SUNDAY.name,
-                    ],
-                ],
+                None,
             ),
             AlarmProperty.AUDIO_EFFECT: EditableProperty(
                 AlarmProperty.AUDIO_EFFECT, None
@@ -133,6 +108,51 @@ class AlarmDefinitionProperties:
         ]
 
 
+class DayPickerSession:
+    """Interactive per-day selector: 7 weekday toggles + OK."""
+
+    DAYS = [
+        Weekday.MONDAY,
+        Weekday.TUESDAY,
+        Weekday.WEDNESDAY,
+        Weekday.THURSDAY,
+        Weekday.FRIDAY,
+        Weekday.SATURDAY,
+        Weekday.SUNDAY,
+    ]
+    OK_INDEX = 7
+
+    def __init__(self, current_days: List[str]):
+        self._active_days: set = set(current_days) if current_days else set()
+        self._cursor: int = 0
+
+    @property
+    def cursor(self) -> int:
+        return self._cursor
+
+    @property
+    def active_days(self) -> set:
+        return self._active_days
+
+    def is_on_ok(self) -> bool:
+        return self._cursor == self.OK_INDEX
+
+    def navigate(self, direction: int):
+        self._cursor = (self._cursor + direction) % (len(self.DAYS) + 1)
+
+    def toggle_current(self):
+        if self._cursor < len(self.DAYS):
+            day_name = self.DAYS[self._cursor].name
+            if day_name in self._active_days:
+                self._active_days.discard(day_name)
+            else:
+                self._active_days.add(day_name)
+
+    def get_selected_days(self) -> List[str]:
+        """Return selected days in canonical weekday order."""
+        return [d.name for d in self.DAYS if d.name in self._active_days]
+
+
 class AlarmEditingSession:
 
     def __init__(self, alarm: AlarmDefinition, config: "Config"):
@@ -144,15 +164,35 @@ class AlarmEditingSession:
             config, self._draft_alarm.audio_effect.volume
         )
         self._properties = self._build_property_list()
+        self._day_picker_session: Optional[DayPickerSession] = None
 
     def _create_draft(self, alarm: AlarmDefinition) -> AlarmDefinition:
-        return alarm
+        return deepcopy(alarm)
 
     def _build_property_list(self) -> List[Union[AlarmProperty, EditorAction]]:
         return self._property_editor.get_properties_to_edit(self._draft_alarm) + [
             EditorAction.COMMIT,
             EditorAction.CANCEL,
         ]
+
+    @property
+    def day_picker_session(self) -> Optional["DayPickerSession"]:
+        return self._day_picker_session
+
+    def start_day_picker(self):
+        current_days = self._draft_alarm.recurring or []
+        self._day_picker_session = DayPickerSession(current_days)
+        logger.debug("Started day picker session")
+
+    def confirm_day_picker(self):
+        if self._day_picker_session:
+            self._draft_alarm.recurring = self._day_picker_session.get_selected_days()
+            self._day_picker_session = None
+            logger.debug(f"Confirmed day picker: {self._draft_alarm.recurring}")
+
+    def cancel_day_picker(self):
+        self._day_picker_session = None
+        logger.debug("Cancelled day picker session")
 
     @property
     def draft_alarm(self) -> AlarmDefinition:

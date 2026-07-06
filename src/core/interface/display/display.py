@@ -9,7 +9,11 @@ from PIL import Image
 
 from PyQt5 import QtCore, QtGui
 
-from core.domain.alarm_definition_editor import AlarmProperty, EditorAction
+from core.domain.alarm_definition_editor import (
+    AlarmProperty,
+    DayPickerSession,
+    EditorAction,
+)
 from core.domain.events import (
     AlarmStoppedEvent,
     ForcedDisplayUpdateEvent,
@@ -91,11 +95,6 @@ class Display(DisplayContentProvider):
 
     def on_startup_finished(self, _: StartupFinishedEvent):
         self.event_bus.on(ForcedDisplayUpdateEvent)(self.safe_refresh_display)
-        self.event_bus.on(AlarmStoppedEvent)(self._alarm_stopped)
-
-    def _alarm_stopped(self, _: AlarmStoppedEvent):
-        self.device.hide()
-        self.device.show()
 
     def safe_refresh_display(self, _=None):
         if not self._refresh_lock.acquire(blocking=False):
@@ -226,6 +225,8 @@ class Display(DisplayContentProvider):
             self._paint_alarm_edit_view(painter)
         elif mode == ModeName.PROPERTY_EDIT:
             self._paint_property_edit_view(painter)
+        elif mode == ModeName.DAY_PICKER:
+            self._paint_day_picker_view(painter)
 
     def _paint_default_dimmed(self, painter):
         now = GeoLocation().now()
@@ -259,12 +260,23 @@ class Display(DisplayContentProvider):
         ):
             alarm_time = self.display_content.get_next_alarm()
             alarm_text = self.formatter.format_clock_string(alarm_time)
-            painter.setFont(self.formatter.info_font(size=12))
+            alarm_font = self.formatter.info_font(
+                size=12, weight=QtGui.QFont.Weight.Thin
+            )
+            painter.setFont(alarm_font)
+            fm = QtGui.QFontMetrics(alarm_font)
+            icon_w = fm.width("\uf49a") + 10
             painter.drawText(
-                QtCore.QRect(x_offset + 95, y_offset, 100, 25),
+                QtCore.QRect(x_offset + 95, y_offset, icon_w, 25),
                 QtCore.Qt.AlignmentFlag.AlignLeft
                 | QtCore.Qt.AlignmentFlag.AlignVCenter,
-                f"\uf49a {alarm_text}",
+                "\uf49a",
+            )
+            painter.drawText(
+                QtCore.QRect(x_offset + 95 + icon_w, y_offset, 80, 25),
+                QtCore.Qt.AlignmentFlag.AlignLeft
+                | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                alarm_text,
             )
 
         # WiFi
@@ -497,7 +509,7 @@ class Display(DisplayContentProvider):
             if current_prop == AlarmProperty.RECURRING:
                 val_str = f"{len(val)} days"
             elif current_prop == AlarmProperty.ONETIME:
-                val_str = val.strftime("%Y-%m-%d") if val else "None"
+                val_str = self._format_date(val)
             elif current_prop == AlarmProperty.AUDIO_EFFECT:
                 val_str = val.title() if val else "None"
             elif current_prop == AlarmProperty.AUDIO_EFFECT_VOLUME:
@@ -548,7 +560,7 @@ class Display(DisplayContentProvider):
                 val_font_size = 8
 
         elif current_prop == AlarmProperty.ONETIME:
-            val_str = current_val.strftime("%Y-%m-%d") if current_val else "None"
+            val_str = self._format_date(current_val)
         elif current_prop == AlarmProperty.AUDIO_EFFECT:
             val_str = current_val.title() if current_val else "None"
         elif current_prop == AlarmProperty.AUDIO_EFFECT_VOLUME:
@@ -576,6 +588,101 @@ class Display(DisplayContentProvider):
             QtCore.Qt.AlignmentFlag.AlignCenter,
             val_str,
         )
+
+    def _paint_day_picker_view(self, painter):
+        coordinator = self.alarm_clock_context.mode_coordinator
+        service = coordinator.editing_service
+        if not service or not service.editing_session:
+            return
+
+        day_picker = service.editing_session.day_picker_session
+        if not day_picker:
+            return
+
+        fg_color = QtGui.QColor(
+            self.formatter.foreground_color(color_type=ColorType.INHEX)
+        )
+        painter.setPen(fg_color)
+
+        # Header
+        painter.setFont(self.formatter.info_font(size=10))
+        painter.drawText(
+            QtCore.QRect(0, 2, self.device.width, 14),
+            QtCore.Qt.AlignmentFlag.AlignCenter,
+            "SELECT DAYS",
+        )
+
+        # Day cells + OK: 8 items across the display width
+        items = [d.name[:2] for d in DayPickerSession.DAYS] + ["OK"]
+        cell_width = self.device.width // len(items)
+        cell_top = 16
+        cell_height = self.device.height - cell_top
+
+        for i, label in enumerate(items):
+            x = i * cell_width
+            cell_rect = QtCore.QRect(x, cell_top, cell_width, cell_height)
+
+            is_cursor = day_picker.cursor == i
+            is_ok = i == DayPickerSession.OK_INDEX
+            is_active = (
+                not is_ok and DayPickerSession.DAYS[i].name in day_picker.active_days
+            )
+
+            # Highlight cursor position
+            if is_cursor:
+                painter.fillRect(
+                    cell_rect,
+                    QtGui.QColor(
+                        self.formatter.foreground_color(color_type=ColorType.INHEX)
+                    ),
+                )
+                text_color = QtGui.QColor(
+                    self.formatter.background_color(color_type=ColorType.INHEX)
+                )
+            else:
+                text_color = fg_color
+
+            painter.setPen(text_color)
+
+            # Active indicator: toggle icon (fa-toggle-on/off) rotated 90° → vertical
+            if not is_ok:
+                toggle_char = "\uf204" if is_active else "\uf205"
+                painter.save()
+                painter.setFont(self.formatter.info_font(size=14))
+                painter.setPen(text_color)
+                cx = x + cell_width // 2
+                cy = cell_top + 13
+                painter.translate(cx, cy)
+                painter.rotate(90)
+                painter.drawText(
+                    QtCore.QRect(-13, -14, 26, 26),
+                    QtCore.Qt.AlignmentFlag.AlignCenter,
+                    toggle_char,
+                )
+                painter.restore()
+
+            # Day abbreviation (below the symbol)
+            painter.setPen(text_color)
+            painter.setFont(self.formatter.info_font(size=10))
+            painter.drawText(
+                QtCore.QRect(x, cell_top + 32, cell_width, 14),
+                QtCore.Qt.AlignmentFlag.AlignCenter,
+                label,
+            )
+
+            painter.setPen(fg_color)
+
+    def _format_date(self, d) -> str:
+        from datetime import timedelta
+
+        if d is None:
+            return "None"
+        today = GeoLocation().now().date()
+        if d == today:
+            return "today"
+        if d == today + timedelta(days=1):
+            return "tomorrow"
+        return d.strftime("%Y-%m-%d")
 
     def initialize_qt_app(self):
         QtCore.qInstallMessageHandler(qt_message_handler)
@@ -618,10 +725,6 @@ class Display(DisplayContentProvider):
                 )
         except AssertionError:
             pass
-
-    def _alarm_stopped(self, _: AlarmStoppedEvent):
-        self.device.hide()
-        self.device.show()
 
 
 if __name__ == "__main__":

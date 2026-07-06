@@ -134,7 +134,7 @@ class ActionApiHandler(tornado.web.RequestHandler):
 
     def post(self, *args):
         try:
-            (type, id, _1) = parse_path_arguments(args)
+            type, id, _1 = parse_path_arguments(args)
             logger.info("API action requested: %s %s", type, id)
 
             if type == "play":
@@ -174,7 +174,7 @@ class SystemApiHandler(tornado.web.RequestHandler):
 
     def post(self, *args):
         try:
-            (type, _, _) = parse_path_arguments(args)
+            type, _, _ = parse_path_arguments(args)
             logger.info("System API action requested: %s", type)
 
             if type == "wifi":
@@ -213,7 +213,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
             logger.warning("%s", traceback.format_exc())
 
     def parse_delete_payload(self, args):
-        (type, id, _) = parse_path_arguments(args)
+        type, id, _ = parse_path_arguments(args)
         if type == "alarm":
             self.config.remove_alarm_definition(id)
         elif type == "stream":
@@ -227,7 +227,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
             logger.warning("%s", traceback.format_exc())
 
     def parse_post_payload(self, args):
-        (type, id, property) = parse_path_arguments(args)
+        type, id, property = parse_path_arguments(args)
         simpleValue = tornado.escape.to_unicode(self.request.body)
         if try_update(self.config, type, simpleValue):
             return
@@ -235,6 +235,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
         if (
             True
             and alarmDef is not None
+            and property is not None
             and try_update(alarmDef, property, simpleValue)
         ):
             self.config.remove_alarm_definition(id)
@@ -248,6 +249,8 @@ class ConfigApiHandler(tornado.web.RequestHandler):
         )
         form_arguments = tornado.escape.json_decode(body)
         if type == "alarm":
+            if id is not None:
+                self.config.remove_alarm_definition(id)
             self.config.add_alarm_definition(
                 self.parse_alarm_definition(form_arguments)
             )
@@ -280,7 +283,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
     def parse_alarm_definition(self, form_arguments) -> AlarmDefinition:
         ala = AlarmDefinition()
         ala.alarm_name = form_arguments["alarmName"]
-        (ala.hour, ala.min) = map(int, form_arguments["time"].split(":"))
+        ala.hour, ala.min = map(int, form_arguments["time"].split(":"))
         ala.recurring = None
         ala.onetime = None
         if form_arguments.get("recurring") is not None:

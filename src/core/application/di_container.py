@@ -4,6 +4,7 @@ import vlc
 from concurrent.futures import ThreadPoolExecutor
 from dependency_injector import containers, providers
 from core.domain.mode_coordinator import AlarmClockModeCoordinator
+from core.infrastructure.rpi_gpio import GPIOInputManager, RPiGPIOManager
 from core.interface.display.format import DisplayFormatter
 from core.interface.hardware_input_handler import HardwareInputHandler
 from core.infrastructure.brightness_sensor import BrightnessSensor
@@ -47,7 +48,7 @@ class DIContainer(containers.DeclarativeContainer):
     )
 
     executor = providers.Singleton(
-        ThreadPoolExecutor, max_workers=10, thread_name_prefix="GlobalExecutor"
+        ThreadPoolExecutor, max_workers=20, thread_name_prefix="GlobalExecutor"
     )
 
     event_bus = providers.Singleton(EventBus, executor=executor)
@@ -108,7 +109,13 @@ class DIContainer(containers.DeclarativeContainer):
     )
 
     vlc_instance = providers.Singleton(
-        vlc.Instance, ["--no-video", "--network-caching=3000", "--live-caching=3000"]
+        vlc.Instance,
+        [
+            "--no-video",
+            "--network-caching=3000",
+            "--live-caching=3000",
+            "--aout=alsa",
+        ],
     )
 
     speaker = providers.Singleton(
@@ -120,15 +127,26 @@ class DIContainer(containers.DeclarativeContainer):
 
     i2c_manager = providers.Singleton(I2CManager)
     brightness_sensor = providers.Singleton(BrightnessSensor, i2c_manager=i2c_manager)
-    mcp_manager = providers.Singleton(
-        MCPManager, i2c_manager=i2c_manager, executor=executor
+
+    gpio_manager = providers.Singleton(
+        RPiGPIOManager,
+        executor=executor,
     )
-    button_manager = providers.Singleton(
-        ButtonsManager, mcp_manager=mcp_manager, event_bus=event_bus
+    gpio_input_manager = providers.Singleton(
+        GPIOInputManager, gpio_manager=gpio_manager, event_bus=event_bus
     )
-    rotary_encoder_manager = providers.Singleton(
-        RotaryEncoderManager, mcp_manager=mcp_manager, event_bus=event_bus
-    )
+    # mcp_manager = providers.Singleton(
+    #     MCPManager,
+    #     i2c_manager=i2c_manager,
+    #     rpigpio_manager=gpio_manager,
+    #     executor=executor,
+    # )
+    # button_manager = providers.Singleton(
+    #     ButtonsManager, mcp_manager=mcp_manager, event_bus=event_bus
+    # )
+    # rotary_encoder_manager = providers.Singleton(
+    #     RotaryEncoderManager, mcp_manager=mcp_manager, event_bus=event_bus
+    # )
 
     scheduler_service = providers.Singleton(
         SchedulerService,

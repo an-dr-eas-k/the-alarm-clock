@@ -281,6 +281,64 @@
       if (enable_console) console.log(event.target.value)
       document.getElementById('volumeValue').textContent = event.target.value;
     }
+
+    function onClickAddAlarm() {
+      var form = document.getElementById('alarm-form');
+      form.action = '/api/config/alarm';
+      form.reset();
+      document.getElementById('volume-picker').value = '{{ config.default_volume }}';
+      document.getElementById('volumeValue').textContent = '{{ config.default_volume }}';
+      document.getElementById('visualeffectpicker').checked = true;
+      document.getElementById('activepicker').checked = true;
+      document.getElementById('delete-alarm-btn').style.display = 'none';
+      document.getElementById('add-alarm-title').textContent = 'Add Alarm';
+      var container = document.getElementById('add-alarm-container');
+      container.style.display = container.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function onClickEdit(btn) {
+      var alarmId = btn.getAttribute('data-alarm-id');
+      var name = btn.getAttribute('data-alarm-name');
+      var alarmTime = btn.getAttribute('data-alarm-time');
+      var recurringRaw = btn.getAttribute('data-alarm-recurring');
+      var recurring = recurringRaw ? recurringRaw.split(',').filter(function (x) {return x;}) : [];
+      var streamId = btn.getAttribute('data-alarm-stream-id');
+      var volume = btn.getAttribute('data-alarm-volume');
+      var visualActive = btn.getAttribute('data-alarm-visual') === 'true';
+      var isActive = btn.getAttribute('data-alarm-active') === 'true';
+
+      document.querySelector('#alarm-form input[name="alarmName"]').value = name;
+      document.querySelector('#alarm-form input[name="time"]').value = alarmTime;
+
+      var select = document.getElementById('daypicker');
+      for (var i = 0; i < select.options.length; i++) {
+        select.options[i].selected = recurring.indexOf(select.options[i].value) !== -1;
+      }
+
+      var streamSelect = document.getElementById('stream-picker');
+      for (var i = 0; i < streamSelect.options.length; i++) {
+        streamSelect.options[i].selected = streamSelect.options[i].value == streamId;
+      }
+
+      document.getElementById('volume-picker').value = volume;
+      document.getElementById('volumeValue').textContent = volume;
+      document.getElementById('visualeffectpicker').checked = visualActive;
+      document.getElementById('activepicker').checked = isActive;
+
+      var deleteBtn = document.getElementById('delete-alarm-btn');
+      deleteBtn.style.display = 'inline-block';
+      deleteBtn.setAttribute('data-alarm-id', alarmId);
+
+      document.getElementById('alarm-form').action = '/api/config/alarm/' + alarmId;
+      document.getElementById('add-alarm-title').textContent = 'Edit Alarm';
+      document.getElementById('add-alarm-container').style.display = 'block';
+    }
+
+    function onClickDeleteFromEdit() {
+      var alarmId = document.getElementById('delete-alarm-btn').getAttribute('data-alarm-id');
+      sendToBackend('/api/config/alarm/' + alarmId, 'DELETE', null);
+      location.reload();
+    }
   </script>
 
 </head>
@@ -360,9 +418,16 @@
             </button>
           </td>
           <td>
-            <button type="submit" class="btn btn-primary btn-row-action" value="{{ alarm_definition.id }}"
-              onclick="onClickDelete('alarm', event)" title="Delete">
-              <i class="bi bi-trash-fill"></i>
+            <button type="button" class="btn btn-primary btn-row-action" data-alarm-id="{{ alarm_definition.id }}"
+              data-alarm-name="{{ escape(alarm_definition.alarm_name) }}"
+              data-alarm-time="{{ alarm_definition.to_time_string() }}"
+              data-alarm-recurring="{{ escape(','.join([r.lower() for r in (alarm_definition.recurring or [])])) }}"
+              data-alarm-stream-id="{{ alarm_definition.audio_effect.audio_stream.id }}"
+              data-alarm-volume="{{ alarm_definition.audio_effect.volume }}"
+              data-alarm-visual="{{ 'true' if alarm_definition.visual_effect is not None else 'false' }}"
+              data-alarm-active="{{ 'true' if alarm_definition.is_active else 'false' }}" onclick="onClickEdit(this)"
+              title="Edit">
+              <i class="bi bi-pencil-fill"></i>
             </button>
           </td>
         </tr>
@@ -378,7 +443,7 @@
         <tr>
           <td colspan="4">
             <div id="add-alarm-container" style="margin: 20px; display:none;">
-              <h3>Add Alarm</h3>
+              <h3 id="add-alarm-title">Add Alarm</h3>
               <form id="alarm-form" action="/api/config/alarm" method="post" onsubmit="onSubmitNew(event)">
                 <div class="form-group">
                   <label for="nametextfield">Name:</label>
@@ -425,16 +490,19 @@
                   <label for="activepicker">Active:</label>
                   <input type="checkbox" checked name="isActive" id="activepicker" />
                 </div>
-                <div style="display: block; text-align: right; margin-top: 20px;">
-                  <button type="submit" class="btn btn-primary">Add
-                    Alarm</button>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+                  <button type="button" id="delete-alarm-btn" class="btn btn-danger" style="display:none;"
+                    onclick="onClickDeleteFromEdit()">
+                    <i class="bi bi-trash-fill"></i> Delete
+                  </button>
+                  <button type="submit" class="btn btn-primary" style="margin-left: auto;">Save Alarm</button>
                 </div>
               </form>
             </div>
           </td>
           <td colspan="2">
-            <button type="submit" class="btn btn-primary btn-row-action"
-              onclick="onClickToggleAddForm('add-alarm-container')" style="width: 100%;">+</button>
+            <button type="submit" class="btn btn-primary btn-row-action" onclick="onClickAddAlarm()"
+              style="width: 100%;">+</button>
           </td>
         </tr>
       </table>
