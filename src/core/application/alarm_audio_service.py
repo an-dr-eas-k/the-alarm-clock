@@ -128,8 +128,7 @@ class AlarmAudioService(BasicAudioService):
         audio_effect = self._get_appropriate_alarm_effect()
         initial_volume = (
             self.alarm_clock_context.config.start_volume
-            if getattr(event.alarm_definition, "increasing_volume_duration_in_secs", 0)
-            > 0
+            if getattr(event.alarm_definition, "fadein_in_secs", 0) > 0
             else audio_effect.volume
         )
         self.event_bus.emit(
@@ -195,7 +194,7 @@ class AlarmAudioService(BasicAudioService):
             ),
             func=self._set_to_idle_mode,
         )
-        if getattr(alarm_definition, "increasing_volume_duration_in_secs", 0) > 0:
+        if getattr(alarm_definition, "fadein_in_secs", 0) > 0:
             self._volume_increase_start_time = GeoLocation().now()
             self._volume_increase_start_volume = (
                 self.alarm_clock_context.config.start_volume
@@ -228,7 +227,7 @@ class AlarmAudioService(BasicAudioService):
                 GeoLocation().now() - self._volume_increase_start_time
             ).total_seconds()
             duration_secs = (
-                self.alarm_clock_context.active_alarm_definition.increasing_volume_duration_in_secs
+                self.alarm_clock_context.active_alarm_definition.fadein_in_secs
             )
             upper_volume = (
                 self.alarm_clock_context.active_alarm_definition.audio_effect.volume

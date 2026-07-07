@@ -491,8 +491,10 @@ class Display(DisplayContentProvider):
         prop_name = ""
         if isinstance(current_prop, AlarmProperty):
             prop_name = current_prop.name.replace("_", " ")
-            if current_prop == AlarmProperty.INCREASE:
+            if current_prop == AlarmProperty.FADE_IN:
                 prop_name = "FADE IN"
+            elif current_prop == AlarmProperty.AUDIO_EFFECT_VOLUME:
+                prop_name = "VOLUME"
         elif isinstance(current_prop, EditorAction):
             prop_name = current_prop.value.upper()
 
@@ -547,8 +549,10 @@ class Display(DisplayContentProvider):
             if isinstance(current_prop, AlarmProperty)
             else ""
         )
-        if current_prop == AlarmProperty.INCREASE:
+        if current_prop == AlarmProperty.FADE_IN:
             prop_name = "FADE IN"
+        elif current_prop == AlarmProperty.AUDIO_EFFECT_VOLUME:
+            prop_name = "VOLUME"
         painter.setFont(self.formatter.info_font(size=10))
         painter.drawText(
             QtCore.QRect(0, 5, self.device.width, 15),
@@ -575,6 +579,45 @@ class Display(DisplayContentProvider):
             val_str = f"{current_val:02d}"
         elif current_prop == AlarmProperty.VISUAL_EFFECT:
             val_str = "yes" if current_val else "no"
+
+        if current_prop in (AlarmProperty.FADE_IN, AlarmProperty.AUDIO_EFFECT_VOLUME):
+            # Progress bar with rounded edges and value centered
+            if current_prop == AlarmProperty.FADE_IN:
+                fraction = current_val / 300 if current_val else 0
+                label = f"{current_val}s" if current_val else "off"
+            else:  # AUDIO_EFFECT_VOLUME
+                fraction = current_val
+                label = f"{int(round(current_val * 100))}%"
+            bar_x, bar_y, bar_w, bar_h = 10, 26, self.device.width - 20, 26
+            radius = bar_h / 2
+            bg_color = QtGui.QColor(
+                self.formatter.background_color(color_type=ColorType.INHEX)
+            )
+            # Outline (rounded)
+            painter.setPen(QtGui.QPen(fg_color, 1))
+            painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
+            painter.drawRoundedRect(bar_x, bar_y, bar_w, bar_h, radius, radius)
+            # Fill (clipped to rounded outline)
+            fill_w = int(bar_w * fraction)
+            if fill_w > 0:
+                path = QtGui.QPainterPath()
+                path.addRoundedRect(
+                    bar_x + 1, bar_y + 1, bar_w - 2, bar_h - 2, radius - 1, radius - 1
+                )
+                clip_rect = QtCore.QRectF(bar_x, bar_y, fill_w, bar_h)
+                painter.save()
+                painter.setClipRect(clip_rect)
+                painter.fillPath(path, fg_color)
+                painter.restore()
+            text_color = bg_color if fraction > 0.5 else fg_color
+            painter.setPen(text_color)
+            painter.setFont(self.formatter.info_font(size=14))
+            painter.drawText(
+                QtCore.QRect(bar_x, bar_y, bar_w, bar_h),
+                QtCore.Qt.AlignmentFlag.AlignCenter,
+                label,
+            )
+            return
 
         painter.setFont(self.formatter.info_font(size=16))
         painter.drawText(

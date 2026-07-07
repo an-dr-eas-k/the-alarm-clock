@@ -292,7 +292,7 @@ class AlarmDefinition:
     id: int
     hour: int
     min: int
-    increasing_volume_duration_in_secs: int = 0
+    fadein_in_secs: int = 0
 
     @property
     def recurrence(self) -> AlarmRecurrence:

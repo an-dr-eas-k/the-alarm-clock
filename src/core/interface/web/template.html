@@ -425,8 +425,7 @@
                 }},</span>
             </span>
             vol: {{ alarm_definition.audio_effect.volume }},
-            {% if alarm_definition.increasing_volume_duration_in_secs %}{{
-            alarm_definition.increasing_volume_duration_in_secs }}s{% else %}no fade in{% end %},
+            {% if alarm_definition.fadein_in_secs %}{{ alarm_definition.fadein_in_secs }}s{% else %}no fade in{% end %},
             {{ 'visuals' if alarm_definition.visual_effect is not None else 'no visuals' }}</td>
           <td>
             <button type="submit" class="btn btn-primary btn-row-action"
@@ -443,8 +442,8 @@
               data-alarm-volume="{{ alarm_definition.audio_effect.volume }}"
               data-alarm-visual="{{ 'true' if alarm_definition.visual_effect is not None else 'false' }}"
               data-alarm-active="{{ 'true' if alarm_definition.is_active else 'false' }}"
-              data-alarm-increase-duration="{{ alarm_definition.increasing_volume_duration_in_secs }}"
-              onclick="onClickEdit(this)" title="Edit">
+              data-alarm-increase-duration="{{ alarm_definition.fadein_in_secs }}" onclick="onClickEdit(this)"
+              title="Edit">
               <i class="bi bi-pencil-fill"></i>
             </button>
           </td>
@@ -502,8 +501,8 @@
                 </div>
                 <div class="form-group">
                   <label for="increasepicker">Fade In: <span id="increaseDurationValue">0</span>s</label>
-                  <input id="increasepicker" name="increasing_volume_duration_in_secs" class="volume-range" type="range"
-                    min="0" max="300" step="10" value="0" oninput="updateIncreaseDuration(event)">
+                  <input id="increasepicker" name="fadein_in_secs" class="volume-range" type="range" min="0" max="300"
+                    step="10" value="0" oninput="updateIncreaseDuration(event)">
                 </div>
                 <div class="form-group">
                   <label for="visualeffectpicker">Visual Effects:</label>

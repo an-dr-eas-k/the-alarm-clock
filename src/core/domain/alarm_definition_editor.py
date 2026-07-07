@@ -32,7 +32,7 @@ class AlarmProperty(Enum):
     RECURRING = "recurring"
     AUDIO_EFFECT = "audio_effect"
     AUDIO_EFFECT_VOLUME = "audio_effect_volume"
-    INCREASE = "increasing_volume_duration_in_secs"
+    FADE_IN = "fadein_in_secs"
     VISUAL_EFFECT = "visual_effect"
 
 
@@ -71,8 +71,8 @@ class AlarmDefinitionProperties:
             AlarmProperty.AUDIO_EFFECT_VOLUME: EditableProperty(
                 AlarmProperty.AUDIO_EFFECT_VOLUME, [i * 0.05 for i in range(21)]
             ),
-            AlarmProperty.INCREASE: EditableProperty(
-                AlarmProperty.INCREASE, list(range(0, 310, 10))
+            AlarmProperty.FADE_IN: EditableProperty(
+                AlarmProperty.FADE_IN, list(range(0, 310, 10))
             ),
             AlarmProperty.VISUAL_EFFECT: EditableProperty(
                 AlarmProperty.VISUAL_EFFECT, [VisualEffect(), None]
@@ -101,7 +101,7 @@ class AlarmDefinitionProperties:
 
         pes.append(AlarmProperty.AUDIO_EFFECT)
         pes.append(AlarmProperty.AUDIO_EFFECT_VOLUME)
-        pes.append(AlarmProperty.INCREASE)
+        pes.append(AlarmProperty.FADE_IN)
 
         pes.append(AlarmProperty.VISUAL_EFFECT)
         return pes
