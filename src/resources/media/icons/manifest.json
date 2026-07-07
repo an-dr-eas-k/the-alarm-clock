@@ -1,6 +1,6 @@
 {
   "name": "The Alarm Clock",
-  "short_name": "AlarmClock",
+  "short_name": "the-alarm-clock",
   "description": "The Alarm Clock web interface",
   "start_url": "/",
   "display": "standalone",
