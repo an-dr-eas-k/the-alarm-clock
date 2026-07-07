@@ -425,7 +425,7 @@
                 }},</span>
             </span>
             vol: {{ alarm_definition.audio_effect.volume }},
-            {% if alarm_definition.fadein_in_secs %}{{ alarm_definition.fadein_in_secs }}s{% else %}no fade in{% end %},
+            {% if alarm_definition.fadein_in_secs %}fade in in {{ alarm_definition.fadein_in_secs }}s, {% end %}
             {{ 'visuals' if alarm_definition.visual_effect is not None else 'no visuals' }}</td>
           <td>
             <button type="submit" class="btn btn-primary btn-row-action"
