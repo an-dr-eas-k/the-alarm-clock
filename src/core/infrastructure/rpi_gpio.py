@@ -1,13 +1,17 @@
 from concurrent.futures import ThreadPoolExecutor
 import logging
+import threading
 from core.infrastructure.event_bus import EventBus
 from core.infrastructure.events_infrastructure import (
     ButtonDirection,
     DeviceName,
     HwButtonEvent,
+    HwButtonLongPressEvent,
     HwRotaryEvent,
     RotaryDirection,
 )
+
+LONG_PRESS_DURATION: float = 1.5  # seconds
 
 logger = logging.getLogger("tac.core.infrastructure.rpi_gpio")
 
@@ -82,6 +86,7 @@ class GPIOInputManager:
         super().__init__()
         self.gpio_manager = gpio_manager
         self.event_bus = event_bus
+        self._long_press_timers: dict[DeviceName, threading.Timer] = {}
 
         self.gpio_manager.add_callback(mode_button_gpio, self._mode_button_callback)
         self.gpio_manager.add_callback(invoke_button_gpio, self._invoke_button_callback)
@@ -142,20 +147,42 @@ class GPIOInputManager:
         self.last_states[1] = self.last_states[0]
         self.last_states[0] = state
 
+    def _start_long_press_timer(self, device_name: DeviceName):
+        self._cancel_long_press_timer(device_name)
+        t = threading.Timer(
+            LONG_PRESS_DURATION, self._emit_long_press, args=[device_name]
+        )
+        self._long_press_timers[device_name] = t
+        t.start()
+
+    def _cancel_long_press_timer(self, device_name: DeviceName):
+        timer = self._long_press_timers.pop(device_name, None)
+        if timer:
+            timer.cancel()
+
+    def _emit_long_press(self, device_name: DeviceName):
+        self._long_press_timers.pop(device_name, None)
+        logger.debug(f"Long press detected on {device_name}")
+        self.event_bus.emit(HwButtonLongPressEvent(device_name=device_name))
+
     def _mode_button_callback(self, pin_value: bool, _=None):
         logger.debug("Mode button state changed")
+        direction = ButtonDirection.DOWN if not pin_value else ButtonDirection.UP
+        if direction == ButtonDirection.DOWN:
+            self._start_long_press_timer(DeviceName.MODE_BUTTON)
+        else:
+            self._cancel_long_press_timer(DeviceName.MODE_BUTTON)
         self.event_bus.emit(
-            HwButtonEvent(
-                device_name=DeviceName.MODE_BUTTON,
-                direction=ButtonDirection.DOWN if not pin_value else ButtonDirection.UP,
-            )
+            HwButtonEvent(device_name=DeviceName.MODE_BUTTON, direction=direction)
         )
 
     def _invoke_button_callback(self, pin_value: bool, _=None):
         logger.debug("Invoke button state changed")
+        direction = ButtonDirection.DOWN if not pin_value else ButtonDirection.UP
+        if direction == ButtonDirection.DOWN:
+            self._start_long_press_timer(DeviceName.INVOKE_BUTTON)
+        else:
+            self._cancel_long_press_timer(DeviceName.INVOKE_BUTTON)
         self.event_bus.emit(
-            HwButtonEvent(
-                device_name=DeviceName.INVOKE_BUTTON,
-                direction=ButtonDirection.DOWN if not pin_value else ButtonDirection.UP,
-            )
+            HwButtonEvent(device_name=DeviceName.INVOKE_BUTTON, direction=direction)
         )
