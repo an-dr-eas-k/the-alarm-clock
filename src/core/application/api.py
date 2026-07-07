@@ -302,9 +302,8 @@ class ConfigApiHandler(tornado.web.RequestHandler):
             form_arguments.get("isActive") is not None
             and form_arguments["isActive"] == "on"
         )
-        ala.increase = (
-            form_arguments.get("increase") is not None
-            and form_arguments["increase"] == "on"
+        ala.increasing_volume_duration_in_secs = int(
+            form_arguments.get("increasing_volume_duration_in_secs") or 0
         )
         return ala
 

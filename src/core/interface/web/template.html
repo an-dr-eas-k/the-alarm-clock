@@ -288,6 +288,10 @@
       document.getElementById('volumeValue').textContent = event.target.value;
     }
 
+    function updateIncreaseDuration(event) {
+      document.getElementById('increaseDurationValue').textContent = event.target.value;
+    }
+
     function onClickAddAlarm() {
       var form = document.getElementById('alarm-form');
       form.action = '/api/config/alarm';
@@ -296,6 +300,8 @@
       document.getElementById('volumeValue').textContent = '{{ config.default_volume }}';
       document.getElementById('visualeffectpicker').checked = true;
       document.getElementById('activepicker').checked = true;
+      document.getElementById('increasepicker').value = 0;
+      document.getElementById('increaseDurationValue').textContent = '0';
       document.getElementById('delete-alarm-btn').style.display = 'none';
       document.getElementById('add-alarm-title').textContent = 'Add Alarm';
       var container = document.getElementById('add-alarm-container');
@@ -312,7 +318,7 @@
       var volume = btn.getAttribute('data-alarm-volume');
       var visualActive = btn.getAttribute('data-alarm-visual') === 'true';
       var isActive = btn.getAttribute('data-alarm-active') === 'true';
-      var increaseActive = btn.getAttribute('data-alarm-increase') === 'true';
+      var increaseDuration = parseInt(btn.getAttribute('data-alarm-increase-duration') || '0', 10);
 
       document.querySelector('#alarm-form input[name="alarmName"]').value = name;
       document.querySelector('#alarm-form input[name="time"]').value = alarmTime;
@@ -331,7 +337,8 @@
       document.getElementById('volumeValue').textContent = volume;
       document.getElementById('visualeffectpicker').checked = visualActive;
       document.getElementById('activepicker').checked = isActive;
-      document.getElementById('increasepicker').checked = increaseActive;
+      document.getElementById('increasepicker').value = increaseDuration;
+      document.getElementById('increaseDurationValue').textContent = increaseDuration;
 
       var deleteBtn = document.getElementById('delete-alarm-btn');
       deleteBtn.style.display = 'inline-block';
@@ -418,7 +425,8 @@
                 }},</span>
             </span>
             vol: {{ alarm_definition.audio_effect.volume }},
-            {{ 'increase' if alarm_definition.increase else 'no increase' }},
+            {% if alarm_definition.increasing_volume_duration_in_secs %}{{
+            alarm_definition.increasing_volume_duration_in_secs }}s{% else %}no fade in{% end %},
             {{ 'visuals' if alarm_definition.visual_effect is not None else 'no visuals' }}</td>
           <td>
             <button type="submit" class="btn btn-primary btn-row-action"
@@ -435,8 +443,8 @@
               data-alarm-volume="{{ alarm_definition.audio_effect.volume }}"
               data-alarm-visual="{{ 'true' if alarm_definition.visual_effect is not None else 'false' }}"
               data-alarm-active="{{ 'true' if alarm_definition.is_active else 'false' }}"
-              data-alarm-increase="{{ 'true' if alarm_definition.increase else 'false' }}" onclick="onClickEdit(this)"
-              title="Edit">
+              data-alarm-increase-duration="{{ alarm_definition.increasing_volume_duration_in_secs }}"
+              onclick="onClickEdit(this)" title="Edit">
               <i class="bi bi-pencil-fill"></i>
             </button>
           </td>
@@ -493,12 +501,13 @@
                     value="{{ config.default_volume }}" oninput="updateVolume(event)">
                 </div>
                 <div class="form-group">
-                  <label for="visualeffectpicker">Visual Effects:</label>
-                  <input type="checkbox" checked name="visualEffectActive" id="visualeffectpicker" />
+                  <label for="increasepicker">Fade In: <span id="increaseDurationValue">0</span>s</label>
+                  <input id="increasepicker" name="increasing_volume_duration_in_secs" class="volume-range" type="range"
+                    min="0" max="300" step="10" value="0" oninput="updateIncreaseDuration(event)">
                 </div>
                 <div class="form-group">
-                  <label for="increasepicker">Increase Volume:</label>
-                  <input type="checkbox" name="increase" id="increasepicker" />
+                  <label for="visualeffectpicker">Visual Effects:</label>
+                  <input type="checkbox" checked name="visualEffectActive" id="visualeffectpicker" />
                 </div>
                 <div class="form-group">
                   <label for="activepicker">Active:</label>
@@ -619,15 +628,6 @@
           </td>
         </tr>
         <tr>
-          <td>Debug Level</td>
-          <td><input type="text" id="debug_level"
-              value="{{ config.debug_level if config.debug_level is not None else '' }}" />
-          </td>
-          <td><button type="submit" class="btn btn-primary btn-row-action"
-              onclick="onClickSave(document.getElementById('debug_level').value, 'debug_level')">Save</button>
-          </td>
-        </tr>
-        <tr>
           <td>Start Volume (alarm increase initial volume, 0.0–1.0)</td>
           <td><input type="text" id="start_volume"
               value="{{ config.start_volume if config.start_volume is not None else '' }}" />
@@ -637,12 +637,12 @@
           </td>
         </tr>
         <tr>
-          <td>Volume Increase Duration (secs)</td>
-          <td><input type="text" id="volume_increase_duration_in_secs"
-              value="{{ config.volume_increase_duration_in_secs if config.volume_increase_duration_in_secs is not None else '' }}" />
+          <td>Debug Level</td>
+          <td><input type="text" id="debug_level"
+              value="{{ config.debug_level if config.debug_level is not None else '' }}" />
           </td>
           <td><button type="submit" class="btn btn-primary btn-row-action"
-              onclick="onClickSave(document.getElementById('volume_increase_duration_in_secs').value, 'volume_increase_duration_in_secs')">Save</button>
+              onclick="onClickSave(document.getElementById('debug_level').value, 'debug_level')">Save</button>
           </td>
         </tr>
       </table>

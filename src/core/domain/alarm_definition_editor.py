@@ -32,7 +32,7 @@ class AlarmProperty(Enum):
     RECURRING = "recurring"
     AUDIO_EFFECT = "audio_effect"
     AUDIO_EFFECT_VOLUME = "audio_effect_volume"
-    INCREASE = "increase"
+    INCREASE = "increasing_volume_duration_in_secs"
     VISUAL_EFFECT = "visual_effect"
 
 
@@ -72,7 +72,7 @@ class AlarmDefinitionProperties:
                 AlarmProperty.AUDIO_EFFECT_VOLUME, [i * 0.05 for i in range(21)]
             ),
             AlarmProperty.INCREASE: EditableProperty(
-                AlarmProperty.INCREASE, [True, False]
+                AlarmProperty.INCREASE, list(range(0, 310, 10))
             ),
             AlarmProperty.VISUAL_EFFECT: EditableProperty(
                 AlarmProperty.VISUAL_EFFECT, [VisualEffect(), None]
@@ -228,14 +228,14 @@ class AlarmEditingSession:
     def get_current_value(self):
         if self.is_on_action:
             return None
-        return getattr(self._draft_alarm, self.current_property.name.lower())
+        return getattr(self._draft_alarm, self.current_property.value)
 
     def change_property_value(self, value):
         if self.is_on_action:
             return
 
         old_value = self.get_current_value()
-        setattr(self._draft_alarm, self.current_property.name.lower(), value)
+        setattr(self._draft_alarm, self.current_property.value, value)
         logger.debug(f"Changed {self.current_property} from {old_value} to {value}")
 
         if self.current_property == AlarmProperty.RECURRENCE:

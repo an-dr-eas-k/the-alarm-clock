@@ -292,7 +292,7 @@ class AlarmDefinition:
     id: int
     hour: int
     min: int
-    increase: bool = False
+    increasing_volume_duration_in_secs: int = 0
 
     @property
     def recurrence(self) -> AlarmRecurrence:
@@ -412,7 +412,6 @@ class Config:
     debug_level: int
     pre_alarm_trigger_in_mins: int = 10
     start_volume: float
-    volume_increase_duration_in_secs: int
 
     location: LocationConfig
 
@@ -529,7 +528,6 @@ class Config:
             dict(key="pre_alarm_trigger_in_mins", value=10),
             dict(key="debug_level", value=0),
             dict(key="start_volume", value=0.15),
-            dict(key="volume_increase_duration_in_secs", value=60),
             dict(key="location", value=LocationConfig()),
         ]:
             if not hasattr(self, conf_prop["key"]):

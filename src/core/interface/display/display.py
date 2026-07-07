@@ -491,6 +491,8 @@ class Display(DisplayContentProvider):
         prop_name = ""
         if isinstance(current_prop, AlarmProperty):
             prop_name = current_prop.name.replace("_", " ")
+            if current_prop == AlarmProperty.INCREASE:
+                prop_name = "FADE IN"
         elif isinstance(current_prop, EditorAction):
             prop_name = current_prop.value.upper()
 
@@ -545,6 +547,8 @@ class Display(DisplayContentProvider):
             if isinstance(current_prop, AlarmProperty)
             else ""
         )
+        if current_prop == AlarmProperty.INCREASE:
+            prop_name = "FADE IN"
         painter.setFont(self.formatter.info_font(size=10))
         painter.drawText(
             QtCore.QRect(0, 5, self.device.width, 15),
