@@ -273,12 +273,12 @@ class Display(DisplayContentProvider):
                 alarm_time.strftime("%M"), desired_length=2
             )
             alarm_font = self.formatter.clock_font(
-                size=11, weight=QtGui.QFont.Weight.Light
+                size=11, weight=QtGui.QFont.Weight(320)
             )
             fm_alarm = QtGui.QFontMetrics(alarm_font)
-            icon_font = self.formatter.icon_font(size=9)
+            icon_font = self.formatter.icon_font(size=14)
             fm_icon = QtGui.QFontMetrics(icon_font)
-            icon_w = fm_icon.width("\uf49a") + 6
+            icon_w = fm_icon.width("\uf49a") + 9
 
             # Baseline positions: center the two rows vertically around the clock center
             clock_center_y = y_offset + 12  # midpoint of the 25px clock rect
@@ -289,13 +289,16 @@ class Display(DisplayContentProvider):
             baseline1 = top_y + fm_alarm.ascent()
             baseline2 = baseline1 + row_height + row_gap
 
-            # Alarm icon — vertically centered alongside both digit rows
-            icon_baseline = clock_center_y + fm_icon.ascent() // 2
-
             alarm_x = x_offset + clock_w + alarm_gap
 
+            # Alarm icon — let Qt center it vertically within the clock rect height
             painter.setFont(icon_font)
-            painter.drawText(int(alarm_x), int(icon_baseline), "\uf49a")
+            painter.drawText(
+                QtCore.QRect(int(alarm_x), y_offset, icon_w, 25),
+                QtCore.Qt.AlignmentFlag.AlignLeft
+                | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                "\uf49a",
+            )
 
             painter.setFont(alarm_font)
             painter.drawText(int(alarm_x + icon_w), int(baseline1), hour_str)

@@ -206,4 +206,16 @@ class DisplayFormatter:
                 lut = lut * 3
 
             im = im.point(lut)
+
+            # 2x2 dither: keep only pixels at even (x, y) — drops 3/4 of lit pixels
+            w, h = im.size
+            row_even = bytes([255, 0] * (w // 2) + ([255] if w % 2 else []))
+            row_odd = bytes([0] * w)
+            mask_data = bytearray()
+            for y in range(h):
+                mask_data.extend(row_even if y % 2 == 0 else row_odd)
+            mask = Image.frombytes("L", (w, h), bytes(mask_data))
+            black = Image.new("RGB", (w, h), (0, 0, 0))
+            im = Image.composite(im, black, mask)
+
         return im
