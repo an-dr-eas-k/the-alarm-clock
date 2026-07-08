@@ -238,54 +238,74 @@ class Display(DisplayContentProvider):
         fg_color = QtGui.QColor(
             self.formatter.foreground_color(color_type=ColorType.INHEX)
         )
-        painter.setPen(fg_color)
 
         # Clock
         clock_string = self.formatter.format_dseg7_clock_string(
             now, self.display_content.show_blink_segment
         )
-        font = self.formatter.clock_font(size=18, weight=QtGui.QFont.Weight.Light)
-        painter.setFont(font)
+        clock_font = self.formatter.clock_font(size=18, weight=QtGui.QFont.Weight.Light)
+        fm_clock = QtGui.QFontMetrics(clock_font)
+        clock_w = fm_clock.width(clock_string)
+
+        painter.setPen(fg_color)
+        painter.setFont(clock_font)
         painter.drawText(
             QtCore.QRect(x_offset, y_offset, 120, 25),
             QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter,
             clock_string,
         )
 
-        # Next Alarm
-        if (
+        # Next Alarm — icon + two rows (hours / minutes) to the right of the clock
+        show_alarm = (
             self.display_content.has_next_alarm()
             and self.display_content.next_alarm_info.minutes_until_alarm()
             <= self.display_content.alarm_clock_context.config.alarm_preview_hours * 60
-        ):
+        )
+
+        alarm_gap = 20  # gap between clock and alarm block
+
+        if show_alarm:
             alarm_time = self.display_content.get_next_alarm()
-            alarm_text = self.formatter.format_dseg7_clock_string(alarm_time)
-            icon_font = self.formatter.icon_font(size=12)
-            text_font = self.formatter.info_font(
-                size=12, weight=QtGui.QFont.Weight.Thin
+            hour_str = self.formatter.format_dseg7_string(
+                alarm_time.strftime("%H"), desired_length=2
             )
-            fm = QtGui.QFontMetrics(icon_font)
-            icon_w = fm.width("\uf49a") + 10
+            min_str = self.formatter.format_dseg7_string(
+                alarm_time.strftime("%M"), desired_length=2
+            )
+            alarm_font = self.formatter.clock_font(
+                size=11, weight=QtGui.QFont.Weight.Light
+            )
+            fm_alarm = QtGui.QFontMetrics(alarm_font)
+            icon_font = self.formatter.icon_font(size=9)
+            fm_icon = QtGui.QFontMetrics(icon_font)
+            icon_w = fm_icon.width("\uf49a") + 6
+
+            # Baseline positions: center the two rows vertically around the clock center
+            clock_center_y = y_offset + 12  # midpoint of the 25px clock rect
+            row_height = fm_alarm.ascent() + fm_alarm.descent()
+            row_gap = 2
+            total_rows_height = 2 * row_height + row_gap
+            top_y = clock_center_y - total_rows_height // 2
+            baseline1 = top_y + fm_alarm.ascent()
+            baseline2 = baseline1 + row_height + row_gap
+
+            # Alarm icon — vertically centered alongside both digit rows
+            icon_baseline = clock_center_y + fm_icon.ascent() // 2
+
+            alarm_x = x_offset + clock_w + alarm_gap
+
             painter.setFont(icon_font)
-            painter.drawText(
-                QtCore.QRect(x_offset + 95, y_offset, icon_w, 25),
-                QtCore.Qt.AlignmentFlag.AlignLeft
-                | QtCore.Qt.AlignmentFlag.AlignVCenter,
-                "\uf49a",
-            )
-            painter.setFont(text_font)
-            painter.drawText(
-                QtCore.QRect(x_offset + 95 + icon_w, y_offset, 80, 25),
-                QtCore.Qt.AlignmentFlag.AlignLeft
-                | QtCore.Qt.AlignmentFlag.AlignVCenter,
-                alarm_text,
-            )
+            painter.drawText(int(alarm_x), int(icon_baseline), "\uf49a")
+
+            painter.setFont(alarm_font)
+            painter.drawText(int(alarm_x + icon_w), int(baseline1), hour_str)
+            painter.drawText(int(alarm_x + icon_w), int(baseline2), min_str)
 
         # WiFi
         if not self.display_content.get_is_online():
             painter.setFont(self.formatter.icon_font(size=14))
             painter.drawText(
-                QtCore.QRect(x_offset + 95, y_offset + 20, 50, 25),
+                QtCore.QRect(x_offset, y_offset + 20, 50, 25),
                 QtCore.Qt.AlignmentFlag.AlignLeft
                 | QtCore.Qt.AlignmentFlag.AlignVCenter,
                 "\U000f05aa",
