@@ -259,7 +259,7 @@ class Display(DisplayContentProvider):
             <= self.display_content.alarm_clock_context.config.alarm_preview_hours * 60
         ):
             alarm_time = self.display_content.get_next_alarm()
-            alarm_text = self.formatter.format_clock_string(alarm_time)
+            alarm_text = self.formatter.format_dseg7_clock_string(alarm_time)
             icon_font = self.formatter.icon_font(size=12)
             text_font = self.formatter.info_font(
                 size=12, weight=QtGui.QFont.Weight.Thin
