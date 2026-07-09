@@ -116,9 +116,9 @@ class AlarmDefinitionProperties:
             StreamAudioEffect(audio_stream=stream, volume=volume)
             for stream in config.audio_streams
         ]
-        self._editable_properties[AlarmProperty.DISPLAY_LABEL].value_list = (
-            [None] + list(config.predefined_display_labels or [])
-        )
+        self._editable_properties[AlarmProperty.DISPLAY_LABEL].value_list = [
+            None
+        ] + list(config.predefined_display_labels or [])
 
 
 class DayPickerSession:
