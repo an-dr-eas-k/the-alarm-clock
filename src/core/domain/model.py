@@ -43,6 +43,7 @@ class SchedulerJobIds(Enum):
     memory_usage_logger = "memory_usage_logger_trigger"
     thread_usage_logger = "thread_usage_logger_trigger"
     pre_alarm = "pre_alarm_trigger"
+    volume_increase = "volume_increase_trigger"
 
 
 class DisplayContentProvider:
@@ -93,6 +94,15 @@ class RoomBrightness(Value[float]):
         if self.is_highly_dimmed():
             x = 0
         return respect_ranges(x, min_value, max_value)
+
+
+@dataclass
+class LocationConfig:
+    city: str = "Munich"
+    region: str = "Bavaria"
+    timezone: str = "Europe/Berlin"
+    latitude: float = 48.1372
+    longitude: float = 11.5755
 
 
 @dataclass
@@ -282,6 +292,8 @@ class AlarmDefinition:
     id: int
     hour: int
     min: int
+    fadein_in_secs: int = 0
+    display_label: str = None
 
     @property
     def recurrence(self) -> AlarmRecurrence:
@@ -400,6 +412,10 @@ class Config:
     alarm_preview_hours: int
     debug_level: int
     pre_alarm_trigger_in_mins: int = 10
+    start_volume: float
+    predefined_display_labels: List[str]
+
+    location: LocationConfig
 
     # Public attributes for template access (Tornado templates don't call properties)
     alarm_definitions: List[AlarmDefinition]
@@ -513,6 +529,9 @@ class Config:
             dict(key="alarm_preview_hours", value=12),
             dict(key="pre_alarm_trigger_in_mins", value=10),
             dict(key="debug_level", value=0),
+            dict(key="start_volume", value=0.15),
+            dict(key="predefined_display_labels", value=[]),
+            dict(key="location", value=LocationConfig()),
         ]:
             if not hasattr(self, conf_prop["key"]):
                 logger.debug(
@@ -540,7 +559,19 @@ class Config:
             persisted_config: Config = jsonpickle.decode(file_contents)
             persisted_config.event_bus = event_bus
             persisted_config.ensure_valid_config()
+            persisted_config._apply_location()
             return persisted_config
+
+    def _apply_location(self):
+        """Push the configured location into the GeoLocation singleton."""
+        from astral import LocationInfo
+
+        loc = self.location
+        GeoLocation().configure(
+            LocationInfo(
+                loc.city, loc.region, loc.timezone, loc.latitude, loc.longitude
+            )
+        )
 
 
 class AlarmClockContext:
@@ -678,6 +709,10 @@ class NextAlarmInfo:
     @property
     def alarm_name(self) -> str:
         return self._alarm_definition.alarm_name
+
+    @property
+    def display_label(self) -> str:
+        return self._alarm_definition.display_label if self._alarm_definition else None
 
     @property
     def visual_effect(self) -> "VisualEffect":

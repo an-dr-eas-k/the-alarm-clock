@@ -10,6 +10,7 @@ import logging
 from core.domain.mode_coordinator import AlarmClockModeCoordinator, ModeName
 from core.domain.events import (
     ForcedDisplayUpdateEvent,
+    StreamChangeRequest,
     ToggleAudioRequest,
     VolumeChangeRequest,
 )
@@ -18,6 +19,7 @@ from core.infrastructure.events_infrastructure import (
     ButtonDirection,
     DeviceName,
     HwButtonEvent,
+    HwButtonLongPressEvent,
     HwRotaryEvent,
     RotaryDirection,
 )
@@ -36,6 +38,7 @@ class HardwareInputHandler:
         self.mode_coordinator: AlarmClockModeCoordinator = mode_coordinator
 
         self.event_bus.on(HwButtonEvent)(self._handle_button_event)
+        self.event_bus.on(HwButtonLongPressEvent)(self._handle_long_press_event)
         self.event_bus.on(HwRotaryEvent)(self._handle_rotary_event)
 
     def _handle_button_event(self, event: HwButtonEvent):
@@ -57,6 +60,16 @@ class HardwareInputHandler:
                 self.mode_coordinator.handle_invoke_button()
 
         self.event_bus.emit(ForcedDisplayUpdateEvent())
+
+    def _handle_long_press_event(self, event: HwButtonLongPressEvent):
+        current_mode = self.mode_coordinator.current_mode_name
+        logger.debug(
+            f"translating long press event: {event.device_name} in mode {current_mode}"
+        )
+        if current_mode != ModeName.DEFAULT:
+            return
+        if event.device_name == DeviceName.INVOKE_BUTTON:
+            self.event_bus.emit(StreamChangeRequest())
 
     def _handle_rotary_event(self, event: HwRotaryEvent):
         current_mode = self.mode_coordinator.current_mode_name

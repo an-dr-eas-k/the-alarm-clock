@@ -32,7 +32,9 @@ class AlarmProperty(Enum):
     RECURRING = "recurring"
     AUDIO_EFFECT = "audio_effect"
     AUDIO_EFFECT_VOLUME = "audio_effect_volume"
+    FADE_IN = "fadein_in_secs"
     VISUAL_EFFECT = "visual_effect"
+    DISPLAY_LABEL = "display_label"
 
 
 class EditableProperty:
@@ -70,11 +72,17 @@ class AlarmDefinitionProperties:
             AlarmProperty.AUDIO_EFFECT_VOLUME: EditableProperty(
                 AlarmProperty.AUDIO_EFFECT_VOLUME, [i * 0.05 for i in range(21)]
             ),
+            AlarmProperty.FADE_IN: EditableProperty(
+                AlarmProperty.FADE_IN, list(range(0, 310, 10))
+            ),
             AlarmProperty.VISUAL_EFFECT: EditableProperty(
                 AlarmProperty.VISUAL_EFFECT, [VisualEffect(), None]
             ),
             AlarmProperty.IS_ACTIVE: EditableProperty(
                 AlarmProperty.IS_ACTIVE, [True, False]
+            ),
+            AlarmProperty.DISPLAY_LABEL: EditableProperty(
+                AlarmProperty.DISPLAY_LABEL, [None]
             ),
         }
 
@@ -97,8 +105,10 @@ class AlarmDefinitionProperties:
 
         pes.append(AlarmProperty.AUDIO_EFFECT)
         pes.append(AlarmProperty.AUDIO_EFFECT_VOLUME)
+        pes.append(AlarmProperty.FADE_IN)
 
         pes.append(AlarmProperty.VISUAL_EFFECT)
+        pes.append(AlarmProperty.DISPLAY_LABEL)
         return pes
 
     def update_value_lists(self, config: Config, volume: float):
@@ -106,6 +116,9 @@ class AlarmDefinitionProperties:
             StreamAudioEffect(audio_stream=stream, volume=volume)
             for stream in config.audio_streams
         ]
+        self._editable_properties[AlarmProperty.DISPLAY_LABEL].value_list = [
+            None
+        ] + list(config.predefined_display_labels or [])
 
 
 class DayPickerSession:
@@ -223,14 +236,14 @@ class AlarmEditingSession:
     def get_current_value(self):
         if self.is_on_action:
             return None
-        return getattr(self._draft_alarm, self.current_property.name.lower())
+        return getattr(self._draft_alarm, self.current_property.value)
 
     def change_property_value(self, value):
         if self.is_on_action:
             return
 
         old_value = self.get_current_value()
-        setattr(self._draft_alarm, self.current_property.name.lower(), value)
+        setattr(self._draft_alarm, self.current_property.value, value)
         logger.debug(f"Changed {self.current_property} from {old_value} to {value}")
 
         if self.current_property == AlarmProperty.RECURRENCE:

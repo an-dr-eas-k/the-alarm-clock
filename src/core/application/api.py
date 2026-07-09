@@ -23,7 +23,7 @@ from core.domain.events import (
 from core.infrastructure.event_bus import EventBus
 from core.interface.display.display import Display
 from core.interface.display.format import ColorType
-from resources.resources import webroot_file, ssl_dir, icons_dir
+from resources.resources import webroot_file, ssl_dir, icons_dir, fonts_dir
 
 from core.domain.model import (
     AlarmDefinition,
@@ -46,6 +46,8 @@ def try_update(object, property_name: str, value: str) -> bool:
         attr_type = type(attr_value)
         if attr_type == bool:
             value = value.lower() in ["on", "yes", "true", "t", "1"]
+        elif attr_type == list:
+            value = json.loads(value) if value else []
         else:
             value = attr_type(value) if len(value) > 0 else None
         if value != attr_value:
@@ -302,6 +304,8 @@ class ConfigApiHandler(tornado.web.RequestHandler):
             form_arguments.get("isActive") is not None
             and form_arguments["isActive"] == "on"
         )
+        ala.fadein_in_secs = int(form_arguments.get("fadein_in_secs") or 0)
+        ala.display_label = form_arguments.get("displayLabel") or None
         return ala
 
 
@@ -355,6 +359,11 @@ class Api:
                 r"/media/(.*)",
                 tornado.web.StaticFileHandler,
                 {"path": icons_dir},
+            ),
+            (
+                r"/fonts/(.*)",
+                tornado.web.StaticFileHandler,
+                {"path": fonts_dir},
             ),
             (
                 r"/(.*)",
