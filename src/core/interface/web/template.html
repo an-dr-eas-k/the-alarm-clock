@@ -3,6 +3,7 @@
 
 <head>
   <title>the-alarm-clock</title>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
@@ -198,6 +199,17 @@
         height: 256px;
       }
     }
+
+    @font-face {
+      font-family: 'NerdFont';
+      src: url('/fonts/RobotoMonoNerdFont-Regular.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    .nerdfont {
+      font-family: 'NerdFont', monospace;
+    }
   </style>
 
   <script>
@@ -302,6 +314,7 @@
       document.getElementById('activepicker').checked = true;
       document.getElementById('increasepicker').value = 0;
       document.getElementById('increaseDurationValue').textContent = '0';
+      setDisplayLabel('');
       document.getElementById('delete-alarm-btn').style.display = 'none';
       document.getElementById('add-alarm-title').textContent = 'Add Alarm';
       var container = document.getElementById('add-alarm-container');
@@ -319,6 +332,7 @@
       var visualActive = btn.getAttribute('data-alarm-visual') === 'true';
       var isActive = btn.getAttribute('data-alarm-active') === 'true';
       var increaseDuration = parseInt(btn.getAttribute('data-alarm-increase-duration') || '0', 10);
+      var displayLabel = btn.getAttribute('data-alarm-display-label') || '';
 
       document.querySelector('#alarm-form input[name="alarmName"]').value = name;
       document.querySelector('#alarm-form input[name="time"]').value = alarmTime;
@@ -339,6 +353,7 @@
       document.getElementById('activepicker').checked = isActive;
       document.getElementById('increasepicker').value = increaseDuration;
       document.getElementById('increaseDurationValue').textContent = increaseDuration;
+      setDisplayLabel(displayLabel);
 
       var deleteBtn = document.getElementById('delete-alarm-btn');
       deleteBtn.style.display = 'inline-block';
@@ -353,6 +368,32 @@
       var alarmId = document.getElementById('delete-alarm-btn').getAttribute('data-alarm-id');
       sendToBackend('/api/config/alarm/' + alarmId, 'DELETE', null);
       location.reload();
+    }
+
+    function onSelectDisplayLabelPreset(event) {
+      var val = event.target.value;
+      if (val !== '__custom__') {
+        document.getElementById('displaylabelpicker').value = val;
+      }
+    }
+
+    function onInputDisplayLabel(event) {
+      var select = document.getElementById('displaylabel-preset');
+      if (!select) return;
+      var match = Array.from(select.options).find(function (o) {
+        return o.value !== '__custom__' && o.value !== '' && o.value === event.target.value;
+      });
+      select.value = match ? match.value : '__custom__';
+    }
+
+    function setDisplayLabel(value) {
+      document.getElementById('displaylabelpicker').value = value || '';
+      var select = document.getElementById('displaylabel-preset');
+      if (!select) return;
+      var match = Array.from(select.options).find(function (o) {
+        return o.value !== '__custom__' && o.value !== '' && o.value === value;
+      });
+      select.value = match ? match.value : (value ? '__custom__' : '');
     }
   </script>
 
@@ -442,7 +483,8 @@
               data-alarm-volume="{{ alarm_definition.audio_effect.volume }}"
               data-alarm-visual="{{ 'true' if alarm_definition.visual_effect is not None else 'false' }}"
               data-alarm-active="{{ 'true' if alarm_definition.is_active else 'false' }}"
-              data-alarm-increase-duration="{{ alarm_definition.fadein_in_secs }}" onclick="onClickEdit(this)"
+              data-alarm-increase-duration="{{ alarm_definition.fadein_in_secs }}"
+              data-alarm-display-label="{{ escape(alarm_definition.display_label or '') }}" onclick="onClickEdit(this)"
               title="Edit">
               <i class="bi bi-pencil-fill"></i>
             </button>
@@ -503,6 +545,21 @@
                   <label for="increasepicker">Fade In: <span id="increaseDurationValue">0</span>s</label>
                   <input id="increasepicker" name="fadein_in_secs" class="volume-range" type="range" min="0" max="300"
                     step="10" value="0" oninput="updateIncreaseDuration(event)">
+                </div>
+                <div class="form-group">
+                  <label for="displaylabelpicker">Display Label (e.g. nerdfont icon):</label>
+                  {% if config.predefined_display_labels %}
+                  <select class="form-control nerdfont" id="displaylabel-preset"
+                    onchange="onSelectDisplayLabelPreset(event)" style="margin-bottom:0.4rem;">
+                    <option value="">— none —</option>
+                    {% for lbl in config.predefined_display_labels %}
+                    <option value="{{ escape(lbl) }}">{{ escape(lbl) }}</option>
+                    {% end %}
+                    <option value="__custom__">custom…</option>
+                  </select>
+                  {% end %}
+                  <input type="text" class="form-control nerdfont" name="displayLabel" id="displaylabelpicker"
+                    placeholder="custom label or icon" oninput="onInputDisplayLabel(event)" />
                 </div>
                 <div class="form-group">
                   <label for="visualeffectpicker">Visual Effects:</label>
@@ -642,6 +699,15 @@
           </td>
           <td><button type="submit" class="btn btn-primary btn-row-action"
               onclick="onClickSave(document.getElementById('debug_level').value, 'debug_level')">Save</button>
+          </td>
+        </tr>
+        <tr>
+          <td>Display Label Presets<br><small class="text-muted">One label per line</small></td>
+          <td><textarea id="predefined_display_labels" rows="4"
+              class="form-control nerdfont">{{ escape('\n'.join(config.predefined_display_labels or [])) }}</textarea>
+          </td>
+          <td><button type="submit" class="btn btn-primary btn-row-action"
+              onclick="onClickSave(JSON.stringify(document.getElementById('predefined_display_labels').value.split('\n').map(function(s){return s.trim();}).filter(function(s){return s.length>0;})), 'predefined_display_labels')">Save</button>
           </td>
         </tr>
       </table>

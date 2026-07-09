@@ -218,6 +218,7 @@ class Display(DisplayContentProvider):
             if self.formatter.be_gloomy():
                 self._paint_default_dimmed(painter)
             else:
+                self.formatter.clock_dither_rect = None
                 self._paint_default_normal(painter)
         elif mode == ModeName.ALARM_VIEW:
             self._paint_alarm_view(painter)
@@ -254,6 +255,7 @@ class Display(DisplayContentProvider):
             QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter,
             clock_string,
         )
+        self.formatter.clock_dither_rect = (x_offset, y_offset - 1, clock_w, 26)
 
         # Next Alarm — icon + two rows (hours / minutes) to the right of the clock
         show_alarm = (
@@ -277,8 +279,6 @@ class Display(DisplayContentProvider):
             )
             fm_alarm = QtGui.QFontMetrics(alarm_font)
             icon_font = self.formatter.icon_font(size=14)
-            fm_icon = QtGui.QFontMetrics(icon_font)
-            icon_w = fm_icon.width("\uf49a") + 9
 
             # Baseline positions: center the two rows vertically around the clock center
             clock_center_y = y_offset + 12  # midpoint of the 25px clock rect
@@ -291,18 +291,20 @@ class Display(DisplayContentProvider):
 
             alarm_x = x_offset + clock_w + alarm_gap
 
-            # Alarm icon — let Qt center it vertically within the clock rect height
-            painter.setFont(icon_font)
-            painter.drawText(
-                QtCore.QRect(int(alarm_x), y_offset, icon_w, 25),
-                QtCore.Qt.AlignmentFlag.AlignLeft
-                | QtCore.Qt.AlignmentFlag.AlignVCenter,
-                "\uf49a",
-            )
-
-            painter.setFont(alarm_font)
-            painter.drawText(int(alarm_x + icon_w), int(baseline1), hour_str)
-            painter.drawText(int(alarm_x + icon_w), int(baseline2), min_str)
+            display_label = self.display_content.next_alarm_info.display_label
+            if display_label:
+                label_font = self.formatter.icon_font(size=14)
+                painter.setFont(label_font)
+                painter.drawText(
+                    QtCore.QRect(int(alarm_x), y_offset, 80, 25),
+                    QtCore.Qt.AlignmentFlag.AlignLeft
+                    | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                    display_label,
+                )
+            else:
+                painter.setFont(alarm_font)
+                painter.drawText(int(alarm_x), int(baseline1), hour_str)
+                painter.drawText(int(alarm_x), int(baseline2), min_str)
 
         # WiFi
         if not self.display_content.get_is_online():
@@ -602,6 +604,8 @@ class Display(DisplayContentProvider):
             val_str = f"{current_val:02d}"
         elif current_prop == AlarmProperty.VISUAL_EFFECT:
             val_str = "yes" if current_val else "no"
+        elif current_prop == AlarmProperty.DISPLAY_LABEL:
+            val_str = current_val if current_val else "\u2014"
 
         if current_prop in (AlarmProperty.FADE_IN, AlarmProperty.AUDIO_EFFECT_VOLUME):
             # Progress bar with rounded edges and value centered
@@ -654,7 +658,12 @@ class Display(DisplayContentProvider):
             "\uf054",
         )  # Right
 
-        painter.setFont(self.formatter.info_font(size=val_font_size))
+        val_font = (
+            self.formatter.icon_font(size=val_font_size)
+            if current_prop == AlarmProperty.DISPLAY_LABEL
+            else self.formatter.info_font(size=val_font_size)
+        )
+        painter.setFont(val_font)
         painter.drawText(
             QtCore.QRect(40, 25, self.device.width - 80, 35),
             QtCore.Qt.AlignmentFlag.AlignCenter,
