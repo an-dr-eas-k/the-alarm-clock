@@ -308,7 +308,7 @@ class Display(DisplayContentProvider):
         if not self.display_content.get_is_online():
             painter.setFont(self.formatter.icon_font(size=14))
             painter.drawText(
-                QtCore.QRect(x_offset, y_offset + 20, 50, 25),
+                QtCore.QRect(x_offset, y_offset + 26, 50, 20),
                 QtCore.Qt.AlignmentFlag.AlignLeft
                 | QtCore.Qt.AlignmentFlag.AlignVCenter,
                 "\U000f05aa",
