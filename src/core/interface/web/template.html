@@ -295,6 +295,41 @@
       xhr.send(content);
     }
 
+    function dlSetValue(val) {
+      document.getElementById('displaylabelpicker').value = val || '';
+      var sel = document.getElementById('displaylabel-select');
+      var txt = document.getElementById('displaylabel-text');
+      if (!sel) {if (txt) {txt.value = val || '';} return;}
+      var isPreset = val && Array.from(sel.options).some(function (o) {return o.value === val && o.value !== '__none__';});
+      if (!val || isPreset) {
+        sel.value = isPreset ? val : '__none__';
+        sel.style.display = '';
+        txt.style.display = 'none';
+        txt.value = '';
+      } else {
+        sel.style.display = 'none';
+        txt.style.display = '';
+        txt.value = val;
+      }
+    }
+
+    function dlSwitchToText(initial) {
+      var sel = document.getElementById('displaylabel-select');
+      var txt = document.getElementById('displaylabel-text');
+      if (initial === null) {
+        // blur-with-empty: go back to select if one exists
+        if (sel) {sel.style.display = ''; txt.style.display = 'none';}
+        document.getElementById('displaylabelpicker').value = '';
+        return;
+      }
+      if (sel) {sel.style.display = 'none';}
+      txt.style.display = '';
+      txt.value = (txt.value || '') + initial;
+      document.getElementById('displaylabelpicker').value = txt.value;
+      txt.focus();
+      txt.setSelectionRange(txt.value.length, txt.value.length);
+    }
+
     function updateVolume(event) {
       if (enable_console) console.log(event.target.value)
       document.getElementById('volumeValue').textContent = event.target.value;
@@ -314,7 +349,7 @@
       document.getElementById('activepicker').checked = true;
       document.getElementById('increasepicker').value = 0;
       document.getElementById('increaseDurationValue').textContent = '0';
-      setDisplayLabel('');
+      dlSetValue('');
       document.getElementById('delete-alarm-btn').style.display = 'none';
       document.getElementById('add-alarm-title').textContent = 'Add Alarm';
       var container = document.getElementById('add-alarm-container');
@@ -353,7 +388,7 @@
       document.getElementById('activepicker').checked = isActive;
       document.getElementById('increasepicker').value = increaseDuration;
       document.getElementById('increaseDurationValue').textContent = increaseDuration;
-      setDisplayLabel(displayLabel);
+      dlSetValue(displayLabel);
 
       var deleteBtn = document.getElementById('delete-alarm-btn');
       deleteBtn.style.display = 'inline-block';
@@ -370,31 +405,7 @@
       location.reload();
     }
 
-    function onSelectDisplayLabelPreset(event) {
-      var val = event.target.value;
-      if (val !== '__custom__') {
-        document.getElementById('displaylabelpicker').value = val;
-      }
-    }
 
-    function onInputDisplayLabel(event) {
-      var select = document.getElementById('displaylabel-preset');
-      if (!select) return;
-      var match = Array.from(select.options).find(function (o) {
-        return o.value !== '__custom__' && o.value !== '' && o.value === event.target.value;
-      });
-      select.value = match ? match.value : '__custom__';
-    }
-
-    function setDisplayLabel(value) {
-      document.getElementById('displaylabelpicker').value = value || '';
-      var select = document.getElementById('displaylabel-preset');
-      if (!select) return;
-      var match = Array.from(select.options).find(function (o) {
-        return o.value !== '__custom__' && o.value !== '' && o.value === value;
-      });
-      select.value = match ? match.value : (value ? '__custom__' : '');
-    }
   </script>
 
 </head>
@@ -547,19 +558,24 @@
                     step="10" value="0" oninput="updateIncreaseDuration(event)">
                 </div>
                 <div class="form-group">
-                  <label for="displaylabelpicker">Display Label (e.g. nerdfont icon):</label>
+                  <label for="displaylabel-select">Display Label (e.g. nerdfont icon):</label>
+                  <!-- hidden field that is always submitted -->
+                  <input type="hidden" name="displayLabel" id="displaylabelpicker" />
                   {% if config.predefined_display_labels %}
-                  <select class="form-control nerdfont" id="displaylabel-preset"
-                    onchange="onSelectDisplayLabelPreset(event)" style="margin-bottom:0.4rem;">
-                    <option value="">— none —</option>
+                  <select class="form-control nerdfont" id="displaylabel-select"
+                    onchange="if(this.value!=='__none__'){document.getElementById('displaylabelpicker').value=this.value;}"
+                    onkeydown="if(event.key.length===1&&!event.ctrlKey&&!event.metaKey){event.preventDefault();dlSwitchToText(event.key);}">
+                    <option value="__none__">— pick preset —</option>
                     {% for lbl in config.predefined_display_labels %}
                     <option value="{{ escape(lbl) }}">{{ escape(lbl) }}</option>
                     {% end %}
-                    <option value="__custom__">custom…</option>
                   </select>
                   {% end %}
-                  <input type="text" class="form-control nerdfont" name="displayLabel" id="displaylabelpicker"
-                    placeholder="custom label or icon" oninput="onInputDisplayLabel(event)" />
+                  <input type="text" class="form-control nerdfont" id="displaylabel-text"
+                    placeholder="custom label or icon"
+                    style="{% if config.predefined_display_labels %}display:none;{% end %}"
+                    oninput="document.getElementById('displaylabelpicker').value=this.value;"
+                    onblur="if(this.value==='')dlSwitchToText(null);" />
                 </div>
                 <div class="form-group">
                   <label for="visualeffectpicker">Visual Effects:</label>
