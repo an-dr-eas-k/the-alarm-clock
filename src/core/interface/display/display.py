@@ -266,26 +266,10 @@ class Display(DisplayContentProvider):
 
         if show_alarm:
             alarm_time = self.display_content.get_next_alarm()
-            hour_str = self.formatter.format_dseg7_string(
-                alarm_time.strftime("%H"), desired_length=2
-            )
-            min_str = self.formatter.format_dseg7_string(
-                alarm_time.strftime("%M"), desired_length=2
-            )
-            alarm_font = self.formatter.clock_font(
-                size=11, weight=QtGui.QFont.Weight(320)
-            )
-            fm_alarm = QtGui.QFontMetrics(alarm_font)
             icon_font = self.formatter.icon_font(size=14)
-
-            # Baseline positions: center the two rows vertically around the clock center
-            clock_center_y = y_offset + 12  # midpoint of the 25px clock rect
-            row_height = fm_alarm.ascent() + fm_alarm.descent()
-            row_gap = 2
-            total_rows_height = 2 * row_height + row_gap
-            top_y = clock_center_y - total_rows_height // 2
-            baseline1 = top_y + fm_alarm.ascent()
-            baseline2 = baseline1 + row_height + row_gap
+            alarm_clock_font = self.formatter.clock_font(
+                size=11, weight=QtGui.QFont.Weight.Light
+            )
 
             alarm_x = x_offset + clock_w + alarm_gap
 
@@ -300,9 +284,25 @@ class Display(DisplayContentProvider):
                     display_label,
                 )
             else:
-                painter.setFont(alarm_font)
-                painter.drawText(int(alarm_x), int(baseline1), hour_str)
-                painter.drawText(int(alarm_x), int(baseline2), min_str)
+                # Bell icon
+                painter.setFont(icon_font)
+                painter.drawText(
+                    QtCore.QRect(int(alarm_x), y_offset, 16, 25),
+                    QtCore.Qt.AlignmentFlag.AlignLeft
+                    | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                    "\uf49a",
+                )
+                # Time in DSEG7 font
+                time_str = self.formatter.format_dseg7_string(
+                    alarm_time.strftime("%H:%M"), desired_length=5
+                )
+                painter.setFont(alarm_clock_font)
+                painter.drawText(
+                    QtCore.QRect(int(alarm_x) + 18, y_offset, 70, 25),
+                    QtCore.Qt.AlignmentFlag.AlignLeft
+                    | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                    time_str,
+                )
 
         # WiFi
         if not self.display_content.get_is_online():
