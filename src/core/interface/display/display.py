@@ -218,7 +218,6 @@ class Display(DisplayContentProvider):
             if self.formatter.be_gloomy():
                 self._paint_default_dimmed(painter)
             else:
-                self.formatter.clock_dither_rect = None
                 self._paint_default_normal(painter)
         elif mode == ModeName.ALARM_VIEW:
             self._paint_alarm_view(painter)
@@ -255,7 +254,6 @@ class Display(DisplayContentProvider):
             QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter,
             clock_string,
         )
-        self.formatter.clock_dither_rect = (x_offset, y_offset - 1, clock_w, 26)
 
         # Next Alarm — icon + two rows (hours / minutes) to the right of the clock
         show_alarm = (
@@ -293,7 +291,7 @@ class Display(DisplayContentProvider):
 
             display_label = self.display_content.next_alarm_info.display_label
             if display_label:
-                label_font = self.formatter.icon_font(size=14)
+                label_font = self.formatter.icon_font(size=18)
                 painter.setFont(label_font)
                 painter.drawText(
                     QtCore.QRect(int(alarm_x), y_offset, 80, 25),

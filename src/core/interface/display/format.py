@@ -29,7 +29,6 @@ class DisplayFormatter:
     _background_grayscale_16: int
 
     _visual_effect_active: bool = False
-    clock_dither_rect: tuple = None  # (x, y, w, h) — only this region is dithered
 
     def __init__(self, content: DisplayContent, alarm_clock_context: AlarmClockContext):
         self.display_content = content
@@ -208,34 +207,15 @@ class DisplayFormatter:
 
             im = im.point(lut)
 
-            # 2x2 dither: keep only pixels at even (x, y) — scoped to clock rect only
+            # 2x2 dither: keep only pixels at even (x, y) — drops 3/4 of lit pixels
             w, h = im.size
-            rect = self.clock_dither_rect  # (rx, ry, rw, rh) or None
-            if rect is not None:
-                rx, ry, rw, rh = int(rect[0]), int(rect[1]), int(rect[2]), int(rect[3])
-                rx2, ry2 = min(rx + rw, w), min(ry + rh, h)
-                # Build a mask that is fully white outside the clock rect (keep as-is)
-                # and has the 2x2 dither pattern inside the clock rect
-                mask_data = bytearray(w * h * 1)
-                # Default: all white (keep pixels outside clock rect)
-                for i in range(w * h):
-                    mask_data[i] = 255
-                # Apply dither pattern inside clock rect
-                for y in range(ry, ry2):
-                    for x in range(rx, rx2):
-                        mask_data[y * w + x] = 255 if (x % 2 == 0 and y % 2 == 0) else 0
-                mask = Image.frombytes("L", (w, h), bytes(mask_data))
-                black = Image.new("RGB", (w, h), (0, 0, 0))
-                im = Image.composite(im, black, mask)
-            else:
-                # Fallback: dither the entire image
-                row_even = bytes([255, 0] * (w // 2) + ([255] if w % 2 else []))
-                row_odd = bytes([0] * w)
-                mask_data = bytearray()
-                for y in range(h):
-                    mask_data.extend(row_even if y % 2 == 0 else row_odd)
-                mask = Image.frombytes("L", (w, h), bytes(mask_data))
-                black = Image.new("RGB", (w, h), (0, 0, 0))
-                im = Image.composite(im, black, mask)
+            row_even = bytes([255, 0] * (w // 2) + ([255] if w % 2 else []))
+            row_odd = bytes([0] * w)
+            mask_data = bytearray()
+            for y in range(h):
+                mask_data.extend(row_even if y % 2 == 0 else row_odd)
+            mask = Image.frombytes("L", (w, h), bytes(mask_data))
+            black = Image.new("RGB", (w, h), (0, 0, 0))
+            im = Image.composite(im, black, mask)
 
         return im
