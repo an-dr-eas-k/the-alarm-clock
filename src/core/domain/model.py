@@ -293,7 +293,17 @@ class AlarmDefinition:
     hour: int
     min: int
     fadein_in_secs: int = 0
-    alarm_label: str = None
+    _alarm_label: str = None
+
+    @property
+    def alarm_label(self) -> str:
+        return self._alarm_label
+
+    @alarm_label.setter
+    def alarm_label(self, value: str):
+        if value is not None and len(value) > 3:
+            raise ValueError("alarm_label cannot be longer than 3 characters")
+        self._alarm_label = value
 
     @property
     def recurrence(self) -> AlarmRecurrence:

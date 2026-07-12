@@ -296,38 +296,20 @@
     }
 
     function dlSetValue(val) {
-      document.getElementById('alarmlabelpicker').value = val || '';
-      var sel = document.getElementById('alarmlabel-select');
       var txt = document.getElementById('alarmlabel-text');
-      if (!sel) {if (txt) {txt.value = val || '';} return;}
-      var isPreset = val && Array.from(sel.options).some(function (o) {return o.value === val && o.value !== '__none__';});
-      if (!val || isPreset) {
-        sel.value = isPreset ? val : '__none__';
-        sel.style.display = '';
-        txt.style.display = 'none';
-        txt.value = '';
-      } else {
-        sel.style.display = 'none';
-        txt.style.display = '';
-        txt.value = val;
-      }
+      if (txt) txt.value = val || '';
+      document.querySelectorAll('.alarm-label-btn').forEach(function (btn) {
+        var active = btn.getAttribute('data-label') === val && !!val;
+        btn.classList.toggle('btn-secondary', active);
+        btn.classList.toggle('btn-outline-secondary', !active);
+      });
     }
 
-    function dlSwitchToText(initial) {
-      var sel = document.getElementById('alarmlabel-select');
+    function dlPickLabel(val) {
       var txt = document.getElementById('alarmlabel-text');
-      if (initial === null) {
-        // blur-with-empty: go back to select if one exists
-        if (sel) {sel.style.display = ''; txt.style.display = 'none';}
-        document.getElementById('alarmlabelpicker').value = '';
-        return;
-      }
-      if (sel) {sel.style.display = 'none';}
-      txt.style.display = '';
-      txt.value = (txt.value || '') + initial;
-      document.getElementById('alarmlabelpicker').value = txt.value;
-      txt.focus();
-      txt.setSelectionRange(txt.value.length, txt.value.length);
+      if (!txt) return;
+      txt.value = txt.value === val ? '' : val;
+      dlSetValue(txt.value);
     }
 
     function updateVolume(event) {
@@ -466,7 +448,8 @@
         </tr>
         {% for alarm_definition in config.alarm_definitions %}
         <tr>
-          <td>{{ escape(alarm_definition.alarm_name) }}</td>
+          <td>{% if alarm_definition.alarm_label %}<span class="nerdfont">{{ escape(alarm_definition.alarm_label)
+              }}</span> {% end %}{{ escape(alarm_definition.alarm_name) }}</td>
           <td>{{ escape(f"{alarm_definition.to_time_string()}") }}</td>
           <td>{{ escape(alarm_definition.to_day_string()) }}</td>
           <td>stream: <span title="{{ escape(alarm_definition.audio_effect.audio_stream.stream_name) }}">
@@ -558,24 +541,19 @@
                     step="10" value="0" oninput="updateIncreaseDuration(event)">
                 </div>
                 <div class="form-group">
-                  <label for="alarmlabel-select">Alarm Label (e.g. nerdfont icon):</label>
-                  <!-- hidden field that is always submitted -->
-                  <input type="hidden" name="alarmLabel" id="alarmlabelpicker" />
-                  {% if config.predefined_alarm_labels %}
-                  <select class="form-control nerdfont" id="alarmlabel-select"
-                    onchange="if(this.value!=='__none__'){document.getElementById('alarmlabelpicker').value=this.value;}"
-                    onkeydown="if(event.key.length===1&&!event.ctrlKey&&!event.metaKey){event.preventDefault();dlSwitchToText(event.key);}">
-                    <option value="__none__">— pick preset —</option>
+                  <label for="alarmlabel-text">Alarm Label:</label>
+                  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.4rem;">
+                    <input type="text" class="form-control nerdfont" id="alarmlabel-text" name="alarmLabel"
+                      placeholder="…" maxlength="3" style="width:5rem;flex:0 0 auto;"
+                      oninput="dlSetValue(this.value)" />
+                    {% if config.predefined_alarm_labels %}
                     {% for lbl in config.predefined_alarm_labels %}
-                    <option value="{{ escape(lbl) }}">{{ escape(lbl) }}</option>
+                    <button type="button" class="btn btn-outline-secondary nerdfont alarm-label-btn"
+                      data-label="{{ escape(lbl) }}" onclick="dlPickLabel('{{ escape(lbl) }}')">{{ escape(lbl)
+                      }}</button>
                     {% end %}
-                  </select>
-                  {% end %}
-                  <input type="text" class="form-control nerdfont" id="alarmlabel-text"
-                    placeholder="custom label or icon"
-                    style="{% if config.predefined_alarm_labels %}display:none;{% end %}"
-                    oninput="document.getElementById('alarmlabelpicker').value=this.value;"
-                    onblur="if(this.value==='')dlSwitchToText(null);" />
+                    {% end %}
+                  </div>
                 </div>
                 <div class="form-group">
                   <label for="visualeffectpicker">Visual Effects:</label>
