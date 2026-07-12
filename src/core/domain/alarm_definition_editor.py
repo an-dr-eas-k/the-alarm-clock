@@ -34,7 +34,7 @@ class AlarmProperty(Enum):
     AUDIO_EFFECT_VOLUME = "audio_effect_volume"
     FADE_IN = "fadein_in_secs"
     VISUAL_EFFECT = "visual_effect"
-    DISPLAY_LABEL = "display_label"
+    ALARM_LABEL = "alarm_label"
 
 
 class EditableProperty:
@@ -81,8 +81,8 @@ class AlarmDefinitionProperties:
             AlarmProperty.IS_ACTIVE: EditableProperty(
                 AlarmProperty.IS_ACTIVE, [True, False]
             ),
-            AlarmProperty.DISPLAY_LABEL: EditableProperty(
-                AlarmProperty.DISPLAY_LABEL, [None]
+            AlarmProperty.ALARM_LABEL: EditableProperty(
+                AlarmProperty.ALARM_LABEL, [None]
             ),
         }
 
@@ -108,7 +108,7 @@ class AlarmDefinitionProperties:
         pes.append(AlarmProperty.FADE_IN)
 
         pes.append(AlarmProperty.VISUAL_EFFECT)
-        pes.append(AlarmProperty.DISPLAY_LABEL)
+        pes.append(AlarmProperty.ALARM_LABEL)
         return pes
 
     def update_value_lists(self, config: Config, volume: float):
@@ -116,9 +116,9 @@ class AlarmDefinitionProperties:
             StreamAudioEffect(audio_stream=stream, volume=volume)
             for stream in config.audio_streams
         ]
-        self._editable_properties[AlarmProperty.DISPLAY_LABEL].value_list = [
-            None
-        ] + list(config.predefined_display_labels or [])
+        self._editable_properties[AlarmProperty.ALARM_LABEL].value_list = [None] + list(
+            config.predefined_alarm_labels or []
+        )
 
 
 class DayPickerSession:

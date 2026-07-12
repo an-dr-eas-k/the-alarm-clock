@@ -305,7 +305,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
             and form_arguments["isActive"] == "on"
         )
         ala.fadein_in_secs = int(form_arguments.get("fadein_in_secs") or 0)
-        ala.display_label = form_arguments.get("displayLabel") or None
+        ala.alarm_label = form_arguments.get("alarmLabel") or None
         return ala
 
 

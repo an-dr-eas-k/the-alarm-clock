@@ -293,7 +293,7 @@ class AlarmDefinition:
     hour: int
     min: int
     fadein_in_secs: int = 0
-    display_label: str = None
+    alarm_label: str = None
 
     @property
     def recurrence(self) -> AlarmRecurrence:
@@ -413,7 +413,7 @@ class Config:
     debug_level: int
     pre_alarm_trigger_in_mins: int = 10
     start_volume: float
-    predefined_display_labels: List[str]
+    predefined_alarm_labels: List[str]
 
     location: LocationConfig
 
@@ -530,7 +530,7 @@ class Config:
             dict(key="pre_alarm_trigger_in_mins", value=10),
             dict(key="debug_level", value=0),
             dict(key="start_volume", value=0.15),
-            dict(key="predefined_display_labels", value=[]),
+            dict(key="predefined_alarm_labels", value=[]),
             dict(key="location", value=LocationConfig()),
         ]:
             if not hasattr(self, conf_prop["key"]):
@@ -711,8 +711,8 @@ class NextAlarmInfo:
         return self._alarm_definition.alarm_name
 
     @property
-    def display_label(self) -> str:
-        return self._alarm_definition.display_label if self._alarm_definition else None
+    def alarm_label(self) -> str:
+        return self._alarm_definition.alarm_label if self._alarm_definition else None
 
     @property
     def visual_effect(self) -> "VisualEffect":

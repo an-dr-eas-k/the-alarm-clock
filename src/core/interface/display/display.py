@@ -273,15 +273,15 @@ class Display(DisplayContentProvider):
 
             alarm_x = x_offset + clock_w + alarm_gap
 
-            display_label = self.display_content.next_alarm_info.display_label
-            if display_label:
+            alarm_label = self.display_content.next_alarm_info.alarm_label
+            if alarm_label:
                 label_font = self.formatter.icon_font(size=18)
                 painter.setFont(label_font)
                 painter.drawText(
                     QtCore.QRect(int(alarm_x), y_offset, 80, 25),
                     QtCore.Qt.AlignmentFlag.AlignLeft
                     | QtCore.Qt.AlignmentFlag.AlignVCenter,
-                    display_label,
+                    alarm_label,
                 )
             else:
                 # Bell icon
@@ -602,7 +602,7 @@ class Display(DisplayContentProvider):
             val_str = f"{current_val:02d}"
         elif current_prop == AlarmProperty.VISUAL_EFFECT:
             val_str = "yes" if current_val else "no"
-        elif current_prop == AlarmProperty.DISPLAY_LABEL:
+        elif current_prop == AlarmProperty.ALARM_LABEL:
             val_str = current_val if current_val else "\u2014"
 
         if current_prop in (AlarmProperty.FADE_IN, AlarmProperty.AUDIO_EFFECT_VOLUME):
@@ -658,7 +658,7 @@ class Display(DisplayContentProvider):
 
         val_font = (
             self.formatter.icon_font(size=val_font_size)
-            if current_prop == AlarmProperty.DISPLAY_LABEL
+            if current_prop == AlarmProperty.ALARM_LABEL
             else self.formatter.info_font(size=val_font_size)
         )
         painter.setFont(val_font)
