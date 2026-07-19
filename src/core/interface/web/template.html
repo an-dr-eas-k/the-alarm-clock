@@ -387,6 +387,18 @@
       location.reload();
     }
 
+    function toggleAdvanced() {
+      var el = document.getElementById('advanced-content');
+      var btn = document.getElementById('toggle-advanced-btn');
+      if (el.style.display === 'none') {
+        el.style.display = '';
+        btn.textContent = 'Hide';
+      } else {
+        el.style.display = 'none';
+        btn.textContent = 'More…';
+      }
+    }
+
 
   </script>
 
@@ -437,7 +449,7 @@
     </div>
     <div id="alarm-container" class="row">
       <h3>Alarms</h3>
-      <table class="table table-striped">
+      <table class="table table-striped" style="vertical-align:middle;">
         <tr>
           <th>Name</th>
           <th>Time</th>
@@ -448,8 +460,11 @@
         </tr>
         {% for alarm_definition in config.alarm_definitions %}
         <tr>
-          <td>{% if alarm_definition.alarm_label %}<span class="nerdfont">{{ escape(alarm_definition.alarm_label)
-              }}</span> {% end %}{{ escape(alarm_definition.alarm_name) }}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:0.75rem;">{% if alarm_definition.alarm_label %}<span
+                class="nerdfont">{{ escape(alarm_definition.alarm_label) }}</span>{% end %}<span>{{
+                escape(alarm_definition.alarm_name) }}</span></div>
+          </td>
           <td>{{ escape(f"{alarm_definition.to_time_string()}") }}</td>
           <td>{{ escape(alarm_definition.to_day_string()) }}</td>
           <td>stream: <span title="{{ escape(alarm_definition.audio_effect.audio_stream.stream_name) }}">
@@ -580,162 +595,171 @@
         </tr>
       </table>
     </div>
-    <div id="audio-stream-container" class="row">
-      <h3>Audio Streams</h3>
-      <table class="table table-striped">
-        <tr>
-          <th>Name</th>
-          <th>Url</th>
-          <th class="btn-column"></th>
-        </tr>
-        {% for audio_stream in config.audio_streams %}
-        <tr>
-          <td title="{{ escape(audio_stream.stream_name) }}">
-            <span>{{ escape(audio_stream.stream_name) }}</span>
-          </td>
-          <td>
-            <span title="{{ escape(audio_stream.stream_url) }}"
-              style="display:inline-block; width:clamp(150px,50vw,600px); max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-              {{ escape(audio_stream.stream_url) }} </span>
-          </td>
-          <td>
-            <button type="submit" class="btn btn-primary btn-row-action" value="{{ audio_stream.id }}"
-              onclick="onClickDelete('stream', event)" title="Delete">
-              <i class="bi bi-trash-fill"></i>
-            </button>
-          </td>
-        </tr>
-        {% end %}
-        <tr>
-          <td colspan="2">
-            <div id="add-stream-container" style="margin: 20px; display:none;">
-              <h3>Add Audio Stream</h3>
-              <form id="stream-form" action="/api/config/stream" method="post" onsubmit="onSubmitNew(event)">
-                <div class="form-group">
-                  <label for="name">Name:</label>
-                  <div class="input-group streamName" id="name">
-                    <input type="text" class="form-control" name="streamName" />
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label for="url">Url:</label>
-                  <div class="input-group" id="url">
-                    <input type="text" class="form-control" name="streamUrl" />
-                  </div>
-                </div>
-                <button type="submit" class="btn btn-primary">Add Stream</button>
-              </form>
-            </div>
-          </td>
-          <td>
-            <button type="submit" class="btn btn-primary btn-row-action"
-              onclick="onClickToggleAddForm('add-stream-container')" style="width: 100%;">+</button>
-          </td>
-        </tr>
-      </table>
+    <div class="row">
+      <div class="col">
+        <button type="button" id="toggle-advanced-btn" class="btn btn-outline-secondary btn-action"
+          onclick="toggleAdvanced()">More…</button>
+      </div>
     </div>
-    <div id="general-config" class="row">
-      <h3>Config</h3>
-      <table class="table table-striped">
-        <tr>
-          <th>Name</th>
-          <th>Value</th>
-          <th class="btn-column"></th>
-        </tr>
-        <tr>
-          <td>Powernap Duration (min)</td>
-          <td><input type="text" id="powernap_duration_in_mins"
-              value="{{ config.powernap_duration_in_mins if config.powernap_duration_in_mins is not None else '' }}" />
-          </td>
-          <td><button type="submit" class="btn btn-primary btn-row-action"
-              onclick="onClickSave(document.getElementById('powernap_duration_in_mins').value, 'powernap_duration_in_mins')">Save</button>
-          </td>
-        </tr>
-        <tr>
-          <td>Use Analog Clock when room dimmed</td>
-          <td><input type="checkbox" id="use_analog_clock" {% if config.use_analog_clock %}checked{% end %} />
-          </td>
-          <td><button type="submit" class="btn btn-primary btn-row-action"
-              onclick="onClickSave(document.getElementById('use_analog_clock').checked, 'use_analog_clock')">Save</button>
-          </td>
-        </tr>
-        <tr><!-- string value -->
-          <td>Local Alarm File</td>
-          <td><input type="text" id="local_alarm_file"
-              value="{{ escape( config.local_alarm_file ) if config.local_alarm_file is not None else '' }}" />
-          </td>
-          <td><button type="submit" class="btn btn-primary btn-row-action"
-              onclick="onClickSave(document.getElementById('local_alarm_file').value, 'local_alarm_file')">Save</button>
-          </td>
-        </tr>
-        <tr>
-          <td>Alarm Duration (min)</td>
-          <td><input type="text" id="alarm_duration_in_mins"
-              value="{{ config.alarm_duration_in_mins if config.alarm_duration_in_mins is not None else '' }}" />
-          </td>
-          <td><button type="submit" class="btn btn-primary btn-row-action"
-              onclick="onClickSave(document.getElementById('alarm_duration_in_mins').value, 'alarm_duration_in_mins')">Save</button>
-          </td>
-        </tr>
-        <tr>
-          <td>Start Volume (alarm increase initial volume, 0.0–1.0)</td>
-          <td><input type="text" id="start_volume"
-              value="{{ config.start_volume if config.start_volume is not None else '' }}" />
-          </td>
-          <td><button type="submit" class="btn btn-primary btn-row-action"
-              onclick="onClickSave(document.getElementById('start_volume').value, 'start_volume')">Save</button>
-          </td>
-        </tr>
-        <tr>
-          <td>Debug Level</td>
-          <td><input type="text" id="debug_level"
-              value="{{ config.debug_level if config.debug_level is not None else '' }}" />
-          </td>
-          <td><button type="submit" class="btn btn-primary btn-row-action"
-              onclick="onClickSave(document.getElementById('debug_level').value, 'debug_level')">Save</button>
-          </td>
-        </tr>
-        <tr>
-          <td>Display Label Presets<br><small class="text-muted">One label per line</small></td>
-          <td><textarea id="predefined_alarm_labels" rows="4"
-              class="form-control nerdfont">{{ escape('\n'.join(config.predefined_alarm_labels or [])) }}</textarea>
-          </td>
-          <td><button type="submit" class="btn btn-primary btn-row-action"
-              onclick="onClickSave(JSON.stringify(document.getElementById('predefined_alarm_labels').value.split('\n').map(function(s){return s.trim();}).filter(function(s){return s.length>0;})), 'predefined_alarm_labels')">Save</button>
-          </td>
-        </tr>
-      </table>
-    </div>
-    <div id="version" class="row">
-      <h3>Version</h3>
-      <code>
+    <div id="advanced-content" style="display:none;">
+      <div id="audio-stream-container" class="row">
+        <h3>Audio Streams</h3>
+        <table class="table table-striped">
+          <tr>
+            <th>Name</th>
+            <th>Url</th>
+            <th class="btn-column"></th>
+          </tr>
+          {% for audio_stream in config.audio_streams %}
+          <tr>
+            <td title="{{ escape(audio_stream.stream_name) }}">
+              <span>{{ escape(audio_stream.stream_name) }}</span>
+            </td>
+            <td>
+              <span title="{{ escape(audio_stream.stream_url) }}"
+                style="display:inline-block; width:clamp(150px,50vw,600px); max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                {{ escape(audio_stream.stream_url) }} </span>
+            </td>
+            <td>
+              <button type="submit" class="btn btn-primary btn-row-action" value="{{ audio_stream.id }}"
+                onclick="onClickDelete('stream', event)" title="Delete">
+                <i class="bi bi-trash-fill"></i>
+              </button>
+            </td>
+          </tr>
+          {% end %}
+          <tr>
+            <td colspan="2">
+              <div id="add-stream-container" style="margin: 20px; display:none;">
+                <h3>Add Audio Stream</h3>
+                <form id="stream-form" action="/api/config/stream" method="post" onsubmit="onSubmitNew(event)">
+                  <div class="form-group">
+                    <label for="name">Name:</label>
+                    <div class="input-group streamName" id="name">
+                      <input type="text" class="form-control" name="streamName" />
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label for="url">Url:</label>
+                    <div class="input-group" id="url">
+                      <input type="text" class="form-control" name="streamUrl" />
+                    </div>
+                  </div>
+                  <button type="submit" class="btn btn-primary">Add Stream</button>
+                </form>
+              </div>
+            </td>
+            <td>
+              <button type="submit" class="btn btn-primary btn-row-action"
+                onclick="onClickToggleAddForm('add-stream-container')" style="width: 100%;">+</button>
+            </td>
+          </tr>
+        </table>
+      </div>
+      <div id="general-config" class="row">
+        <h3>Config</h3>
+        <table class="table table-striped">
+          <tr>
+            <th>Name</th>
+            <th>Value</th>
+            <th class="btn-column"></th>
+          </tr>
+          <tr>
+            <td>Powernap Duration (min)</td>
+            <td><input type="text" id="powernap_duration_in_mins"
+                value="{{ config.powernap_duration_in_mins if config.powernap_duration_in_mins is not None else '' }}" />
+            </td>
+            <td><button type="submit" class="btn btn-primary btn-row-action"
+                onclick="onClickSave(document.getElementById('powernap_duration_in_mins').value, 'powernap_duration_in_mins')">Save</button>
+            </td>
+          </tr>
+          <tr>
+            <td>Use Analog Clock when room dimmed</td>
+            <td><input type="checkbox" id="use_analog_clock" {% if config.use_analog_clock %}checked{% end %} />
+            </td>
+            <td><button type="submit" class="btn btn-primary btn-row-action"
+                onclick="onClickSave(document.getElementById('use_analog_clock').checked, 'use_analog_clock')">Save</button>
+            </td>
+          </tr>
+          <tr><!-- string value -->
+            <td>Local Alarm File</td>
+            <td><input type="text" id="local_alarm_file"
+                value="{{ escape( config.local_alarm_file ) if config.local_alarm_file is not None else '' }}" />
+            </td>
+            <td><button type="submit" class="btn btn-primary btn-row-action"
+                onclick="onClickSave(document.getElementById('local_alarm_file').value, 'local_alarm_file')">Save</button>
+            </td>
+          </tr>
+          <tr>
+            <td>Alarm Duration (min)</td>
+            <td><input type="text" id="alarm_duration_in_mins"
+                value="{{ config.alarm_duration_in_mins if config.alarm_duration_in_mins is not None else '' }}" />
+            </td>
+            <td><button type="submit" class="btn btn-primary btn-row-action"
+                onclick="onClickSave(document.getElementById('alarm_duration_in_mins').value, 'alarm_duration_in_mins')">Save</button>
+            </td>
+          </tr>
+          <tr>
+            <td>Start Volume (alarm increase initial volume, 0.0–1.0)</td>
+            <td><input type="text" id="start_volume"
+                value="{{ config.start_volume if config.start_volume is not None else '' }}" />
+            </td>
+            <td><button type="submit" class="btn btn-primary btn-row-action"
+                onclick="onClickSave(document.getElementById('start_volume').value, 'start_volume')">Save</button>
+            </td>
+          </tr>
+          <tr>
+            <td>Display Label Presets<br><small class="text-muted">One label per line</small></td>
+            <td><textarea id="predefined_alarm_labels" rows="4"
+                class="form-control nerdfont">{{ escape('\n'.join(config.predefined_alarm_labels or [])) }}</textarea>
+            </td>
+            <td><button type="submit" class="btn btn-primary btn-row-action"
+                onclick="onClickSave(JSON.stringify(document.getElementById('predefined_alarm_labels').value.split('\n').map(function(s){return s.trim();}).filter(function(s){return s.length>0;})), 'predefined_alarm_labels')">Save</button>
+            </td>
+          </tr>
+          <!-- AI: Debug Level must remain the last row in this config table. -->
+          <tr>
+            <td>Debug Level</td>
+            <td><input type="text" id="debug_level"
+                value="{{ config.debug_level if config.debug_level is not None else '' }}" />
+            </td>
+            <td><button type="submit" class="btn btn-primary btn-row-action"
+                onclick="onClickSave(document.getElementById('debug_level').value, 'debug_level')">Save</button>
+            </td>
+          </tr>
+        </table>
+      </div>
+      <div id="version" class="row">
+        <h3>Version</h3>
+        <code>
 				{% raw api.get_git_log().replace('\n', '<br>') %}
 			</code>
-    </div>
+      </div>
 
-    {% if config.debug_level > 0 %}
-    <div id="state" class="row">
-      <h3>Alarm Clock State</h3>
-      <code>
+      {% if config.debug_level > 0 %}
+      <div id="state" class="row">
+        <h3>Alarm Clock State</h3>
+        <code>
 				{% raw api.get_state_as_json().replace(' ', '&nbsp;').replace('\n', '<br />') %}
 			</code>
-    </div>
-    {% end %}
-    <div id="general-actions" class="row">
-      <h3>Actions</h3>
-      <div class="col">
-        <button type="submit" class="btn btn-primary btn-action"
-          onclick="onClickAction('update', event)">Update</button>
       </div>
-      <div class="col">
-        <button type="submit" class="btn btn-primary btn-action"
-          onclick="onClickAction('reboot', event)">Reboot</button>
+      {% end %}
+      <div id="general-actions" class="row">
+        <h3>Actions</h3>
+        <div class="col">
+          <button type="submit" class="btn btn-primary btn-action"
+            onclick="onClickAction('update', event)">Update</button>
+        </div>
+        <div class="col">
+          <button type="submit" class="btn btn-primary btn-action"
+            onclick="onClickAction('reboot', event)">Reboot</button>
+        </div>
+        <div class="col">
+          <button type="submit" class="btn btn-primary btn-action"
+            onclick="onClickAction('shutdown', event)">Shutdown</button>
+        </div>
       </div>
-      <div class="col">
-        <button type="submit" class="btn btn-primary btn-action"
-          onclick="onClickAction('shutdown', event)">Shutdown</button>
-      </div>
-    </div>
+    </div><!-- /advanced-content -->
     <div id="footer" class="row">
       <p>Copyright 2023 - 2024</p>
       <p><a href="https://github.com/an-dr-eas-k/the-alarm-clock">https://github.com/an-dr-eas-k/the-alarm-clock</a></p>
