@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+from typing import List
 
 from core.infrastructure.event_bus import BaseEvent
 
@@ -16,6 +17,7 @@ if TYPE_CHECKING:
         AlarmDefinition,
         Config,
     )
+    from core.domain.calendar_model import CalendarEvent
     from utils.geolocation import SunEvent
 
 
@@ -168,3 +170,13 @@ class TerminateAppRequest(BaseEvent):
 @dataclass(frozen=True)
 class ShutdownSystemRequest(BaseEvent):
     reboot: bool = False
+
+
+@dataclass(frozen=True)
+class CalendarEventsUpdatedEvent(BaseEvent):
+    events: List[CalendarEvent] = None
+
+
+@dataclass(frozen=True)
+class CalendarEventReminderEvent(BaseEvent):
+    calendar_event: CalendarEvent = None

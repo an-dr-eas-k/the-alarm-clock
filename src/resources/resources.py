@@ -38,6 +38,12 @@ active_alarm_definition_file = f"/tmp/toc_active_alarm.json"
 display_shot_file = os.path.join(app_dir, "..", "..", "display_test.png")
 ssl_dir = os.path.join(app_dir, "../rpi/tls")
 
+# Google OAuth client credentials (client_id/client_secret), kept out of
+# config.json and out of version control since they are secrets.
+google_oauth_secret_file = os.path.join(resources_dir, "google_oauth_secret.json")
+# Persisted per-account access/refresh tokens for linked Google accounts.
+google_tokens_file = os.path.join(resources_dir, "google_tokens.json")
+
 valid_mixer_device_simple_control_names = ["Digital", "Master"]
 
 default_volume = 0.2

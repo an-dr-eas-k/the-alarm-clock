@@ -43,6 +43,45 @@
 7 Segment Font is included from https://github.com/keshikan/DSEG/releases \
 weather symbols are included from https://github.com/erikflowers/weather-icons
 
+# Google Login & Calendar Integration
+
+The web UI can require a Google login to edit settings, and it can show
+calendar events (and play a reminder sound shortly before an accepted
+event starts) for the Google accounts that logged in.
+
+Since the device has no stable, publicly reachable hostname, login uses
+Google's **OAuth 2.0 Device Authorization flow** (the same mechanism used by
+smart TVs/streaming devices). No redirect URI is needed — Google's servers
+never contact the device directly; the user just opens a short link on
+their phone or computer and enters a short code shown by the alarm clock.
+
+Setup:
+1. In the [Google Cloud Console](https://console.cloud.google.com/), create
+   an OAuth 2.0 Client ID of type **"TV and Limited Input devices"**.
+2. Enable the **Google Calendar API** for the project.
+3. Save the resulting client id/secret as
+   `src/resources/google_oauth_secret.json`:
+   ```json
+   {
+     "client_id": "....apps.googleusercontent.com",
+     "client_secret": "...."
+   }
+   ```
+   This file is git-ignored and never leaves the device.
+4. Add the Google account email addresses that are allowed to log in to
+   `allowed_google_emails` in `config.json` (or via the web UI's Config
+   section once you have logged in once, e.g. by temporarily adding your own
+   email directly to `config.json`).
+5. Log in from the web UI ("Login with Google"): it shows a code and a link
+   to `google.com/device` — open it on any device and enter the code.
+6. Once logged in, the linked account's calendar is polled periodically;
+   events starting within the next hour are shown on the display, and a
+   configurable reminder sound plays a few seconds before any *accepted*
+   event starts.
+
+All related settings (reminder sound, lead time, poll interval, display
+window) are editable in the web UI's Config section once logged in.
+
 
 # Box
 

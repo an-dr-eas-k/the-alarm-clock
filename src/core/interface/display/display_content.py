@@ -1,8 +1,9 @@
 from __future__ import annotations
-from datetime import datetime
-from typing import TYPE_CHECKING
+from datetime import datetime, timedelta
+from typing import TYPE_CHECKING, List
 
 
+from core.domain.calendar_model import CalendarEvent
 from core.domain.mode_coordinator import ModeName
 from core.domain.model import (
     AlarmClockContext,
@@ -17,11 +18,14 @@ if TYPE_CHECKING:
     from core.domain.model import PlaybackContent
 
 from core.domain.events import (
+    CalendarEventsUpdatedEvent,
     ForcedDisplayUpdateEvent,
     PlaybackChangedEvent,
     VolumeChangedEvent,
     WeatherUpdatedEvent,
 )
+
+from utils.geolocation import GeoLocation
 
 import logging
 
@@ -37,6 +41,7 @@ class DisplayContent:
     is_scrolling: bool = False
     refresh_duration_in_ms: int = None
     current_weather: Weather = None
+    calendar_events: List[CalendarEvent] = None
 
     def __init__(
         self,
@@ -49,10 +54,12 @@ class DisplayContent:
         self.event_bus = event_bus
         self.next_alarm_info = NextAlarmInfo()
         self.room_brightness = RoomBrightness(0.0)
+        self.calendar_events = []
 
         self.event_bus.on(PlaybackChangedEvent)(self._playback_changed)
         self.event_bus.on(VolumeChangedEvent)(self._volume_changed)
         self.event_bus.on(WeatherUpdatedEvent)(self._weather_updated)
+        self.event_bus.on(CalendarEventsUpdatedEvent)(self._calendar_events_updated)
 
     # ========== Event Handlers ==========
 
@@ -67,6 +74,28 @@ class DisplayContent:
 
     def _weather_updated(self, event: WeatherUpdatedEvent):
         self.current_weather = event.weather
+
+    def _calendar_events_updated(self, event: CalendarEventsUpdatedEvent):
+        self.calendar_events = event.events or []
+        self.event_bus.emit(ForcedDisplayUpdateEvent())
+
+    # ========== Calendar Information (Domain Delegation) ==========
+
+    def update_calendar_events(self, events: List[CalendarEvent]):
+        self.calendar_events = events or []
+
+    def upcoming_calendar_events(
+        self, window_hours: float = 1.0
+    ) -> List[CalendarEvent]:
+        now = GeoLocation().now()
+        window = timedelta(hours=window_hours)
+        return [e for e in self.calendar_events if e.starts_within(now, window)]
+
+    def next_calendar_event(self) -> CalendarEvent | None:
+        events = self.upcoming_calendar_events(
+            self.alarm_clock_context.config.calendar_display_window_hours
+        )
+        return events[0] if events else None
 
     # ========== Presentation State Updates ==========
 

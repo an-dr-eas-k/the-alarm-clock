@@ -5,6 +5,7 @@ from datetime import time, timedelta, date
 import datetime
 import math
 import os
+import secrets
 from PIL import Image
 from typing import List
 from enum import Enum
@@ -427,6 +428,16 @@ class Config:
 
     location: LocationConfig
 
+    # Web login / Google Calendar integration
+    cookie_secret: str
+    allowed_google_emails: List[str]
+    calendar_reminder_sound_file: str
+    calendar_reminder_lead_seconds: int
+    calendar_reminder_duration_secs: int
+    calendar_poll_interval_mins: int
+    calendar_fetch_horizon_hours: int
+    calendar_display_window_hours: float
+
     # Public attributes for template access (Tornado templates don't call properties)
     alarm_definitions: List[AlarmDefinition]
     audio_streams: List[AudioStream]
@@ -523,6 +534,9 @@ class Config:
     def get_offline_stream(self) -> OfflineStream:
         return OfflineStream(self.local_alarm_file)
 
+    def get_calendar_reminder_stream(self) -> OfflineStream:
+        return OfflineStream(self.calendar_reminder_sound_file)
+
     def ensure_valid_config(self):
         for conf_prop in [
             dict(key="alarm_duration_in_mins", value=60),
@@ -542,6 +556,13 @@ class Config:
             dict(key="start_volume", value=0.15),
             dict(key="predefined_alarm_labels", value=[]),
             dict(key="location", value=LocationConfig()),
+            dict(key="allowed_google_emails", value=[]),
+            dict(key="calendar_reminder_sound_file", value="Alarm_Beep_01.ogg"),
+            dict(key="calendar_reminder_lead_seconds", value=20),
+            dict(key="calendar_reminder_duration_secs", value=15),
+            dict(key="calendar_poll_interval_mins", value=5),
+            dict(key="calendar_fetch_horizon_hours", value=12),
+            dict(key="calendar_display_window_hours", value=1.0),
         ]:
             if not hasattr(self, conf_prop["key"]):
                 logger.debug(
@@ -550,6 +571,10 @@ class Config:
                     conf_prop["value"],
                 )
                 setattr(self, conf_prop["key"], conf_prop["value"])
+
+        if not getattr(self, "cookie_secret", None):
+            logger.debug("no cookie_secret found, generating a new one")
+            self.cookie_secret = secrets.token_hex(32)
 
     def serialize(self):
         # Temporarily remove event_bus before serialization to avoid circular references

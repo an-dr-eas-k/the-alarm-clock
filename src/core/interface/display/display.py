@@ -361,6 +361,10 @@ class Display(DisplayContentProvider):
         ):
             items.append(("alarm", self.display_content.get_next_alarm()))
 
+        next_calendar_event = self.display_content.next_calendar_event()
+        if next_calendar_event:
+            items.append(("calendar", next_calendar_event))
+
         if self.display_content.show_volume_meter:
             items.append(("volume", self.display_content.current_volume()))
 
@@ -430,6 +434,23 @@ class Display(DisplayContentProvider):
                         QtCore.Qt.AlignmentFlag.AlignLeft
                         | QtCore.Qt.AlignmentFlag.AlignVCenter,
                         f"\uf49a {data.strftime('%H:%M')}",
+                    )
+
+                elif item_type == "calendar":
+                    painter.setFont(self.formatter.info_font(size=12))
+                    painter.drawText(
+                        rect,
+                        QtCore.Qt.AlignmentFlag.AlignLeft
+                        | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                        "\uf133",
+                    )
+                    self._draw_scrolling_text(
+                        painter,
+                        rect.adjusted(20, 0, -5, 0),
+                        f"{data.start.strftime('%H:%M')} {data.summary}",
+                        self.formatter.info_font(size=12),
+                        fg_color,
+                        self._playback_title_scroll_start_time,
                     )
 
                 elif item_type == "volume":

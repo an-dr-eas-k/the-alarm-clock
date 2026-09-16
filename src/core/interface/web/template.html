@@ -170,6 +170,11 @@
       max-width: 100%;
     }
 
+    /* container is the positioning context for the corner profile picture */
+    .container {
+      position: relative;
+    }
+
     /* Favicon container styling */
     .favicon-container {
       position: relative;
@@ -187,6 +192,22 @@
       margin-bottom: 0.25rem;
     }
 
+    /* Tiny Google profile picture pinned to the very top-left corner */
+    .profile-pic-corner {
+      position: absolute;
+      top: 0.5rem;
+      left: 0.5rem;
+      z-index: 30;
+    }
+
+    .profile-pic-corner img {
+      display: block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1px solid #495057;
+    }
 
     @media (min-width: 720px) {
       .favicon-container {
@@ -197,6 +218,11 @@
       .favicon-image {
         width: 256px;
         height: 256px;
+      }
+
+      .profile-pic-corner img {
+        width: 25.6px;
+        height: 25.6px;
       }
     }
 
@@ -209,6 +235,40 @@
 
     .nerdfont {
       font-family: 'NerdFont', monospace;
+    }
+
+    .auth-bar {
+      position: relative;
+      z-index: 20;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 0.5rem;
+      padding-top: 0.5rem;
+    }
+
+    .google-login-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 1050;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .google-login-modal-content {
+      background: #212529;
+      padding: 2rem;
+      border-radius: 8px;
+      max-width: 90%;
+      text-align: center;
+    }
+
+    .google-login-code {
+      font-size: 2rem;
+      letter-spacing: 0.2rem;
+      margin: 0.75rem 0;
     }
   </style>
 
@@ -293,6 +353,80 @@
         }
       };
       xhr.send(content);
+    }
+
+    var googleLoginPollTimer = null;
+    var googleLoginDeviceCode = null;
+
+    function onClickLoginWithGoogle() {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/auth/google/start');
+      xhr.onload = function () {
+        if (xhr.status !== 200) {
+          var message = 'Google login is not available right now.';
+          try {
+            message = JSON.parse(xhr.responseText).message || message;
+          } catch (e) { }
+          document.getElementById('google-login-status').textContent = message;
+          document.getElementById('google-login-code').textContent = '';
+          document.getElementById('google-login-url').textContent = '';
+          document.getElementById('google-login-modal').style.display = 'flex';
+          return;
+        }
+        var data = JSON.parse(xhr.responseText);
+        googleLoginDeviceCode = data.device_code;
+        var link = document.getElementById('google-login-url');
+        link.href = data.verification_url;
+        link.textContent = data.verification_url;
+        document.getElementById('google-login-code').textContent = data.user_code;
+        document.getElementById('google-login-status').textContent = 'Waiting for you to complete sign-in…';
+        document.getElementById('google-login-modal').style.display = 'flex';
+        if (googleLoginPollTimer) clearInterval(googleLoginPollTimer);
+        googleLoginPollTimer = setInterval(pollGoogleLogin, (data.interval || 5) * 1000);
+      };
+      xhr.send();
+    }
+
+    function pollGoogleLogin() {
+      if (!googleLoginDeviceCode) return;
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/auth/google/poll?device_code=' + encodeURIComponent(googleLoginDeviceCode));
+      xhr.onload = function () {
+        var data = {};
+        try {data = JSON.parse(xhr.responseText);} catch (e) { }
+        if (data.status === 'complete') {
+          clearInterval(googleLoginPollTimer);
+          googleLoginPollTimer = null;
+          location.reload();
+        } else if (data.status === 'denied') {
+          clearInterval(googleLoginPollTimer);
+          document.getElementById('google-login-status').textContent = 'Sign-in was declined.';
+        } else if (data.status === 'expired') {
+          clearInterval(googleLoginPollTimer);
+          document.getElementById('google-login-status').textContent = 'Code expired, please try again.';
+        } else if (data.status === 'not_allowed') {
+          clearInterval(googleLoginPollTimer);
+          document.getElementById('google-login-status').textContent =
+            (data.email || 'This account') + ' is not on the allowed list.';
+        } else if (data.status === 'error') {
+          clearInterval(googleLoginPollTimer);
+          document.getElementById('google-login-status').textContent = data.message || 'An error occurred.';
+        }
+        // 'pending' -> keep waiting silently
+      };
+      xhr.send();
+    }
+
+    function onClickCancelLogin() {
+      if (googleLoginPollTimer) clearInterval(googleLoginPollTimer);
+      googleLoginPollTimer = null;
+      googleLoginDeviceCode = null;
+      document.getElementById('google-login-modal').style.display = 'none';
+    }
+
+    function onClickLogout() {
+      sendToBackend('/auth/logout', 'POST', null);
+      location.reload();
     }
 
     function dlSetValue(val) {
@@ -406,13 +540,39 @@
 
 <body data-bs-theme="dark">
   <div class="container">
+    {% if current_user and current_user_picture %}
+    <div class="profile-pic-corner">
+      <img src="{{ escape(current_user_picture) }}" alt="{{ escape(current_user) }}" referrerpolicy="no-referrer">
+    </div>
+    {% end %}
+
     <!-- Favicon visualization -->
     <div class="favicon-container">
       <img src="/media/favicon.png" alt="the-alarm-clock" class="favicon-image">
     </div>
 
+    <div class="auth-bar">
+      {% if not current_user %}
+      <button type="button" class="btn btn-primary btn-sm" onclick="onClickLoginWithGoogle()">
+        <i class="bi bi-google"></i> Login with Google
+      </button>
+      {% end %}
+    </div>
+
+    <div id="google-login-modal" class="google-login-modal">
+      <div class="google-login-modal-content">
+        <h4>Sign in with Google</h4>
+        <p>Open <a id="google-login-url" href="#" target="_blank" rel="noopener"></a> on your phone or computer and
+          enter this code:</p>
+        <div class="google-login-code" id="google-login-code"></div>
+        <p class="text-muted" id="google-login-status">Waiting for you to complete sign-in…</p>
+        <button type="button" class="btn btn-secondary" onclick="onClickCancelLogin()">Cancel</button>
+      </div>
+    </div>
+
     <div id="controls-container" class="row">
       <h3>Controls</h3>
+      {% if current_user %}
       <div class="controls-row">
         <div class="controls-left">
           {% for audio_stream in config.audio_streams %}
@@ -446,6 +606,30 @@
           </div>
         </div>
       </div>
+      {% else %}
+      <p class="text-muted">Log in with Google to control playback.</p>
+      {% end %}
+    </div>
+    <div id="calendar-container" class="row">
+      <h3>Upcoming Events</h3>
+      {% if calendar_events %}
+      <table class="table table-striped">
+        <tr>
+          <th>Time</th>
+          <th>Event</th>
+          <th>Calendar</th>
+        </tr>
+        {% for calendar_event in calendar_events %}
+        <tr>
+          <td>{{ calendar_event.start.strftime('%H:%M') }}</td>
+          <td>{{ escape(calendar_event.summary) }}</td>
+          <td>{{ escape(calendar_event.account_email) }}</td>
+        </tr>
+        {% end %}
+      </table>
+      {% else %}
+      <p class="text-muted">No events in the next {{ config.calendar_display_window_hours }} hour(s).</p>
+      {% end %}
     </div>
     <div id="alarm-container" class="row">
       <h3>Alarms</h3>
@@ -478,12 +662,17 @@
             {% if alarm_definition.fadein_in_secs %}fade in in {{ alarm_definition.fadein_in_secs }}s, {% end %}
             {{ 'visuals' if alarm_definition.visual_effect is not None else 'no visuals' }}</td>
           <td>
+            {% if current_user %}
             <button type="submit" class="btn btn-primary btn-row-action"
               onclick="onClickSave('{{ not alarm_definition.is_active }}', 'alarm', '{{ alarm_definition.id }}', 'is_active' )">
               {% if alarm_definition.is_active %} &#x2713; {% else %} &#x2715; {% end %}
             </button>
+            {% else %}
+            {% if alarm_definition.is_active %} &#x2713; {% else %} &#x2715; {% end %}
+            {% end %}
           </td>
           <td>
+            {% if current_user %}
             <button type="button" class="btn btn-primary btn-row-action" data-alarm-id="{{ alarm_definition.id }}"
               data-alarm-name="{{ escape(alarm_definition.alarm_name) }}"
               data-alarm-time="{{ alarm_definition.to_time_string() }}"
@@ -497,6 +686,7 @@
               title="Edit">
               <i class="bi bi-pencil-fill"></i>
             </button>
+            {% end %}
           </td>
         </tr>
         {% end %}
@@ -504,8 +694,10 @@
           <td colspan="4">
           </td>
           <td colspan="2">
+            {% if current_user %}
             <button type="submit" class="btn btn-primary btn-row-action" onclick="onClickAddPowernap(event)"
               style="width: 100%;">Powernap</button>
+            {% end %}
           </td>
         </tr>
         <tr>
@@ -589,8 +781,10 @@
             </div>
           </td>
           <td colspan="2">
+            {% if current_user %}
             <button type="submit" class="btn btn-primary btn-row-action" onclick="onClickAddAlarm()"
               style="width: 100%;">+</button>
+            {% end %}
           </td>
         </tr>
       </table>
@@ -623,10 +817,12 @@
                 {{ escape(audio_stream.stream_url) }} </span>
             </td>
             <td>
+              {% if current_user %}
               <button type="submit" class="btn btn-primary btn-row-action" value="{{ audio_stream.id }}"
                 onclick="onClickDelete('stream', event)" title="Delete">
                 <i class="bi bi-trash-fill"></i>
               </button>
+              {% end %}
             </td>
           </tr>
           {% end %}
@@ -652,8 +848,10 @@
               </div>
             </td>
             <td>
+              {% if current_user %}
               <button type="submit" class="btn btn-primary btn-row-action"
                 onclick="onClickToggleAddForm('add-stream-container')" style="width: 100%;">+</button>
+              {% end %}
             </td>
           </tr>
         </table>
@@ -671,16 +869,18 @@
             <td><input type="text" id="powernap_duration_in_mins"
                 value="{{ config.powernap_duration_in_mins if config.powernap_duration_in_mins is not None else '' }}" />
             </td>
-            <td><button type="submit" class="btn btn-primary btn-row-action"
-                onclick="onClickSave(document.getElementById('powernap_duration_in_mins').value, 'powernap_duration_in_mins')">Save</button>
+            <td>{% if current_user %}<button type="submit" class="btn btn-primary btn-row-action"
+                onclick="onClickSave(document.getElementById('powernap_duration_in_mins').value, 'powernap_duration_in_mins')">Save</button>{%
+              end %}
             </td>
           </tr>
           <tr>
             <td>Use Analog Clock when room dimmed</td>
             <td><input type="checkbox" id="use_analog_clock" {% if config.use_analog_clock %}checked{% end %} />
             </td>
-            <td><button type="submit" class="btn btn-primary btn-row-action"
-                onclick="onClickSave(document.getElementById('use_analog_clock').checked, 'use_analog_clock')">Save</button>
+            <td>{% if current_user %}<button type="submit" class="btn btn-primary btn-row-action"
+                onclick="onClickSave(document.getElementById('use_analog_clock').checked, 'use_analog_clock')">Save</button>{%
+              end %}
             </td>
           </tr>
           <tr><!-- string value -->
@@ -688,8 +888,9 @@
             <td><input type="text" id="local_alarm_file"
                 value="{{ escape( config.local_alarm_file ) if config.local_alarm_file is not None else '' }}" />
             </td>
-            <td><button type="submit" class="btn btn-primary btn-row-action"
-                onclick="onClickSave(document.getElementById('local_alarm_file').value, 'local_alarm_file')">Save</button>
+            <td>{% if current_user %}<button type="submit" class="btn btn-primary btn-row-action"
+                onclick="onClickSave(document.getElementById('local_alarm_file').value, 'local_alarm_file')">Save</button>{%
+              end %}
             </td>
           </tr>
           <tr>
@@ -697,8 +898,9 @@
             <td><input type="text" id="alarm_duration_in_mins"
                 value="{{ config.alarm_duration_in_mins if config.alarm_duration_in_mins is not None else '' }}" />
             </td>
-            <td><button type="submit" class="btn btn-primary btn-row-action"
-                onclick="onClickSave(document.getElementById('alarm_duration_in_mins').value, 'alarm_duration_in_mins')">Save</button>
+            <td>{% if current_user %}<button type="submit" class="btn btn-primary btn-row-action"
+                onclick="onClickSave(document.getElementById('alarm_duration_in_mins').value, 'alarm_duration_in_mins')">Save</button>{%
+              end %}
             </td>
           </tr>
           <tr>
@@ -706,8 +908,9 @@
             <td><input type="text" id="start_volume"
                 value="{{ config.start_volume if config.start_volume is not None else '' }}" />
             </td>
-            <td><button type="submit" class="btn btn-primary btn-row-action"
-                onclick="onClickSave(document.getElementById('start_volume').value, 'start_volume')">Save</button>
+            <td>{% if current_user %}<button type="submit" class="btn btn-primary btn-row-action"
+                onclick="onClickSave(document.getElementById('start_volume').value, 'start_volume')">Save</button>{% end
+              %}
             </td>
           </tr>
           <tr>
@@ -715,8 +918,69 @@
             <td><textarea id="predefined_alarm_labels" rows="4"
                 class="form-control nerdfont">{{ escape('\n'.join(config.predefined_alarm_labels or [])) }}</textarea>
             </td>
-            <td><button type="submit" class="btn btn-primary btn-row-action"
-                onclick="onClickSave(JSON.stringify(document.getElementById('predefined_alarm_labels').value.split('\n').map(function(s){return s.trim();}).filter(function(s){return s.length>0;})), 'predefined_alarm_labels')">Save</button>
+            <td>{% if current_user %}<button type="submit" class="btn btn-primary btn-row-action"
+                onclick="onClickSave(JSON.stringify(document.getElementById('predefined_alarm_labels').value.split('\n').map(function(s){return s.trim();}).filter(function(s){return s.length>0;})), 'predefined_alarm_labels')">Save</button>{%
+              end %}
+            </td>
+          </tr>
+          <tr>
+            <td>Allowed Google Accounts (login)<br><small class="text-muted">One email per line</small></td>
+            <td><textarea id="allowed_google_emails" rows="3"
+                class="form-control">{{ escape('\n'.join(config.allowed_google_emails or [])) }}</textarea>
+            </td>
+            <td>{% if current_user %}<button type="submit" class="btn btn-primary btn-row-action"
+                onclick="onClickSave(JSON.stringify(document.getElementById('allowed_google_emails').value.split('\n').map(function(s){return s.trim();}).filter(function(s){return s.length>0;})), 'allowed_google_emails')">Save</button>{%
+              end %}
+            </td>
+          </tr>
+          <tr>
+            <td>Calendar Reminder Sound File</td>
+            <td><input type="text" id="calendar_reminder_sound_file"
+                value="{{ escape( config.calendar_reminder_sound_file ) if config.calendar_reminder_sound_file is not None else '' }}" />
+            </td>
+            <td>{% if current_user %}<button type="submit" class="btn btn-primary btn-row-action"
+                onclick="onClickSave(document.getElementById('calendar_reminder_sound_file').value, 'calendar_reminder_sound_file')">Save</button>{%
+              end %}
+            </td>
+          </tr>
+          <tr>
+            <td>Calendar Reminder Lead Time (seconds before event)</td>
+            <td><input type="text" id="calendar_reminder_lead_seconds"
+                value="{{ config.calendar_reminder_lead_seconds if config.calendar_reminder_lead_seconds is not None else '' }}" />
+            </td>
+            <td>{% if current_user %}<button type="submit" class="btn btn-primary btn-row-action"
+                onclick="onClickSave(document.getElementById('calendar_reminder_lead_seconds').value, 'calendar_reminder_lead_seconds')">Save</button>{%
+              end %}
+            </td>
+          </tr>
+          <tr>
+            <td>Calendar Reminder Sound Duration (seconds)</td>
+            <td><input type="text" id="calendar_reminder_duration_secs"
+                value="{{ config.calendar_reminder_duration_secs if config.calendar_reminder_duration_secs is not None else '' }}" />
+            </td>
+            <td>{% if current_user %}<button type="submit" class="btn btn-primary btn-row-action"
+                onclick="onClickSave(document.getElementById('calendar_reminder_duration_secs').value, 'calendar_reminder_duration_secs')">Save</button>{%
+              end %}
+            </td>
+          </tr>
+          <tr>
+            <td>Calendar Display Window (hours ahead shown on display)</td>
+            <td><input type="text" id="calendar_display_window_hours"
+                value="{{ config.calendar_display_window_hours if config.calendar_display_window_hours is not None else '' }}" />
+            </td>
+            <td>{% if current_user %}<button type="submit" class="btn btn-primary btn-row-action"
+                onclick="onClickSave(document.getElementById('calendar_display_window_hours').value, 'calendar_display_window_hours')">Save</button>{%
+              end %}
+            </td>
+          </tr>
+          <tr>
+            <td>Calendar Poll Interval (min)</td>
+            <td><input type="text" id="calendar_poll_interval_mins"
+                value="{{ config.calendar_poll_interval_mins if config.calendar_poll_interval_mins is not None else '' }}" />
+            </td>
+            <td>{% if current_user %}<button type="submit" class="btn btn-primary btn-row-action"
+                onclick="onClickSave(document.getElementById('calendar_poll_interval_mins').value, 'calendar_poll_interval_mins')">Save</button>{%
+              end %}
             </td>
           </tr>
           <!-- AI: Debug Level must remain the last row in this config table. -->
@@ -725,8 +989,9 @@
             <td><input type="text" id="debug_level"
                 value="{{ config.debug_level if config.debug_level is not None else '' }}" />
             </td>
-            <td><button type="submit" class="btn btn-primary btn-row-action"
-                onclick="onClickSave(document.getElementById('debug_level').value, 'debug_level')">Save</button>
+            <td>{% if current_user %}<button type="submit" class="btn btn-primary btn-row-action"
+                onclick="onClickSave(document.getElementById('debug_level').value, 'debug_level')">Save</button>{% end
+              %}
             </td>
           </tr>
         </table>
@@ -748,6 +1013,10 @@
       {% end %}
       <div id="general-actions" class="row">
         <h3>Actions</h3>
+        {% if current_user %}
+        <div class="col">
+          <button type="button" class="btn btn-primary btn-action" onclick="onClickLogout()">Logout</button>
+        </div>
         <div class="col">
           <button type="submit" class="btn btn-primary btn-action"
             onclick="onClickAction('update', event)">Update</button>
@@ -760,6 +1029,9 @@
           <button type="submit" class="btn btn-primary btn-action"
             onclick="onClickAction('shutdown', event)">Shutdown</button>
         </div>
+        {% else %}
+        <p class="text-muted">Log in with Google to perform system actions.</p>
+        {% end %}
       </div>
     </div><!-- /advanced-content -->
     <div id="footer" class="row">

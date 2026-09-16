@@ -64,6 +64,7 @@ class ClockApp:
 
         alarm_audio_service: AlarmAudioService = self.container.alarm_audio_service()
         self.container.system_service()
+        self.container.calendar_service()
         if ci is not None:
             ci.configure(alarm_audio_service)
 

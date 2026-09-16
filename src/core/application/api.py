@@ -11,6 +11,7 @@ import tornado.ioloop
 import tornado.web
 from PIL.Image import Image
 from core.application.alarm_audio_service import AlarmAudioService
+from core.application.calendar_service import CalendarService
 from core.domain.events import (
     PlaybackChangedEvent,
     ConfigChangedEvent,
@@ -23,6 +24,12 @@ from core.domain.events import (
 from core.infrastructure.event_bus import EventBus
 from core.interface.display.display import Display
 from core.interface.display.format import ColorType
+from core.interface.web.auth import (
+    CurrentUserMixin,
+    GoogleLoginPollHandler,
+    GoogleLoginStartHandler,
+    LogoutHandler,
+)
 from resources.resources import webroot_file, ssl_dir, icons_dir, fonts_dir
 
 from core.domain.model import (
@@ -113,7 +120,7 @@ class DisplayHandler(tornado.web.RequestHandler):
         self.write(my_html)
 
 
-class ConfigHandler(tornado.web.RequestHandler):
+class ConfigHandler(CurrentUserMixin, tornado.web.RequestHandler):
 
     def initialize(self, config: Config, api: "Api") -> None:
         self.config = config
@@ -122,18 +129,23 @@ class ConfigHandler(tornado.web.RequestHandler):
     def get(self, *args, **kwargs):
         try:
             self.render(
-                os.path.basename(webroot_file), config=self.config, api=self.api
+                os.path.basename(webroot_file),
+                config=self.config,
+                api=self.api,
+                calendar_events=self.api.calendar_service.get_upcoming_events(),
+                current_user_picture=self.get_current_user_picture(),
             )
         except:
             logger.warning("%s", traceback.format_exc())
 
 
-class ActionApiHandler(tornado.web.RequestHandler):
+class ActionApiHandler(CurrentUserMixin, tornado.web.RequestHandler):
 
     def initialize(self, config: Config, event_bus: EventBus) -> None:
         self.config = config
         self.event_bus = event_bus
 
+    @tornado.web.authenticated
     def post(self, *args):
         try:
             type, id, _1 = parse_path_arguments(args)
@@ -169,11 +181,12 @@ class ActionApiHandler(tornado.web.RequestHandler):
             logger.warning("%s", traceback.format_exc())
 
 
-class SystemApiHandler(tornado.web.RequestHandler):
+class SystemApiHandler(CurrentUserMixin, tornado.web.RequestHandler):
 
     def initialize(self, event_bus: EventBus) -> None:
         self.event_bus = event_bus
 
+    @tornado.web.authenticated
     def post(self, *args):
         try:
             type, _, _ = parse_path_arguments(args)
@@ -194,7 +207,7 @@ class SystemApiHandler(tornado.web.RequestHandler):
             logger.warning("%s", traceback.format_exc())
 
 
-class ConfigApiHandler(tornado.web.RequestHandler):
+class ConfigApiHandler(CurrentUserMixin, tornado.web.RequestHandler):
 
     def initialize(self, config: Config, event_bus: EventBus) -> None:
         self.config = config
@@ -207,6 +220,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
         except:
             logger.warning("%s", traceback.format_exc())
 
+    @tornado.web.authenticated
     def delete(self, *args):
         try:
             self.parse_delete_payload(args)
@@ -221,6 +235,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
         elif type == "stream":
             self.config.remove_audio_stream(id)
 
+    @tornado.web.authenticated
     def post(self, *args):
         try:
             self.parse_post_payload(args)
@@ -316,12 +331,14 @@ class Api:
     def __init__(
         self,
         alarm_audio_service: AlarmAudioService,
+        calendar_service: CalendarService,
         display: Display,
         event_bus: EventBus,
         executor: ThreadPoolExecutor,
         encrypted: bool,
     ):
         self.alarm_audio_service = alarm_audio_service
+        self.calendar_service = calendar_service
         self.display = display
         self.event_bus = event_bus
         self.executor = executor
@@ -329,6 +346,30 @@ class Api:
         template_path = os.path.dirname(webroot_file)
         handlers = [
             (r"/display", DisplayHandler, {"display": self.display}),
+            (
+                r"/auth/google/start",
+                GoogleLoginStartHandler,
+                {
+                    "calendar_service": self.calendar_service,
+                    "executor": self.executor,
+                },
+            ),
+            (
+                r"/auth/google/poll",
+                GoogleLoginPollHandler,
+                {
+                    "calendar_service": self.calendar_service,
+                    "executor": self.executor,
+                },
+            ),
+            (
+                r"/auth/logout",
+                LogoutHandler,
+                {
+                    "calendar_service": self.calendar_service,
+                    "executor": self.executor,
+                },
+            ),
             (
                 r"/api/config/?(.*)",
                 ConfigApiHandler,
@@ -375,7 +416,12 @@ class Api:
             ),
         ]
 
-        self.app = tornado.web.Application(handlers, template_path=template_path)
+        self.app = tornado.web.Application(
+            handlers,
+            template_path=template_path,
+            cookie_secret=self.alarm_audio_service.alarm_clock_context.config.cookie_secret,
+            login_url="/",
+        )
 
     def get_git_log(self) -> str:
 

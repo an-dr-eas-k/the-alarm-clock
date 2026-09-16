@@ -12,6 +12,15 @@
     "blink_segment": ":",
     "refresh_timeout_in_secs": 0.25,
     "powernap_duration_in_mins": 18,
+    "allowed_google_emails": [
+      "you@example.com"
+    ],
+    "calendar_reminder_sound_file": "Alarm_Beep_01.ogg",
+    "calendar_reminder_lead_seconds": 20,
+    "calendar_reminder_duration_secs": 15,
+    "calendar_poll_interval_mins": 5,
+    "calendar_fetch_horizon_hours": 12,
+    "calendar_display_window_hours": 1.0,
     "_audio_streams": [
       {
         "py/object": "domain.AudioStream",

@@ -3,7 +3,14 @@ import argparse
 import vlc
 from concurrent.futures import ThreadPoolExecutor
 from dependency_injector import containers, providers
+from core.application.calendar_service import CalendarService
 from core.domain.mode_coordinator import AlarmClockModeCoordinator
+from core.infrastructure.google_auth import (
+    GoogleDeviceAuthClient,
+    load_client_credentials,
+)
+from core.infrastructure.google_calendar import GoogleCalendarClient
+from core.infrastructure.google_token_store import GoogleTokenStore
 from core.infrastructure.rpi_gpio import GPIOInputManager, RPiGPIOManager
 from core.interface.display.format import DisplayFormatter
 from core.interface.hardware_input_handler import HardwareInputHandler
@@ -19,7 +26,11 @@ from core.application.alarm_audio_service import AlarmAudioService
 from core.application.system_service import SystemService
 from core.infrastructure.persistence import Persistence
 from core.infrastructure.event_bus import EventBus
-from resources.resources import config_file
+from resources.resources import (
+    config_file,
+    google_oauth_secret_file,
+    google_tokens_file,
+)
 from core.domain.model import (
     AlarmClockContext,
     Config,
@@ -174,6 +185,39 @@ class DIContainer(containers.DeclarativeContainer):
         os_interaction=os_interaction,
     )
 
+    google_token_store = providers.Singleton(
+        GoogleTokenStore,
+        token_file=google_tokens_file,
+    )
+
+    google_oauth_client_credentials = providers.Singleton(
+        load_client_credentials, secret_file=google_oauth_secret_file
+    )
+
+    google_auth_client = providers.Singleton(
+        lambda credentials: (
+            GoogleDeviceAuthClient(
+                client_id=credentials[0], client_secret=credentials[1]
+            )
+            if credentials[0] and credentials[1]
+            else None
+        ),
+        credentials=google_oauth_client_credentials,
+    )
+
+    google_calendar_client = providers.Singleton(GoogleCalendarClient)
+
+    calendar_service = providers.Singleton(
+        CalendarService,
+        alarm_clock_context=alarm_clock_context,
+        display_content=display_content,
+        event_bus=event_bus,
+        scheduler_service=scheduler_service,
+        token_store=google_token_store,
+        auth_client=google_auth_client,
+        calendar_client=google_calendar_client,
+    )
+
     serial_interface = providers.Singleton(spi, device=0, port=0, bus_speed_hz=16000000)
     framebuffer = providers.Singleton(diff_to_previous, num_segments=4)
     device = providers.Singleton(
@@ -199,6 +243,7 @@ class DIContainer(containers.DeclarativeContainer):
     api = providers.Singleton(
         Api,
         alarm_audio_service=alarm_audio_service,
+        calendar_service=calendar_service,
         display=display,
         event_bus=event_bus,
         executor=executor,
