@@ -414,11 +414,20 @@ class Api:
 
     def start(self):
         port = 443
-        ssl_options = {
-            "certfile": os.path.join(ssl_dir, "cert.crt"),
-            "keyfile": os.path.join(ssl_dir, "cert.key"),
-        }
+        certfile = os.path.join(ssl_dir, "cert.crt")
+        keyfile = os.path.join(ssl_dir, "cert.key")
+        ssl_options = {"certfile": certfile, "keyfile": keyfile}
+
         if not self.encrypted:
+            ssl_options = None
+            port = 8080
+        elif not (os.path.exists(certfile) and os.path.exists(keyfile)):
+            # e.g. tls/cert.* not (yet) provisioned by rpi/setup.sh - fall back instead of crashing
+            logger.warning(
+                "TLS cert/key not found at %s / %s, falling back to unencrypted http on port 8080",
+                certfile,
+                keyfile,
+            )
             ssl_options = None
             port = 8080
 
