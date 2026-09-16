@@ -14,9 +14,19 @@ class IBrightnessSensor:
 
 class BrightnessSensor(IBrightnessSensor):
     def __init__(self, i2c_manager: I2CManager):
-        self.sensor = adafruit_bh1750.BH1750(i2c_manager.i2c)
+        self.sensor = None
+        if i2c_manager.i2c is None:
+            return
+        try:
+            self.sensor = adafruit_bh1750.BH1750(i2c_manager.i2c)
+        except Exception:
+            logger.warning(
+                "failed to initialize BH1750 brightness sensor", exc_info=True
+            )
 
     def get_raw_lux(self) -> float:
+        if self.sensor is None:
+            return 10000
         try:
             sensor_lux = self.sensor.lux
             logger.debug("raw sensor value in lux: %s", sensor_lux)
