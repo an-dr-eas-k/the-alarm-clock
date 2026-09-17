@@ -7,3 +7,5 @@ cert.crt
 cert.key
 ca.pem
 \#*.dxf
+src/resources/google_oauth_secret.json
+src/resources/google_tokens.json

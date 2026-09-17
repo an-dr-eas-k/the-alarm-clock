@@ -90,7 +90,7 @@ The development machine is fedora linux with redhat package management.
 **Run on Raspberry Pi:**
 ```bash
 ./.venv-*/python3 src/app_clock.py
-# Uses real hardware: SSD1322 OLED (SPI), MCP23017, BH1750
+# Uses real hardware: SSD1322 OLED (SPI), MCP23017, GPIO26 photoresistor/capacitor RC brightness sensor
 ```
 the * denotes the latest created virtual environment.
 The Raspberry Pi runs Raspberry Pi OS (formerly Raspbian) a Debian-based operating system.
