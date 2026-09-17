@@ -84,7 +84,9 @@ class PhotoresistorBrightnessSensor(IBrightnessSensor, GPIODeviceBase):
         # power of illuminance, so most everyday brightness levels sit close to
         # MIN_CHARGE_TIME_SECONDS; compare on a log scale instead of linearly to
         # avoid compressing them all into a narrow band near 1.0
-        clamped = min(max(charge_time, MIN_CHARGE_TIME_SECONDS), MAX_CHARGE_TIME_SECONDS)
+        clamped = min(
+            max(charge_time, MIN_CHARGE_TIME_SECONDS), MAX_CHARGE_TIME_SECONDS
+        )
         log_span = math.log(MAX_CHARGE_TIME_SECONDS) - math.log(MIN_CHARGE_TIME_SECONDS)
         normalized = (math.log(clamped) - math.log(MIN_CHARGE_TIME_SECONDS)) / log_span
         return 1.0 - normalized
