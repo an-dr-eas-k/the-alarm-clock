@@ -1,5 +1,5 @@
 import logging
-import statistics
+import math
 import time
 import adafruit_bh1750
 
@@ -20,7 +20,6 @@ LIGHT_SENSOR_GPIO = 26
 MIN_CHARGE_TIME_SECONDS = 0.00015
 MAX_CHARGE_TIME_SECONDS = 0.007
 CHARGE_TIMEOUT_SECONDS = 0.5
-SAMPLE_COUNT = 5
 
 
 class IBrightnessSensor:
@@ -73,22 +72,22 @@ class PhotoresistorBrightnessSensor(IBrightnessSensor, GPIODeviceBase):
         if self._gpio_module is None:
             return MIN_CHARGE_TIME_SECONDS
         try:
-            # median of several samples smooths out single-reading noise spikes
-            # that would otherwise saturate get_room_brightness() to 0.0/1.0
-            samples = [
-                self._measure_charge_time_seconds() for _ in range(SAMPLE_COUNT)
-            ]
-            charge_time = statistics.median(samples)
-            logger.debug("raw RC charge time (median of %s): %.6fs", samples, charge_time)
+            charge_time = self._measure_charge_time_seconds()
+            logger.debug("raw RC charge time: %.6fs", charge_time)
             return charge_time
         except Exception:
             return MIN_CHARGE_TIME_SECONDS
 
     def get_room_brightness(self) -> float:
         charge_time = self.get_raw_charge_time()
-        span = MAX_CHARGE_TIME_SECONDS - MIN_CHARGE_TIME_SECONDS
-        normalized = (charge_time - MIN_CHARGE_TIME_SECONDS) / span
-        return 1.0 - min(max(normalized, 0.0), 1.0)
+        # photoresistor resistance (and thus charge time) scales roughly as a
+        # power of illuminance, so most everyday brightness levels sit close to
+        # MIN_CHARGE_TIME_SECONDS; compare on a log scale instead of linearly to
+        # avoid compressing them all into a narrow band near 1.0
+        clamped = min(max(charge_time, MIN_CHARGE_TIME_SECONDS), MAX_CHARGE_TIME_SECONDS)
+        log_span = math.log(MAX_CHARGE_TIME_SECONDS) - math.log(MIN_CHARGE_TIME_SECONDS)
+        normalized = (math.log(clamped) - math.log(MIN_CHARGE_TIME_SECONDS)) / log_span
+        return 1.0 - normalized
 
 
 if __name__ == "__main__":
