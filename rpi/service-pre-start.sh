@@ -17,6 +17,9 @@ echo "!"
 if [ $(find requirements.txt -mmin -120) ]; then
   echo "requirements.txt changed, installing requirements..."
   sudo apt-get update || true
+  # Repair dpkg if a previous boot left packages (e.g. a kernel upgrade)
+  # unconfigured, otherwise every apt-get install below fails too.
+  sudo apt-get install -y -f || true
   echo "Installing system packages via apt..."
   # Clean requirements, remove comments, remove empty lines, remove inline comments
   grep -v '^#' requirements.txt | sed 's/#.*//' | sed 's/[[:space:]]*$//' | grep -v '^$' | sed 's/pillow/pil/' | while read -r pkg; do

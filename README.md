@@ -104,6 +104,8 @@ weather symbols are included from https://github.com/erikflowers/weather-icons
 
 # Devices
 ## Rotary Encoder
-## Light Sensor BH1750
+## Light Sensor: photoresistor (GL5539) + capacitor (10nF) RC bridge
+3.3V -> photoresistor -> GPIO26 -> capacitor -> GND. Brightness is derived from how
+long GPIO26 takes to charge through the photoresistor (see `core/infrastructure/brightness_sensor.py`).
 ## Port Expander 16-Bit-I/O MCP23017 
 ## Sound card DigiAMP+

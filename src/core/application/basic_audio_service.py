@@ -5,6 +5,7 @@ from core.domain.events import (
     ConfigChangedEvent,
     SpeakerErrorEvent,
     SpotifyApiEvent,
+    StreamChangeRequest,
     ToggleAudioRequest,
     VolumeChangedEvent,
     WifiStatusChangedEvent,
@@ -48,6 +49,7 @@ class BasicAudioService:
         self.scheduler_service = scheduler_service
         self.os_interaction = os_interaction
         self.event_bus.on(ToggleAudioRequest)(self._toggle_stream)
+        self.event_bus.on(StreamChangeRequest)(self._change_stream)
         self.event_bus.on(WifiStatusChangedEvent)(self._wifi_status_changed)
         self.event_bus.on(ConfigChangedEvent)(self._config_changed)
         self.event_bus.on(SpeakerErrorEvent)(self._handle_speaker_error)
@@ -69,6 +71,20 @@ class BasicAudioService:
             audio_stream = self.playback_content.audio_stream
 
         self.event_bus.emit(PlaybackChangedEvent(Mode.Music, audio_stream))
+
+    def _change_stream(self, _: StreamChangeRequest):
+        if self.playback_content.playback_mode != Mode.Music:
+            return
+
+        streams = self.alarm_clock_context.config.audio_streams
+        if not streams:
+            return
+
+        current = self.playback_content.audio_stream
+        idx = next((i for i, s in enumerate(streams) if s.id == current.id), -1)
+        next_stream = streams[(idx + 1) % len(streams)]
+        logger.info(f"Switching stream to: {next_stream}")
+        self.event_bus.emit(PlaybackChangedEvent(Mode.Music, next_stream))
 
     def _spotify_stream_change_request(self, spotify_event: SpotifyApiEvent):
 

@@ -17,13 +17,24 @@ Algorithm = namedtuple(
 class SoundDevice:
 
     def invoke_on_mixer(self, callback):
-        mixer = self.get_mixer(control=self.control, device=self.device)
-        if callback is not None:
-            return_from_callback = callback(mixer)
-        mixer.close()
-        return return_from_callback
+        if not self.control:
+            logger.warning("no mixer control available, skipping mixer operation")
+            return None
 
-    def __init__(self, control="", device="default"):
+        try:
+            mixer = self.get_mixer(control=self.control, device=self.device)
+        except alsaaudio.ALSAAudioError:
+            logger.warning(
+                "failed to open mixer %s:%s", self.device, self.control, exc_info=True
+            )
+            return None
+
+        try:
+            return callback(mixer) if callback is not None else None
+        finally:
+            mixer.close()
+
+    def __init__(self, control=None, device="default"):
         self.control = control
         self.device = device
         self.threadLock = threading.Lock()
@@ -42,7 +53,7 @@ class SoundDevice:
     def get_system_volume(self) -> float:
         def callback(mixer) -> float:
 
-            human_volume = 0
+            human_volume = 0.0
             algorithm = self.get_algorithm(mixer)
             if algorithm.name == "cubic":
                 human_volume = self.convert_to_human_volume(
@@ -68,7 +79,8 @@ class SoundDevice:
             )
             return human_volume
 
-        return self.invoke_on_mixer(callback)
+        volume = self.invoke_on_mixer(callback)
+        return volume if volume is not None else 0.0
 
     def set_system_volume(self, new_human_volume: float):
         def callback(mixer) -> None:
@@ -148,18 +160,18 @@ class SoundDevice:
     def get_controls_settings(self):
         settings = {}
         for control in alsaaudio.mixers(device=self.device):
-            settings[control] = alsaaudio.Mixer(
-                control=control, device=self.device
-            ).getvolume()
+            mixer = self.get_mixer(control=control, device=self.device)
+            settings[control] = mixer.getvolume()
+            mixer.close()
 
         return settings
 
     def set_controls_settings(self, settings):
         for control in settings.keys():
+            mixer = self.get_mixer(control=control, device=self.device)
             for channel in range(len(settings[control])):
-                alsaaudio.Mixer(control=control, device=self.device).setvolume(
-                    settings[control][channel], channel=channel
-                )
+                mixer.setvolume(settings[control][channel], channel=channel)
+            mixer.close()
 
     def debug_info(self):
         logger.info("installed cards: %s", ", ".join(alsaaudio.cards()))
@@ -180,19 +192,26 @@ class TACSoundDevice(SoundDevice):
 
     def init_mixer(self, valid_mixers: list[str], device: str = "default"):
         self.device = device
+        self.control = None
         self.debug_info()
 
         self.threadLock.acquire(True)
-
-        for mixer in valid_mixers:
-            try:
-                self.get_mixer(control=mixer, device=device)
-                self.control = mixer
-                break
-            except alsaaudio.ALSAAudioError:
-                pass
-
-        self.threadLock.release()
+        try:
+            for mixer in valid_mixers:
+                try:
+                    self.get_mixer(control=mixer, device=device).close()
+                    self.control = mixer
+                    break
+                except alsaaudio.ALSAAudioError:
+                    pass
+        finally:
+            self.threadLock.release()
 
         if self.control is None:
-            raise Exception("no valid mixer found")
+            # no sound-card present (e.g. dev machine or headless Pi) - keep the
+            # device usable in a no-op state instead of crashing app startup
+            logger.warning(
+                "no valid mixer found on device '%s' (tried: %s), sound control disabled",
+                device,
+                ", ".join(valid_mixers),
+            )
