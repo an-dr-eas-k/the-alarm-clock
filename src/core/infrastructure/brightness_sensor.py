@@ -3,6 +3,7 @@ import time
 import adafruit_bh1750
 
 from core.infrastructure.i2c_devices import I2CManager
+from core.infrastructure.rpi_gpio import GPIODeviceBase
 
 logger = logging.getLogger("tac.core.infrastructure.brightness")
 
@@ -51,21 +52,9 @@ class BH1750BrightnessSensor(IBrightnessSensor):
         return min(self.get_raw_lux() / 25, 1.0)
 
 
-class PhotoresistorBrightnessSensor(IBrightnessSensor):
-    def __init__(self):
-        self._gpio = None
-        try:
-            from RPi import GPIO
-
-            GPIO.setmode(GPIO.BCM)
-            self._gpio = GPIO
-        except (ImportError, RuntimeError):
-            logger.warning(
-                "RPi.GPIO not available, brightness sensor disabled", exc_info=True
-            )
-
+class PhotoresistorBrightnessSensor(IBrightnessSensor, GPIODeviceBase):
     def _measure_charge_time_seconds(self) -> float:
-        gpio = self._gpio
+        gpio = self._gpio_module
         # fully discharge the capacitor before timing how long it takes to charge
         gpio.setup(LIGHT_SENSOR_GPIO, gpio.OUT)
         gpio.output(LIGHT_SENSOR_GPIO, gpio.LOW)
@@ -79,7 +68,7 @@ class PhotoresistorBrightnessSensor(IBrightnessSensor):
         return time.perf_counter() - start
 
     def get_raw_charge_time(self) -> float:
-        if self._gpio is None:
+        if self._gpio_module is None:
             return MIN_CHARGE_TIME_SECONDS
         try:
             charge_time = self._measure_charge_time_seconds()

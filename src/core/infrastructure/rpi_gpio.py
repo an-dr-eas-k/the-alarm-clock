@@ -22,16 +22,30 @@ mode_button_gpio: int = 12
 invoke_button_gpio: int = 1
 
 
-class RPiGPIOManager:
+class GPIODeviceBase:
+    """Lazily imports RPi.GPIO (rpi-lgpio backend) in BCM mode; tolerates its absence off-Pi."""
 
-    executor: ThreadPoolExecutor
-    gpio_callbacks = {}
+    _gpio_module_cache = None
 
     @property
     def _gpio_module(self):
-        from RPi import GPIO  # type: ignore
+        if self._gpio_module_cache is None:
+            try:
+                from RPi import GPIO  # type: ignore
 
-        return GPIO
+                GPIO.setmode(GPIO.BCM)
+                self._gpio_module_cache = GPIO
+            except (ImportError, RuntimeError):
+                logger.warning(
+                    "RPi.GPIO not available, GPIO features disabled", exc_info=True
+                )
+        return self._gpio_module_cache
+
+
+class RPiGPIOManager(GPIODeviceBase):
+
+    executor: ThreadPoolExecutor
+    gpio_callbacks = {}
 
     def __init__(self, executor: ThreadPoolExecutor):
         self.executor = executor
@@ -41,7 +55,6 @@ class RPiGPIOManager:
         self.gpio_callbacks[pin_num] = callback
 
     def setup(self):
-        self._gpio_module.setmode(self._gpio_module.BCM)
         configured_pins = self.gpio_callbacks.keys()
         logger.info(f"Configuring gpio pins: {configured_pins}")
 
