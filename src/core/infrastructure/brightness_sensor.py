@@ -1,4 +1,5 @@
 import logging
+import statistics
 import time
 import adafruit_bh1750
 
@@ -19,6 +20,7 @@ LIGHT_SENSOR_GPIO = 26
 MIN_CHARGE_TIME_SECONDS = 0.00015
 MAX_CHARGE_TIME_SECONDS = 0.007
 CHARGE_TIMEOUT_SECONDS = 0.5
+SAMPLE_COUNT = 5
 
 
 class IBrightnessSensor:
@@ -71,8 +73,13 @@ class PhotoresistorBrightnessSensor(IBrightnessSensor, GPIODeviceBase):
         if self._gpio_module is None:
             return MIN_CHARGE_TIME_SECONDS
         try:
-            charge_time = self._measure_charge_time_seconds()
-            logger.debug("raw RC charge time: %.6fs", charge_time)
+            # median of several samples smooths out single-reading noise spikes
+            # that would otherwise saturate get_room_brightness() to 0.0/1.0
+            samples = [
+                self._measure_charge_time_seconds() for _ in range(SAMPLE_COUNT)
+            ]
+            charge_time = statistics.median(samples)
+            logger.debug("raw RC charge time (median of %s): %.6fs", samples, charge_time)
             return charge_time
         except Exception:
             return MIN_CHARGE_TIME_SECONDS
