@@ -19,7 +19,6 @@ from core.domain.model import (
     SpotifyStream,
 )
 from core.interface.display.display_content import DisplayContent
-from core.infrastructure.brightness_sensor import IBrightnessSensor
 from core.infrastructure.event_bus import EventBus
 from core.infrastructure.scheduler import SchedulerService
 from utils.os_interactions import OSInteraction
@@ -36,7 +35,6 @@ class BasicAudioService:
         alarm_clock_context: AlarmClockContext,
         display_content: DisplayContent,
         playback_content: PlaybackContent,
-        brightness_sensor: IBrightnessSensor,
         event_bus: EventBus,
         scheduler_service: SchedulerService,
         os_interaction: OSInteraction,
@@ -44,7 +42,6 @@ class BasicAudioService:
         self.alarm_clock_context = alarm_clock_context
         self.display_content = display_content
         self.playback_content = playback_content
-        self.brightness_sensor = brightness_sensor
         self.event_bus = event_bus
         self.scheduler_service = scheduler_service
         self.os_interaction = os_interaction
@@ -119,9 +116,6 @@ class BasicAudioService:
             return
 
         self.event_bus.emit(PlaybackChangedEvent(Mode.Idle))
-
-    def get_room_brightness(self):
-        return self.brightness_sensor.get_room_brightness()
 
     def _ignore_offline_stream_events(self, event: SpeakerErrorEvent):
         if event is not None and isinstance(event.audio_stream, OfflineStream):

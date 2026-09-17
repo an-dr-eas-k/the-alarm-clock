@@ -175,7 +175,6 @@ class DIContainer(containers.DeclarativeContainer):
         alarm_clock_context=alarm_clock_context,
         display_content=display_content,
         playback_content=playback_content,
-        brightness_sensor=brightness_sensor,
         event_bus=event_bus,
         scheduler_service=scheduler_service,
         os_interaction=os_interaction,
@@ -206,6 +205,7 @@ class DIContainer(containers.DeclarativeContainer):
     api = providers.Singleton(
         Api,
         alarm_audio_service=alarm_audio_service,
+        system_service=system_service,
         display=display,
         event_bus=event_bus,
         executor=executor,

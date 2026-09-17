@@ -24,7 +24,6 @@ from core.domain.model import (
     Config,
 )
 from core.interface.display.display_content import DisplayContent
-from core.infrastructure.brightness_sensor import IBrightnessSensor
 from core.infrastructure.event_bus import EventBus
 from core.infrastructure.scheduler import SchedulerService, SchedulerStores
 from resources.resources import active_alarm_definition_file
@@ -40,7 +39,6 @@ class AlarmAudioService(BasicAudioService):
         alarm_clock_context: AlarmClockContext,
         display_content: DisplayContent,
         playback_content: PlaybackContent,
-        brightness_sensor: IBrightnessSensor,
         event_bus: EventBus,
         scheduler_service: SchedulerService,
         os_interaction: OSInteraction,
@@ -49,7 +47,6 @@ class AlarmAudioService(BasicAudioService):
             alarm_clock_context,
             display_content,
             playback_content,
-            brightness_sensor,
             event_bus,
             scheduler_service,
             os_interaction,

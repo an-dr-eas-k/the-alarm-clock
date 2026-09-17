@@ -11,6 +11,7 @@ import tornado.ioloop
 import tornado.web
 from PIL.Image import Image
 from core.application.alarm_audio_service import AlarmAudioService
+from core.application.system_service import SystemService
 from core.domain.events import (
     PlaybackChangedEvent,
     ConfigChangedEvent,
@@ -316,12 +317,14 @@ class Api:
     def __init__(
         self,
         alarm_audio_service: AlarmAudioService,
+        system_service: SystemService,
         display: Display,
         event_bus: EventBus,
         executor: ThreadPoolExecutor,
         encrypted: bool,
     ):
         self.alarm_audio_service = alarm_audio_service
+        self.system_service = system_service
         self.display = display
         self.event_bus = event_bus
         self.executor = executor
@@ -389,7 +392,7 @@ class Api:
     def get_state_as_json(self) -> str:
         return json.dumps(
             obj=dict(
-                room_brightness=self.alarm_audio_service.get_room_brightness(),
+                room_brightness=self.system_service.get_room_brightness(),
                 display=dict(
                     foreground_color=self.display.formatter.foreground_color(
                         color_type=ColorType.IN16
