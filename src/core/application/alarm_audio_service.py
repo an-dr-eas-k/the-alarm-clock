@@ -3,6 +3,7 @@ import logging
 import os
 from core.application.basic_audio_service import BasicAudioService
 from core.application.system_service import safe_action
+from utils.geolocation import GeoLocation
 from core.domain.events import (
     PlaybackChangedEvent,
     ConfigChangedEvent,
@@ -10,6 +11,7 @@ from core.domain.events import (
     AlarmTriggeredEvent,
     PreAlarmTriggeredEvent,
     AlarmStoppedEvent,
+    VolumeChangeRequest,
 )
 from core.domain.model import (
     AlarmClockContext,
@@ -22,7 +24,6 @@ from core.domain.model import (
     Config,
 )
 from core.interface.display.display_content import DisplayContent
-from core.infrastructure.brightness_sensor import IBrightnessSensor
 from core.infrastructure.event_bus import EventBus
 from core.infrastructure.scheduler import SchedulerService, SchedulerStores
 from resources.resources import active_alarm_definition_file
@@ -38,7 +39,6 @@ class AlarmAudioService(BasicAudioService):
         alarm_clock_context: AlarmClockContext,
         display_content: DisplayContent,
         playback_content: PlaybackContent,
-        brightness_sensor: IBrightnessSensor,
         event_bus: EventBus,
         scheduler_service: SchedulerService,
         os_interaction: OSInteraction,
@@ -47,7 +47,6 @@ class AlarmAudioService(BasicAudioService):
             alarm_clock_context,
             display_content,
             playback_content,
-            brightness_sensor,
             event_bus,
             scheduler_service,
             os_interaction,
@@ -55,6 +54,8 @@ class AlarmAudioService(BasicAudioService):
         self.event_bus.on(AlarmTriggeredEvent)(self._alarm_triggered)
         self.event_bus.on(AlarmStoppedEvent)(self._alarm_stopped_event)
         self.event_bus.on(StartupFinishedEvent)(self._handle_startup_finished)
+        self._volume_increase_start_time = None
+        self._volume_increase_start_volume = None
 
     def consider_failed_alarm(self):
         if os.path.exists(active_alarm_definition_file):
@@ -122,11 +123,16 @@ class AlarmAudioService(BasicAudioService):
     def _alarm_triggered(self, event: AlarmTriggeredEvent = None):
         self._preprocess_ring_alarm(event.alarm_definition)
         audio_effect = self._get_appropriate_alarm_effect()
+        initial_volume = (
+            self.alarm_clock_context.config.start_volume
+            if getattr(event.alarm_definition, "fadein_in_secs", 0) > 0
+            else audio_effect.volume
+        )
         self.event_bus.emit(
             PlaybackChangedEvent(
                 Mode.Alarm,
                 audio_effect.audio_stream,
-                absolute_volume=audio_effect.volume,
+                absolute_volume=initial_volume,
             )
         )
 
@@ -185,7 +191,60 @@ class AlarmAudioService(BasicAudioService):
             ),
             func=self._set_to_idle_mode,
         )
+        if getattr(alarm_definition, "fadein_in_secs", 0) > 0:
+            self._volume_increase_start_time = GeoLocation().now()
+            self._volume_increase_start_volume = (
+                self.alarm_clock_context.config.start_volume
+            )
+            self.scheduler_service.add_job(
+                self._volume_increase_tick,
+                trigger="interval",
+                seconds=10,
+                job_id=SchedulerJobIds.volume_increase.value,
+                jobstore=SchedulerStores.default.value,
+            )
 
     def _alarm_stopped_event(self, _: AlarmStoppedEvent):
         self.scheduler_service.stop_generic_trigger(SchedulerJobIds.stop_alarm.value)
+        self.scheduler_service.stop_generic_trigger(
+            SchedulerJobIds.volume_increase.value
+        )
+        self._volume_increase_start_time = None
+        self._volume_increase_start_volume = None
         self.alarm_clock_context.active_alarm_definition = None
+
+    def _volume_increase_tick(self):
+        def do():
+            if self.playback_content.playback_mode != Mode.Alarm:
+                return
+            if self._volume_increase_start_time is None:
+                return
+
+            elapsed_secs = (
+                GeoLocation().now() - self._volume_increase_start_time
+            ).total_seconds()
+            duration_secs = (
+                self.alarm_clock_context.active_alarm_definition.fadein_in_secs
+            )
+            upper_volume = (
+                self.alarm_clock_context.active_alarm_definition.audio_effect.volume
+            )
+            fraction = min(1.0, elapsed_secs / duration_secs)
+
+            new_volume = self._volume_increase_start_volume + fraction * (
+                upper_volume - self._volume_increase_start_volume
+            )
+            logger.debug(
+                "volume increase tick: elapsed=%.1fs fraction=%.2f new_vol=%.2f",
+                elapsed_secs,
+                fraction,
+                new_volume,
+            )
+            self.event_bus.emit(VolumeChangeRequest(absolute=new_volume))
+
+            if fraction >= 1.0:
+                self.scheduler_service.stop_generic_trigger(
+                    SchedulerJobIds.volume_increase.value
+                )
+
+        safe_action(do, debug_msg="volume increase tick", logger=logger)
