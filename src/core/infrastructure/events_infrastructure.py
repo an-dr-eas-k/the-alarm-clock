@@ -43,6 +43,14 @@ class HwButtonEvent(HwEvent):
 
 
 @dataclass(frozen=True)
+class HwButtonLongPressEvent(HwEvent):
+    """Emitted when a button is held longer than the configured long-press duration."""
+
+    def __str__(self):
+        return f"{self.__class__.__name__}.{self.device_name}"
+
+
+@dataclass(frozen=True)
 class HwRotaryEvent(HwEvent):
     direction: RotaryDirection
     _1st_tick: bool

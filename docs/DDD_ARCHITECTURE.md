@@ -55,7 +55,7 @@ This project follows **Domain-Driven Design (DDD)** principles with clear separa
 │                                                          │
 │  • audio.py                     (VLC playback)           │
 │  • persistence.py               (JSON storage)           │
-│  • brightness_sensor.py         (BH1750 sensor)          │
+│  • brightness_sensor.py         (photoresistor RC sensor) │
 │  • event_bus.py                 (Event infrastructure)   │
 │  • mcp23017/                    (Hardware buttons)       │
 └─────────────────────────────────────────────────────────┘
