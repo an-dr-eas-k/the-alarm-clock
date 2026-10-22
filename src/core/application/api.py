@@ -57,11 +57,11 @@ def try_update(object, property_name: str, value: str) -> bool:
     return False
 
 
-def parse_path_arguments(path) -> tuple[str, int, str]:
+def parse_path_arguments(path) -> tuple[str, str, str]:
     path_args = path[0].split("/")
     return (
         path_args[0],
-        int(path_args[1]) if len(path_args) > 1 else None,
+        path_args[1] if len(path_args) > 1 and path_args[1] != "" else None,
         path_args[2] if len(path_args) > 2 else None,
     )
 
@@ -220,7 +220,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
         if type == "alarm":
             self.config.remove_alarm_definition(id)
         elif type == "stream":
-            self.config.remove_audio_stream(id)
+            self.config.remove_audio_stream(int(id))
 
     def post(self, *args):
         try:
@@ -252,11 +252,11 @@ class ConfigApiHandler(tornado.web.RequestHandler):
         )
         form_arguments = tornado.escape.json_decode(body)
         if type == "alarm":
+            alarm_definition = self.parse_alarm_definition(form_arguments)
             if id is not None:
                 self.config.remove_alarm_definition(id)
-            self.config.add_alarm_definition(
-                self.parse_alarm_definition(form_arguments)
-            )
+                alarm_definition.id = id
+            self.config.add_alarm_definition(alarm_definition)
         elif type == "stream":
             self.config.add_audio_stream(self.parse_audio_stream(form_arguments))
         elif type == "start_powernap":

@@ -16,6 +16,7 @@ from core.domain.events import (
 from core.domain.model import (
     AlarmClockContext,
     AlarmDefinition,
+    FAILED_ALARM_ID,
     NextAlarmInfo,
     PlaybackContent,
     Mode,
@@ -62,7 +63,7 @@ class AlarmAudioService(BasicAudioService):
             ad: AlarmDefinition = AlarmDefinition.deserialize(
                 active_alarm_definition_file
             )
-            ad.id = -1
+            ad.id = FAILED_ALARM_ID
             logger.info("failed audioeffect found %s", ad.alarm_name)
             self._ring_alarm(ad)
 
@@ -136,7 +137,7 @@ class AlarmAudioService(BasicAudioService):
             )
         )
 
-        if event.alarm_definition.is_onetime() and event.alarm_definition.id >= 0:
+        if event.alarm_definition.is_onetime() and event.alarm_definition.id != FAILED_ALARM_ID:
             self.alarm_clock_context.config.remove_alarm_definition(
                 event.alarm_definition.id
             )

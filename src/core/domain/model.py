@@ -5,6 +5,7 @@ from datetime import time, timedelta, date
 import datetime
 import math
 import os
+import uuid
 from PIL import Image
 from typing import List
 from enum import Enum
@@ -288,8 +289,11 @@ class AlarmRecurrence(Enum):
     RECURRING = "recurring"
 
 
+FAILED_ALARM_ID = "failed-alarm"
+
+
 class AlarmDefinition:
-    id: int
+    id: str
     hour: int
     min: int
     fadein_in_secs: int = 0
@@ -453,11 +457,23 @@ class Config:
         return next((s for s in streams if s.id == stream_id), None)
 
     def add_alarm_definition(self, value: AlarmDefinition):
-        self.alarm_definitions = self._append_item_with_id(
-            value, self.alarm_definitions
-        )
+        if not self._is_valid_alarm_id(getattr(value, "id", None)):
+            value.id = uuid.uuid4().hex
+        self.alarm_definitions.append(value)
 
-    def remove_alarm_definition(self, id: int):
+    @staticmethod
+    def _is_valid_alarm_id(id) -> bool:
+        return isinstance(id, str) and id != "" and id != FAILED_ALARM_ID
+
+    def normalize_alarm_ids(self):
+        """Migrates legacy integer ids and resolves duplicate ids to unique GUIDs."""
+        seen = set()
+        for alarm_def in self.alarm_definitions:
+            if not self._is_valid_alarm_id(alarm_def.id) or alarm_def.id in seen:
+                alarm_def.id = uuid.uuid4().hex
+            seen.add(alarm_def.id)
+
+    def remove_alarm_definition(self, id: str):
         if id is None:
             return
         self.alarm_definitions = [
@@ -469,7 +485,7 @@ class Config:
             return self.alarm_definitions[0]
         return None
 
-    def get_alarm_definition_by_id(self, id: int) -> AlarmDefinition:
+    def get_alarm_definition_by_id(self, id: str) -> AlarmDefinition:
         return next((alarm for alarm in self.alarm_definitions if alarm.id == id), None)
 
     def add_audio_stream(self, value: AudioStream):
@@ -569,6 +585,7 @@ class Config:
             persisted_config: Config = jsonpickle.decode(file_contents)
             persisted_config.event_bus = event_bus
             persisted_config.ensure_valid_config()
+            persisted_config.normalize_alarm_ids()
             persisted_config._apply_location()
             return persisted_config
 
