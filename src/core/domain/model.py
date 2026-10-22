@@ -196,7 +196,7 @@ class VisualEffect:
 class AudioStream:
     stream_name: str
     stream_url: str
-    id: int = -1
+    id: str = None
 
     def __str__(self):
         return f"stream_name: {self.stream_name}, stream_url: {self.stream_url}"
@@ -452,26 +452,37 @@ class Config:
             return self.audio_streams[0]
         return None
 
-    def get_audio_stream_by_id(self, stream_id: int) -> AudioStream:
+    def get_audio_stream_by_id(self, stream_id: str) -> AudioStream:
         streams = self.audio_streams
         return next((s for s in streams if s.id == stream_id), None)
 
     def add_alarm_definition(self, value: AlarmDefinition):
-        if not self._is_valid_alarm_id(getattr(value, "id", None)):
-            value.id = uuid.uuid4().hex
+        self._assign_guid_if_invalid(value, exclude={FAILED_ALARM_ID})
         self.alarm_definitions.append(value)
 
     @staticmethod
-    def _is_valid_alarm_id(id) -> bool:
-        return isinstance(id, str) and id != "" and id != FAILED_ALARM_ID
+    def _is_valid_guid(id, exclude: set = frozenset()) -> bool:
+        return isinstance(id, str) and id != "" and id not in exclude
 
-    def normalize_alarm_ids(self):
+    @classmethod
+    def _assign_guid_if_invalid(cls, item_with_id, exclude: set = frozenset()):
+        if not cls._is_valid_guid(getattr(item_with_id, "id", None), exclude):
+            item_with_id.id = uuid.uuid4().hex
+
+    @classmethod
+    def _normalize_guid_ids(cls, items: List[object], exclude: set = frozenset()):
         """Migrates legacy integer ids and resolves duplicate ids to unique GUIDs."""
         seen = set()
-        for alarm_def in self.alarm_definitions:
-            if not self._is_valid_alarm_id(alarm_def.id) or alarm_def.id in seen:
-                alarm_def.id = uuid.uuid4().hex
-            seen.add(alarm_def.id)
+        for item in items:
+            if not cls._is_valid_guid(item.id, exclude) or item.id in seen:
+                item.id = uuid.uuid4().hex
+            seen.add(item.id)
+
+    def normalize_alarm_ids(self):
+        self._normalize_guid_ids(self.alarm_definitions, exclude={FAILED_ALARM_ID})
+
+    def normalize_audio_stream_ids(self):
+        self._normalize_guid_ids(self.audio_streams)
 
     def remove_alarm_definition(self, id: str):
         if id is None:
@@ -489,32 +500,13 @@ class Config:
         return next((alarm for alarm in self.alarm_definitions if alarm.id == id), None)
 
     def add_audio_stream(self, value: AudioStream):
-        self.audio_streams = self._append_item_with_id(value, self.audio_streams)
+        self._assign_guid_if_invalid(value)
+        self.audio_streams.append(value)
 
-    def remove_audio_stream(self, id: int):
+    def remove_audio_stream(self, id: str):
         self.audio_streams = [
             stream_def for stream_def in self.audio_streams if stream_def.id != id
         ]
-
-    def _append_item_with_id(self, item_with_id, list) -> List[object]:
-        self._assure_item_id(item_with_id, list)
-        list.append(item_with_id)
-        return sorted(list, key=lambda x: x.id)
-
-    def _assure_item_id(self, item_with_id, list):
-        if (
-            not hasattr(item_with_id, "id")
-            or item_with_id.id is None
-            or item_with_id.id < 0
-        ):
-            item_with_id.id = self._get_next_id(list)
-
-    def _get_next_id(self, array_with_ids: List[object]) -> int:
-        return (
-            sorted(array_with_ids, key=lambda x: x.id, reverse=True)[0].id + 1
-            if len(array_with_ids) > 0
-            else 0
-        )
 
     def add_alarm_definition_for_powernap(self):
 
@@ -586,6 +578,7 @@ class Config:
             persisted_config.event_bus = event_bus
             persisted_config.ensure_valid_config()
             persisted_config.normalize_alarm_ids()
+            persisted_config.normalize_audio_stream_ids()
             persisted_config._apply_location()
             return persisted_config
 

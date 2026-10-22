@@ -150,7 +150,7 @@ class ActionApiHandler(tornado.web.RequestHandler):
             elif type == "stop":
                 self.event_bus.emit(PlaybackChangedEvent(Mode.Idle))
             elif type == "volume":
-                if id == 1:
+                if id == "1":
                     self.event_bus.emit(VolumeChangeRequest(relative=+1))
                 else:
                     self.event_bus.emit(VolumeChangeRequest(relative=-1))
@@ -220,7 +220,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
         if type == "alarm":
             self.config.remove_alarm_definition(id)
         elif type == "stream":
-            self.config.remove_audio_stream(int(id))
+            self.config.remove_audio_stream(id)
 
     def post(self, *args):
         try:
@@ -277,7 +277,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
         return None
 
     def parse_audio_effect(self, form_arguments) -> AudioEffect:
-        stream_id = int(form_arguments["streamId"])
+        stream_id = form_arguments["streamId"]
         return StreamAudioEffect(
             audio_stream=self.config.get_audio_stream_by_id(stream_id),
             volume=float(form_arguments["volume"]),
