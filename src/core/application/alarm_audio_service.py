@@ -199,7 +199,7 @@ class AlarmAudioService(BasicAudioService):
             self.scheduler_service.add_job(
                 self._volume_increase_tick,
                 trigger="interval",
-                seconds=10,
+                seconds=2,
                 job_id=SchedulerJobIds.volume_increase.value,
                 jobstore=SchedulerStores.default.value,
             )
