@@ -78,7 +78,6 @@ class TestRotaryEncoderPinCallback(RotaryTestCase):
 
         self.assertEqual([(0, 1), (5, 5)], self.encoder.last_states)
 
-    @unittest.expectedFailure  # HwRotaryEvent requires _1st_tick; encoder omits it -> TypeError
     def test_clockwise_turn_emits_clockwise_event(self):
         self.encoder.last_states[0] = (0, 0)
 
@@ -88,7 +87,6 @@ class TestRotaryEncoderPinCallback(RotaryTestCase):
             RotaryDirection.CLOCKWISE, self.bus.emitted_of(HwRotaryEvent)[0].direction
         )
 
-    @unittest.expectedFailure  # same missing _1st_tick argument
     def test_counterclockwise_turn_emits_counterclockwise_event(self):
         self.encoder.last_states[0] = (1, 1)
 
@@ -98,7 +96,6 @@ class TestRotaryEncoderPinCallback(RotaryTestCase):
         self.assertEqual(RotaryDirection.COUNTERCLOCKWISE, event.direction)
         self.assertEqual(DeviceName.ROTARY_ENCODER, event.device_name)
 
-    @unittest.expectedFailure  # same missing _1st_tick argument
     def test_state_history_is_updated_after_a_turn(self):
         self.encoder.last_states = [(0, 0), (None, None)]
 

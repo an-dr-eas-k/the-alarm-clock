@@ -169,8 +169,6 @@ ALARM_FORM = dict(
 
 
 class ConfigApiGetTests(ApiTestCase):
-    # production bug: the route passes a path argument but ConfigApiHandler.get() accepts none (HTTP 500)
-    @unittest.expectedFailure
     def test_returns_serialized_config_as_json(self):
         response = self.fetch("/api/config")
         self.assertEqual(response.code, 200)

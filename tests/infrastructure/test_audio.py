@@ -302,7 +302,6 @@ class TestSpeaker(AudioTestCase):
 
         self.assertIsNone(self.speaker.media_player)
 
-    @unittest.expectedFailure  # start_streaming calls handle_player_error without player_state -> TypeError
     def test_failure_to_play_emits_speaker_error_event(self):
         stream = make_stream()
         self.player_cls.return_value.play.side_effect = RuntimeError("no device")
@@ -321,15 +320,11 @@ class TestSpeaker(AudioTestCase):
 
         self.assertEqual([stream], [e.audio_stream for e in self.bus.emitted_of(SpeakerErrorEvent)])
 
-    @unittest.expectedFailure  # TypeError above escapes while threadLock is still held
     def test_adjust_streaming_releases_lock_after_failure(self):
         self.player_cls.return_value.play.side_effect = RuntimeError("no device")
 
         with self.assertLogs("tac.core.infrastructure.audio", "ERROR"):
-            try:
-                self.speaker.adjust_streaming(make_stream())
-            except TypeError:
-                pass
+            self.speaker.adjust_streaming(make_stream())
 
         self.assertFalse(self.speaker.threadLock.locked())
 

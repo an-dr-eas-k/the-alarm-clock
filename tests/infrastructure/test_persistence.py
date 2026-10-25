@@ -101,7 +101,6 @@ class TestStoreConfig(PersistenceTestCase):
         with self.assertRaises(FileNotFoundError):
             self.persistence.store_config(make_config())
 
-    @unittest.expectedFailure  # lock is acquired/released without try/finally
     def test_store_config_releases_lock_after_failure(self):
         self.persistence.config_file = os.path.join(self.tmp_dir, "missing", "c.json")
 

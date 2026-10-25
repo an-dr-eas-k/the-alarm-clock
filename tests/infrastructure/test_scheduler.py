@@ -48,11 +48,12 @@ class TestLifecycle(SchedulerTestCase):
 
         self.assertEqual(STATE_STOPPED, self.service.scheduler.state)
 
-    @unittest.expectedFailure  # second shutdown() definition shadows the STATE_STOPPED guard
     def test_shutdown_twice_is_safe(self):
         self.service.shutdown()
 
         self.service.shutdown()
+
+        self.assertEqual(STATE_STOPPED, self.service.scheduler.state)
 
     def test_scheduler_stores_are_enum_backed(self):
         self.assertEqual("alarm", SchedulerStores.alarm.value)
@@ -256,7 +257,6 @@ class TestNextAlarmInfo(SchedulerTestCase):
 
         self.assertIsNone(info.alarm_definition)
 
-    @unittest.expectedFailure  # sorting by next_run_time breaks when a job is paused (None)
     def test_paused_alarm_job_does_not_break_next_alarm_lookup(self):
         paused = self._add_alarm_job("paused", FUTURE)
         self.service.scheduler.pause_job("paused", jobstore="alarm")
@@ -285,17 +285,6 @@ class TestCleanupAlarms(SchedulerTestCase):
 
         self.assertEqual([], self.bus.emitted)
 
-    def test_finished_job_with_non_numeric_id_raises_value_error(self):
-        config = make_config()
-        alarm = make_alarm(id="abc123")
-        config.add_alarm_definition(alarm)
-        self.service.add_date_job(noop, "abc123", FUTURE, jobstore="alarm", args=[alarm])
-        self.service.scheduler.pause_job("abc123", jobstore="alarm")
-
-        with self.assertRaises(ValueError):
-            self.service.cleanup_alarms(config)
-
-    @unittest.expectedFailure  # job ids are alarm GUID strings but cleanup does int(job.id)
     def test_finished_job_removes_alarm_and_emits_config_changed(self):
         config = make_config()
         alarm = make_alarm(id="abc123")
@@ -308,7 +297,7 @@ class TestCleanupAlarms(SchedulerTestCase):
         self.assertEqual([], config.alarm_definitions)
         self.assertEqual(1, len(self.bus.emitted_of(ConfigChangedEvent)))
 
-    def test_numeric_job_id_cannot_match_string_alarm_ids(self):
+    def test_numeric_looking_job_id_still_matches_string_alarm_id(self):
         config = make_config()
         alarm = make_alarm(id="7")
         config.add_alarm_definition(alarm)
@@ -317,7 +306,7 @@ class TestCleanupAlarms(SchedulerTestCase):
 
         self.service.cleanup_alarms(config)
 
-        self.assertEqual([alarm], config.alarm_definitions)
+        self.assertEqual([], config.alarm_definitions)
         self.assertEqual(1, len(self.bus.emitted_of(ConfigChangedEvent)))
 
 

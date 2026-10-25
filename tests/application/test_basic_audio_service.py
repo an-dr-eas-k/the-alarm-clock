@@ -272,8 +272,6 @@ class WifiStatusTests(BasicAudioServiceTestCase):
 
 
 class InstantiationTests(unittest.TestCase):
-    # production bug: __init__ registers self._config_changed which only AlarmAudioService defines
-    @unittest.expectedFailure
     def test_base_service_can_be_instantiated_directly(self):
         bus = RecordingEventBus()
         BasicAudioService(

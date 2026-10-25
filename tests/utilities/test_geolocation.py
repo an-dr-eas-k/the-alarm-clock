@@ -248,7 +248,6 @@ class SunEventCronArgsTest(GeoLocationTestCase):
         args = self.cron_args(local_datetime(2024, 6, 21, 0, 0), SunEvent.sunrise)
         self.assertEqual(set(args), {"start_date", "end_date", "hour", "minute"})
 
-    @unittest.expectedFailure
     def test_hour_is_expressed_in_location_timezone(self):
         # suspected bug: sun() returns UTC times, so cron hour is UTC, not local
         now = local_datetime(2024, 6, 21, 0, 30)

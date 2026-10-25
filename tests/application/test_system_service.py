@@ -50,8 +50,6 @@ class SafeActionTests(unittest.TestCase):
         logger.error.assert_called_once()
         self.assertIn("boom", logger.error.call_args.args[1])
 
-    # production bug: the ValueError is caught by the bare except, which then fails on logger=None
-    @unittest.expectedFailure
     def test_missing_logger_is_rejected_with_value_error(self):
         action = mock.MagicMock()
         with self.assertRaises(ValueError):

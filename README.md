@@ -44,6 +44,25 @@
 weather symbols are included from https://github.com/erikflowers/weather-icons
 
 
+# Tests
+
+Unit tests live in `tests/`, mirroring the `src/core/...` package layout, and
+run with the standard library `unittest` (no extra tooling required). They
+are offline and hardware-free: GPIO, I2C/SPI, the OLED display, ALSA, VLC and
+network access are all mocked.
+
+Run the whole suite from the repository root (using your project's virtual
+environment):
+```
+.venv/bin/python -m unittest discover -s tests -t .
+```
+
+Run a single test module, e.g.:
+```
+.venv/bin/python -m unittest tests.domain.test_model
+```
+
+
 # Box
 
 ## Simple
