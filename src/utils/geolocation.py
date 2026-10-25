@@ -110,7 +110,9 @@ class GeoLocation:
 
         day = self.now().date() if day is None else day
 
-        return sun(self.location_info.observer, date=day)[event.value]
+        return sun(
+            self.location_info.observer, date=day, tzinfo=self.location_info.tzinfo
+        )[event.value]
 
     def get_sun_event_cron_args(
         self, event: SunEvent, day: datetime.date = None

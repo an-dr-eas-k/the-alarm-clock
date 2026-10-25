@@ -39,11 +39,11 @@ class Persistence:
 
     def store_config(self, config: Config):
         self.threadLock.acquire(True)
-
-        with open(self.config_file, "w") as f:
-            f.write(config.serialize())
-
-        self.threadLock.release()
+        try:
+            with open(self.config_file, "w") as f:
+                f.write(config.serialize())
+        finally:
+            self.threadLock.release()
 
     def store_alarm(self, alarm_definition: AlarmDefinition):
         if alarm_definition is None:

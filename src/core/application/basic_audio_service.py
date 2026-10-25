@@ -52,6 +52,10 @@ class BasicAudioService:
         self.event_bus.on(SpeakerErrorEvent)(self._handle_speaker_error)
         self.event_bus.on(SpotifyApiEvent)(self._spotify_stream_change_request)
 
+    def _config_changed(self, event: ConfigChangedEvent):
+        """Base no-op; AlarmAudioService overrides this to (re)schedule alarm jobs."""
+        pass
+
     def _toggle_stream(self, _: ToggleAudioRequest):
 
         if self.playback_content.playback_mode != Mode.Idle:

@@ -201,7 +201,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
         self.config = config
         self.event_bus = event_bus
 
-    def get(self):
+    def get(self, *args):
         try:
             self.set_header("Content-Type", "application/json")
             self.write(self.config.serialize())
