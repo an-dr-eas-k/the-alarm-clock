@@ -152,13 +152,13 @@ class Speaker:
 
     def adjust_streaming(self, audio_stream: AudioStream):
         self.threadLock.acquire(True)
-
-        if audio_stream is not None:
-            self.start_streaming(audio_stream)
-        else:
-            self.stop_streaming()
-
-        self.threadLock.release()
+        try:
+            if audio_stream is not None:
+                self.start_streaming(audio_stream)
+            else:
+                self.stop_streaming()
+        finally:
+            self.threadLock.release()
 
     def get_player(self, audio_stream: AudioStream) -> MediaPlayer:
         player: MediaPlayer = MediaListPlayer(
@@ -179,7 +179,7 @@ class Speaker:
             self.media_player.play()
         except Exception as e:
             logger.error("error: %s", traceback.format_exc())
-            self.handle_player_error(audio_stream)
+            self.handle_player_error(audio_stream, vlc.State.Error)
 
     def stop_streaming(self):
         if self.media_player is not None:

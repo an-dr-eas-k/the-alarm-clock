@@ -44,6 +44,25 @@
 weather symbols are included from https://github.com/erikflowers/weather-icons
 
 
+# Tests
+
+Unit tests live in `tests/`, mirroring the `src/core/...` package layout, and
+run with the standard library `unittest` (no extra tooling required). They
+are offline and hardware-free: GPIO, I2C/SPI, the OLED display, ALSA, VLC and
+network access are all mocked.
+
+Run the whole suite from the repository root (using your project's virtual
+environment):
+```
+.venv/bin/python -m unittest discover -s tests -t .
+```
+
+Run a single test module, e.g.:
+```
+.venv/bin/python -m unittest tests.domain.test_model
+```
+
+
 # Box
 
 ## Simple
@@ -104,6 +123,8 @@ weather symbols are included from https://github.com/erikflowers/weather-icons
 
 # Devices
 ## Rotary Encoder
-## Light Sensor BH1750
+## Light Sensor: photoresistor (GL5539) + capacitor (10nF) RC bridge
+3.3V -> photoresistor -> GPIO26 -> capacitor -> GND. Brightness is derived from how
+long GPIO26 takes to charge through the photoresistor (see `core/infrastructure/brightness_sensor.py`).
 ## Port Expander 16-Bit-I/O MCP23017 
 ## Sound card DigiAMP+

@@ -238,52 +238,77 @@ class Display(DisplayContentProvider):
         fg_color = QtGui.QColor(
             self.formatter.foreground_color(color_type=ColorType.INHEX)
         )
-        painter.setPen(fg_color)
 
         # Clock
         clock_string = self.formatter.format_dseg7_clock_string(
             now, self.display_content.show_blink_segment
         )
-        font = self.formatter.clock_font(size=18, weight=QtGui.QFont.Weight.Light)
-        painter.setFont(font)
+        clock_font = self.formatter.clock_font(size=18, weight=QtGui.QFont.Weight.Light)
+        fm_clock = QtGui.QFontMetrics(clock_font)
+        clock_w = fm_clock.width(clock_string)
+
+        painter.setPen(fg_color)
+        painter.setFont(clock_font)
         painter.drawText(
             QtCore.QRect(x_offset, y_offset, 120, 25),
             QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter,
             clock_string,
         )
 
-        # Next Alarm
-        if (
+        # Next Alarm — icon + two rows (hours / minutes) to the right of the clock
+        show_alarm = (
             self.display_content.has_next_alarm()
             and self.display_content.next_alarm_info.minutes_until_alarm()
             <= self.display_content.alarm_clock_context.config.alarm_preview_hours * 60
-        ):
+        )
+
+        alarm_gap = 20  # gap between clock and alarm block
+
+        if show_alarm:
             alarm_time = self.display_content.get_next_alarm()
-            alarm_text = self.formatter.format_clock_string(alarm_time)
-            alarm_font = self.formatter.info_font(
-                size=12, weight=QtGui.QFont.Weight.Thin
+            icon_font = self.formatter.icon_font(size=14)
+            alarm_clock_font = self.formatter.clock_font(
+                size=11, weight=QtGui.QFont.Weight.Light
             )
-            painter.setFont(alarm_font)
-            fm = QtGui.QFontMetrics(alarm_font)
-            icon_w = fm.width("\uf49a") + 10
-            painter.drawText(
-                QtCore.QRect(x_offset + 95, y_offset, icon_w, 25),
-                QtCore.Qt.AlignmentFlag.AlignLeft
-                | QtCore.Qt.AlignmentFlag.AlignVCenter,
-                "\uf49a",
-            )
-            painter.drawText(
-                QtCore.QRect(x_offset + 95 + icon_w, y_offset, 80, 25),
-                QtCore.Qt.AlignmentFlag.AlignLeft
-                | QtCore.Qt.AlignmentFlag.AlignVCenter,
-                alarm_text,
-            )
+
+            alarm_x = x_offset + clock_w + alarm_gap
+
+            alarm_label = self.display_content.next_alarm_info.alarm_label
+            if alarm_label:
+                label_font = self.formatter.icon_font(size=18)
+                painter.setFont(label_font)
+                painter.drawText(
+                    QtCore.QRect(int(alarm_x), y_offset, 80, 25),
+                    QtCore.Qt.AlignmentFlag.AlignLeft
+                    | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                    alarm_label,
+                )
+            else:
+                # Bell icon
+                painter.setFont(icon_font)
+                painter.drawText(
+                    QtCore.QRect(int(alarm_x), y_offset, 16, 25),
+                    QtCore.Qt.AlignmentFlag.AlignLeft
+                    | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                    "\uf49a",
+                )
+                # Time in DSEG7 font
+                time_str = self.formatter.format_dseg7_string(
+                    alarm_time.strftime("%H:%M"), desired_length=5
+                )
+                painter.setFont(alarm_clock_font)
+                painter.drawText(
+                    QtCore.QRect(int(alarm_x) + 18, y_offset, 70, 25),
+                    QtCore.Qt.AlignmentFlag.AlignLeft
+                    | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                    time_str,
+                )
 
         # WiFi
         if not self.display_content.get_is_online():
-            painter.setFont(self.formatter.info_font(size=14))
+            painter.setFont(self.formatter.icon_font(size=14))
             painter.drawText(
-                QtCore.QRect(x_offset + 95, y_offset + 20, 50, 25),
+                QtCore.QRect(x_offset, y_offset + 26, 50, 20),
                 QtCore.Qt.AlignmentFlag.AlignLeft
                 | QtCore.Qt.AlignmentFlag.AlignVCenter,
                 "\U000f05aa",
@@ -489,6 +514,10 @@ class Display(DisplayContentProvider):
         prop_name = ""
         if isinstance(current_prop, AlarmProperty):
             prop_name = current_prop.name.replace("_", " ")
+            if current_prop == AlarmProperty.FADE_IN:
+                prop_name = "FADE IN"
+            elif current_prop == AlarmProperty.AUDIO_EFFECT_VOLUME:
+                prop_name = "VOLUME"
         elif isinstance(current_prop, EditorAction):
             prop_name = current_prop.value.upper()
 
@@ -543,6 +572,10 @@ class Display(DisplayContentProvider):
             if isinstance(current_prop, AlarmProperty)
             else ""
         )
+        if current_prop == AlarmProperty.FADE_IN:
+            prop_name = "FADE IN"
+        elif current_prop == AlarmProperty.AUDIO_EFFECT_VOLUME:
+            prop_name = "VOLUME"
         painter.setFont(self.formatter.info_font(size=10))
         painter.drawText(
             QtCore.QRect(0, 5, self.device.width, 15),
@@ -569,6 +602,47 @@ class Display(DisplayContentProvider):
             val_str = f"{current_val:02d}"
         elif current_prop == AlarmProperty.VISUAL_EFFECT:
             val_str = "yes" if current_val else "no"
+        elif current_prop == AlarmProperty.ALARM_LABEL:
+            val_str = current_val if current_val else "\u2014"
+
+        if current_prop in (AlarmProperty.FADE_IN, AlarmProperty.AUDIO_EFFECT_VOLUME):
+            # Progress bar with rounded edges and value centered
+            if current_prop == AlarmProperty.FADE_IN:
+                fraction = current_val / 300 if current_val else 0
+                label = f"{current_val}s" if current_val else "off"
+            else:  # AUDIO_EFFECT_VOLUME
+                fraction = current_val
+                label = f"{int(round(current_val * 100))}%"
+            bar_x, bar_y, bar_w, bar_h = 10, 26, self.device.width - 20, 26
+            radius = bar_h / 2
+            bg_color = QtGui.QColor(
+                self.formatter.background_color(color_type=ColorType.INHEX)
+            )
+            # Outline (rounded)
+            painter.setPen(QtGui.QPen(fg_color, 1))
+            painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
+            painter.drawRoundedRect(bar_x, bar_y, bar_w, bar_h, radius, radius)
+            # Fill (clipped to rounded outline)
+            fill_w = int(bar_w * fraction)
+            if fill_w > 0:
+                path = QtGui.QPainterPath()
+                path.addRoundedRect(
+                    bar_x + 1, bar_y + 1, bar_w - 2, bar_h - 2, radius - 1, radius - 1
+                )
+                clip_rect = QtCore.QRectF(bar_x, bar_y, fill_w, bar_h)
+                painter.save()
+                painter.setClipRect(clip_rect)
+                painter.fillPath(path, fg_color)
+                painter.restore()
+            text_color = bg_color if fraction > 0.5 else fg_color
+            painter.setPen(text_color)
+            painter.setFont(self.formatter.info_font(size=14))
+            painter.drawText(
+                QtCore.QRect(bar_x, bar_y, bar_w, bar_h),
+                QtCore.Qt.AlignmentFlag.AlignCenter,
+                label,
+            )
+            return
 
         painter.setFont(self.formatter.info_font(size=16))
         painter.drawText(
@@ -582,7 +656,12 @@ class Display(DisplayContentProvider):
             "\uf054",
         )  # Right
 
-        painter.setFont(self.formatter.info_font(size=val_font_size))
+        val_font = (
+            self.formatter.icon_font(size=val_font_size)
+            if current_prop == AlarmProperty.ALARM_LABEL
+            else self.formatter.info_font(size=val_font_size)
+        )
+        painter.setFont(val_font)
         painter.drawText(
             QtCore.QRect(40, 25, self.device.width - 80, 35),
             QtCore.Qt.AlignmentFlag.AlignCenter,

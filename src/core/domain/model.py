@@ -5,6 +5,7 @@ from datetime import time, timedelta, date
 import datetime
 import math
 import os
+import uuid
 from PIL import Image
 from typing import List
 from enum import Enum
@@ -43,6 +44,7 @@ class SchedulerJobIds(Enum):
     memory_usage_logger = "memory_usage_logger_trigger"
     thread_usage_logger = "thread_usage_logger_trigger"
     pre_alarm = "pre_alarm_trigger"
+    volume_increase = "volume_increase_trigger"
 
 
 class DisplayContentProvider:
@@ -93,6 +95,15 @@ class RoomBrightness(Value[float]):
         if self.is_highly_dimmed():
             x = 0
         return respect_ranges(x, min_value, max_value)
+
+
+@dataclass
+class LocationConfig:
+    city: str = "Munich"
+    region: str = "Bavaria"
+    timezone: str = "Europe/Berlin"
+    latitude: float = 48.1372
+    longitude: float = 11.5755
 
 
 @dataclass
@@ -185,7 +196,7 @@ class VisualEffect:
 class AudioStream:
     stream_name: str
     stream_url: str
-    id: int = -1
+    id: str = None
 
     def __str__(self):
         return f"stream_name: {self.stream_name}, stream_url: {self.stream_url}"
@@ -278,10 +289,25 @@ class AlarmRecurrence(Enum):
     RECURRING = "recurring"
 
 
+FAILED_ALARM_ID = "failed-alarm"
+
+
 class AlarmDefinition:
-    id: int
+    id: str
     hour: int
     min: int
+    fadein_in_secs: int = 0
+    _alarm_label: str = None
+
+    @property
+    def alarm_label(self) -> str:
+        return self._alarm_label
+
+    @alarm_label.setter
+    def alarm_label(self, value: str):
+        if value is not None and len(value) > 3:
+            raise ValueError("alarm_label cannot be longer than 3 characters")
+        self._alarm_label = value
 
     @property
     def recurrence(self) -> AlarmRecurrence:
@@ -400,6 +426,10 @@ class Config:
     alarm_preview_hours: int
     debug_level: int
     pre_alarm_trigger_in_mins: int = 10
+    start_volume: float
+    predefined_alarm_labels: List[str]
+
+    location: LocationConfig
 
     # Public attributes for template access (Tornado templates don't call properties)
     alarm_definitions: List[AlarmDefinition]
@@ -422,16 +452,39 @@ class Config:
             return self.audio_streams[0]
         return None
 
-    def get_audio_stream_by_id(self, stream_id: int) -> AudioStream:
+    def get_audio_stream_by_id(self, stream_id: str) -> AudioStream:
         streams = self.audio_streams
         return next((s for s in streams if s.id == stream_id), None)
 
     def add_alarm_definition(self, value: AlarmDefinition):
-        self.alarm_definitions = self._append_item_with_id(
-            value, self.alarm_definitions
-        )
+        self._assign_guid_if_invalid(value, exclude={FAILED_ALARM_ID})
+        self.alarm_definitions.append(value)
 
-    def remove_alarm_definition(self, id: int):
+    @staticmethod
+    def _is_valid_guid(id, exclude: set = frozenset()) -> bool:
+        return isinstance(id, str) and id != "" and id not in exclude
+
+    @classmethod
+    def _assign_guid_if_invalid(cls, item_with_id, exclude: set = frozenset()):
+        if not cls._is_valid_guid(getattr(item_with_id, "id", None), exclude):
+            item_with_id.id = uuid.uuid4().hex
+
+    @classmethod
+    def _normalize_guid_ids(cls, items: List[object], exclude: set = frozenset()):
+        """Migrates legacy integer ids and resolves duplicate ids to unique GUIDs."""
+        seen = set()
+        for item in items:
+            if not cls._is_valid_guid(item.id, exclude) or item.id in seen:
+                item.id = uuid.uuid4().hex
+            seen.add(item.id)
+
+    def normalize_alarm_ids(self):
+        self._normalize_guid_ids(self.alarm_definitions, exclude={FAILED_ALARM_ID})
+
+    def normalize_audio_stream_ids(self):
+        self._normalize_guid_ids(self.audio_streams)
+
+    def remove_alarm_definition(self, id: str):
         if id is None:
             return
         self.alarm_definitions = [
@@ -443,36 +496,17 @@ class Config:
             return self.alarm_definitions[0]
         return None
 
-    def get_alarm_definition_by_id(self, id: int) -> AlarmDefinition:
+    def get_alarm_definition_by_id(self, id: str) -> AlarmDefinition:
         return next((alarm for alarm in self.alarm_definitions if alarm.id == id), None)
 
     def add_audio_stream(self, value: AudioStream):
-        self.audio_streams = self._append_item_with_id(value, self.audio_streams)
+        self._assign_guid_if_invalid(value)
+        self.audio_streams.append(value)
 
-    def remove_audio_stream(self, id: int):
+    def remove_audio_stream(self, id: str):
         self.audio_streams = [
             stream_def for stream_def in self.audio_streams if stream_def.id != id
         ]
-
-    def _append_item_with_id(self, item_with_id, list) -> List[object]:
-        self._assure_item_id(item_with_id, list)
-        list.append(item_with_id)
-        return sorted(list, key=lambda x: x.id)
-
-    def _assure_item_id(self, item_with_id, list):
-        if (
-            not hasattr(item_with_id, "id")
-            or item_with_id.id is None
-            or item_with_id.id < 0
-        ):
-            item_with_id.id = self._get_next_id(list)
-
-    def _get_next_id(self, array_with_ids: List[object]) -> int:
-        return (
-            sorted(array_with_ids, key=lambda x: x.id, reverse=True)[0].id + 1
-            if len(array_with_ids) > 0
-            else 0
-        )
 
     def add_alarm_definition_for_powernap(self):
 
@@ -513,6 +547,9 @@ class Config:
             dict(key="alarm_preview_hours", value=12),
             dict(key="pre_alarm_trigger_in_mins", value=10),
             dict(key="debug_level", value=0),
+            dict(key="start_volume", value=0.15),
+            dict(key="predefined_alarm_labels", value=[]),
+            dict(key="location", value=LocationConfig()),
         ]:
             if not hasattr(self, conf_prop["key"]):
                 logger.debug(
@@ -540,7 +577,21 @@ class Config:
             persisted_config: Config = jsonpickle.decode(file_contents)
             persisted_config.event_bus = event_bus
             persisted_config.ensure_valid_config()
+            persisted_config.normalize_alarm_ids()
+            persisted_config.normalize_audio_stream_ids()
+            persisted_config._apply_location()
             return persisted_config
+
+    def _apply_location(self):
+        """Push the configured location into the GeoLocation singleton."""
+        from astral import LocationInfo
+
+        loc = self.location
+        GeoLocation().configure(
+            LocationInfo(
+                loc.city, loc.region, loc.timezone, loc.latitude, loc.longitude
+            )
+        )
 
 
 class AlarmClockContext:
@@ -678,6 +729,10 @@ class NextAlarmInfo:
     @property
     def alarm_name(self) -> str:
         return self._alarm_definition.alarm_name
+
+    @property
+    def alarm_label(self) -> str:
+        return self._alarm_definition.alarm_label if self._alarm_definition else None
 
     @property
     def visual_effect(self) -> "VisualEffect":

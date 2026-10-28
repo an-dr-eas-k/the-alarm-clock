@@ -38,16 +38,15 @@ logger = logging.getLogger("tac.core.application.system_service")
 def safe_action(
     action, info_msg: str = None, debug_msg: str = None, logger: logging.Logger = None
 ):
+    if logger is None:
+        raise ValueError("logger must be provided to safe_action")
     try:
-        if logger:
-            if debug_msg:
-                logger.debug(debug_msg)
-            if info_msg:
-                logger.info(info_msg)
-        else:
-            raise ValueError("logger must be provided to safe_action")
+        if debug_msg:
+            logger.debug(debug_msg)
+        if info_msg:
+            logger.info(info_msg)
         action()
-    except:
+    except Exception:
         logger.error("%s", traceback.format_exc())
 
 

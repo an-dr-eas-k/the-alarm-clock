@@ -88,21 +88,21 @@ class GeoLocation:
             location_from_ip["longitude"],
         )
 
+    def configure(self, location_info: LocationInfo):
+        """Override the resolved location (called by Config after loading)."""
+        logger.info(
+            "Location configured: %s, %s",
+            location_info.name,
+            location_info.region,
+        )
+        self.location_info = location_info
+
     def get_location_info(self) -> LocationInfo:
         try:
             return self.ip_api()
-            # ip_info = self.ip_api()
-            # geolocation_db = self.geolocation_db()
-            # return LocationInfo(
-            # 	geolocation_db.name,
-            # 	geolocation_db.region,
-            # 	ip_info.timezone,
-            # 	geolocation_db.latitude,
-            # 	geolocation_db.longitude
-            # )
-        except:
+        except Exception:
             logger.warning("%s", traceback.format_exc())
-            return LocationInfo("Munich", "Bavaria", "Europe/Berlin", 48.1112, 11.5501)
+            return LocationInfo("Munich", "Bavaria", "Europe/Berlin", 48.1372, 11.5755)
 
     def get_sun_event(
         self, event: SunEvent, day: datetime.date = None
@@ -110,7 +110,9 @@ class GeoLocation:
 
         day = self.now().date() if day is None else day
 
-        return sun(self.location_info.observer, date=day)[event.value]
+        return sun(
+            self.location_info.observer, date=day, tzinfo=self.location_info.tzinfo
+        )[event.value]
 
     def get_sun_event_cron_args(
         self, event: SunEvent, day: datetime.date = None
