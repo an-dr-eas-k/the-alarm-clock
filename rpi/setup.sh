@@ -3,7 +3,7 @@ uhome=/srv/the-alarm-clock
 app=${uhome}/app
 BRANCH="develop"
 FAST_MODE=false
-WIFI_DONGLE=true
+WIFI_DONGLE=false
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -12,8 +12,8 @@ while [[ $# -gt 0 ]]; do
       FAST_MODE=true
       shift # past argument
       ;;
-    nowifi|--no-wifi)
-      WIFI_DONGLE=false # e.g. rpi zero 2 has built-in wifi
+    wifi-dongle|--wifi-dongle)
+      WIFI_DONGLE=true # only needed for boards without built-in wifi (not rpi zero 2)
       shift # past argument
       ;;
     -b|--branch)
@@ -127,7 +127,7 @@ if [ "$WIFI_DONGLE" = true ]; then
 
   ln -fs $app/rpi/resources/aic8800-driver.service /lib/systemd/system/aic8800-driver.service
 else
-  echo "skipping aic8800 wifi driver setup"
+  echo "skipping aic8800 wifi driver setup (use --wifi-dongle to enable)"
 fi
 
 ln -fs $app/rpi/resources/the-alarm-clock.service /lib/systemd/system/the-alarm-clock.service
