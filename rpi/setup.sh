@@ -3,12 +3,17 @@ uhome=/srv/the-alarm-clock
 app=${uhome}/app
 BRANCH="develop"
 FAST_MODE=false
+WIFI_DONGLE=true
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
     fast|--fast)
       FAST_MODE=true
+      shift # past argument
+      ;;
+    nowifi|--no-wifi)
+      WIFI_DONGLE=false # e.g. rpi zero 2 has built-in wifi
       shift # past argument
       ;;
     -b|--branch)
@@ -111,19 +116,26 @@ echo "setup the-alarm-clock app"
 ln -fs /usr/bin/python3 /usr/bin/python
 setcap CAP_NET_BIND_SERVICE=+eip $(readlink /usr/bin/python -f)
 
-echo "setup aic8800 wifi driver DKMS"
-dpkg -i $app/rpi/resources/aic8800d80fdrvpackage.deb
-cp -f $app/rpi/resources/dkms.conf /usr/src/AIC8800/
-ln -fs /usr/src/AIC8800 /usr/src/aic8800-1.0
-dkms add -m aic8800 -v 1.0 || true
-dkms build -m aic8800 -v 1.0 || true
-dkms install -m aic8800 -v 1.0 || true
+if [ "$WIFI_DONGLE" = true ]; then
+  echo "setup aic8800 wifi driver DKMS"
+  dpkg -i $app/rpi/resources/aic8800d80fdrvpackage.deb
+  cp -f $app/rpi/resources/dkms.conf /usr/src/AIC8800/
+  ln -fs /usr/src/AIC8800 /usr/src/aic8800-1.0
+  dkms add -m aic8800 -v 1.0 || true
+  dkms build -m aic8800 -v 1.0 || true
+  dkms install -m aic8800 -v 1.0 || true
 
-ln -fs $app/rpi/resources/aic8800-driver.service /lib/systemd/system/aic8800-driver.service
+  ln -fs $app/rpi/resources/aic8800-driver.service /lib/systemd/system/aic8800-driver.service
+else
+  echo "skipping aic8800 wifi driver setup"
+fi
+
 ln -fs $app/rpi/resources/the-alarm-clock.service /lib/systemd/system/the-alarm-clock.service
 # ln -fs $app/rpi/resources/the-alarm-clock-wifi-monitor.service /lib/systemd/system/the-alarm-clock-wifi-monitor.service
 systemctl daemon-reload
-systemctl enable aic8800-driver.service
+if [ "$WIFI_DONGLE" = true ]; then
+  systemctl enable aic8800-driver.service
+fi
 systemctl enable the-alarm-clock.service
 # systemctl enable the-alarm-clock-wifi-monitor.service
 
