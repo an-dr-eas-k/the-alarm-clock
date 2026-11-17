@@ -8,6 +8,7 @@ from core.infrastructure.brightness_sensor import IBrightnessSensor
 from core.infrastructure.events_infrastructure import (
     DeviceName,
     HwButtonEvent,
+    HwButtonLongPressEvent,
     HwRotaryEvent,
     RotaryDirection,
 )
@@ -88,6 +89,8 @@ class ComputerInfrastructure(IBrightnessSensor):
                 self.event_bus.emit(HwButtonEvent(DeviceName.MODE_BUTTON))
             elif key_code == ecodes.KEY_4:
                 self.event_bus.emit(HwButtonEvent(DeviceName.INVOKE_BUTTON))
+            elif key_code == ecodes.KEY_8:
+                self.event_bus.emit(HwButtonLongPressEvent(DeviceName.INVOKE_BUTTON))
             elif key_code == ecodes.KEY_5:
                 brightness_examples = [0.0, 0.1, 0.3, 0.8, 1.0]
                 self.simulated_brightness = brightness_examples[

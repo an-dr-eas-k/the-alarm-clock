@@ -11,6 +11,7 @@ import tornado.ioloop
 import tornado.web
 from PIL.Image import Image
 from core.application.alarm_audio_service import AlarmAudioService
+from core.application.system_service import SystemService
 from core.domain.events import (
     PlaybackChangedEvent,
     ConfigChangedEvent,
@@ -23,7 +24,7 @@ from core.domain.events import (
 from core.infrastructure.event_bus import EventBus
 from core.interface.display.display import Display
 from core.interface.display.format import ColorType
-from resources.resources import webroot_file, ssl_dir, icons_dir
+from resources.resources import webroot_file, ssl_dir, icons_dir, fonts_dir
 
 from core.domain.model import (
     AlarmDefinition,
@@ -46,6 +47,8 @@ def try_update(object, property_name: str, value: str) -> bool:
         attr_type = type(attr_value)
         if attr_type == bool:
             value = value.lower() in ["on", "yes", "true", "t", "1"]
+        elif attr_type == list:
+            value = json.loads(value) if value else []
         else:
             value = attr_type(value) if len(value) > 0 else None
         if value != attr_value:
@@ -54,11 +57,11 @@ def try_update(object, property_name: str, value: str) -> bool:
     return False
 
 
-def parse_path_arguments(path) -> tuple[str, int, str]:
+def parse_path_arguments(path) -> tuple[str, str, str]:
     path_args = path[0].split("/")
     return (
         path_args[0],
-        int(path_args[1]) if len(path_args) > 1 else None,
+        path_args[1] if len(path_args) > 1 and path_args[1] != "" else None,
         path_args[2] if len(path_args) > 2 else None,
     )
 
@@ -147,7 +150,7 @@ class ActionApiHandler(tornado.web.RequestHandler):
             elif type == "stop":
                 self.event_bus.emit(PlaybackChangedEvent(Mode.Idle))
             elif type == "volume":
-                if id == 1:
+                if id == "1":
                     self.event_bus.emit(VolumeChangeRequest(relative=+1))
                 else:
                     self.event_bus.emit(VolumeChangeRequest(relative=-1))
@@ -198,7 +201,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
         self.config = config
         self.event_bus = event_bus
 
-    def get(self):
+    def get(self, *args):
         try:
             self.set_header("Content-Type", "application/json")
             self.write(self.config.serialize())
@@ -249,11 +252,11 @@ class ConfigApiHandler(tornado.web.RequestHandler):
         )
         form_arguments = tornado.escape.json_decode(body)
         if type == "alarm":
+            alarm_definition = self.parse_alarm_definition(form_arguments)
             if id is not None:
                 self.config.remove_alarm_definition(id)
-            self.config.add_alarm_definition(
-                self.parse_alarm_definition(form_arguments)
-            )
+                alarm_definition.id = id
+            self.config.add_alarm_definition(alarm_definition)
         elif type == "stream":
             self.config.add_audio_stream(self.parse_audio_stream(form_arguments))
         elif type == "start_powernap":
@@ -274,7 +277,7 @@ class ConfigApiHandler(tornado.web.RequestHandler):
         return None
 
     def parse_audio_effect(self, form_arguments) -> AudioEffect:
-        stream_id = int(form_arguments["streamId"])
+        stream_id = form_arguments["streamId"]
         return StreamAudioEffect(
             audio_stream=self.config.get_audio_stream_by_id(stream_id),
             volume=float(form_arguments["volume"]),
@@ -302,6 +305,8 @@ class ConfigApiHandler(tornado.web.RequestHandler):
             form_arguments.get("isActive") is not None
             and form_arguments["isActive"] == "on"
         )
+        ala.fadein_in_secs = int(form_arguments.get("fadein_in_secs") or 0)
+        ala.alarm_label = form_arguments.get("alarmLabel") or None
         return ala
 
 
@@ -312,12 +317,14 @@ class Api:
     def __init__(
         self,
         alarm_audio_service: AlarmAudioService,
+        system_service: SystemService,
         display: Display,
         event_bus: EventBus,
         executor: ThreadPoolExecutor,
         encrypted: bool,
     ):
         self.alarm_audio_service = alarm_audio_service
+        self.system_service = system_service
         self.display = display
         self.event_bus = event_bus
         self.executor = executor
@@ -357,6 +364,11 @@ class Api:
                 {"path": icons_dir},
             ),
             (
+                r"/fonts/(.*)",
+                tornado.web.StaticFileHandler,
+                {"path": fonts_dir},
+            ),
+            (
                 r"/(.*)",
                 ConfigHandler,
                 {
@@ -380,7 +392,7 @@ class Api:
     def get_state_as_json(self) -> str:
         return json.dumps(
             obj=dict(
-                room_brightness=self.alarm_audio_service.get_room_brightness(),
+                room_brightness=self.system_service.get_room_brightness(),
                 display=dict(
                     foreground_color=self.display.formatter.foreground_color(
                         color_type=ColorType.IN16
@@ -405,11 +417,20 @@ class Api:
 
     def start(self):
         port = 443
-        ssl_options = {
-            "certfile": os.path.join(ssl_dir, "cert.crt"),
-            "keyfile": os.path.join(ssl_dir, "cert.key"),
-        }
+        certfile = os.path.join(ssl_dir, "cert.crt")
+        keyfile = os.path.join(ssl_dir, "cert.key")
+        ssl_options = {"certfile": certfile, "keyfile": keyfile}
+
         if not self.encrypted:
+            ssl_options = None
+            port = 8080
+        elif not (os.path.exists(certfile) and os.path.exists(keyfile)):
+            # e.g. tls/cert.* not (yet) provisioned by rpi/setup.sh - fall back instead of crashing
+            logger.warning(
+                "TLS cert/key not found at %s / %s, falling back to unencrypted http on port 8080",
+                certfile,
+                keyfile,
+            )
             ssl_options = None
             port = 8080
 

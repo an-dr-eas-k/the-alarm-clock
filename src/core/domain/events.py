@@ -136,6 +136,11 @@ class VolumeChangedEvent(BaseEvent):
 
 
 @dataclass(frozen=True)
+class StreamChangeRequest(BaseEvent):
+    pass
+
+
+@dataclass(frozen=True)
 class ToggleAudioRequest(BaseEvent):
     pass
 

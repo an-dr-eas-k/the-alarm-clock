@@ -8,7 +8,6 @@ from adafruit_mcp230xx.mcp23017 import MCP23017
 
 from core.infrastructure.rpi_gpio import RPiGPIOManager
 
-
 rotary_encoder_channel_press: int = 8
 rotary_encoder_channel_a: int = 10
 rotary_encoder_channel_b: int = 9
@@ -17,13 +16,19 @@ invoke_button_channel: int = 1
 
 interrupt_pin: int = 4
 
+logger = logging.getLogger("tac.core.infrastructure.mcp")
+
 
 class I2CManager:
     def __init__(self):
-        self.i2c = busio.I2C(board.SCL, board.SDA)
-
-
-logger = logging.getLogger("tac.core.infrastructure.mcp")
+        self.i2c = None
+        try:
+            self.i2c = busio.I2C(board.SCL, board.SDA)
+        except (ValueError, RuntimeError):
+            # e.g. I2C not (yet) enabled in /boot/firmware/config.txt or no reboot since setup
+            logger.warning(
+                "failed to initialize I2C bus, I2C devices disabled", exc_info=True
+            )
 
 
 class MCPManager:

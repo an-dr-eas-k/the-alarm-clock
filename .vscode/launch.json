@@ -20,12 +20,19 @@
       "justMyCode": false,
     },
     {
-      "name": "python test.py",
+      "name": "python -m unittest discover (tests)",
       "type": "debugpy",
       "request": "launch",
-      "program": "test.py",
+      "module": "unittest",
+      "args": [
+        "discover",
+        "-s",
+        "tests",
+        "-t",
+        "."
+      ],
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/src",
+      "cwd": "${workspaceFolder}",
       "justMyCode": false,
     },
     {

@@ -7,7 +7,7 @@ from core.domain.mode_coordinator import AlarmClockModeCoordinator
 from core.infrastructure.rpi_gpio import GPIOInputManager, RPiGPIOManager
 from core.interface.display.format import DisplayFormatter
 from core.interface.hardware_input_handler import HardwareInputHandler
-from core.infrastructure.brightness_sensor import BrightnessSensor
+from core.infrastructure.brightness_sensor import create_brightness_sensor
 from core.infrastructure.i2c_devices import I2CManager, MCPManager
 from core.infrastructure.mcp23017.buttons import ButtonsManager
 from core.infrastructure.mcp23017.rotary_encoder import RotaryEncoderManager
@@ -126,7 +126,10 @@ class DIContainer(containers.DeclarativeContainer):
     )
 
     i2c_manager = providers.Singleton(I2CManager)
-    brightness_sensor = providers.Singleton(BrightnessSensor, i2c_manager=i2c_manager)
+    # auto-detects BH1750 (I2C) vs. photoresistor (GPIO)
+    brightness_sensor = providers.Singleton(
+        create_brightness_sensor, i2c_manager=i2c_manager
+    )
 
     gpio_manager = providers.Singleton(
         RPiGPIOManager,
@@ -168,7 +171,6 @@ class DIContainer(containers.DeclarativeContainer):
         alarm_clock_context=alarm_clock_context,
         display_content=display_content,
         playback_content=playback_content,
-        brightness_sensor=brightness_sensor,
         event_bus=event_bus,
         scheduler_service=scheduler_service,
         os_interaction=os_interaction,
@@ -199,6 +201,7 @@ class DIContainer(containers.DeclarativeContainer):
     api = providers.Singleton(
         Api,
         alarm_audio_service=alarm_audio_service,
+        system_service=system_service,
         display=display,
         event_bus=event_bus,
         executor=executor,

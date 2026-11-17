@@ -57,13 +57,19 @@ class RotaryEncoderManager:
             logger.debug("Rotary clockwise detected")
 
             self.event_bus.emit(
-                HwRotaryEvent(DeviceName.ROTARY_ENCODER, RotaryDirection.CLOCKWISE)
+                HwRotaryEvent(
+                    DeviceName.ROTARY_ENCODER,
+                    RotaryDirection.CLOCKWISE,
+                    channel_a_value == 1,
+                )
             )
         else:
             logger.debug("Rotary counter-clockwise detected")
             self.event_bus.emit(
                 HwRotaryEvent(
-                    DeviceName.ROTARY_ENCODER, RotaryDirection.COUNTERCLOCKWISE
+                    DeviceName.ROTARY_ENCODER,
+                    RotaryDirection.COUNTERCLOCKWISE,
+                    channel_a_value == 0,
                 )
             )
 

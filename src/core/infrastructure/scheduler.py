@@ -147,9 +147,6 @@ class SchedulerService:
     def get_jobs(self, jobstore: str = "default"):
         return self.scheduler.get_jobs(jobstore=jobstore)
 
-    def shutdown(self):
-        self.scheduler.shutdown()
-
     def stop_generic_trigger(self, job_id: str, jobstore=SchedulerStores.default.value):
         if self.get_job(job_id=job_id, jobstore=jobstore) is not None:
             self.remove_job(job_id=job_id, jobstore=jobstore)
@@ -176,7 +173,11 @@ class SchedulerService:
 
     def get_next_alarm_info(self) -> NextAlarmInfo:
         jobs = sorted(
-            self.get_jobs(jobstore=SchedulerStores.alarm.value),
+            (
+                job
+                for job in self.get_jobs(jobstore=SchedulerStores.alarm.value)
+                if job.next_run_time is not None
+            ),
             key=lambda job: job.next_run_time,
         )
         next_job: Job = jobs[0] if len(jobs) > 0 else None
@@ -204,7 +205,7 @@ class SchedulerService:
         config_changed = False
         for job in self.get_jobs(jobstore=SchedulerStores.alarm.value):
             if job.next_run_time is None:
-                config.remove_alarm_definition(int(job.id))
+                config.remove_alarm_definition(job.id)
                 config_changed = True
         if config_changed:
             self.event_bus.emit(ConfigChangedEvent(config))
