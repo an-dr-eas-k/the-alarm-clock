@@ -22,18 +22,22 @@ MAX_CHARGE_TIME_SECONDS = 0.007
 CHARGE_TIMEOUT_SECONDS = 0.5
 
 
+# BH1750 I2C addresses (ADDR pin low / high)
+BH1750_I2C_ADDRESSES = (0x23, 0x5C)
+
+
 class IBrightnessSensor:
     def get_room_brightness(self) -> float:
         raise NotImplementedError("Subclasses must implement get_room_brightness()")
 
 
 class BH1750BrightnessSensor(IBrightnessSensor):
-    def __init__(self, i2c_manager: I2CManager):
+    def __init__(self, i2c_manager: I2CManager, address: int):
         self.sensor = None
         if i2c_manager.i2c is None:
             return
         try:
-            self.sensor = adafruit_bh1750.BH1750(i2c_manager.i2c)
+            self.sensor = adafruit_bh1750.BH1750(i2c_manager.i2c, address=address)
         except Exception:
             logger.warning(
                 "failed to initialize BH1750 brightness sensor", exc_info=True
@@ -92,12 +96,43 @@ class PhotoresistorBrightnessSensor(IBrightnessSensor, GPIODeviceBase):
         return 1.0 - normalized
 
 
+def _find_bh1750_address(i2c_manager: I2CManager) -> int | None:
+    i2c = i2c_manager.i2c
+    if i2c is None:
+        return None
+    try:
+        while not i2c.try_lock():
+            time.sleep(0.001)
+        try:
+            found = i2c.scan()
+            return next((a for a in BH1750_I2C_ADDRESSES if a in found), None)
+        finally:
+            i2c.unlock()
+    except Exception:
+        logger.warning("I2C scan for brightness sensor failed", exc_info=True)
+        return None
+
+
+def create_brightness_sensor(i2c_manager: I2CManager) -> IBrightnessSensor:
+    """Detect the connected brightness sensor: a BH1750 on the I2C bus if one
+    answers, otherwise fall back to the GPIO photoresistor RC circuit."""
+    address = _find_bh1750_address(i2c_manager)
+    if address is not None:
+        logger.info(
+            "BH1750 detected on I2C bus at 0x%02X, using it as brightness sensor",
+            address,
+        )
+        return BH1750BrightnessSensor(i2c_manager, address)
+    logger.info("no BH1750 detected, using photoresistor as brightness sensor")
+    return PhotoresistorBrightnessSensor()
+
+
 if __name__ == "__main__":
-    sensor = PhotoresistorBrightnessSensor()
+    sensor = create_brightness_sensor(I2CManager())
 
     while True:
         print(
-            "charge time: %.6fs, brightness: %.2f"
-            % (sensor.get_raw_charge_time(), sensor.get_room_brightness())
+            "%s brightness: %.2f"
+            % (type(sensor).__name__, sensor.get_room_brightness())
         )
         time.sleep(0.5)

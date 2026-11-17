@@ -133,7 +133,7 @@ class ServiceWiringTests(DIContainerTestCase):
 
     def test_brightness_sensor_survives_missing_i2c_bus(self):
         sensor = self.container.brightness_sensor()
-        self.assertEqual(sensor.get_raw_lux(), 10000)
+        self.assertIsInstance(sensor.get_room_brightness(), float)
 
     def test_domain_and_interface_providers_resolve(self):
         coordinator = self.container.mode_coordinator()

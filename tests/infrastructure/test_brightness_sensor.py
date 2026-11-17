@@ -28,20 +28,20 @@ class TestBH1750BrightnessSensor(unittest.TestCase):
         self.i2c_manager = mock.Mock(i2c=mock.Mock(name="i2c"))
 
     def _sensor_with_lux(self, lux):
-        sensor = BH1750BrightnessSensor(self.i2c_manager)
+        sensor = BH1750BrightnessSensor(self.i2c_manager, 0x23)
         sensor.sensor = mock.Mock(lux=lux)
         return sensor
 
     def test_initializes_sensor_on_i2c_bus(self):
-        sensor = BH1750BrightnessSensor(self.i2c_manager)
+        sensor = BH1750BrightnessSensor(self.i2c_manager, 0x23)
 
-        self.bh1750_module.BH1750.assert_called_once_with(self.i2c_manager.i2c)
+        self.bh1750_module.BH1750.assert_called_once_with(self.i2c_manager.i2c, address=0x23)
         self.assertIs(self.bh1750_module.BH1750.return_value, sensor.sensor)
 
     def test_without_i2c_bus_sensor_is_disabled(self):
         self.i2c_manager.i2c = None
 
-        sensor = BH1750BrightnessSensor(self.i2c_manager)
+        sensor = BH1750BrightnessSensor(self.i2c_manager, 0x23)
 
         self.assertIsNone(sensor.sensor)
         self.bh1750_module.BH1750.assert_not_called()
@@ -50,7 +50,7 @@ class TestBH1750BrightnessSensor(unittest.TestCase):
         self.bh1750_module.BH1750.side_effect = OSError("no device at 0x23")
 
         with self.assertLogs("tac.core.infrastructure.brightness", "WARNING"):
-            sensor = BH1750BrightnessSensor(self.i2c_manager)
+            sensor = BH1750BrightnessSensor(self.i2c_manager, 0x23)
 
         self.assertIsNone(sensor.sensor)
 
@@ -60,10 +60,10 @@ class TestBH1750BrightnessSensor(unittest.TestCase):
     def test_raw_lux_defaults_to_bright_without_sensor(self):
         self.i2c_manager.i2c = None
 
-        self.assertEqual(10000, BH1750BrightnessSensor(self.i2c_manager).get_raw_lux())
+        self.assertEqual(10000, BH1750BrightnessSensor(self.i2c_manager, 0x23).get_raw_lux())
 
     def test_raw_lux_defaults_to_bright_when_read_fails(self):
-        sensor = BH1750BrightnessSensor(self.i2c_manager)
+        sensor = BH1750BrightnessSensor(self.i2c_manager, 0x23)
         sensor.sensor = mock.Mock()
         type(sensor.sensor).lux = mock.PropertyMock(side_effect=OSError("i2c"))
 
@@ -82,7 +82,7 @@ class TestBH1750BrightnessSensor(unittest.TestCase):
         self.i2c_manager.i2c = None
 
         self.assertEqual(
-            1.0, BH1750BrightnessSensor(self.i2c_manager).get_room_brightness()
+            1.0, BH1750BrightnessSensor(self.i2c_manager, 0x23).get_room_brightness()
         )
 
 
@@ -178,3 +178,44 @@ class TestPhotoresistorBrightnessSensor(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CreateBrightnessSensorTests(unittest.TestCase):
+    def _manager(self, addresses):
+        i2c = mock.MagicMock()
+        i2c.try_lock.return_value = True
+        i2c.scan.return_value = addresses
+        return mock.MagicMock(i2c=i2c)
+
+    def test_picks_bh1750_when_on_bus(self):
+        from core.infrastructure.brightness_sensor import (
+            BH1750BrightnessSensor,
+            create_brightness_sensor,
+        )
+
+        with mock.patch("adafruit_bh1750.BH1750") as driver:
+            sensor = create_brightness_sensor(self._manager([0x20, 0x23]))
+        self.assertIsInstance(sensor, BH1750BrightnessSensor)
+        self.assertEqual(driver.call_args.kwargs["address"], 0x23)
+
+    def test_passes_alternate_address_to_driver(self):
+        from core.infrastructure.brightness_sensor import create_brightness_sensor
+
+        with mock.patch("adafruit_bh1750.BH1750") as driver:
+            create_brightness_sensor(self._manager([0x5C]))
+        self.assertEqual(driver.call_args.kwargs["address"], 0x5C)
+
+    def test_falls_back_to_photoresistor(self):
+        from core.infrastructure.brightness_sensor import (
+            PhotoresistorBrightnessSensor,
+            create_brightness_sensor,
+        )
+
+        self.assertIsInstance(
+            create_brightness_sensor(self._manager([0x20])),
+            PhotoresistorBrightnessSensor,
+        )
+        self.assertIsInstance(
+            create_brightness_sensor(mock.MagicMock(i2c=None)),
+            PhotoresistorBrightnessSensor,
+        )
