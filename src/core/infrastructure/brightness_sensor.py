@@ -102,7 +102,7 @@ class CachedBrightnessSensor(IBrightnessSensor):
     serves the most recent value from memory, so callers (e.g. the 250ms
     display refresh) never block on a slow or stalled measurement."""
 
-    def __init__(self, sensor: IBrightnessSensor, interval_seconds: float = 0.1):
+    def __init__(self, sensor: IBrightnessSensor, interval_seconds: float = 0):
         self._sensor = sensor
         self._interval_seconds = interval_seconds
         self._stop_event = threading.Event()
