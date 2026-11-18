@@ -1,5 +1,6 @@
 import logging
 import math
+import threading
 import time
 import adafruit_bh1750
 
@@ -94,6 +95,39 @@ class PhotoresistorBrightnessSensor(IBrightnessSensor, GPIODeviceBase):
         log_span = math.log(MAX_CHARGE_TIME_SECONDS) - math.log(MIN_CHARGE_TIME_SECONDS)
         normalized = (math.log(clamped) - math.log(MIN_CHARGE_TIME_SECONDS)) / log_span
         return 1.0 - normalized
+
+
+class CachedBrightnessSensor(IBrightnessSensor):
+    """Measures the wrapped sensor continuously in a background thread and
+    serves the most recent value from memory, so callers (e.g. the 250ms
+    display refresh) never block on a slow or stalled measurement."""
+
+    def __init__(self, sensor: IBrightnessSensor, interval_seconds: float = 0.1):
+        self._sensor = sensor
+        self._interval_seconds = interval_seconds
+        self._stop_event = threading.Event()
+        self._value = self._measure(default=1.0)
+        self._thread = threading.Thread(
+            target=self._run, name="brightness-sensor", daemon=True
+        )
+        self._thread.start()
+
+    def _measure(self, default: float) -> float:
+        try:
+            return self._sensor.get_room_brightness()
+        except Exception:
+            logger.warning("brightness measurement failed", exc_info=True)
+            return default
+
+    def _run(self):
+        while not self._stop_event.wait(self._interval_seconds):
+            self._value = self._measure(default=self._value)
+
+    def get_room_brightness(self) -> float:
+        return self._value
+
+    def stop(self):
+        self._stop_event.set()
 
 
 def _find_bh1750_address(i2c_manager: I2CManager) -> int | None:

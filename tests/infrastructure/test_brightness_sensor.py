@@ -219,3 +219,54 @@ class CreateBrightnessSensorTests(unittest.TestCase):
             create_brightness_sensor(mock.MagicMock(i2c=None)),
             PhotoresistorBrightnessSensor,
         )
+
+
+class TestCachedBrightnessSensor(unittest.TestCase):
+    def _cached(self, sensor, interval=0.01):
+        from core.infrastructure.brightness_sensor import CachedBrightnessSensor
+
+        cached = CachedBrightnessSensor(sensor, interval_seconds=interval)
+        self.addCleanup(cached.stop)
+        return cached
+
+    def test_returns_initial_measurement(self):
+        sensor = mock.Mock(get_room_brightness=mock.Mock(return_value=0.4))
+        self.assertEqual(0.4, self._cached(sensor, interval=10).get_room_brightness())
+
+    def test_updates_value_in_background(self):
+        import time
+
+        sensor = mock.Mock(get_room_brightness=mock.Mock(side_effect=[0.1] + [0.9] * 1000))
+        cached = self._cached(sensor)
+        deadline = time.time() + 2
+        while cached.get_room_brightness() != 0.9 and time.time() < deadline:
+            time.sleep(0.01)
+        self.assertEqual(0.9, cached.get_room_brightness())
+
+    def test_read_does_not_block_on_slow_sensor(self):
+        import threading
+        import time
+
+        release = threading.Event()
+        calls = []
+
+        def slow():
+            calls.append(1)
+            if len(calls) > 1:
+                release.wait(5)
+            return 0.5
+
+        cached = self._cached(mock.Mock(get_room_brightness=slow))
+        time.sleep(0.05)  # background thread now stuck inside the slow measurement
+        start = time.perf_counter()
+        self.assertEqual(0.5, cached.get_room_brightness())
+        self.assertLess(time.perf_counter() - start, 0.1)
+        release.set()
+
+    def test_keeps_previous_value_when_measurement_fails(self):
+        import time
+
+        sensor = mock.Mock(get_room_brightness=mock.Mock(side_effect=[0.3] + [OSError()] * 1000))
+        cached = self._cached(sensor)
+        time.sleep(0.05)
+        self.assertEqual(0.3, cached.get_room_brightness())
