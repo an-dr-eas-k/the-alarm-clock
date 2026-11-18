@@ -32,7 +32,7 @@
 1. follow the log output with
    * for the application itself
      ```
-     journalctl SYSLOG_IDENTIFIER=the-alarm-clock.service -f
+     journalctl -u the-alarm-clock.service -f
      ```
    * for spotify events
      ```
