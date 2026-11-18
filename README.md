@@ -34,9 +34,9 @@
      ```
      journalctl -u the-alarm-clock.service -f
      ```
-   * for spotify events
+   * for the spotify client (raspotify/librespot)
      ```
-     journalctl SYSLOG_IDENTIFIER=the-alarm-clock.spotify-event.service -f
+     journalctl -u raspotify.service -f
      ```
 
 # Dependencies
