@@ -26,7 +26,7 @@
 
     * repeat:
       ```
-      nohup sh -c "curl https://raw.githubusercontent.com/an-dr-eas-k/the-alarm-clock/refs/heads/develop/rpi/setup.sh | bash -s -- fast" &
+      nohup sh -c "curl https://raw.githubusercontent.com/an-dr-eas-k/the-alarm-clock/refs/heads/develop/rpi/setup.sh | bash -s -- --fast" &
       ```
 
 1. follow the log output with
@@ -70,6 +70,98 @@ Run a single test module, e.g.:
 
 
 # Connection Guide
+
+## Wiring Overview
+
+```mermaid
+flowchart TB
+  V33(["3.3 V rail"])
+
+  subgraph RPI["Raspberry Pi (40-pin header)"]
+    direction LR
+    P3V3["3V3 (pin 17)"]
+    G10["GPIO10 / MOSI (pin 19)"]
+    G11["GPIO11 / SCLK (pin 23)"]
+    G8["GPIO8 / CE0 (pin 24)"]
+    G24["GPIO24 (pin 18)"]
+    G25["GPIO25 (pin 22)"]
+    G5["GPIO5 (pin 29)"]
+    G6["GPIO6 (pin 31)"]
+    G13["GPIO13 (pin 33)"]
+    G12["GPIO12 (pin 32)"]
+    G1["GPIO1 (pin 28)"]
+    G26["GPIO26 (pin 37)"]
+    PGND["GND (pin 39)"]
+  end
+
+  subgraph DISP["OLED display (SPI)"]
+    direction LR
+    D_VBAT["VBAT"]
+    D_SDI["SDI"]
+    D_SCLK["SCLK"]
+    D_CS["CS"]
+    D_DC["DC"]
+    D_RES["RESET"]
+    D_VSS["VSS"]
+  end
+
+  subgraph ROT["Rotary encoder"]
+    direction LR
+    R_PRESS["push switch"]
+    R_A["A"]
+    R_B["B"]
+    R_COM["common"]
+  end
+
+  subgraph BTN["Buttons"]
+    direction LR
+    B_MODE["mode button"]
+    B_INV["invoke button"]
+    B_GND["other contacts"]
+  end
+
+  subgraph LIGHT["Brightness sensor (RC)"]
+    direction LR
+    LDR["photoresistor GL5539"]
+    CAP["capacitor 10 nF"]
+  end
+
+  AMP["DigiAMP+ (I2S audio)<br/>plugged onto the header<br/>GPIO18, 19, 20, 21"]
+
+  GND(["GND rail"])
+
+  V33 ---|once| P3V3
+  V33 --- D_VBAT
+  V33 --- LDR
+
+  G10 ---|white| D_SDI
+  G11 ---|brown| D_SCLK
+  G8 ---|blue| D_CS
+  G24 ---|gray| D_DC
+  G25 ---|pink| D_RES
+
+  G5 --- R_PRESS
+  G6 --- R_A
+  G13 --- R_B
+  G12 --- B_MODE
+  G1 --- B_INV
+  G26 --- LDR
+  G26 --- CAP
+
+  RPI -.-|I2S| AMP
+
+  PGND ---|once| GND
+  D_VSS ---|black| GND
+  R_COM --- GND
+  B_GND --- GND
+  CAP --- GND
+```
+
+Buttons and the rotary encoder are read with the Pi's internal pull-ups, so
+they only need to short their GPIO to GND. The brightness sensor measures the
+charge time of the capacitor through the photoresistor (3V3 → photoresistor →
+GPIO26 → capacitor → GND).
+
 ## RPi GPIO
 
 |         |||||||||

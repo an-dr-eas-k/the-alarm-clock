@@ -17,4 +17,4 @@ pillow
 psutil
 pympler
 systemd
-# PyQt5 # only needed for local development
+pyqt5

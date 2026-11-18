@@ -37,7 +37,7 @@ else
   echo "update system and install dependencies"
   apt-get -y update
   apt-get -y dist-upgrade
-  apt-get -y install git python3 vlc python3-pip curl libasound2-plugin-equal python3-alsaaudio libasound2-dev libsystemd-dev log2ram dkms build-essential
+  apt-get -y install git python3 vlc python3-pip curl libasound2-plugin-equal python3-alsaaudio libasound2-dev libsystemd-dev log2ram dkms build-essential python3-pyqt5
   
   apt-get -y remove python3-rpi.gpio
   apt-get -y install python3-rpi-lgpio 

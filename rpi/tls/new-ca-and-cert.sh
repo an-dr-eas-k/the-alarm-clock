@@ -3,4 +3,4 @@
 # npx mkcert create-ca --organization "an.dr.eas.k Root CA" --country-code DE --state Bavaria --locality Munich --validity 30000
 
 rm cert.*
-npx mkcert create-cert --validity 30000 --domains "the-alarm-clock" "the-alarm-clock.fritz.box"
+npx mkcert create-cert --validity 30000 --domains "the-alarm-clock" "the-alarm-clock.fritz.box" --ca-cert ca.crt --ca-key ca.key
