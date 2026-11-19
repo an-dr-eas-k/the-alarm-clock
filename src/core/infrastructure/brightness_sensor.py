@@ -70,17 +70,30 @@ class PhotoresistorBrightnessSensor(IBrightnessSensor, GPIODeviceBase):
         start = time.perf_counter()
         while not gpio.input(LIGHT_SENSOR_GPIO):
             if time.perf_counter() - start > CHARGE_TIMEOUT_SECONDS:
+                logger.warning(
+                    "photoresistor RC charge timed out after %.3fs "
+                    "(check wiring on GPIO%d)",
+                    CHARGE_TIMEOUT_SECONDS,
+                    LIGHT_SENSOR_GPIO,
+                )
                 return CHARGE_TIMEOUT_SECONDS
         return time.perf_counter() - start
 
     def get_raw_charge_time(self) -> float:
         if self._gpio_module is None:
+            logger.warning(
+                "photoresistor: GPIO module unavailable, assuming brightest (%.6fs)",
+                MIN_CHARGE_TIME_SECONDS,
+            )
             return MIN_CHARGE_TIME_SECONDS
         try:
             charge_time = self._measure_charge_time_seconds()
-            logger.debug("raw RC charge time: %.6fs", charge_time)
+            logger.debug("photoresistor raw RC charge time: %.6fs", charge_time)
             return charge_time
         except Exception:
+            logger.warning(
+                "photoresistor measurement failed, assuming brightest", exc_info=True
+            )
             return MIN_CHARGE_TIME_SECONDS
 
     def get_room_brightness(self) -> float:
@@ -92,9 +105,24 @@ class PhotoresistorBrightnessSensor(IBrightnessSensor, GPIODeviceBase):
         clamped = min(
             max(charge_time, MIN_CHARGE_TIME_SECONDS), MAX_CHARGE_TIME_SECONDS
         )
+        if clamped != charge_time:
+            logger.debug(
+                "photoresistor charge time %.6fs outside calibrated range "
+                "[%.6f, %.6f], clamped to %.6fs",
+                charge_time,
+                MIN_CHARGE_TIME_SECONDS,
+                MAX_CHARGE_TIME_SECONDS,
+                clamped,
+            )
         log_span = math.log(MAX_CHARGE_TIME_SECONDS) - math.log(MIN_CHARGE_TIME_SECONDS)
         normalized = (math.log(clamped) - math.log(MIN_CHARGE_TIME_SECONDS)) / log_span
-        return 1.0 - normalized
+        brightness = 1.0 - normalized
+        logger.debug(
+            "photoresistor charge time %.6fs -> brightness %.3f",
+            charge_time,
+            brightness,
+        )
+        return brightness
 
 
 class CachedBrightnessSensor(IBrightnessSensor):
@@ -107,6 +135,14 @@ class CachedBrightnessSensor(IBrightnessSensor):
         self._interval_seconds = interval_seconds
         self._stop_event = threading.Event()
         self._value = self._measure(default=1.0)
+        self._last_logged_value = self._value
+        logger.info(
+            "cached brightness sensor started (%s), initial brightness %.3f, "
+            "interval %.3fs",
+            type(sensor).__name__,
+            self._value,
+            interval_seconds,
+        )
         self._thread = threading.Thread(
             target=self._run, name="brightness-sensor", daemon=True
         )
@@ -122,11 +158,20 @@ class CachedBrightnessSensor(IBrightnessSensor):
     def _run(self):
         while not self._stop_event.wait(self._interval_seconds):
             self._value = self._measure(default=self._value)
+            # measurements run back-to-back, so only report meaningful changes
+            if abs(self._value - self._last_logged_value) >= 0.05:
+                logger.info(
+                    "room brightness changed: %.3f -> %.3f",
+                    self._last_logged_value,
+                    self._value,
+                )
+                self._last_logged_value = self._value
 
     def get_room_brightness(self) -> float:
         return self._value
 
     def stop(self):
+        logger.info("stopping cached brightness sensor")
         self._stop_event.set()
 
 

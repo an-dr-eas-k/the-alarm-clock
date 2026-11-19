@@ -59,6 +59,9 @@ class RPiGPIOManager(GPIODeviceBase):
         logger.info(f"Configuring gpio pins: {configured_pins}")
 
         for pin in configured_pins:
+            logger.info(
+                "GPIO%d: input, pull-up, edge detection BOTH, bouncetime 2ms", pin
+            )
             self._gpio_module.setup(
                 pin, self._gpio_module.IN, pull_up_down=self._gpio_module.PUD_UP
             )
@@ -71,15 +74,37 @@ class RPiGPIOManager(GPIODeviceBase):
             )
 
     def callback_wrapper(self, channel):
-        all_pin_values = self.read_all_pins()
-        logger.debug(
-            f"GPIO event detected on channel {channel}, pin values: {all_pin_values}"
-        )
-        self.executor.submit(
-            self.gpio_callbacks[channel],
-            bool(all_pin_values[channel]),
-            all_pin_values,
-        )
+        try:
+            all_pin_values = self.read_all_pins()
+            logger.debug(
+                "GPIO edge on GPIO%s (level now %s), all pin values: %s",
+                channel,
+                all_pin_values.get(channel),
+                all_pin_values,
+            )
+            callback = self.gpio_callbacks.get(channel)
+            if callback is None:
+                logger.warning("GPIO edge on GPIO%s without registered callback", channel)
+                return
+            future = self.executor.submit(
+                callback,
+                bool(all_pin_values[channel]),
+                all_pin_values,
+            )
+            future.add_done_callback(
+                lambda f, ch=channel: self._log_callback_failure(ch, f)
+            )
+        except Exception:
+            logger.exception("GPIO event handling failed for GPIO%s", channel)
+
+    @staticmethod
+    def _log_callback_failure(channel, future):
+        # exceptions raised in executor tasks are otherwise swallowed silently
+        exc = future.exception()
+        if exc is not None:
+            logger.error(
+                "callback for GPIO%s raised an exception", channel, exc_info=exc
+            )
 
     def read_all_pins(self):
         pin_values = {}
@@ -175,12 +200,14 @@ class GPIOInputManager:
 
     def _emit_long_press(self, device_name: DeviceName):
         self._long_press_timers.pop(device_name, None)
-        logger.debug(f"Long press detected on {device_name}")
+        logger.info(f"Long press detected on {device_name}")
         self.event_bus.emit(HwButtonLongPressEvent(device_name=device_name))
 
     def _mode_button_callback(self, pin_value: bool, _=None):
-        logger.debug("Mode button state changed")
         direction = ButtonDirection.DOWN if not pin_value else ButtonDirection.UP
+        logger.info(
+            "mode button %s (pin value: %s)", direction.name, pin_value
+        )
         if direction == ButtonDirection.DOWN:
             self._start_long_press_timer(DeviceName.MODE_BUTTON)
         else:
@@ -190,8 +217,10 @@ class GPIOInputManager:
         )
 
     def _invoke_button_callback(self, pin_value: bool, _=None):
-        logger.debug("Invoke button state changed")
         direction = ButtonDirection.DOWN if not pin_value else ButtonDirection.UP
+        logger.info(
+            "invoke button %s (pin value: %s)", direction.name, pin_value
+        )
         if direction == ButtonDirection.DOWN:
             self._start_long_press_timer(DeviceName.INVOKE_BUTTON)
         else:

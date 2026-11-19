@@ -169,12 +169,18 @@
       ]
     },
     "tac.core.infrastructure.mcp.buttons": {
-      "level": "WARNING",
+      "level": "DEBUG",
       "handlers": [
         "lastResort"
       ]
     },
     "tac.core.infrastructure.mcp.rotary_encoder": {
+      "level": "DEBUG",
+      "handlers": [
+        "lastResort"
+      ]
+    },
+    "tac.core.infrastructure.brightness": {
       "level": "DEBUG",
       "handlers": [
         "lastResort"

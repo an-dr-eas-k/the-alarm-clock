@@ -26,9 +26,19 @@ class ButtonsManager:
         )
         self.mcp_manager.setup()
 
-        logger.info("MCP23017 initialized for button input with event interrupts.")
+        logger.info(
+            "MCP23017 initialized for button input with event interrupts "
+            "(mode channel: %s, invoke channel: %s)",
+            mode_button_channel,
+            invoke_button_channel,
+        )
 
     def _mode_button_callback(self, pin_value: bool, _=None):
+        logger.info(
+            "mode button %s (pin value: %s)",
+            "pressed" if not pin_value else "released",
+            pin_value,
+        )
         self.event_bus.emit(
             HwButtonEvent(
                 device_name=DeviceName.MODE_BUTTON,
@@ -37,6 +47,11 @@ class ButtonsManager:
         )
 
     def _invoke_button_callback(self, pin_value: bool, _=None):
+        logger.info(
+            "invoke button %s (pin value: %s)",
+            "pressed" if not pin_value else "released",
+            pin_value,
+        )
         self.event_bus.emit(
             HwButtonEvent(
                 device_name=DeviceName.INVOKE_BUTTON,

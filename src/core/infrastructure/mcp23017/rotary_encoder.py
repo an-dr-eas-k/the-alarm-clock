@@ -45,6 +45,11 @@ class RotaryEncoderManager:
 
         channel_a_value = pin_values[rotary_encoder_channel_a][0]
         if channel_a_value == last_state[0]:
+            logger.debug(
+                "Rotary encoder ignored: channel A unchanged (%s), pin values: %s",
+                channel_a_value,
+                pin_values,
+            )
             return
 
         channel_b_value = pin_values[rotary_encoder_channel_b][0]
@@ -54,7 +59,7 @@ class RotaryEncoderManager:
         )
 
         if channel_b_value != channel_a_value:
-            logger.debug("Rotary clockwise detected")
+            logger.debug("Rotary clockwise detected, state: %s", state)
 
             self.event_bus.emit(
                 HwRotaryEvent(
@@ -64,7 +69,7 @@ class RotaryEncoderManager:
                 )
             )
         else:
-            logger.debug("Rotary counter-clockwise detected")
+            logger.debug("Rotary counter-clockwise detected, state: %s", state)
             self.event_bus.emit(
                 HwRotaryEvent(
                     DeviceName.ROTARY_ENCODER,
