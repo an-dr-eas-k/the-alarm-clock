@@ -207,18 +207,16 @@ class CreateBrightnessSensorTests(unittest.TestCase):
 
     def test_falls_back_to_photoresistor(self):
         from core.infrastructure.brightness_sensor import (
+            CachedBrightnessSensor,
             PhotoresistorBrightnessSensor,
             create_brightness_sensor,
         )
 
-        self.assertIsInstance(
-            create_brightness_sensor(self._manager([0x20])),
-            PhotoresistorBrightnessSensor,
-        )
-        self.assertIsInstance(
-            create_brightness_sensor(mock.MagicMock(i2c=None)),
-            PhotoresistorBrightnessSensor,
-        )
+        for manager in (self._manager([0x20]), mock.MagicMock(i2c=None)):
+            sensor = create_brightness_sensor(manager)
+            self.addCleanup(sensor.stop)
+            self.assertIsInstance(sensor, CachedBrightnessSensor)
+            self.assertIsInstance(sensor._sensor, PhotoresistorBrightnessSensor)
 
 
 class TestCachedBrightnessSensor(unittest.TestCase):

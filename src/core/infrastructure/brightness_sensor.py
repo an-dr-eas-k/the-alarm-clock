@@ -149,7 +149,8 @@ def _find_bh1750_address(i2c_manager: I2CManager) -> int | None:
 
 def create_brightness_sensor(i2c_manager: I2CManager) -> IBrightnessSensor:
     """Detect the connected brightness sensor: a BH1750 on the I2C bus if one
-    answers, otherwise fall back to the GPIO photoresistor RC circuit."""
+    answers, otherwise fall back to the GPIO photoresistor RC circuit (measured
+    in the background and served from a cache)."""
     address = _find_bh1750_address(i2c_manager)
     if address is not None:
         logger.info(
@@ -158,7 +159,9 @@ def create_brightness_sensor(i2c_manager: I2CManager) -> IBrightnessSensor:
         )
         return BH1750BrightnessSensor(i2c_manager, address)
     logger.info("no BH1750 detected, using photoresistor as brightness sensor")
-    return PhotoresistorBrightnessSensor()
+    # the RC measurement takes milliseconds (up to the 0.5s timeout), so keep
+    # it off the caller's thread; the BH1750 read is fast enough to stay direct
+    return CachedBrightnessSensor(PhotoresistorBrightnessSensor())
 
 
 if __name__ == "__main__":

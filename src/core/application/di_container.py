@@ -7,10 +7,7 @@ from core.domain.mode_coordinator import AlarmClockModeCoordinator
 from core.infrastructure.rpi_gpio import GPIOInputManager, RPiGPIOManager
 from core.interface.display.format import DisplayFormatter
 from core.interface.hardware_input_handler import HardwareInputHandler
-from core.infrastructure.brightness_sensor import (
-    CachedBrightnessSensor,
-    create_brightness_sensor,
-)
+from core.infrastructure.brightness_sensor import create_brightness_sensor
 from core.infrastructure.i2c_devices import I2CManager, MCPManager
 from core.infrastructure.mcp23017.buttons import ButtonsManager
 from core.infrastructure.mcp23017.rotary_encoder import RotaryEncoderManager
@@ -130,12 +127,8 @@ class DIContainer(containers.DeclarativeContainer):
 
     i2c_manager = providers.Singleton(I2CManager)
     # auto-detects BH1750 (I2C) vs. photoresistor (GPIO)
-    raw_brightness_sensor = providers.Singleton(
-        create_brightness_sensor, i2c_manager=i2c_manager
-    )
-    # measures in the background; the display refresh reads the cached value
     brightness_sensor = providers.Singleton(
-        CachedBrightnessSensor, sensor=raw_brightness_sensor
+        create_brightness_sensor, i2c_manager=i2c_manager
     )
 
     gpio_manager = providers.Singleton(
