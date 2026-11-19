@@ -15,10 +15,10 @@ LIGHT_SENSOR_GPIO = 26
 
 # Charge times (seconds) are inversely related to room brightness: more light
 # lowers the photoresistor's resistance, so the capacitor charges faster.
-# Calibrated from field readings on the 10nF cap + GL5539 pair (~250us in a lit
+# Calibrated from field readings on the 10nF cap + GL5539 pair (~40us in a lit
 # room, ~5ms with the sensor covered); recalibrate further with __main__ below
 # if your bright/dark extremes differ.
-MIN_CHARGE_TIME_SECONDS = 0.00015
+MIN_CHARGE_TIME_SECONDS = 0.00003
 MAX_CHARGE_TIME_SECONDS = 0.007
 CHARGE_TIMEOUT_SECONDS = 0.5
 
