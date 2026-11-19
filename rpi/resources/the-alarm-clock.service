@@ -9,6 +9,11 @@ Type=simple
 User=the-alarm-clock
 WorkingDirectory=/srv/the-alarm-clock/app
 Environment="QT_QPA_PLATFORM=offscreen"
+# per-user runtime dir for Qt (no login session sets XDG_RUNTIME_DIR);
+# systemd creates /run/the-alarm-clock owned by the service user, mode 0700
+RuntimeDirectory=the-alarm-clock
+RuntimeDirectoryMode=0700
+Environment="XDG_RUNTIME_DIR=/run/the-alarm-clock"
 
 # prepare application (runs as User=the-alarm-clock)
 ExecStartPre=-/bin/bash rpi/service-pre-start.sh
